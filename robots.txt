@@ -1,0 +1,5 @@
+# La tienda de Maleu. Es publica y queremos que Google la indexe.
+User-agent: *
+Allow: /
+
+Sitemap: https://maleu.com.ar/sitemap.xml
