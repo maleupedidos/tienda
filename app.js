@@ -90,11 +90,40 @@ function _purgeCartBloqueados() {
   return changed;
 }
 
+/* ── MODO AUTOPEDIDO ──────────────────────────────────────────────
+   Tadeo arma el pedido POR el cliente, y a veces el cliente pide algo que su
+   zona no muestra. Caso real (1/9/2026): Javier Galarraga, de Estancias, pidio
+   3 Sorrentinos Espinaca — un producto con zonas:["pilar"], que en Estancias no
+   aparece. Sin esto, el unico camino era escribir a mano en el Sheets, que es
+   justo lo que no queremos ("el Sheets es el motor, el ERP es la pantalla").
+
+   Con ?autopedido=1 se ve el catalogo COMPLETO. El pedido entra por el flujo
+   de siempre: a la hoja de la zona elegida (Estancias -> Home), con su nombre,
+   telefono y lote, y con Origen "Pendiente" — desde el ERP se pasa a Orden de
+   Compra como con cualquier otro.
+
+   NO cambia nada para el cliente que entra por el link normal: sin el
+   parametro, `_zonaPermite` filtra igual que siempre.
+
+   El link con el parametro NO se le pasa a un cliente: veria productos que su
+   zona no entrega. Por eso la pantalla lo dice con un cartel imposible de no
+   ver (ver _bannerAutopedido). */
+var MODO_AUTOPEDIDO = /[?&]autopedido=1/.test(location.search);
+
+/* Unico lugar que decide si un producto o combo se muestra en la zona actual.
+   Antes esta condicion estaba repetida en tres lados y era facil que una
+   quedara sin actualizar. */
+function _zonaPermite(zonas) {
+  if (!zonas) return true;
+  if (MODO_AUTOPEDIDO) return true;
+  return zonas.indexOf(currentZone) >= 0;
+}
+
 /* Productos y categorías activos según zona */
 function getActiveProducts() {
   if (currentZone === 'clubes') return PRODUCTOS_CLUBES;
   return PRODUCTOS.filter(function(p) {
-    if (p.zonas && p.zonas.indexOf(currentZone) < 0) return false;
+    if (!_zonaPermite(p.zonas)) return false;
     if (_catBloqueadaPorBarrio(p.cat)) return false;
     return true;
   });
@@ -213,13 +242,13 @@ function slotOptions(slot) {
   } else if (slot.options && slot.options.cat) {
     prods = getActiveProducts().filter(p => p.cat === slot.options.cat);
   } else { prods = []; }
-  return prods.filter(p => (!p.zonas || p.zonas.indexOf(currentZone) >= 0) && !_catBloqueadaPorBarrio(p.cat));
+  return prods.filter(p => _zonaPermite(p.zonas) && !_catBloqueadaPorBarrio(p.cat));
 }
 /* ¿El combo tiene al menos un slot con opción a elegir (más de 1)? */
 function comboHasChoices(c) { return (c.slots || []).some(s => slotOptions(s).length > 1); }
 /* ¿El combo se puede mostrar en la zona? Todos los slots con >=1 opción. */
 function comboAvailableInZone(c) {
-  if (c.zonas && c.zonas.indexOf(currentZone) < 0) return false;
+  if (!_zonaPermite(c.zonas)) return false;
   if (!c.slots || !c.slots.length) return false;
   return c.slots.every(s => slotOptions(s).length >= 1);
 }
@@ -3986,6 +4015,23 @@ function copyVendedorAlias(alias, nombreCorto) {
     toast('✓ Alias de ' + nombreCorto + ' copiado: ' + alias);
   });
 }
+
+/* El modo autopedido tiene que gritarse. Si Tadeo se olvida de que lo tiene
+   puesto y le pasa el link a un cliente, ese cliente veria productos que su
+   zona no entrega y pediria algo que no le va a llegar. Un cartel fijo arriba,
+   naranja, imposible de confundir con la tienda de verdad. */
+function _bannerAutopedido() {
+  if (!MODO_AUTOPEDIDO) return;
+  var b = document.createElement('div');
+  b.id = 'banner-autopedido';
+  b.style.cssText = 'position:sticky;top:0;z-index:9999;background:#E65100;color:#fff;' +
+    'font:600 13px/1.45 system-ui,-apple-system,sans-serif;padding:9px 14px;text-align:center;' +
+    'box-shadow:0 2px 8px rgba(0,0,0,.25)';
+  b.innerHTML = '\uD83D\uDD27 <b>Modo autopedido</b> \u2014 se ve el cat\u00e1logo completo, ' +
+    'incluso lo que esta zona no vende. <b>No le pases este link a un cliente.</b>';
+  document.body.insertBefore(b, document.body.firstChild);
+}
+_bannerAutopedido();
 
 updateShippingBar();
 
