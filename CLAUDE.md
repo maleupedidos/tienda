@@ -52,6 +52,69 @@ lo lee por HTTP desde `https://maleu.com.ar/data/precios.json`.
 | `data/precios.json` | **Generado.** Lo lee el Portal Red del ERP. |
 | `CNAME` | `maleu.com.ar`. Sin esto GitHub Pages no sirve el dominio propio. |
 
+## ⚠ El `?v=` NO se toca a mano — y por que importa (1/9/2026)
+
+`index.html` carga los archivos con un cache-buster:
+
+```html
+<link href="styles.css?v=cf3d3cd5">
+<script src="app.js?v=867da4ad">
+```
+
+**Ese `?v=` es el hash md5 del contenido y lo actualiza el workflow solo.** No lo
+edites: si le pones un valor a mano, el proximo push te lo pisa.
+
+> [!danger] Un cambio publicado puede no llegarle al cliente
+> Hasta el 1/9/2026 el `?v=` era **`20260819-1`, fijo desde el 19/8**. Y GitHub
+> Pages sirve `app.js` con **`Cache-Control: max-age=14400`** — 4 horas.
+>
+> El navegador cachea **por URL exacta**. Misma URL, misma copia vieja: un
+> cambio a `app.js` — **un precio incluido** — podia tardar 4 horas en llegar,
+> o no llegar nunca mientras nadie tocara el `?v=`.
+>
+> Se descubrio porque Tadeo no veia el modo autopedido recién publicado.
+
+> [!warning] `curl` NO responde la pregunta que importa
+> `curl https://maleu.com.ar/app.js | grep loQueSea` dice que **el servidor tiene
+> el archivo nuevo**. Eso es otra pregunta distinta de si **el navegador lo
+> recibe**. Lo mismo un Chrome headless con el cache desactivado: pasa siempre.
+>
+> Asi se dio por verificado el modo autopedido cuando Tadeo no lo veia.
+>
+> Para contestar la de verdad: **`node _tools/probar-cache.js`**. Visita la
+> tienda, deja el cache poblado como cualquier cliente, vuelve a visitarla **sin
+> limpiar nada**, y verifica que igual ve el codigo de ahora. El cache queda
+> **prendido a proposito**.
+
+Los otros dos:
+
+| | |
+|---|---|
+| `node _tools/probar-autopedido.js` | que `?autopedido=1` muestre los 4 de Pilar **y que sin el parametro no cambie nada** |
+| `node _tools/diagnostico-vivo.js` | recorre maleu.com.ar como una persona (elige zona en el modal) y reporta el estado interno |
+
+**El `index.html` se sirve con `max-age=600`** (10 min), asi que un cambio tarda
+como mucho ese rato en verse: el navegador pide el index nuevo, ve un `?v=`
+distinto, y baja el archivo. Si hace falta antes, recarga forzada.
+
+## Modo autopedido: `?autopedido=1`
+
+Tadeo arma pedidos POR el cliente, y a veces el cliente pide algo que su zona no
+muestra — **4 sorrentinos tienen `zonas:["pilar"]`**: Queso Brie, Langostinos al
+Azafrán, Pollo y Puerro y Espinaca. Con `?autopedido=1` se ve el catálogo
+completo, sale un cartel naranja, y **sin el parámetro no cambia nada** para el
+cliente.
+
+El pedido entra por el flujo de siempre: a la hoja de la zona elegida (Estancias
+→ Home), con Origen "Pendiente" — desde el ERP se pasa a Orden de Compra.
+
+**Ese link no se le pasa a un cliente**: veria productos que su zona no entrega.
+
+> [!note] El stock 0 no bloquea
+> Pidiendo antes del cutoff (Jue 12hs) para el viernes siguiente,
+> `getStockMode()` da `'ilimitado'` también en Estancias: se puede pedir sin
+> stock y sale por OC. El unico filtro que importaba era el de zona.
+
 ## Deploy
 
 El push a `main` **ES** la publicación (GitHub Pages). Si sale mal, sale mal en
