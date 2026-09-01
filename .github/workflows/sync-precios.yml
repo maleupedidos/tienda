@@ -1,4 +1,4 @@
-name: Sync precios
+name: Publicar tienda
 
 # Fuente unica de precios: el array PRODUCTOS de app.js (esta tienda). Cada vez
 # que se pushea un cambio a app.js, este workflow regenera data/precios.json
@@ -10,7 +10,7 @@ name: Sync precios
 on:
   push:
     branches: [ main ]
-    paths: [ 'app.js' ]
+    paths: [ 'app.js', 'styles.css' ]
   workflow_dispatch: {}
 
 permissions:
@@ -41,13 +41,23 @@ jobs:
           print('precios.json:', len(m), 'productos')
           PY
 
+      # Sin esto, un cambio publicado puede no llegarle al cliente. GitHub Pages
+      # sirve app.js con Cache-Control: max-age=14400 (4 horas), y el navegador
+      # cachea por URL EXACTA. Como el ?v= estuvo fijo en "20260819-1" desde el
+      # 19/8/2026, la URL no cambiaba y el navegador seguia usando su copia vieja.
+      # Paso el 1/9/2026: el modo autopedido estaba publicado y Tadeo no lo veia.
+      # Ojo con esto al verificar: `curl` y un navegador con el cache desactivado
+      # dicen que el servidor tiene el archivo nuevo, que es OTRA pregunta.
+      - name: Actualizar el ?v= de index.html con el hash de cada archivo
+        run: python3 _tools/cachebuster.py
+
       - name: Commitear solo si cambio
         run: |
-          if git diff --quiet -- data/precios.json; then
-            echo "Sin cambios de precios: nada que commitear."; exit 0
+          if git diff --quiet -- data/precios.json index.html; then
+            echo "Sin cambios: nada que commitear."; exit 0
           fi
           git config user.name  "maleu-precios-bot"
           git config user.email "maleucongelados@gmail.com"
-          git add data/precios.json
-          git commit -m "chore: sync precios portal desde app.js [skip ci]"
+          git add data/precios.json index.html
+          git commit -m "chore: sync precios + cache-buster desde app.js [skip ci]"
           git push
