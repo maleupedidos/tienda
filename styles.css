@@ -135,6 +135,37 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .cart-badge.bounce { animation:badgeBounce .4s cubic-bezier(.2,.8,.3,1.4); }
 @keyframes badgeBounce { 0%{transform:scale(1)} 40%{transform:scale(1.45)} 100%{transform:scale(1)} }
 
+/* ── BANNER NOVEDAD (Diagonal Carnes) ──
+   Va entre el header (crema) y el hero (crema): el fondo oscuro es lo que lo
+   despega de los dos y hace que se lea como novedad y no como parte del hero.
+   Mismo par de colores que la promo-bar, que ya usa marrón sobre crema. */
+/* El padding derecho tiene que ser MAYOR que los 44px del botón de cerrar: si
+   no, su área táctil se superpone al CTA y el dedo cierra el aviso cuando
+   quería entrar a Diagonal. Con 2.6rem (41,6px) se pisaban 2px a 768px. */
+.novedad-bar { position:relative; background:linear-gradient(90deg, var(--brown) 0%, #4A2A24 100%); color:var(--cream); padding:.7rem 3.1rem .7rem 1.2rem; }
+.novedad-bar[hidden] { display:none; }
+.novedad-content { display:flex; align-items:center; gap:.8rem; max-width:60rem; margin:0 auto; }
+.novedad-emoji { font-size:1.5rem; line-height:1; flex-shrink:0; }
+.novedad-text { display:flex; flex-direction:column; line-height:1.35; flex:1; min-width:0; }
+.novedad-text strong { font-size:.92rem; font-weight:800; color:#fff; letter-spacing:-.01em; }
+.novedad-text span { font-size:.78rem; opacity:.82; text-wrap:pretty; }
+.novedad-cta { flex-shrink:0; background:var(--orange); color:#fff; text-decoration:none; font-weight:700; font-size:.82rem; padding:.55rem 1rem; border-radius:9px; white-space:nowrap; transition:background .15s; }
+.novedad-cta:hover { background:var(--hover-orange); }
+/* 44px es el mínimo táctil: abajo de eso el dedo no le pega y parece que no anda. */
+.novedad-close { position:absolute; top:0; right:0; width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:transparent; border:0; color:var(--cream); opacity:.55; font-size:1.4rem; line-height:1; cursor:pointer; font-family:var(--font); }
+.novedad-close:hover { opacity:1; }
+
+/* En el celular el texto y el botón no entran en una línea: el botón baja y
+   toma el ancho completo. Sin esto el texto queda en una columna de ~100px y
+   parte en cuatro renglones. */
+@media (max-width:560px) {
+  .novedad-bar { padding:.7rem .9rem .85rem; }
+  .novedad-content { flex-wrap:wrap; gap:.55rem .7rem; }
+  .novedad-emoji { font-size:1.35rem; }
+  .novedad-text { flex-basis:0; padding-right:2.2rem; }
+  .novedad-cta { flex-basis:100%; min-height:44px; display:flex; align-items:center; justify-content:center; }
+}
+
 /* ── HERO ── */
 .hero { padding:2.5rem 1.5rem 2rem; text-align:center; background:linear-gradient(to bottom, var(--cream) 0%, var(--cream) 75%, #fff 100%); }
 .hero h2 { font-size:1.7rem; font-weight:800; line-height:1.2; margin-bottom:.5rem; }

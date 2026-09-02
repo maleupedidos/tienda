@@ -111,6 +111,45 @@
   </div>
 </header>
 
+<!-- BANNER NOVEDAD: Diagonal Carnes.
+     Arranca con [hidden] y lo destapa el script de abajo, que corre durante el
+     parseo (no en DOMContentLoaded) para que el que ya lo cerró no vea un
+     parpadeo. Se cierra por 7 días, no para siempre: es una novedad, no un
+     aviso legal. -->
+<div class="novedad-bar" id="novedad-diagonal" hidden>
+  <div class="novedad-content">
+    <span class="novedad-emoji" aria-hidden="true">🥩</span>
+    <div class="novedad-text">
+      <strong>Ahora también carne</strong>
+      <span>Diagonal Carnes se suma a Maleu — lomo, colita, picaña, entraña y vacío.</span>
+    </div>
+    <a class="novedad-cta" href="https://diagonalcarnes.com.ar" target="_blank" rel="noopener"
+       onclick="try{gtag('event','click_diagonal_carnes',{source:'banner_tienda'})}catch(e){}">
+      Ver los cortes →
+    </a>
+  </div>
+  <button class="novedad-close" onclick="cerrarNovedadDiagonal()" aria-label="Cerrar aviso">×</button>
+</div>
+<script>
+  // Si localStorage no se puede leer (Safari privado, cookies bloqueadas), el
+  // banner se muestra. Fallar mostrando es lo correcto: es un anuncio, no algo
+  // que se pueda romper por verse de más.
+  (function () {
+    var vuelveEl = 0;
+    try { vuelveEl = +localStorage.getItem('maleu_novedad_diagonal') || 0; } catch (e) {}
+    if (Date.now() < vuelveEl) return;
+    var el = document.getElementById('novedad-diagonal');
+    if (el) el.hidden = false;
+  })();
+  function cerrarNovedadDiagonal() {
+    var el = document.getElementById('novedad-diagonal');
+    if (el) el.hidden = true;
+    try {
+      localStorage.setItem('maleu_novedad_diagonal', Date.now() + 7 * 24 * 3600 * 1000);
+    } catch (e) {}
+  }
+</script>
+
 <!-- BARRA ENVÍO GRATIS -->
 <div class="shipping-bar hidden" id="shipping-bar">
   <span id="shipping-bar-text"></span>
