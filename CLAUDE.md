@@ -74,6 +74,34 @@ edites: si le pones un valor a mano, el proximo push te lo pisa.
 >
 > Se descubrio porque Tadeo no veia el modo autopedido recién publicado.
 
+> [!danger] Y el workflow que lo actualiza estuvo ROTO desde que se creo (2/9/2026)
+> `_tools/cachebuster.py` tenia `RAIZ = r'c:\Tadeo Ustariz\...\tienda'` — la ruta
+> de la compu de Tadeo — escrita adentro. En el runner de Ubuntu esa carpeta no
+> existe, asi que el paso **fallaba siempre** con `FileNotFoundError`.
+>
+> **No se notaba porque el `?v=` se actualizaba a mano** corriendo el script en
+> Windows: el job quedaba en rojo pero el numero terminaba bien igual. O sea que
+> el sintoma era un job fallado que nadie miraba, y el costo era que **cada push
+> que tocaba `app.js` o `styles.css` se publicaba con el `?v= `viejo** — el bug
+> que este script vino a resolver el dia anterior.
+>
+> Hoy la raiz sale de `os.path.abspath(__file__)`. Verificado en CI: el run del
+> commit `2236ce2` paso y el bot commiteo el `?v=` corregido.
+
+> [!warning] El hash se normaliza a LF, y no es un detalle cosmetico
+> Sin normalizar, **el mismo archivo da dos hashes distintos**: en Windows el
+> working copy tiene CRLF y el checkout del runner viene con LF. El 2/9/2026 eso
+> hizo que el workflow cambiara el `?v=` de `app.js` de `867da4ad` a `84081e7d`
+> **sin que `app.js` hubiera cambiado** — 200KB que todos los clientes volvian a
+> bajar al pedo, mas un commit de correccion del bot cada vez que alguien corria
+> el script a mano en Windows.
+>
+> `hash_de()` hace `.replace(b'\r\n', b'\n')` antes de hashear. Verificado: las
+> dos plataformas dan identico (`84081e7d` y `9e636333`).
+>
+> **Si algun dia el bot empieza a commitear un `?v=` distinto en cada push sin
+> que cambie nada, mira esto primero.**
+
 > [!warning] `curl` NO responde la pregunta que importa
 > `curl https://maleu.com.ar/app.js | grep loQueSea` dice que **el servidor tiene
 > el archivo nuevo**. Eso es otra pregunta distinta de si **el navegador lo

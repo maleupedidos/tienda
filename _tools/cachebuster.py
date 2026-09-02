@@ -40,8 +40,21 @@ IDX = os.path.join(RAIZ, 'index.html')
 
 
 def hash_de(nombre):
+    """md5 del contenido, con los finales de linea normalizados a LF.
+
+    Sin normalizar, el MISMO archivo da dos hashes distintos: en Windows el
+    working copy tiene CRLF y en el runner de Ubuntu el checkout viene con LF.
+    El 2/9/2026 eso hizo que el workflow cambiara el ?v= de app.js de 867da4ad
+    a 84081e7d SIN que app.js hubiera cambiado — o sea 200KB que todos los
+    clientes volvian a descargar al pedo, y un commit de correccion del bot
+    cada vez que alguien corria este script a mano en Windows.
+
+    Con la normalizacion, Windows y Linux dan identico (verificado: los dos
+    dan 84081e7d y 9e636333), asi que el ?v= cambia solo cuando el contenido
+    cambia de verdad.
+    """
     with open(os.path.join(RAIZ, nombre), 'rb') as f:
-        return hashlib.md5(f.read()).hexdigest()[:8]
+        return hashlib.md5(f.read().replace(b'\r\n', b'\n')).hexdigest()[:8]
 
 
 def main():
