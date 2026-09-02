@@ -151,7 +151,11 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .novedad-text { display:flex; flex-direction:column; line-height:1.35; flex:1; min-width:0; }
 .novedad-text strong { font-size:.92rem; font-weight:800; color:#fff; letter-spacing:-.01em; }
 .novedad-text span { font-size:.78rem; opacity:.82; text-wrap:pretty; }
-.novedad-cta { flex-shrink:0; background:var(--orange); color:#fff; text-decoration:none; font-weight:700; font-size:.82rem; padding:.55rem 1rem; border-radius:9px; white-space:nowrap; transition:background .15s; }
+/* min-height:44px va en la regla BASE y no solo en el media query del celular:
+   una tablet de 768px no entra en (max-width:560px) y se toca con el dedo
+   igual. Con el padding solo el boton quedaba en 38px justo ahi. En escritorio
+   no se nota — el alto de la barra lo define el texto de dos renglones. */
+.novedad-cta { flex-shrink:0; display:flex; align-items:center; justify-content:center; min-height:44px; background:var(--orange); color:#fff; text-decoration:none; font-weight:700; font-size:.82rem; padding:.55rem 1rem; border-radius:9px; white-space:nowrap; transition:background .15s; }
 .novedad-cta:hover { background:var(--hover-orange); }
 /* 44px es el mínimo táctil: abajo de eso el dedo no le pega y parece que no anda. */
 .novedad-close { position:absolute; top:0; right:0; width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:transparent; border:0; color:var(--cream); opacity:.55; font-size:1.4rem; line-height:1; cursor:pointer; font-family:var(--font); }
@@ -165,7 +169,7 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
   .novedad-content { flex-wrap:wrap; gap:.55rem .7rem; }
   .novedad-emoji { font-size:1.35rem; }
   .novedad-text { flex-basis:0; padding-right:2.2rem; }
-  .novedad-cta { flex-basis:100%; min-height:44px; display:flex; align-items:center; justify-content:center; }
+  .novedad-cta { flex-basis:100%; }
 }
 
 /* ── HERO ── */
