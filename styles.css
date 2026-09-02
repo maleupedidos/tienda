@@ -138,10 +138,12 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 /* ── BANNER NOVEDAD (Diagonal Carnes) ──
    Va entre el header (crema) y el hero (crema): el fondo oscuro es lo que lo
    despega de los dos y hace que se lea como novedad y no como parte del hero.
-   Mismo par de colores que la promo-bar, que ya usa marrón sobre crema. */
-/* El padding derecho tiene que ser MAYOR que los 44px del botón de cerrar: si
-   no, su área táctil se superpone al CTA y el dedo cierra el aviso cuando
-   quería entrar a Diagonal. Con 2.6rem (41,6px) se pisaban 2px a 768px. */
+   Mismo par de colores que la promo-bar, que ya usa marrón sobre crema.
+
+   El padding DERECHO (3.1rem = 49,6px) tiene que ser mayor que los 44px del
+   botón de cerrar. Si no, el área táctil de la × se superpone al CTA y el dedo
+   cierra el aviso cuando quería entrar a Diagonal: con 2.6rem se pisaban 2px
+   a 768px de ancho. */
 .novedad-bar { position:relative; background:linear-gradient(90deg, var(--brown) 0%, #4A2A24 100%); color:var(--cream); padding:.7rem 3.1rem .7rem 1.2rem; }
 .novedad-bar[hidden] { display:none; }
 .novedad-content { display:flex; align-items:center; gap:.8rem; max-width:60rem; margin:0 auto; }
