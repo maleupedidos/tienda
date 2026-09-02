@@ -22,7 +22,20 @@ import os
 import re
 import sys
 
-RAIZ = r'c:\Tadeo Ustariz\Trabajo\Grupo Matriz\Maleu\tienda'
+# La raiz sale de donde vive ESTE archivo (_tools/ cuelga de la raiz del repo),
+# no de una ruta escrita a mano.
+#
+# Hasta el 2/9/2026 aca decia r'c:\Tadeo Ustariz\...\tienda', o sea la ruta de la
+# compu de Tadeo. En el runner de Ubuntu esa carpeta no existe, asi que el paso
+# del workflow venia fallando SIEMPRE con FileNotFoundError — y como el ?v= se
+# actualizaba a mano corriendolo local, el fallo pasaba por un job en rojo que
+# nadie miraba mientras el ?v= igual quedaba bien.
+#
+# El costo real: cada push que tocaba app.js o styles.css se publicaba con el
+# ?v= viejo. El navegador cachea por URL exacta y GitHub Pages sirve esos dos
+# archivos con max-age=14400 (4 horas), asi que el cambio podia no llegarle al
+# cliente. Es exactamente el bug que este script vino a resolver.
+RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 IDX = os.path.join(RAIZ, 'index.html')
 
 
