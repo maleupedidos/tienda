@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ser parte de Maleu · Maleu</title>
+  <meta name="description" content="Vendé Maleu en tu barrio. Cómo funciona y qué necesitás para arrancar." />
+  <link rel="icon" href="img/logo-icono.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=956c5d0d" />
+</head>
+<body>
+
+<header>
+  <a href="/" class="logo-wrap">
+    <img class="logo-ico" src="img/logo-icono.png" alt="MALEU" />
+    <span class="logo-name">MALEU</span>
+  </a>
+  <nav class="site-nav" aria-label="Secciones">
+    <a href="/" class="site-nav-link">Tienda</a>
+    <a href="/tips.html" class="site-nav-link">Tips Maleu</a>
+    <a href="/nosotros.html" class="site-nav-link">Sobre Nosotros</a>
+    <a href="/preguntas.html" class="site-nav-link">Preguntas Frecuentes</a>
+    <a href="/contacto.html" class="site-nav-link">Contacto</a>
+    <a href="/ser-parte.html" class="site-nav-link is-active">Ser parte de Maleu</a>
+  </nav>
+  <div class="header-chips">
+    <button class="menu-btn" id="menu-btn" type="button" aria-label="Abrir el menú"
+            aria-expanded="false" aria-controls="menu-panel" onclick="togglePageMenu()">
+      <span class="menu-bars" aria-hidden="true"><span></span><span></span><span></span></span>
+    </button>
+    <a class="zone-chip" href="/">Ir a la tienda →</a>
+  </div>
+</header>
+
+<div class="menu-overlay" id="menu-overlay" hidden onclick="togglePageMenu()"></div>
+<nav class="menu-panel" id="menu-panel" hidden aria-label="Menú">
+    <a href="/" class="menu-panel-link">Tienda</a>
+    <a href="/tips.html" class="menu-panel-link">Tips Maleu</a>
+    <a href="/nosotros.html" class="menu-panel-link">Sobre Nosotros</a>
+    <a href="/preguntas.html" class="menu-panel-link">Preguntas Frecuentes</a>
+    <a href="/contacto.html" class="menu-panel-link">Contacto</a>
+    <a href="/ser-parte.html" class="menu-panel-link is-active">Ser parte de Maleu</a>
+</nav>
+
+<main class="pagina">
+  <h1 class="pagina-titulo">Ser parte de Maleu</h1>
+  <div class="borrador-aviso">
+    <strong>Tadeo:</strong> esta la escribí sobre lo que sé de la red de vendedores,
+    pero las condiciones concretas —cuánto se gana, qué se necesita para arrancar—
+    las tenés que poner vos. Marqué en amarillo lo que falta definir.
+  </div>
+
+  <p class="pagina-intro">Maleu llega a los barrios de la zona a través de gente que
+  vende en el suyo. Si querés ser una de esas personas, esto es para vos.</p>
+
+  <h2>De qué se trata</h2>
+  <p>Vos le vendés Maleu a la gente de tu barrio. Nosotros te entregamos la mercadería,
+  vos la repartís y cobrás, y te quedás con tu parte de cada venta.</p>
+  <p>No tenés que poner plata adelantada ni comprar un stock inicial: se arma sobre los
+  pedidos que ya conseguiste.</p>
+
+  <h2>Qué necesitás</h2>
+  <ul>
+    <li>Vivir en el barrio donde vas a vender, o conocerlo bien.</li>
+    <li>Un freezer con lugar.</li>
+    <li>Ganas de hablar con tus vecinos.</li>
+  </ul>
+
+  <div class="borrador-pendiente">
+    <p><strong>Falta definir:</strong> qué porcentaje se lleva el vendedor, si hay un
+    mínimo de pedidos por semana, y en qué barrios hay lugar hoy.</p>
+  </div>
+
+  <h2>Cómo seguir</h2>
+  <p>Escribinos por WhatsApp y charlamos. Si tu barrio está libre, arrancamos con una
+  primera entrega chica para ver cómo funciona.</p>
+
+  <div class="pagina-cierre">
+    <p>¿Te quedó alguna duda?</p>
+    <a class="pagina-cta" href="https://wa.me/5491155038905" target="_blank" rel="noopener">Escribinos por WhatsApp</a>
+    <a class="pagina-cta pagina-cta-2" href="/">Ver la tienda</a>
+  </div>
+</main>
+
+<footer class="pagina-footer">
+  <p>Maleu · Comida lista para cocinar · Pilar, Buenos Aires</p>
+</footer>
+
+<script>
+/* El menu de estas paginas no puede usar el toggleMenu() de app.js: app.js
+   son 4000 lineas que arrancan el catalogo, el carrito y los modales de
+   zona y fecha. Cargarlo aca solo por el menu traeria todo eso a una
+   pagina que no tiene donde pintarlo. */
+function togglePageMenu() {
+  var p = document.getElementById('menu-panel');
+  var o = document.getElementById('menu-overlay');
+  var b = document.getElementById('menu-btn');
+  var abriendo = p.hidden;
+  p.hidden = !abriendo;
+  o.hidden = !abriendo;
+  b.setAttribute('aria-expanded', abriendo ? 'true' : 'false');
+  b.classList.toggle('is-open', abriendo);
+  document.body.style.overflow = abriendo ? 'hidden' : '';
+}
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && !document.getElementById('menu-panel').hidden) togglePageMenu();
+});
+</script>
+
+</body>
+</html>

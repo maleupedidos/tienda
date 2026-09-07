@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sobre Nosotros · Maleu</title>
+  <meta name="description" content="Qué es Maleu, cómo empezó y por qué hacemos comida para el freezer." />
+  <link rel="icon" href="img/logo-icono.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=956c5d0d" />
+</head>
+<body>
+
+<header>
+  <a href="/" class="logo-wrap">
+    <img class="logo-ico" src="img/logo-icono.png" alt="MALEU" />
+    <span class="logo-name">MALEU</span>
+  </a>
+  <nav class="site-nav" aria-label="Secciones">
+    <a href="/" class="site-nav-link">Tienda</a>
+    <a href="/tips.html" class="site-nav-link">Tips Maleu</a>
+    <a href="/nosotros.html" class="site-nav-link is-active">Sobre Nosotros</a>
+    <a href="/preguntas.html" class="site-nav-link">Preguntas Frecuentes</a>
+    <a href="/contacto.html" class="site-nav-link">Contacto</a>
+    <a href="/ser-parte.html" class="site-nav-link">Ser parte de Maleu</a>
+  </nav>
+  <div class="header-chips">
+    <button class="menu-btn" id="menu-btn" type="button" aria-label="Abrir el menú"
+            aria-expanded="false" aria-controls="menu-panel" onclick="togglePageMenu()">
+      <span class="menu-bars" aria-hidden="true"><span></span><span></span><span></span></span>
+    </button>
+    <a class="zone-chip" href="/">Ir a la tienda →</a>
+  </div>
+</header>
+
+<div class="menu-overlay" id="menu-overlay" hidden onclick="togglePageMenu()"></div>
+<nav class="menu-panel" id="menu-panel" hidden aria-label="Menú">
+    <a href="/" class="menu-panel-link">Tienda</a>
+    <a href="/tips.html" class="menu-panel-link">Tips Maleu</a>
+    <a href="/nosotros.html" class="menu-panel-link is-active">Sobre Nosotros</a>
+    <a href="/preguntas.html" class="menu-panel-link">Preguntas Frecuentes</a>
+    <a href="/contacto.html" class="menu-panel-link">Contacto</a>
+    <a href="/ser-parte.html" class="menu-panel-link">Ser parte de Maleu</a>
+</nav>
+
+<main class="pagina">
+  <h1 class="pagina-titulo">Sobre Nosotros</h1>
+  <div class="borrador-aviso">
+    <strong>Tadeo:</strong> este texto lo escribí yo con los datos que tengo
+    (2021, el 8/8/2023, el cambio de identidad de 2026). La historia es tuya
+    y la voz también — leelo y decime qué cambiar.
+  </div>
+
+  <p class="pagina-intro">Maleu es comida lista para cocinar. La hacemos para el día
+  en que no tenés ganas de pensar qué comer y tampoco querés pedir delivery otra vez.</p>
+
+  <h2>Cómo empezó</h2>
+  <p>En 2021 vendía comida de changa, para ganarme unos pesos. El <strong>8 de agosto
+  de 2023</strong> eso dejó de ser una changa y pasó a ser un negocio: nació
+  <em>Maleü Congelados Gourmet</em>.</p>
+  <p>A principios de 2026 le dimos una vuelta a la identidad y quedó lo que somos hoy,
+  <strong>Maleu</strong> a secas. Desde febrero de ese año le dedico el 100% del tiempo.</p>
+
+  <h2>Qué hacemos distinto</h2>
+  <p>No somos un delivery. Lo que te llevamos entra al freezer y se queda ahí hasta el día
+  que lo necesites: la pizza del viernes que no tenías planeada, los sorrentinos de un
+  martes complicado, las empanadas de cuando cae gente sin avisar.</p>
+  <p>Todo sale del freezer y va directo al fuego. Nada se descongela, nada lleva más de
+  15 minutos.</p>
+
+  <h2>Dónde estamos</h2>
+  <p>Repartimos en <strong>Estancias del Pilar</strong> —donde vivo, y por eso las entregas
+  son casi todos los días—, en <strong>Pilar y alrededores</strong> los viernes, y en
+  <strong>clubes deportivos</strong> de la zona.</p>
+
+  <div class="pagina-cierre">
+    <p>¿Te quedó alguna duda?</p>
+    <a class="pagina-cta" href="https://wa.me/5491155038905" target="_blank" rel="noopener">Escribinos por WhatsApp</a>
+    <a class="pagina-cta pagina-cta-2" href="/">Ver la tienda</a>
+  </div>
+</main>
+
+<footer class="pagina-footer">
+  <p>Maleu · Comida lista para cocinar · Pilar, Buenos Aires</p>
+</footer>
+
+<script>
+/* El menu de estas paginas no puede usar el toggleMenu() de app.js: app.js
+   son 4000 lineas que arrancan el catalogo, el carrito y los modales de
+   zona y fecha. Cargarlo aca solo por el menu traeria todo eso a una
+   pagina que no tiene donde pintarlo. */
+function togglePageMenu() {
+  var p = document.getElementById('menu-panel');
+  var o = document.getElementById('menu-overlay');
+  var b = document.getElementById('menu-btn');
+  var abriendo = p.hidden;
+  p.hidden = !abriendo;
+  o.hidden = !abriendo;
+  b.setAttribute('aria-expanded', abriendo ? 'true' : 'false');
+  b.classList.toggle('is-open', abriendo);
+  document.body.style.overflow = abriendo ? 'hidden' : '';
+}
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && !document.getElementById('menu-panel').hidden) togglePageMenu();
+});
+</script>
+
+</body>
+</html>

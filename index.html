@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=3ebee624" />
+  <link rel="stylesheet" href="styles.css?v=956c5d0d" />
   <script>
     // Forzar inicio arriba en cada carga (incluye refresh, back-forward cache de iOS).
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
@@ -102,7 +102,24 @@
     <img class="logo-ico" src="img/logo-icono.png" alt="MALEU" />
     <span class="logo-name">MALEU</span>
   </a>
+  <!-- Menu de secciones. En escritorio va inline al lado del logo; en
+       celular se pliega en el boton de abajo. Las paginas son archivos de
+       verdad y no un modal: la tienda es publica e indexable, y Google
+       indexa paginas, no ventanas que se abren con JS. -->
+  <nav class="site-nav" aria-label="Secciones">
+    <a href="/" class="site-nav-link is-active">Tienda</a>
+    <a href="/tips.html" class="site-nav-link">Tips Maleu</a>
+    <a href="/nosotros.html" class="site-nav-link">Sobre Nosotros</a>
+    <a href="/preguntas.html" class="site-nav-link">Preguntas Frecuentes</a>
+    <a href="/contacto.html" class="site-nav-link">Contacto</a>
+    <a href="/ser-parte.html" class="site-nav-link">Ser parte de Maleu</a>
+  </nav>
+
   <div class="header-chips">
+    <button class="menu-btn" id="menu-btn" type="button" aria-label="Abrir el menu"
+            aria-expanded="false" aria-controls="menu-panel" onclick="toggleMenu()">
+      <span class="menu-bars" aria-hidden="true"><span></span><span></span><span></span></span>
+    </button>
     <button class="zone-chip" id="zone-chip" onclick="showZoneModal()">📍 Zona</button>
     <button class="zone-chip date-chip" id="date-chip" onclick="showDateModal()" style="display:none">📅 Fecha</button>
     <button class="cart-btn" onclick="toggleCart()">
@@ -110,6 +127,18 @@
     </button>
   </div>
 </header>
+
+<!-- Panel del menu en celular. Vive fuera del <header> porque el header es
+     sticky con overflow propio: adentro, el panel quedaria recortado. -->
+<div class="menu-overlay" id="menu-overlay" hidden onclick="toggleMenu()"></div>
+<nav class="menu-panel" id="menu-panel" hidden aria-label="Menu">
+  <a href="/" class="menu-panel-link is-active">Tienda</a>
+  <a href="/tips.html" class="menu-panel-link">Tips Maleu</a>
+  <a href="/nosotros.html" class="menu-panel-link">Sobre Nosotros</a>
+  <a href="/preguntas.html" class="menu-panel-link">Preguntas Frecuentes</a>
+  <a href="/contacto.html" class="menu-panel-link">Contacto</a>
+  <a href="/ser-parte.html" class="menu-panel-link">Ser parte de Maleu</a>
+</nav>
 
 <!-- BANNER NOVEDAD: Diagonal Carnes.
      Arranca con [hidden] y lo destapa el script de abajo, que corre durante el
@@ -510,6 +539,6 @@
   </div>
 </div>
 
-<script src="app.js?v=c2dc5bae"></script>
+<script src="app.js?v=a532ff54"></script>
 </body>
 </html>

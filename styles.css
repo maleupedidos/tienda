@@ -954,3 +954,162 @@ h1, h2, h3, .cat-title, .hero-title, .product-name, .product-price {
 @media (min-width:900px) {
   .top-section { max-width:1100px; margin:0 auto; padding:1.2rem 1rem 2rem; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   MENU DE SECCIONES
+   ══════════════════════════════════════════════════════════════════
+   Tienda · Tips Maleu · Sobre Nosotros · Preguntas Frecuentes ·
+   Contacto · Ser parte de Maleu.
+
+   En celular se pliega detras del boton de tres rayas; a partir de
+   1000px va inline en el header, como bocado.com.ar. El corte esta
+   en 1000 y no en 900 porque son seis entradas de texto largo: a 900
+   entran pero quedan pegadas al logo y a los chips de zona/fecha. */
+
+/* ── El boton de tres rayas (solo celular) ── */
+.menu-btn { display:flex; align-items:center; justify-content:center;
+            width:44px; height:44px; padding:0; border:none; background:none;
+            cursor:pointer; flex-shrink:0; }
+.menu-bars { display:flex; flex-direction:column; justify-content:center;
+             gap:4px; width:20px; }
+.menu-bars span { display:block; height:2px; width:100%; border-radius:2px;
+                  background:var(--brown); transition:transform .2s, opacity .2s; }
+/* Abierto, las tres rayas se vuelven una cruz: el mismo boton abre y
+   cierra, asi que tiene que decir en cual de los dos estados esta. */
+.menu-btn.is-open .menu-bars span:nth-child(1) { transform:translateY(6px) rotate(45deg); }
+.menu-btn.is-open .menu-bars span:nth-child(2) { opacity:0; }
+.menu-btn.is-open .menu-bars span:nth-child(3) { transform:translateY(-6px) rotate(-45deg); }
+
+/* ── El menu inline (solo escritorio) ── */
+.site-nav { display:none; }
+.site-nav-link { color:var(--brown); text-decoration:none; font-size:.88rem;
+                 font-weight:500; padding:.4rem 0; position:relative;
+                 white-space:nowrap; transition:color .15s; }
+.site-nav-link:hover { color:var(--orange); }
+/* La pagina donde estas parado lleva subrayado, como Bocado. Es la unica
+   pista de donde estas una vez que saliste de la tienda. */
+.site-nav-link.is-active { color:var(--orange); }
+.site-nav-link.is-active::after { content:''; position:absolute; left:0; right:0;
+                                  bottom:0; height:2px; background:var(--orange);
+                                  border-radius:2px; }
+
+/* ── El panel del celular ── */
+.menu-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4);
+                z-index:190; animation:menuFade .18s ease; }
+@keyframes menuFade { from { opacity:0 } to { opacity:1 } }
+
+.menu-panel { position:fixed; top:0; right:0; bottom:0; width:min(80vw, 300px);
+              background:#fff; z-index:200; padding:5rem 0 2rem;
+              box-shadow:-4px 0 24px rgba(0,0,0,.14);
+              display:flex; flex-direction:column;
+              animation:menuIn .22s cubic-bezier(.2,.7,.3,1); }
+@keyframes menuIn { from { transform:translateX(100%) } to { transform:none } }
+
+.menu-panel-link { display:flex; align-items:center; min-height:52px;
+                   padding:0 1.5rem; color:var(--brown); text-decoration:none;
+                   font-family:var(--font-display); font-size:1.05rem;
+                   font-weight:600; border-bottom:1px solid #f4f1ee; }
+.menu-panel-link:active { background:#faf7f4; }
+.menu-panel-link.is-active { color:var(--orange); }
+
+/* [hidden] no alcanza contra un display explicito: sin esto el panel se
+   queda a la vista con el atributo puesto. */
+.menu-panel[hidden], .menu-overlay[hidden] { display:none !important; }
+
+@media (min-width:1000px) {
+  .menu-btn { display:none; }
+  .site-nav { display:flex; align-items:center; gap:1.5rem; }
+  header { gap:1.5rem; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PAGINAS DE SECCION
+   ══════════════════════════════════════════════════════════════════
+   Tips Maleu · Sobre Nosotros · Preguntas Frecuentes · Contacto ·
+   Ser parte de Maleu. Comparten header, menu y footer con la tienda
+   y usan esta misma hoja: son paginas de verdad y no modales porque
+   la tienda es publica e indexable, y Google indexa paginas. */
+
+.pagina { max-width:760px; margin:0 auto; padding:2rem 1.2rem 3rem; }
+.pagina-titulo { font-family:var(--font-display); font-size:2.1rem;
+                 font-weight:600; letter-spacing:-.02em; margin-bottom:1.2rem; }
+.pagina h2 { font-family:var(--font-display); font-size:1.35rem; font-weight:600;
+             margin:2rem 0 .6rem; letter-spacing:-.01em; }
+.pagina p { margin-bottom:.9rem; line-height:1.65; }
+.pagina ul { margin:0 0 1rem 1.1rem; }
+.pagina li { margin-bottom:.5rem; line-height:1.6; }
+.pagina-intro { font-size:1.08rem; color:#6b5a50; line-height:1.7;
+                margin-bottom:1.6rem; }
+.pagina-nota { font-size:.9rem; color:#8a7d76; margin-top:1rem; }
+
+/* ── Preguntas frecuentes ──
+   <details> nativo: abre y cierra sin una linea de JS, y el buscador
+   de Chrome encuentra el texto aunque este plegado. */
+.faq-item { border-bottom:1px solid #eee9e4; }
+.faq-q { font-family:var(--font-display); font-size:1.05rem; font-weight:600;
+         padding:1.1rem .5rem 1.1rem 0; cursor:pointer; list-style:none;
+         display:flex; align-items:center; justify-content:space-between;
+         gap:1rem; min-height:44px; }
+.faq-q::-webkit-details-marker { display:none; }
+.faq-q::after { content:'+'; font-size:1.5rem; font-weight:400; color:var(--orange);
+                flex-shrink:0; line-height:1; transition:transform .2s; }
+.faq-item[open] .faq-q::after { transform:rotate(45deg); }
+.faq-a { padding:0 0 1.1rem; color:#5f534c; }
+.faq-a ul { margin-top:.5rem; }
+
+/* ── Tips ── */
+.tips-grid { display:grid; gap:1rem; margin:1.5rem 0; }
+@media (min-width:700px) { .tips-grid { grid-template-columns:1fr 1fr; } }
+.tip-card { border:1px solid #eee9e4; border-radius:14px; padding:1.2rem; }
+.tip-card h2 { margin:0 0 .2rem; font-size:1.15rem; }
+.tip-tiempo { color:var(--orange); font-weight:700; font-size:.85rem;
+              margin-bottom:.5rem !important; }
+.tip-card p:last-child { margin-bottom:0; }
+.tip-nota { background:#FFF8ED; border-left:3px solid #FFB74D;
+            border-radius:8px; padding:1rem 1.2rem; margin-top:1.5rem; }
+.tip-nota h2 { margin-top:0; }
+.tip-nota p:last-child { margin-bottom:0; }
+
+/* ── Contacto ── */
+.contacto-grid { display:grid; gap:1rem; margin:1.5rem 0 2rem; }
+@media (min-width:700px) { .contacto-grid { grid-template-columns:1fr 1fr; } }
+.contacto-card { border:1px solid #eee9e4; border-radius:14px; padding:1.3rem; }
+.contacto-card h2 { margin-top:0; }
+.zonas-tabla { border:1px solid #eee9e4; border-radius:14px; overflow:hidden; }
+.zona-fila { padding:1rem 1.2rem; border-bottom:1px solid #f4f1ee; }
+.zona-fila:last-child { border-bottom:none; }
+.zona-nombre { font-family:var(--font-display); font-weight:600; font-size:1.05rem; }
+.zona-dias { color:#6b5a50; font-size:.9rem; margin:.25rem 0; line-height:1.5; }
+.zona-envio { font-size:.82rem; color:var(--orange); font-weight:600; }
+
+/* ── Avisos de borrador ──
+   Marcan lo que escribi yo y Tadeo todavia no leyo. Van bien visibles
+   a proposito: un borrador que no se distingue del texto final se
+   publica sin querer. SACAR cuando esten revisados. */
+.borrador-aviso, .borrador-pendiente {
+  background:#FFF8E1; border-left:3px solid #FFC107; border-radius:8px;
+  padding:.9rem 1.1rem; margin-bottom:1.5rem; font-size:.88rem;
+  line-height:1.55; color:#6b5a2a; }
+.borrador-pendiente { margin:1.2rem 0; }
+.borrador-aviso strong, .borrador-pendiente strong { color:#8a6d1a; }
+
+/* ── Cierre y footer ── */
+.pagina-cierre { margin-top:2.5rem; padding-top:1.8rem;
+                 border-top:1px solid #eee9e4; text-align:center; }
+.pagina-cierre p { color:#8a7d76; margin-bottom:1rem; }
+.pagina-cta { display:inline-flex; align-items:center; justify-content:center;
+              min-height:44px; padding:.7rem 1.5rem; background:var(--orange);
+              color:#fff; text-decoration:none; border-radius:50px;
+              font-weight:700; font-size:.9rem; margin:.25rem; }
+.pagina-cta:hover { background:var(--hover-orange); }
+.pagina-cta-2 { background:#fff; color:var(--orange);
+                border:1.5px solid var(--orange); }
+.pagina-cta-2:hover { background:#FFF3E0; }
+.pagina-footer { text-align:center; padding:2rem 1rem 3rem; color:#9a8b85;
+                 font-size:.82rem; border-top:1px solid #f4f1ee; }
+
+/* El "Ir a la tienda" del header de las paginas es un <a> con la pinta de
+   los chips, que estan pensados para <button>: sin esto le queda el
+   subrayado del link. */
+a.zone-chip { text-decoration:none; display:inline-flex; align-items:center;
+              min-height:36px; }

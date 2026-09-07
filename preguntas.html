@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Preguntas Frecuentes · Maleu</title>
+  <meta name="description" content="Dónde entregamos, cuándo cierran los pedidos, cómo se paga y cómo se cocina cada cosa." />
+  <link rel="icon" href="img/logo-icono.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=956c5d0d" />
+</head>
+<body>
+
+<header>
+  <a href="/" class="logo-wrap">
+    <img class="logo-ico" src="img/logo-icono.png" alt="MALEU" />
+    <span class="logo-name">MALEU</span>
+  </a>
+  <nav class="site-nav" aria-label="Secciones">
+    <a href="/" class="site-nav-link">Tienda</a>
+    <a href="/tips.html" class="site-nav-link">Tips Maleu</a>
+    <a href="/nosotros.html" class="site-nav-link">Sobre Nosotros</a>
+    <a href="/preguntas.html" class="site-nav-link is-active">Preguntas Frecuentes</a>
+    <a href="/contacto.html" class="site-nav-link">Contacto</a>
+    <a href="/ser-parte.html" class="site-nav-link">Ser parte de Maleu</a>
+  </nav>
+  <div class="header-chips">
+    <button class="menu-btn" id="menu-btn" type="button" aria-label="Abrir el menú"
+            aria-expanded="false" aria-controls="menu-panel" onclick="togglePageMenu()">
+      <span class="menu-bars" aria-hidden="true"><span></span><span></span><span></span></span>
+    </button>
+    <a class="zone-chip" href="/">Ir a la tienda →</a>
+  </div>
+</header>
+
+<div class="menu-overlay" id="menu-overlay" hidden onclick="togglePageMenu()"></div>
+<nav class="menu-panel" id="menu-panel" hidden aria-label="Menú">
+    <a href="/" class="menu-panel-link">Tienda</a>
+    <a href="/tips.html" class="menu-panel-link">Tips Maleu</a>
+    <a href="/nosotros.html" class="menu-panel-link">Sobre Nosotros</a>
+    <a href="/preguntas.html" class="menu-panel-link is-active">Preguntas Frecuentes</a>
+    <a href="/contacto.html" class="menu-panel-link">Contacto</a>
+    <a href="/ser-parte.html" class="menu-panel-link">Ser parte de Maleu</a>
+</nav>
+
+<main class="pagina">
+  <h1 class="pagina-titulo">Preguntas Frecuentes</h1>
+  <div class="faq">
+    <details class="faq-item">
+      <summary class="faq-q">¿Dónde entregan?</summary>
+      <div class="faq-a"><p>En tres zonas, cada una con sus días:</p><ul><li><strong>Estancias del Pilar</strong> — lunes de 18 a 19 hs, miércoles, viernes y sábado de 19 a 21 hs, y domingo de 11 a 13 hs. <strong>Sin costo de envío.</strong></li><li><strong>Pilar y alrededores</strong> — los viernes, en un horario que coordinamos con vos. Envío $5.000.</li><li><strong>Clubes deportivos</strong> — los viernes, en la cancha. Sin costo de envío.</li></ul></div>
+    </details>
+    <details class="faq-item">
+      <summary class="faq-q">¿Hasta cuándo puedo pedir?</summary>
+      <div class="faq-a"><p>Los pedidos para el viernes cierran el <strong>jueves a las 12 del mediodía</strong>. Ese es el momento en que le pasamos la orden a nuestros proveedores, así que lo que entre después va para la semana siguiente.</p><p>Cuando elegís el día de entrega, la tienda ya te muestra sólo las fechas que llegan a tiempo.</p></div>
+    </details>
+    <details class="faq-item">
+      <summary class="faq-q">¿Cómo pago?</summary>
+      <div class="faq-a"><p>Por transferencia al alias <strong>maleump</strong>, o en efectivo cuando te lo entregamos.</p><p><strong>Pagando en efectivo tenés 10% de descuento.</strong></p></div>
+    </details>
+    <details class="faq-item">
+      <summary class="faq-q">¿Viene congelado?</summary>
+      <div class="faq-a"><p>Sí. Todo llega congelado y listo para que lo guardes en el freezer hasta el día que lo quieras comer. No hace falta descongelar nada antes de cocinarlo.</p></div>
+    </details>
+    <details class="faq-item">
+      <summary class="faq-q">¿Cuánto tarda en estar listo?</summary>
+      <div class="faq-a"><p>Depende de qué sea, pero nada pasa de 15 minutos:</p><ul><li><strong>Sorrentinos</strong> — 4 minutos. Hervís agua, los tirás, 4 minutos con la olla destapada y los sacás con espumadera.</li><li><strong>Pizzas</strong> — 12 minutos al horno, directo del freezer.</li><li><strong>Tartas</strong> — precalentás el horno al máximo 10 minutos y las horneás otros 10.</li><li><strong>Empanadas</strong> — al horno hasta que estén doradas.</li><li><strong>Wraps</strong> — 10 minutos al horno.</li></ul></div>
+    </details>
+    <details class="faq-item">
+      <summary class="faq-q">¿Hay mínimo de compra?</summary>
+      <div class="faq-a"><p>No. Pedís lo que necesitás.</p></div>
+    </details>
+    <details class="faq-item">
+      <summary class="faq-q">¿Puedo cambiar el pedido después de hacerlo?</summary>
+      <div class="faq-a"><p>Sí, mientras no haya salido el reparto. Escribinos por WhatsApp y lo arreglamos.</p></div>
+    </details>
+  </div>
+
+  <div class="pagina-cierre">
+    <p>¿Te quedó alguna duda?</p>
+    <a class="pagina-cta" href="https://wa.me/5491155038905" target="_blank" rel="noopener">Escribinos por WhatsApp</a>
+    <a class="pagina-cta pagina-cta-2" href="/">Ver la tienda</a>
+  </div>
+</main>
+
+<footer class="pagina-footer">
+  <p>Maleu · Comida lista para cocinar · Pilar, Buenos Aires</p>
+</footer>
+
+<script>
+/* El menu de estas paginas no puede usar el toggleMenu() de app.js: app.js
+   son 4000 lineas que arrancan el catalogo, el carrito y los modales de
+   zona y fecha. Cargarlo aca solo por el menu traeria todo eso a una
+   pagina que no tiene donde pintarlo. */
+function togglePageMenu() {
+  var p = document.getElementById('menu-panel');
+  var o = document.getElementById('menu-overlay');
+  var b = document.getElementById('menu-btn');
+  var abriendo = p.hidden;
+  p.hidden = !abriendo;
+  o.hidden = !abriendo;
+  b.setAttribute('aria-expanded', abriendo ? 'true' : 'false');
+  b.classList.toggle('is-open', abriendo);
+  document.body.style.overflow = abriendo ? 'hidden' : '';
+}
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && !document.getElementById('menu-panel').hidden) togglePageMenu();
+});
+</script>
+
+</body>
+</html>

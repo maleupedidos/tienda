@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tips Maleu · Maleu</title>
+  <meta name="description" content="Cómo cocinar cada producto de Maleu: tiempos, temperaturas y la regla que no hay que romper." />
+  <link rel="icon" href="img/logo-icono.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=956c5d0d" />
+</head>
+<body>
+
+<header>
+  <a href="/" class="logo-wrap">
+    <img class="logo-ico" src="img/logo-icono.png" alt="MALEU" />
+    <span class="logo-name">MALEU</span>
+  </a>
+  <nav class="site-nav" aria-label="Secciones">
+    <a href="/" class="site-nav-link">Tienda</a>
+    <a href="/tips.html" class="site-nav-link is-active">Tips Maleu</a>
+    <a href="/nosotros.html" class="site-nav-link">Sobre Nosotros</a>
+    <a href="/preguntas.html" class="site-nav-link">Preguntas Frecuentes</a>
+    <a href="/contacto.html" class="site-nav-link">Contacto</a>
+    <a href="/ser-parte.html" class="site-nav-link">Ser parte de Maleu</a>
+  </nav>
+  <div class="header-chips">
+    <button class="menu-btn" id="menu-btn" type="button" aria-label="Abrir el menú"
+            aria-expanded="false" aria-controls="menu-panel" onclick="togglePageMenu()">
+      <span class="menu-bars" aria-hidden="true"><span></span><span></span><span></span></span>
+    </button>
+    <a class="zone-chip" href="/">Ir a la tienda →</a>
+  </div>
+</header>
+
+<div class="menu-overlay" id="menu-overlay" hidden onclick="togglePageMenu()"></div>
+<nav class="menu-panel" id="menu-panel" hidden aria-label="Menú">
+    <a href="/" class="menu-panel-link">Tienda</a>
+    <a href="/tips.html" class="menu-panel-link is-active">Tips Maleu</a>
+    <a href="/nosotros.html" class="menu-panel-link">Sobre Nosotros</a>
+    <a href="/preguntas.html" class="menu-panel-link">Preguntas Frecuentes</a>
+    <a href="/contacto.html" class="menu-panel-link">Contacto</a>
+    <a href="/ser-parte.html" class="menu-panel-link">Ser parte de Maleu</a>
+</nav>
+
+<main class="pagina">
+  <h1 class="pagina-titulo">Tips Maleu</h1>
+  <p class="pagina-intro">Todo lo nuestro sale del freezer y va directo al fuego.
+  No hace falta descongelar nada. Estos son los tiempos y la forma de cada cosa.</p>
+
+  <div class="tips-grid">
+    <article class="tip-card">
+      <h2>Sorrentinos</h2>
+      <p class="tip-tiempo">4 minutos</p>
+      <p>Hervís el agua, agregás los sorrentinos <strong>congelados</strong>, contás 4 minutos
+      con la olla <strong>destapada</strong> y los sacás con espumadera. Si tapás la olla se
+      pasan y se abren.</p>
+    </article>
+
+    <article class="tip-card">
+      <h2>Pizzas</h2>
+      <p class="tip-tiempo">12 minutos</p>
+      <p>Horno bien caliente y la pizza directo del freezer sobre la rejilla, sin bandeja.
+      Vienen pre-cocidas: lo único que falta es que se derrita el queso y se dore la base.</p>
+    </article>
+
+    <article class="tip-card">
+      <h2>Tartas</h2>
+      <p class="tip-tiempo">10 + 10 minutos</p>
+      <p>Precalentás el horno al máximo durante 10 minutos y después horneás la tarta otros 10.
+      El precalentado no es opcional: si el horno arranca frío, la masa se humedece.</p>
+    </article>
+
+    <article class="tip-card">
+      <h2>Empanadas</h2>
+      <p class="tip-tiempo">Hasta dorar</p>
+      <p>Al horno, congeladas, hasta que estén doradas. El tiempo exacto depende de tu horno,
+      así que la primera vez mirálas: cuando el repulgue toma color, están.</p>
+    </article>
+
+    <article class="tip-card">
+      <h2>Wraps</h2>
+      <p class="tip-tiempo">10 minutos</p>
+      <p>Al horno, directo del freezer. Quedan crocantes por fuera.</p>
+    </article>
+
+    <article class="tip-card">
+      <h2>Franui y tortas</h2>
+      <p class="tip-tiempo">Listo para servir</p>
+      <p>Los Franui se comen tal cual salen del freezer. Las tortas conviene sacarlas
+      un rato antes para poder cortarlas bien.</p>
+    </article>
+  </div>
+
+  <div class="tip-nota">
+    <h2>Una sola regla</h2>
+    <p>Nada se descongela antes. Todo va del freezer al horno o al agua. Descongelar
+    primero es lo que hace que la masa quede blanda y el relleno se salga.</p>
+  </div>
+
+  <div class="pagina-cierre">
+    <p>¿Te quedó alguna duda?</p>
+    <a class="pagina-cta" href="https://wa.me/5491155038905" target="_blank" rel="noopener">Escribinos por WhatsApp</a>
+    <a class="pagina-cta pagina-cta-2" href="/">Ver la tienda</a>
+  </div>
+</main>
+
+<footer class="pagina-footer">
+  <p>Maleu · Comida lista para cocinar · Pilar, Buenos Aires</p>
+</footer>
+
+<script>
+/* El menu de estas paginas no puede usar el toggleMenu() de app.js: app.js
+   son 4000 lineas que arrancan el catalogo, el carrito y los modales de
+   zona y fecha. Cargarlo aca solo por el menu traeria todo eso a una
+   pagina que no tiene donde pintarlo. */
+function togglePageMenu() {
+  var p = document.getElementById('menu-panel');
+  var o = document.getElementById('menu-overlay');
+  var b = document.getElementById('menu-btn');
+  var abriendo = p.hidden;
+  p.hidden = !abriendo;
+  o.hidden = !abriendo;
+  b.setAttribute('aria-expanded', abriendo ? 'true' : 'false');
+  b.classList.toggle('is-open', abriendo);
+  document.body.style.overflow = abriendo ? 'hidden' : '';
+}
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && !document.getElementById('menu-panel').hidden) togglePageMenu();
+});
+</script>
+
+</body>
+</html>

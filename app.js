@@ -4127,3 +4127,35 @@ updateShippingBar();
   var dp = document.getElementById('day-picker');
   if (dp) dp.addEventListener('click', function() { setTimeout(updateWhatsappCta, 30); });
 })();
+
+/* ── MENU DE SECCIONES ─────────────────────────────────────────────────────
+   Abre y cierra el panel del celular. En escritorio el menu va inline y este
+   boton no se dibuja, asi que esta funcion no corre nunca ahi.
+
+   Usa el atributo `hidden` y no style.display: es lo que el resto de la
+   tienda ya hace, y asi un [hidden] en el CSS no puede pelearse con un
+   display inline puesto por JS. */
+function toggleMenu() {
+  var panel = $id('menu-panel'), overlay = $id('menu-overlay'), btn = $id('menu-btn');
+  if (!panel) return;
+  var abriendo = panel.hidden;
+  panel.hidden = !abriendo;
+  if (overlay) overlay.hidden = !abriendo;
+  if (btn) {
+    btn.setAttribute('aria-expanded', abriendo ? 'true' : 'false');
+    btn.setAttribute('aria-label', abriendo ? 'Cerrar el menú' : 'Abrir el menú');
+    btn.classList.toggle('is-open', abriendo);
+  }
+  // Con el panel abierto, el fondo no scrollea. Sin esto en iOS se scrollea
+  // la pagina de atras y el panel queda flotando sobre otra parte del sitio.
+  document.body.style.overflow = abriendo ? 'hidden' : '';
+}
+
+// Escape cierra el menu. Un panel que solo se cierra tocando exactamente el
+// boton es una trampa en un celular.
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    var panel = $id('menu-panel');
+    if (panel && !panel.hidden) toggleMenu();
+  }
+});
