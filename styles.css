@@ -135,43 +135,6 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .cart-badge.bounce { animation:badgeBounce .4s cubic-bezier(.2,.8,.3,1.4); }
 @keyframes badgeBounce { 0%{transform:scale(1)} 40%{transform:scale(1.45)} 100%{transform:scale(1)} }
 
-/* ── BANNER NOVEDAD (Diagonal Carnes) ──
-   Va entre el header (crema) y el hero (crema): el fondo oscuro es lo que lo
-   despega de los dos y hace que se lea como novedad y no como parte del hero.
-   Mismo par de colores que la promo-bar, que ya usa marrón sobre crema.
-
-   El padding DERECHO (3.1rem = 49,6px) tiene que ser mayor que los 44px del
-   botón de cerrar. Si no, el área táctil de la × se superpone al CTA y el dedo
-   cierra el aviso cuando quería entrar a Diagonal: con 2.6rem se pisaban 2px
-   a 768px de ancho. */
-.novedad-bar { position:relative; background:linear-gradient(90deg, var(--brown) 0%, #4A2A24 100%); color:var(--cream); padding:.7rem 3.1rem .7rem 1.2rem; }
-.novedad-bar[hidden] { display:none; }
-.novedad-content { display:flex; align-items:center; gap:.8rem; max-width:60rem; margin:0 auto; }
-.novedad-emoji { font-size:1.5rem; line-height:1; flex-shrink:0; }
-.novedad-text { display:flex; flex-direction:column; line-height:1.35; flex:1; min-width:0; }
-.novedad-text strong { font-size:.92rem; font-weight:800; color:#fff; letter-spacing:-.01em; }
-.novedad-text span { font-size:.78rem; opacity:.82; text-wrap:pretty; }
-/* min-height:44px va en la regla BASE y no solo en el media query del celular:
-   una tablet de 768px no entra en (max-width:560px) y se toca con el dedo
-   igual. Con el padding solo el boton quedaba en 38px justo ahi. En escritorio
-   no se nota — el alto de la barra lo define el texto de dos renglones. */
-.novedad-cta { flex-shrink:0; display:flex; align-items:center; justify-content:center; min-height:44px; background:var(--orange); color:#fff; text-decoration:none; font-weight:700; font-size:.82rem; padding:.55rem 1rem; border-radius:9px; white-space:nowrap; transition:background .15s; }
-.novedad-cta:hover { background:var(--hover-orange); }
-/* 44px es el mínimo táctil: abajo de eso el dedo no le pega y parece que no anda. */
-.novedad-close { position:absolute; top:0; right:0; width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:transparent; border:0; color:var(--cream); opacity:.55; font-size:1.4rem; line-height:1; cursor:pointer; font-family:var(--font); }
-.novedad-close:hover { opacity:1; }
-
-/* En el celular el texto y el botón no entran en una línea: el botón baja y
-   toma el ancho completo. Sin esto el texto queda en una columna de ~100px y
-   parte en cuatro renglones. */
-@media (max-width:560px) {
-  .novedad-bar { padding:.7rem .9rem .85rem; }
-  .novedad-content { flex-wrap:wrap; gap:.55rem .7rem; }
-  .novedad-emoji { font-size:1.35rem; }
-  .novedad-text { flex-basis:0; padding-right:2.2rem; }
-  .novedad-cta { flex-basis:100%; }
-}
-
 /* ── HERO ── */
 .hero { padding:2.5rem 1.5rem 2rem; text-align:center; background:linear-gradient(to bottom, var(--cream) 0%, var(--cream) 75%, #fff 100%); }
 .hero h2 { font-size:1.7rem; font-weight:800; line-height:1.2; margin-bottom:.5rem; }
@@ -1113,3 +1076,44 @@ h1, h2, h3, .cat-title, .hero-title, .product-name, .product-price {
    subrayado del link. */
 a.zone-chip { text-decoration:none; display:inline-flex; align-items:center;
               min-height:36px; }
+
+/* ── El logo ──
+   Es el imagotipo oficial de Juani Pena (Documentos/Diseño - Juani Peña),
+   recortado al contenido y a 620x120. Hasta el 7/9/2026 el header tenia el
+   ICONO suelto mas la palabra "MALEU" escrita en HTML con Montserrat en
+   mayusculas — o sea que la marca de la tienda no era la marca: la palabra
+   del logo va en minusculas y con su propia tipografia. */
+.logo-full { height:30px; width:auto; display:block; }
+@media (min-width:700px) { .logo-full { height:34px; } }
+
+/* ── El header en celular ──
+   Medido a 390px: el grupo derecho pide 355px solo para sus chips (zona 146
+   + fecha 118 + carrito 47), asi que con el logo al lado nunca entra en una
+   linea y envuelve en dos. Eso ya era asi antes del rediseño y esta bien:
+   lo que no puede pasar es que sean TRES, que es donde quedo al sumarle el
+   boton de menu adentro de ese grupo. El boton se movio al <header>, a la
+   izquierda del logo, y aca el logo baja un punto para dar aire. */
+header > .menu-btn { margin-left:-.5rem; margin-right:-.2rem; }
+
+@media (max-width:700px) {
+  .logo-full { height:26px; }
+
+  /* Los chips de zona y fecha piden 264px juntos y el logo mas el menu se
+     llevan 178: en 390px no entran en la misma linea NI achicandolos, asi
+     que envolvian en tres filas y el header quedaba en 123px de alto.
+     Bajan a su propia fila completa, que ademas es donde uno los espera:
+     "entregamos en X, el dia Y" es una barra de contexto, no un control
+     del encabezado.
+
+     display:contents saca al contenedor del layout y deja que sus hijos
+     sean items del header, para poder ordenarlos sin tocar el HTML — que
+     app.js llena por id y no conviene mover. */
+  header { flex-wrap:wrap; row-gap:.5rem; }
+  .header-chips { display:contents; }
+  header > .menu-btn { order:1; }
+  header > .logo-wrap { order:2; margin-right:auto; }
+  .header-chips > .cart-btn { order:3; }
+  .header-chips > .zone-chip { order:4; }
+  /* El primero de los dos empuja al otro y juntos ocupan la fila. */
+  .header-chips > #zone-chip { margin-left:0; }
+}

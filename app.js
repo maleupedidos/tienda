@@ -34,6 +34,16 @@ const PRODUCTOS = [
   { id:14, cat:"Tortas", nombre:"Torta Golosa",                  desc:"Masa de chocolate, dulce de leche, mousse de chocolate y almendras acarameladas.", precio:26000, img:"torta-golosa.jpg", emoji:"🎂", chips:["Para 8–10 personas","Torta entera","Lista para cortar y servir"] },
   { id:15, cat:"Tortas", nombre:"Torta Lemon Crumble",           desc:"Base sablée, relleno de limón y crumble crocante espolvoreado.",                 precio:26000, img:"torta-lemon.jpg", emoji:"🎂", chips:["Para 8–10 personas","Torta entera","Lista para cortar y servir"] },
   { id:16, cat:"Tortas", nombre:"Torta Coco",                    desc:"Base crocante, dulce de leche y relleno de coco. Generosa y sin vueltas.",       precio:26000, img:"torta-coco.jpg", emoji:"🎂", chips:["Para 8–10 personas","Torta entera","Lista para cortar y servir"] },
+  /* ═══ CARNES — Diagonal Carnes (Lucas Moresco) ═══════════════════════
+     ⚠ PRECIO PROVISORIO en los cinco. Los marca precioProvisorio y
+     `npm run precios-pendientes` corta mientras sigan puestos.
+     Faltan tambien las fotos reales: hoy los cinco comparten la de la
+     categoria, que es de stock (Pexels 5313880). */
+  { id:40, cat:"Carnes", nombre:"Lomo",    desc:"El corte mas tierno. Para la ocasion que se merece el mejor.",              precio:32000, img:"carne-cortes.jpg", emoji:"🥩", precioProvisorio:true, chips:["Se vende por kilo","Fresco, no congelado"] },
+  { id:41, cat:"Carnes", nombre:"Colita",  desc:"Colita de cuadril. Jugosa al horno y perfecta a la parrilla.",              precio:24000, img:"carne-cortes.jpg", emoji:"🥩", precioProvisorio:true, chips:["Se vende por kilo","Fresco, no congelado"] },
+  { id:42, cat:"Carnes", nombre:"Picaña",  desc:"El corte brasilero que se volvio infaltable. Con su tapa de grasa.",       precio:26000, img:"carne-cortes.jpg", emoji:"🥩", precioProvisorio:true, chips:["Se vende por kilo","Fresco, no congelado"] },
+  { id:43, cat:"Carnes", nombre:"Entraña", desc:"Fina, sabrosa y rapida. La que sale primero de la parrilla.",              precio:34000, img:"carne-cortes.jpg", emoji:"🥩", precioProvisorio:true, chips:["Se vende por kilo","Fresco, no congelado"] },
+  { id:44, cat:"Carnes", nombre:"Vacio",   desc:"El clasico del asado argentino. Paciencia y fuego bajo.",                   precio:22000, img:"carne-cortes.jpg", emoji:"🥩", precioProvisorio:true, chips:["Se vende por kilo","Fresco, no congelado"] },
 ];
 
 const CATEGORIAS = [
@@ -45,6 +55,10 @@ const CATEGORIAS = [
   { nombre:"Tartas",              icono:"🥧", nota:"Pre-cocidas · 16cm · Listas al horno en 10 min", tip:"Precalentar horno al máximo 10 min · Hornear 10 min · Servir" },
   { nombre:"Franuis",             icono:"🍫", nota:"Frambuesas bañadas en chocolate · Listas para servir" },
   { nombre:"Tortas",              icono:"🎂", nota:"Tortas enteras · Listas para cortar y servir" },
+  /* La carne de Diagonal (Lucas Moresco). `img` es propia y no sale del
+     producto destacado como en el resto: las fotos de los cortes todavia
+     son de stock y la de la categoria es la unica elegida a mano. */
+  { nombre:"Carnes",              icono:"🥩", nota:"Cortes frescos de Diagonal Carnes · Se venden por kilo", img:"carne-cortes.jpg" },
 ];
 
 /* ── PRODUCTOS CLUBES (precios especiales, solo pizzas) ── */
@@ -3436,7 +3450,9 @@ function renderCatTiles() {
   const tiles = cats.map(cat => {
     const suyos = prods.filter(p => p.cat === cat.nombre);
     if (!suyos.length) return '';          // categoria sin productos en esta zona
-    const foto = (suyos.find(p => p.top) || suyos[0]).img;
+    // cat.img gana si esta: hay categorias cuya mejor foto no es la de
+    // ninguno de sus productos.
+    const foto = cat.img || (suyos.find(p => p.top) || suyos[0]).img;
     const slug = slugify(cat.nombre);
     return '<button class="cat-tile" type="button" onclick="scrollToCat(\'' + slug + '\')" ' +
              'aria-label="Ver ' + cat.nombre + '">' +
