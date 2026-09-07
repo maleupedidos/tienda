@@ -835,3 +835,122 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
 /* 5. EL BOTON — 44px es el minimo tactil real. Estaba en 36px. */
 .add-btn { min-height:44px; display:flex; align-items:center;
            justify-content:center; }
+
+/* ══════════════════════════════════════════════════════════════════
+   TIPOGRAFIA — que deje de gritar
+   ══════════════════════════════════════════════════════════════════
+   Tadeo, 7/9/2026: "la tipografia que tiene ahora es MUY DE IA".
+
+   Medido: bocado.com.ar usa LA MISMA fuente que nosotros (Montserrat).
+   O sea que el problema no era cual, sino como. La diferencia real:
+
+                        Maleu        Bocado
+     peso de titulo     800          600
+     MAYUSCULAS         12 reglas    casi ninguna
+     emojis en el HTML  128          0
+
+   Todo estaba en negrita maxima, en mayusculas y con emoji al lado.
+   Eso es lo que se lee como plantilla generica. */
+
+/* Los titulos pasan a una serif con caracter. Montserrat es correcta
+   pero es la fuente por defecto de medio internet: no dice nada de la
+   marca. Fraunces es calida, tiene personalidad y se usa mucho en
+   marcas de comida — que es lo que somos. El cuerpo sigue en
+   Montserrat porque para LEER una descripcion la sans gana. */
+:root { --font-display:'Fraunces', Georgia, serif; }
+
+h1, h2, h3, .cat-title, .hero-title, .product-name, .product-price {
+  font-family:var(--font-display);
+  font-optical-sizing:auto;
+}
+
+/* El titulo de categoria: era 800 + MAYUSCULAS + letter-spacing.
+   Tres formas de gritar la misma palabra. */
+.cat-title { font-weight:600; text-transform:none; letter-spacing:-.01em;
+             font-size:1.45rem; }
+
+/* Las tabs de categoria tambien estaban en mayusculas. En minuscula se
+   leen mas rapido: la forma de la palabra ayuda a reconocerla, y en
+   MAYUSCULA todas las palabras son un rectangulo. */
+.cat-nav-btn { text-transform:none; letter-spacing:0; font-weight:600;
+               font-size:.88rem; }
+
+/* El nombre del producto y el precio, en la serif. El nombre baja de
+   800 a 600: en una card de 165px, 800 es un bloque negro. */
+.product-name  { font-weight:600; font-size:.95rem; letter-spacing:-.01em; }
+.product-price { font-weight:600; }
+
+/* Este cartel decia "DESLIZA PARA VER TODO LO QUE TENEMOS" en
+   mayusculas, negrita y con letter-spacing. Es una ayuda, no un
+   titulo: va en voz baja. */
+.cat-nav-hint { text-transform:none; letter-spacing:.01em; font-weight:500;
+                font-size:.72rem; }
+
+/* ══════════════════════════════════════════════════════════════════
+   CATEGORIAS — una foto por categoria, arriba de todo
+   ══════════════════════════════════════════════════════════════════
+   Pedido de Tadeo el 7/9/2026 mirando bocado.com.ar: antes de la lista
+   de productos, una fila de fotos para entrar por donde uno tiene
+   ganas. Hoy la unica puerta eran las tabs de texto, que obligan a
+   leer ocho nombres para decidir. */
+
+.cat-tiles-section { padding:1.6rem 1rem .4rem; }
+
+/* El titulo de seccion. Es el mismo objeto visual que va a usar
+   "Lo mas vendido", asi que la clase es generica y no "cat-*". */
+.section-title { font-family:var(--font-display); font-size:1.6rem;
+                 font-weight:600; letter-spacing:-.02em; text-align:center;
+                 margin-bottom:1rem; }
+
+/* Fila con scroll horizontal. El padding lateral negativo hace que la
+   primera y la ultima ficha lleguen al borde de la pantalla al
+   scrollear, en vez de cortarse contra un margen. */
+.cat-tiles { display:flex; gap:.7rem; overflow-x:auto; scroll-snap-type:x mandatory;
+             padding:.2rem 1rem .8rem; margin:0 -1rem;
+             -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+.cat-tiles::-webkit-scrollbar { display:none; }
+
+.cat-tile { position:relative; flex:0 0 auto; width:150px; height:190px;
+            border:none; padding:0; border-radius:14px; overflow:hidden;
+            cursor:pointer; scroll-snap-align:start; background:#eee;
+            display:block; text-align:left; }
+
+.cat-tile-img { width:100%; height:100%; object-fit:cover; display:block;
+                transition:transform .3s; }
+.cat-tile:hover .cat-tile-img { transform:scale(1.04); }
+
+/* El nombre va SOBRE la foto y por eso necesita un fondo propio: una
+   foto de comida tiene zonas claras y oscuras, y texto blanco pelado
+   se pierde en la mitad de ellas. El degrade cubre el tercio de abajo
+   entero, asi el contraste no depende de que foto sea. */
+.cat-tile::after { content:''; position:absolute; left:0; right:0; bottom:0;
+                   height:62%; pointer-events:none;
+                   background:linear-gradient(to top, rgba(0,0,0,.78) 0%,
+                              rgba(0,0,0,.45) 45%, rgba(0,0,0,0) 100%); }
+.cat-tile-name { position:absolute; left:.7rem; right:.7rem; bottom:1.45rem;
+                 z-index:2; color:#fff; font-family:var(--font-display);
+                 font-size:.95rem; font-weight:600; line-height:1.15;
+                 letter-spacing:-.01em; text-shadow:0 1px 3px rgba(0,0,0,.4); }
+.cat-tile-count { position:absolute; left:.7rem; bottom:.6rem; z-index:2;
+                  color:rgba(255,255,255,.82); font-size:.7rem; font-weight:500; }
+
+/* En escritorio entran todas sin scrollear, asi que dejan de ser una
+   fila que se arrastra y pasan a ser una grilla. */
+@media (min-width:900px) {
+  .cat-tiles-section { padding:2.4rem 1rem 1rem; max-width:1100px; margin:0 auto; }
+  .section-title { font-size:2rem; }
+  .cat-tiles { display:grid; grid-template-columns:repeat(4, 1fr);
+               overflow:visible; margin:0; padding:0; gap:1rem; }
+  .cat-tile { width:auto; height:220px; }
+}
+
+/* ── LOS MAS PEDIDOS ──────────────────────────────────────────────
+   Va entre las categorias y el catalogo: el que no sabe que quiere
+   entra por la foto de la categoria, y el que quiere lo de siempre
+   lo tiene a un scroll, sin recorrer las ocho secciones. */
+.top-section { padding:.6rem 1rem 1.4rem; }
+.section-sub { text-align:center; color:#8a7d76; font-size:.85rem;
+               margin:-.7rem 0 1rem; }
+@media (min-width:900px) {
+  .top-section { max-width:1100px; margin:0 auto; padding:1.2rem 1rem 2rem; }
+}

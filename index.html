@@ -24,8 +24,8 @@
   <link rel="preload" href="img/logo-icono.png" as="image" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=447f28f8" />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=3ebee624" />
   <script>
     // Forzar inicio arriba en cada carga (incluye refresh, back-forward cache de iOS).
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
@@ -167,6 +167,23 @@
   <div class="hero-cutoff-note" id="hero-cutoff-note" style="display:none"></div>
   <a href="#productos-ancla" class="hero-cta" onclick="scrollToProductos();return false;">Armar mi pedido →</a>
   <a href="#combos-ancla" class="hero-cta hero-cta-combos" id="hero-combos-cta" style="display:none" onclick="scrollToCombos();return false;">🎁 Ver los combos →</a>
+</section>
+
+<!-- CATEGORÍAS: una foto por categoría, como puerta de entrada al catálogo.
+     La llena renderCatTiles() desde CATEGORIAS + PRODUCTOS, así una
+     categoría nueva aparece sola sin tocar este archivo. -->
+<section class="cat-tiles-section" id="cat-tiles-section">
+  <h2 class="section-title">Categorías</h2>
+  <div class="cat-tiles" id="cat-tiles"></div>
+</section>
+
+<!-- LOS MÁS PEDIDOS: los productos marcados top:true en PRODUCTOS. Los llena
+     renderTopProductos(), que cuelga de renderCatalog() para que las dos
+     listas no puedan decir cosas distintas. -->
+<section class="top-section" id="top-section">
+  <h2 class="section-title">Los más pedidos</h2>
+  <p class="section-sub">Lo que más sale, semana tras semana</p>
+  <div class="products-grid" id="top-productos"></div>
 </section>
 
 <!-- BARRA DE CATEGORÍAS -->
@@ -493,6 +510,6 @@
   </div>
 </div>
 
-<script src="app.js?v=84081e7d"></script>
+<script src="app.js?v=c2dc5bae"></script>
 </body>
 </html>

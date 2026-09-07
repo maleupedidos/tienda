@@ -1973,6 +1973,51 @@ function renderCombosSectionHTML() {
     '</div>' + groups + '</section>';
 }
 
+/* El HTML de UNA card de producto. Salio de adentro de renderCatalog el
+   7/9/2026, cuando aparecio la seccion "Los mas pedidos": el mismo producto
+   pasa a estar dos veces en la pagina y tener el markup escrito dos veces
+   garantiza que un dia se despeguen.
+
+   Ojo con el indicador de stock: aca es data-stock y NO id. Dos elementos
+   con el mismo id hacen que getElementById pinte solo el primero, asi que
+   la copia se quedaria mostrando "Sin stock" viejo — o peor, nada — sin un
+   solo error en consola. Es el mismo bug que costo caro en el ERP con
+   nuevoView. Los combos siguen usando id porque no se duplican. */
+function productCardHTML(p) {
+  return '<article class="product-card" data-id="' + p.id + '">' +
+    '<div class="product-thumb">' +
+      '<img class="product-thumb-img" src="img/' + p.img + '" alt="' + p.nombre + '" loading="lazy" width="400" height="400" style="object-position:' + (p.imgPos||'center') + '" onerror="this.style.display=\'none\'">' +
+    '</div>' +
+    '<div class="product-body">' +
+      (p.top ? '<span class="product-top-badge">⭐ Lo más pedido</span>' : '') +
+      '<h3 class="product-name">' + p.nombre + '</h3>' +
+      '<p class="product-desc">' + p.desc + '</p>' +
+      (p.chips ? '<div class="product-chips">' + p.chips.map(c => '<span class="chip">' + c + '</span>').join('') + '</div>' : '') +
+      '<span class="stock-indicator" data-stock="' + p.id + '"></span>' +
+      '<div class="product-footer">' +
+        '<span class="product-price">' + ars(p.precio) + '</span>' +
+        '<button class="add-btn" onclick="addToCart(\'' + p.id + '\')">+ Agregar</button>' +
+      '</div>' +
+    '</div>' +
+  '</article>';
+}
+
+/* "Los mas pedidos" del inicio. Sale del flag top:true que Tadeo cura a mano
+   en PRODUCTOS — el mismo que ya pone la estrella en la card, asi que las dos
+   cosas no pueden decir distinto. No sale de las ventas reales del ERP: eso
+   vive en la hoja Productos y la tienda no le pega al backend para esto. */
+function renderTopProductos() {
+  const cont = $id('top-productos');
+  if (!cont) return;
+  const tops = getActiveProducts().filter(p => p.top);
+  cont.innerHTML = tops.map(productCardHTML).join('');
+  const sec = $id('top-section');
+  if (sec) sec.style.display = tops.length ? '' : 'none';
+  // Los footers se pintan aparte: la card nace con "+ Agregar" y hay que
+  // reflejar lo que ya haya en el carrito.
+  tops.forEach(p => renderCardFooter(p.id));
+}
+
 /* ── RENDER CATÁLOGO ── */
 function renderCatalog() {
   const cats = getActiveCategories();
@@ -1985,30 +2030,27 @@ function renderCatalog() {
       '<div class="cat-nota">' + cat.nota + '</div>' +
       (cat.tip ? '<div class="cat-tip">🍳 ' + cat.tip + '</div>' : '') +
       '</div><div class="products-grid">' +
-      prods.map(p => '<article class="product-card" data-id="' + p.id + '">' +
-        '<div class="product-thumb">' +
-          '<img class="product-thumb-img" src="img/' + p.img + '" alt="' + p.nombre + '" loading="lazy" width="400" height="400" style="object-position:' + (p.imgPos||'center') + '" onerror="this.style.display=\'none\'">' +
-        '</div>' +
-        '<div class="product-body">' +
-          (p.top ? '<span class="product-top-badge">⭐ Lo más pedido</span>' : '') +
-          '<h3 class="product-name">' + p.nombre + '</h3>' +
-          '<p class="product-desc">' + p.desc + '</p>' +
-          (p.chips ? '<div class="product-chips">' + p.chips.map(c => '<span class="chip">' + c + '</span>').join('') + '</div>' : '') +
-          '<span class="stock-indicator" id="stock-' + p.id + '"></span>' +
-          '<div class="product-footer">' +
-            '<span class="product-price">' + ars(p.precio) + '</span>' +
-            '<button class="add-btn" onclick="addToCart(\'' + p.id + '\')">+ Agregar</button>' +
-          '</div>' +
-        '</div>' +
-      '</article>').join('') +
+      prods.map(productCardHTML).join('') +
       '</div></section>';
   }).join('') + renderCombosSectionHTML();  // combos al final, después de la última categoría (Tortas)
+  // Los destacados se repintan aca y no en cada call site: hay CUATRO
+  // lugares que llaman a renderCatalog y colgarse de uno solo es como se
+  // despegan las dos listas.
+  renderTopProductos();
 }
 
 /* ── RENDER CARD FOOTER ── */
 function renderCardFooter(id) {
-  const card = document.querySelector('.product-card[data-id="' + id + '"]');
-  if (!card) return;
+  /* querySelectorAll y no querySelector: desde el 7/9/2026 un producto puede
+     estar dos veces en la pagina (su categoria y "Los mas pedidos"), y pintar
+     solo la primera deja a la otra congelada en "+ Agregar" aunque el carrito
+     tenga 3 — sin ningun error en consola. */
+  const cards = document.querySelectorAll('.product-card[data-id="' + id + '"]');
+  if (!cards.length) return;
+  cards.forEach(function(card) { _pintarFooterDeCard(card, id); });
+}
+
+function _pintarFooterDeCard(card, id) {
   const footer = card.querySelector('.product-footer');
   if (!footer) return;
   const p = PROD_MAP[id];
@@ -3379,7 +3421,39 @@ function expandForm() {
 }
 
 /* ── CAT NAV ── */
+/* Las fichas de categoria del inicio: una foto por categoria, como puerta de
+   entrada al catalogo (7/9/2026, pedido de Tadeo mirando bocado.com.ar).
+
+   La foto sale del producto marcado top:true de esa categoria, y si no hay
+   ninguno, del primero. Se deriva de PRODUCTOS en vez de tener su propia
+   lista de imagenes: asi una categoria nueva aparece sola, y el dia que se
+   renombre una foto no queda un hueco aca sin que nadie se entere. */
+function renderCatTiles() {
+  const cont = $id('cat-tiles');
+  if (!cont) return;
+  const cats = getActiveCategories();
+  const prods = getActiveProducts();
+  const tiles = cats.map(cat => {
+    const suyos = prods.filter(p => p.cat === cat.nombre);
+    if (!suyos.length) return '';          // categoria sin productos en esta zona
+    const foto = (suyos.find(p => p.top) || suyos[0]).img;
+    const slug = slugify(cat.nombre);
+    return '<button class="cat-tile" type="button" onclick="scrollToCat(\'' + slug + '\')" ' +
+             'aria-label="Ver ' + cat.nombre + '">' +
+             '<img class="cat-tile-img" src="img/' + foto + '" alt="" loading="lazy">' +
+             '<span class="cat-tile-name">' + cat.nombre + '</span>' +
+             '<span class="cat-tile-count">' + suyos.length +
+               (suyos.length === 1 ? ' opcion' : ' opciones') + '</span>' +
+           '</button>';
+  }).filter(Boolean).join('');
+  cont.innerHTML = tiles;
+  // Sin categorias no queda el titulo "Categorias" solo, colgado de la nada.
+  const sec = $id('cat-tiles-section');
+  if (sec) sec.style.display = tiles ? '' : 'none';
+}
+
 function renderCatNav() {
+  renderCatTiles();
   const nav = $id('cat-nav');
   if (!nav) return;
   const cats = getActiveCategories();
@@ -3560,8 +3634,12 @@ function updateStockDisplay() {
   const mode = getStockMode();
   const showStock = mode !== 'ilimitado' || isStockInfoMode() || (currentZone && ZONAS[currentZone] && ZONAS[currentZone].showStock);
   PRODUCTOS.forEach(p => {
-    const el = $id('stock-' + p.id);
-    if (!el) return;
+    /* querySelectorAll: un producto destacado esta dos veces en la pagina
+       (su categoria y "Los mas pedidos") y las dos copias tienen que decir
+       lo mismo del stock. */
+    const els = document.querySelectorAll('[data-stock="' + p.id + '"]');
+    if (!els.length) return;
+    const el = { set innerHTML(v) { els.forEach(function(e) { e.innerHTML = v; }); } };
     const fis = stockMap[p.id];
     const proy = stockProyectadoMap[p.id];
     if (!showStock || fis === undefined) { el.innerHTML = ''; renderCardFooter(p.id); return; }
