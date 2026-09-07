@@ -783,3 +783,55 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
 @media (max-width: 420px) {
   .whatsapp-ready-hint { font-size: .85rem; padding: .6rem .8rem; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   TIENDA v2 — la foto manda
+   ══════════════════════════════════════════════════════════════════
+   Todo lo de abajo es CSS puro: no toca app.js, y app.js busca 98 ids
+   del HTML que quedan intactos. Para volver atras, se borra el bloque.
+
+   El problema medido el 7/9/2026 contra bocado.com.ar en un iPhone:
+   nuestra card era mas compacta (439px contra 650px) pero la foto
+   media 163px contra 399px. Vendemos comida — la foto es la decision
+   de compra y estaba perdiendo contra tres chips de texto. */
+
+/* 1. LA FOTO — de 1:1 a 4:5. En una card de 165px eso la lleva de
+      163 a 206px (+26%) sin agregar una sola columna de scroll. */
+.product-thumb { aspect-ratio:4/5; }
+
+/* 2. LOS CHIPS — dejan de ser tres pildoras apiladas (3 filas, ~70px)
+      y pasan a ser UNA linea de texto: "Para 3-4 personas · 2 pizzas
+      grandes". Verificado en los 29 productos: el 1er chip siempre es
+      la porcion (lo que decide "¿me alcanza?") y el 2do el formato.
+      El 3ro es el tiempo de coccion, que YA esta escrito en el
+      subtitulo de cada categoria — mostrarlo aca era decirlo dos
+      veces y pagarlo con el tamaño de la foto. Sigue en el HTML: si
+      algun dia hay ficha de producto, esta ahi para usarlo. */
+.product-chips { display:block; margin-bottom:.35rem; font-size:.66rem;
+                 color:#8a8a8a; line-height:1.3; }
+.product-chips .chip { display:inline; background:none; padding:0;
+                       border-radius:0; font-size:inherit; color:inherit; }
+.product-chips .chip + .chip::before { content:" · "; color:#c8c8c8; }
+.product-chips .chip:nth-child(n+3) { display:none; }
+
+/* 3. LA DESCRIPCION — a dos renglones. Sin esto una card de descripcion
+      larga estira toda su fila y las de al lado quedan con un hueco
+      blanco abajo, que es lo que se ve hoy en Pizzas Individuales.
+      Mantiene flex:1 (empuja el precio abajo) porque display en el
+      hijo no anula como se comporta el hijo dentro del flex del padre.
+
+      Son TRES renglones y no dos, medido sobre las 25 descripciones:
+      con dos se cortaba el 80% y con tres el 20%, por 16px mas de card
+      (441 contra 425). Y lo que se cortaba era la frase que vende —
+      "Dos pizzas de muzzarella. Cena resuelta para toda la semana."
+      Con cuatro solo se salva una mas y la card crece de gusto. */
+.product-desc { display:-webkit-box; -webkit-line-clamp:3;
+                -webkit-box-orient:vertical; overflow:hidden; }
+
+/* 4. EL PRECIO — es lo segundo que se mira despues de la foto y estaba
+      al mismo tamaño que el nombre del producto. */
+.product-price { font-size:1.15rem; letter-spacing:-.02em; }
+
+/* 5. EL BOTON — 44px es el minimo tactil real. Estaba en 36px. */
+.add-btn { min-height:44px; display:flex; align-items:center;
+           justify-content:center; }
