@@ -39,11 +39,11 @@ const PRODUCTOS = [
      `npm run precios-pendientes` corta mientras sigan puestos.
      Faltan tambien las fotos reales: hoy los cinco comparten la de la
      categoria, que es de stock (Pexels 5313880). */
-  { id:40, cat:"Carnes", nombre:"Lomo",    desc:"El corte mas tierno. Para la ocasion que se merece el mejor.",              precio:32000, img:"carne-cortes.jpg", emoji:"🥩", precioProvisorio:true, chips:["Se vende por kilo","Fresco, no congelado"] },
-  { id:41, cat:"Carnes", nombre:"Colita",  desc:"Colita de cuadril. Jugosa al horno y perfecta a la parrilla.",              precio:24000, img:"carne-cortes.jpg", emoji:"🥩", precioProvisorio:true, chips:["Se vende por kilo","Fresco, no congelado"] },
-  { id:42, cat:"Carnes", nombre:"Picaña",  desc:"El corte brasilero que se volvio infaltable. Con su tapa de grasa.",       precio:26000, img:"carne-cortes.jpg", emoji:"🥩", precioProvisorio:true, chips:["Se vende por kilo","Fresco, no congelado"] },
-  { id:43, cat:"Carnes", nombre:"Entraña", desc:"Fina, sabrosa y rapida. La que sale primero de la parrilla.",              precio:34000, img:"carne-cortes.jpg", emoji:"🥩", precioProvisorio:true, chips:["Se vende por kilo","Fresco, no congelado"] },
-  { id:44, cat:"Carnes", nombre:"Vacio",   desc:"El clasico del asado argentino. Paciencia y fuego bajo.",                   precio:22000, img:"carne-cortes.jpg", emoji:"🥩", precioProvisorio:true, chips:["Se vende por kilo","Fresco, no congelado"] },
+  { id:40, cat:"Carnes", nuevo:true, nombre:"Lomo",    desc:"El corte mas tierno. Para la ocasion que se merece el mejor.",              precio:32000, img:"carne-cortes.jpg", emoji:"🥩", precioProvisorio:true, chips:["Se vende por kilo","Fresco, no congelado"] },
+  { id:41, cat:"Carnes", nuevo:true, nombre:"Colita",  desc:"Colita de cuadril. Jugosa al horno y perfecta a la parrilla.",              precio:24000, img:"carne-cortes.jpg", emoji:"🥩", precioProvisorio:true, chips:["Se vende por kilo","Fresco, no congelado"] },
+  { id:42, cat:"Carnes", nuevo:true, nombre:"Picaña",  desc:"El corte brasilero que se volvio infaltable. Con su tapa de grasa.",       precio:26000, img:"carne-cortes.jpg", emoji:"🥩", precioProvisorio:true, chips:["Se vende por kilo","Fresco, no congelado"] },
+  { id:43, cat:"Carnes", nuevo:true, nombre:"Entraña", desc:"Fina, sabrosa y rapida. La que sale primero de la parrilla.",              precio:34000, img:"carne-cortes.jpg", emoji:"🥩", precioProvisorio:true, chips:["Se vende por kilo","Fresco, no congelado"] },
+  { id:44, cat:"Carnes", nuevo:true, nombre:"Vacio",   desc:"El clasico del asado argentino. Paciencia y fuego bajo.",                   precio:22000, img:"carne-cortes.jpg", emoji:"🥩", precioProvisorio:true, chips:["Se vende por kilo","Fresco, no congelado"] },
 ];
 
 const CATEGORIAS = [
@@ -1930,11 +1930,17 @@ function _comboCardHTML(c) {
   return '<article class="product-card combo-card' + cardCls + '" data-id="' + c.id + '">' +
     terminadoBadge +
     '<div class="product-thumb">' +
-      '<span class="combo-flag">' + (c.flag || '🎁') + '</span>' +
+      /* Las mismas chapitas que la card de producto, y en el MISMO
+         contenedor que el flag del combo: si fueran dos capas absolutas se
+         superpondrian — las dos viven en top:.5rem/left:.5rem. */
+      '<div class="chapas-prod">' +
+        '<span class="combo-flag">' + (c.flag || '🎁') + '</span>' +
+        (c.nuevo ? '<span class="chapa-prod chapa-nuevo">Nuevo</span>' : '') +
+        (c.top   ? '<span class="chapa-prod chapa-top">Lo más pedido</span>' : '') +
+      '</div>' +
       '<img class="product-thumb-img" src="img/' + c.img + '" alt="' + c.nombre + '" loading="lazy" width="400" height="400" style="object-position:' + (c.imgPos||'center') + '" onerror="this.style.display=\'none\'">' +
     '</div>' +
     '<div class="product-body">' +
-      (c.top ? '<span class="product-top-badge">⭐ Lo más pedido</span>' : '') +
       '<h3 class="product-name">' + c.nombre + '</h3>' +
       _comboPersonasHTML(c) +
       '<p class="product-desc">' + c.desc + '</p>' +
@@ -1998,12 +2004,20 @@ function renderCombosSectionHTML() {
    solo error en consola. Es el mismo bug que costo caro en el ERP con
    nuevoView. Los combos siguen usando id porque no se duplican. */
 function productCardHTML(p) {
+  /* Las chapitas van SOBRE la foto y no en el cuerpo: es lo primero que se
+     mira, y es donde las ponen Frizata, Comodos y Breaders. Abajo quedaban
+     a 10,4px, que es el tamaño de la letra chica de un contrato.
+     El orden importa: "Nuevo" primero, porque es la novedad la que hace que
+     alguien que ya conoce el catalogo lo vuelva a mirar. */
+  var chapas = '';
+  if (p.nuevo) chapas += '<span class="chapa-prod chapa-nuevo">Nuevo</span>';
+  if (p.top)   chapas += '<span class="chapa-prod chapa-top">Lo más pedido</span>';
   return '<article class="product-card" data-id="' + p.id + '">' +
     '<div class="product-thumb">' +
+      (chapas ? '<div class="chapas-prod">' + chapas + '</div>' : '') +
       '<img class="product-thumb-img" src="img/' + p.img + '" alt="' + p.nombre + '" loading="lazy" width="400" height="400" style="object-position:' + (p.imgPos||'center') + '" onerror="this.style.display=\'none\'">' +
     '</div>' +
     '<div class="product-body">' +
-      (p.top ? '<span class="product-top-badge">⭐ Lo más pedido</span>' : '') +
       '<h3 class="product-name">' + p.nombre + '</h3>' +
       '<p class="product-desc">' + p.desc + '</p>' +
       (p.chips ? '<div class="product-chips">' + p.chips.map(c => '<span class="chip">' + c + '</span>').join('') + '</div>' : '') +
