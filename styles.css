@@ -1118,3 +1118,80 @@ header > .menu-btn { margin-left:-.5rem; margin-right:-.2rem; }
   /* El primero de los dos empuja al otro y juntos ocupan la fila. */
   .header-chips > #zone-chip { margin-left:0; }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   BUSCADOR                                                 (8/9/2026)
+   ══════════════════════════════════════════════════════════════════
+   Vive en la barra sticky, asi viaja pegado arriba mientras se mira el
+   catalogo — que es justo cuando uno lo necesita.
+   La lupa es un SVG y no un emoji a proposito: los 128 emojis eran una
+   de las cosas medidas que hacian que la tienda se leyera como plantilla. */
+
+.buscador {
+  display: flex; align-items: center; gap: .5rem;
+  background: #fff; border: 1.5px solid #e8ddd0; border-radius: 12px;
+  padding: 0 .55rem 0 .75rem; margin: .5rem 1rem .4rem;
+  transition: border-color .15s, box-shadow .15s;
+}
+.buscador:focus-within {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 3px rgba(240,125,71,.14);
+}
+.buscador-lupa {
+  width: 17px; height: 17px; flex: 0 0 auto;
+  fill: none; stroke: #a89a8c; stroke-width: 2; stroke-linecap: round;
+}
+.buscador:focus-within .buscador-lupa { stroke: var(--orange); }
+
+.buscador-input {
+  flex: 1 1 auto; min-width: 0;
+  border: 0; outline: 0; background: transparent;
+  font-family: var(--font); font-size: .92rem; font-weight: 500; color: var(--brown);
+  padding: .62rem 0; min-height: 44px;   /* minimo tactil */
+  -webkit-appearance: none; appearance: none;
+}
+.buscador-input::placeholder { color: #b0a396; font-weight: 400; }
+/* La X propia de type="search" en Chrome se saca: tenemos la nuestra, de
+   44px, que en el celular se puede tocar de verdad. */
+.buscador-input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+
+.buscador-x {
+  flex: 0 0 auto; width: 44px; height: 44px;
+  border: 0; background: transparent; cursor: pointer;
+  font-family: var(--font); font-size: 1.4rem; line-height: 1; color: #8d8073;
+  border-radius: 10px;
+}
+.buscador-x:hover { background: #f4ece2; color: var(--brown); }
+
+.buscador-info {
+  display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+  margin: 0 1rem .5rem; padding: .1rem .1rem .1rem .2rem;
+  font-family: var(--font); font-size: .8rem; font-weight: 500; color: #7d6f62;
+}
+.buscador-info b { font-weight: 700; color: var(--brown); }
+.buscador-info.vacio { color: var(--brown); }
+.buscador-limpiar {
+  border: 0; background: transparent; cursor: pointer;
+  font-family: var(--font); font-size: .8rem; font-weight: 700; color: var(--orange);
+  text-decoration: underline; text-underline-offset: 2px;
+  min-height: 44px; padding: 0 .25rem;
+}
+.buscador-limpiar:hover { color: var(--hover-orange); }
+
+/* Lo que el buscador esconde. */
+.busq-oculto { display: none !important; }
+
+/* Con una busqueda puesta, las puertas de entrada al catalogo estorban: uno
+   ya sabe lo que vino a buscar. Se ocultan por clase en el body y no
+   tocando el style de cada uno, para no pisarle el display a nadie —
+   #repeat-block lo maneja su propio JS. */
+body.busqueda-activa #cat-tiles-section,
+body.busqueda-activa #top-section,
+body.busqueda-activa .cat-nav-hint,
+body.busqueda-activa #repeat-block { display: none !important; }
+
+@media (max-width: 600px) {
+  .buscador { margin: .45rem .75rem .35rem; }
+  .buscador-info { margin: 0 .85rem .45rem; }
+}

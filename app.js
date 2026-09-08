@@ -2051,6 +2051,10 @@ function renderCatalog() {
   // lugares que llaman a renderCatalog y colgarse de uno solo es como se
   // despegan las dos listas.
   renderTopProductos();
+  // Si hay una busqueda puesta, el catalogo recien dibujado tiene que
+  // respetarla. Sin esto, cualquiera de los cuatro repintados la deshace
+  // sin decir nada y aparecen productos que el cliente ya habia filtrado.
+  if (_busqTexto) buscarEnCatalogo();
 }
 
 /* ── RENDER CARD FOOTER ── */
@@ -3575,6 +3579,9 @@ function scrollToProductos() { _smoothScrollToEl($id('productos-ancla') || $id('
 
 let _scrollingToCat = false;
 function scrollToCat(slug) {
+  // Salir de la busqueda: la seccion a la que vamos puede estar filtrada, y
+  // un boton que scrollea a algo oculto no hace nada y no avisa por que.
+  if (_busqTexto) limpiarBusqueda();
   const section = $id('cat-' + slug); if (!section) return;
   _scrollingToCat = true;
   setActiveNav(slug);
@@ -4175,3 +4182,108 @@ document.addEventListener('keydown', function(e) {
     if (panel && !panel.hidden) toggleMenu();
   }
 });
+
+
+/* ══════════════════════════════════════════════════════════════════
+   BUSCADOR DEL CATALOGO                                    (8/9/2026)
+   ══════════════════════════════════════════════════════════════════
+   Filtra ocultando cards, nunca re-renderizando: asi el estado del
+   carrito de cada card (el "- 2 +") no se toca. Ver parche_buscador.py
+   en el scratchpad para el por que de cada decision. */
+
+var _busqTexto = '';
+
+/* Minusculas y sin tildes, en las dos puntas: asi "pina" encuentra "Piña"
+   y "jamon" encuentra "Jamón". */
+function _busqNorm(s) {
+  return String(s == null ? '' : s).toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function _busqEsc(s) {
+  return String(s).replace(/[&<>"]/g, function(c) {
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c];
+  });
+}
+
+/* Todo lo que se puede buscar de una card: nombre, categoria, descripcion y
+   chips. Se calcula UNA vez por card y queda en el DOM — si no, se
+   recalcularia 39 veces por cada tecla. Cuando renderCatalog rehace las
+   cards el dato se va con ellas y se vuelve a calcular, que es correcto. */
+function _busqTextoDeCard(card) {
+  if (card.dataset.busq) return card.dataset.busq;
+  var p = PROD_MAP[card.dataset.id] || COMBO_MAP[card.dataset.id];
+  var partes;
+  if (p) {
+    partes = [p.nombre, p.cat || '', p.desc || '', p.personas || ''];
+    if (p.chips) partes = partes.concat(p.chips);
+  } else {
+    partes = [card.innerText || ''];   // por si algun dia hay una card sin mapa
+  }
+  var t = _busqNorm(partes.join(' '));
+  card.dataset.busq = t;
+  return t;
+}
+
+function buscarEnCatalogo() {
+  var inp = $id('buscador-input');
+  if (!inp) return;
+  var crudo = String(inp.value || '').trim();
+  var q = _busqNorm(crudo).trim();
+  _busqTexto = q;
+
+  var x = $id('buscador-x');
+  if (x) x.hidden = !crudo;
+  document.body.classList.toggle('busqueda-activa', !!q);
+
+  /* Varias palabras tienen que estar TODAS: "pizza jamon" achica la lista,
+     no la ensancha. */
+  var palabras = q ? q.split(/\s+/) : [];
+
+  var cards = document.querySelectorAll('#catalog-root .product-card[data-id]');
+  var visibles = 0;
+  Array.prototype.forEach.call(cards, function(card) {
+    var texto = _busqTextoDeCard(card);
+    var entra = true;
+    for (var i = 0; i < palabras.length; i++) {
+      if (texto.indexOf(palabras[i]) === -1) { entra = false; break; }
+    }
+    card.classList.toggle('busq-oculto', !entra);
+    if (entra) visibles++;
+  });
+
+  /* Una categoria sin ninguna card visible no tiene por que dejar su titulo
+     colgado arriba de un hueco. Los combo-group son hijos de la seccion de
+     combos, asi que al quedar los dos vacios se ocultan los dos. */
+  var secciones = document.querySelectorAll('#catalog-root .cat-section, #catalog-root .combo-group');
+  Array.prototype.forEach.call(secciones, function(sec) {
+    var quedan = sec.querySelectorAll('.product-card[data-id]:not(.busq-oculto)').length;
+    sec.classList.toggle('busq-oculto', palabras.length > 0 && quedan === 0);
+  });
+
+  _busqPintarInfo(visibles, cards.length, crudo);
+}
+
+function _busqPintarInfo(visibles, total, crudo) {
+  var info = $id('buscador-info');
+  if (!info) return;
+  if (!_busqTexto) { info.hidden = true; info.innerHTML = ''; return; }
+  info.hidden = false;
+  if (visibles === 0) {
+    info.className = 'buscador-info vacio';
+    info.innerHTML =
+      '<span>No encontramos nada con <b>' + _busqEsc(crudo) + '</b></span>' +
+      '<button type="button" class="buscador-limpiar" onclick="limpiarBusqueda()">Ver todo</button>';
+  } else {
+    info.className = 'buscador-info';
+    info.innerHTML =
+      '<span><b>' + visibles + '</b> de ' + total + (total === 1 ? ' producto' : ' productos') + '</span>' +
+      '<button type="button" class="buscador-limpiar" onclick="limpiarBusqueda()">Limpiar</button>';
+  }
+}
+
+function limpiarBusqueda() {
+  var inp = $id('buscador-input');
+  if (inp) inp.value = '';
+  buscarEnCatalogo();
+}
