@@ -118,30 +118,32 @@ Los otros dos:
 
 | | |
 |---|---|
-| `node _tools/probar-autopedido.js` | que `?autopedido=1` muestre los 4 de Pilar **y que sin el parametro no cambie nada** |
 | `node _tools/diagnostico-vivo.js` | recorre maleu.com.ar como una persona (elige zona en el modal) y reporta el estado interno |
 
 **El `index.html` se sirve con `max-age=600`** (10 min), asi que un cambio tarda
 como mucho ese rato en verse: el navegador pide el index nuevo, ve un `?v=`
 distinto, y baja el archivo. Si hace falta antes, recarga forzada.
 
-## Modo autopedido: `?autopedido=1`
+## Los 4 sorrentinos que esta tienda NO muestra
 
-Tadeo arma pedidos POR el cliente, y a veces el cliente pide algo que su zona no
-muestra — **4 sorrentinos tienen `zonas:["pilar"]`**: Queso Brie, Langostinos al
-Azafrán, Pollo y Puerro y Espinaca. Con `?autopedido=1` se ve el catálogo
-completo, sale un cartel naranja, y **sin el parámetro no cambia nada** para el
-cliente.
+**Cuatro sorrentinos tienen `zonas:["pilar"]`**: Queso Brie, Langostinos al
+Azafrán, Pollo y Puerro y Espinaca. En Estancias no se venden, así que
+`_zonaPermite` los filtra.
 
-El pedido entra por el flujo de siempre: a la hoja de la zona elegida (Estancias
-→ Home), con Origen "Pendiente" — desde el ERP se pasa a Orden de Compra.
+Un cliente de Estancias los puede pedir igual — pasó el 1/9/2026 con Javier
+Galarraga, 3 Espinaca. **Ese pedido se carga desde el ERP**, en la tab
+AUTOPEDIDO de Ruta: ahí están en un bloque «por encargo» que dice que no salen
+del freezer y qué origen corresponde.
 
-**Ese link no se le pasa a un cliente**: veria productos que su zona no entrega.
-
-> [!note] El stock 0 no bloquea
-> Pidiendo antes del cutoff (Jue 12hs) para el viernes siguiente,
-> `getStockMode()` da `'ilimitado'` también en Estancias: se puede pedir sin
-> stock y sale por OC. El unico filtro que importaba era el de zona.
+> [!warning] Existió `?autopedido=1` y se eliminó el 8/9/2026
+> Del 1/9 al 8/9 ese parámetro mostraba el catálogo completo acá. No andaba mal
+> — el problema era que convertía a la tienda en una **segunda pantalla para
+> cargar pedidos**, en paralelo a la del ERP. Dos caminos para lo mismo se
+> despegan solos, y este no tenía los controles del otro: ni el stock del
+> freezer, ni el origen, ni «ya me pagó», ni el resumen para WhatsApp.
+>
+> Si aparece un link viejo con `?autopedido=1`, hoy **no hace nada**: el
+> parámetro se ignora y la tienda filtra por zona como siempre.
 
 ## Deploy
 

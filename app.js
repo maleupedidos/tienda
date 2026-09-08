@@ -104,32 +104,28 @@ function _purgeCartBloqueados() {
   return changed;
 }
 
-/* ── MODO AUTOPEDIDO ──────────────────────────────────────────────
-   Tadeo arma el pedido POR el cliente, y a veces el cliente pide algo que su
-   zona no muestra. Caso real (1/9/2026): Javier Galarraga, de Estancias, pidio
-   3 Sorrentinos Espinaca — un producto con zonas:["pilar"], que en Estancias no
-   aparece. Sin esto, el unico camino era escribir a mano en el Sheets, que es
-   justo lo que no queremos ("el Sheets es el motor, el ERP es la pantalla").
+/* El modo `?autopedido=1` se ELIMINO el 8/9/2026.
 
-   Con ?autopedido=1 se ve el catalogo COMPLETO. El pedido entra por el flujo
-   de siempre: a la hoja de la zona elegida (Estancias -> Home), con su nombre,
-   telefono y lote, y con Origen "Pendiente" — desde el ERP se pasa a Orden de
-   Compra como con cualquier otro.
+   Existio del 1/9 al 8/9 para un caso real: Javier Galarraga, de Estancias,
+   pidio 3 Sorrentinos Espinaca — un producto con zonas:["pilar"] que aca no se
+   muestra. Con el parametro se veia el catalogo completo y Tadeo cargaba el
+   pedido por el cliente.
 
-   NO cambia nada para el cliente que entra por el link normal: sin el
-   parametro, `_zonaPermite` filtra igual que siempre.
+   El problema no era que anduviera mal. Era que convertia a la tienda en una
+   SEGUNDA pantalla para cargar pedidos, en paralelo a la tab AUTOPEDIDO del
+   ERP. Dos caminos para lo mismo se despegan solos, y este no tiene los
+   controles del otro: ni el stock del freezer, ni el origen, ni "ya me pago",
+   ni el resumen para WhatsApp segun el momento del pedido.
 
-   El link con el parametro NO se le pasa a un cliente: veria productos que su
-   zona no entrega. Por eso la pantalla lo dice con un cartel imposible de no
-   ver (ver _bannerAutopedido). */
-var MODO_AUTOPEDIDO = /[?&]autopedido=1/.test(location.search);
+   Esos cuatro productos viven ahora en el catalogo de la tab AUTOPEDIDO, en un
+   bloque "por encargo" que dice que no salen del freezer y que origen
+   corresponde. Aca `_zonaPermite` vuelve a filtrar SIEMPRE, sin excepcion. */
 
 /* Unico lugar que decide si un producto o combo se muestra en la zona actual.
    Antes esta condicion estaba repetida en tres lados y era facil que una
    quedara sin actualizar. */
 function _zonaPermite(zonas) {
   if (!zonas) return true;
-  if (MODO_AUTOPEDIDO) return true;
   return zonas.indexOf(currentZone) >= 0;
 }
 
@@ -4130,23 +4126,6 @@ function copyVendedorAlias(alias, nombreCorto) {
     toast('✓ Alias de ' + nombreCorto + ' copiado: ' + alias);
   });
 }
-
-/* El modo autopedido tiene que gritarse. Si Tadeo se olvida de que lo tiene
-   puesto y le pasa el link a un cliente, ese cliente veria productos que su
-   zona no entrega y pediria algo que no le va a llegar. Un cartel fijo arriba,
-   naranja, imposible de confundir con la tienda de verdad. */
-function _bannerAutopedido() {
-  if (!MODO_AUTOPEDIDO) return;
-  var b = document.createElement('div');
-  b.id = 'banner-autopedido';
-  b.style.cssText = 'position:sticky;top:0;z-index:9999;background:#E65100;color:#fff;' +
-    'font:600 13px/1.45 system-ui,-apple-system,sans-serif;padding:9px 14px;text-align:center;' +
-    'box-shadow:0 2px 8px rgba(0,0,0,.25)';
-  b.innerHTML = '\uD83D\uDD27 <b>Modo autopedido</b> \u2014 se ve el cat\u00e1logo completo, ' +
-    'incluso lo que esta zona no vende. <b>No le pases este link a un cliente.</b>';
-  document.body.insertBefore(b, document.body.firstChild);
-}
-_bannerAutopedido();
 
 updateShippingBar();
 
