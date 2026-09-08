@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Botón de arrepentimiento · Maleu</title>
+  <meta name="description" content="Si te arrepentiste de tu compra, pedilo desde acá. Sin registrarte y sin trámites." />
+  <link rel="icon" href="img/logo-icono.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=a7236ffa" />
+</head>
+<body>
+
+<header>
+  <button class="menu-btn" id="menu-btn" type="button" aria-label="Abrir el menú"
+          aria-expanded="false" aria-controls="menu-panel" onclick="togglePageMenu()">
+    <span class="menu-bars" aria-hidden="true"><span></span><span></span><span></span></span>
+  </button>
+  <a href="/" class="logo-wrap">
+    <img class="logo-full" src="img/logo-maleu.png" alt="Maleu" width="620" height="120" />
+  </a>
+  <nav class="site-nav" aria-label="Secciones">
+    <a href="/" class="site-nav-link">Tienda</a>
+    <a href="/tips.html" class="site-nav-link">Tips Maleu</a>
+    <a href="/nosotros.html" class="site-nav-link">Sobre Nosotros</a>
+    <a href="/preguntas.html" class="site-nav-link">Preguntas Frecuentes</a>
+    <a href="/contacto.html" class="site-nav-link">Contacto</a>
+    <a href="/ser-parte.html" class="site-nav-link">Ser parte de Maleu</a>
+  </nav>
+  <div class="header-chips">
+    <a class="zone-chip" href="/">Ir a la tienda →</a>
+  </div>
+</header>
+
+<div class="menu-overlay" id="menu-overlay" hidden onclick="togglePageMenu()"></div>
+<nav class="menu-panel" id="menu-panel" hidden aria-label="Menú">
+    <a href="/" class="menu-panel-link">Tienda</a>
+    <a href="/tips.html" class="menu-panel-link">Tips Maleu</a>
+    <a href="/nosotros.html" class="menu-panel-link">Sobre Nosotros</a>
+    <a href="/preguntas.html" class="menu-panel-link">Preguntas Frecuentes</a>
+    <a href="/contacto.html" class="menu-panel-link">Contacto</a>
+    <a href="/ser-parte.html" class="menu-panel-link">Ser parte de Maleu</a>
+</nav>
+
+<main class="pagina">
+  <h1 class="pagina-titulo">Botón de arrepentimiento</h1>
+
+  <p class="pagina-intro">Si te arrepentiste de una compra, pedilo desde acá. No hace falta
+  que te registres ni que crees ninguna cuenta.</p>
+
+  <div class="arr-datos">
+    <div class="arr-dato">
+      <span class="arr-dato-n">10 días</span>
+      <span class="arr-dato-t">tenés para arrepentirte, desde que recibiste el pedido</span>
+    </div>
+    <div class="arr-dato">
+      <span class="arr-dato-n">5 días hábiles</span>
+      <span class="arr-dato-t">es lo que tenemos para responderte</span>
+    </div>
+  </div>
+
+  <h2>Pedilo acá</h2>
+  <form class="arr-form" id="arr-form" onsubmit="return arrEnviar(event)">
+    <label class="arr-campo">
+      <span class="arr-label">Tu nombre y apellido</span>
+      <input type="text" id="arr-nombre" required autocomplete="name" placeholder="Ej: Ana García">
+    </label>
+    <label class="arr-campo">
+      <span class="arr-label">Tu teléfono o tu mail</span>
+      <input type="text" id="arr-contacto" required autocomplete="tel"
+             placeholder="Para poder contestarte">
+    </label>
+    <label class="arr-campo">
+      <span class="arr-label">Qué pedido es</span>
+      <input type="text" id="arr-pedido" required
+             placeholder="El número, o el día en que te lo entregamos">
+    </label>
+    <label class="arr-campo">
+      <span class="arr-label">Qué querés devolver <em>(opcional)</em></span>
+      <input type="text" id="arr-que" placeholder="Todo el pedido, o solo algunos productos">
+    </label>
+    <label class="arr-campo">
+      <span class="arr-label">Motivo <em>(opcional — no estás obligado a darlo)</em></span>
+      <textarea id="arr-motivo" rows="3" placeholder="Si querés contarnos, nos sirve para mejorar"></textarea>
+    </label>
+
+    <button type="submit" class="arr-btn">Enviar el pedido de arrepentimiento</button>
+    <p class="arr-nota">Se abre WhatsApp con tu pedido ya escrito. Solo tenés que mandarlo.</p>
+  </form>
+
+  <div class="arr-listo" id="arr-listo" hidden>
+    <p class="arr-listo-t">Listo, tu pedido quedó armado.</p>
+    <p>Si WhatsApp no se abrió solo, copiá el texto y mandánoslo por donde te quede más cómodo:</p>
+    <textarea class="arr-copia" id="arr-copia" rows="8" readonly></textarea>
+    <div class="arr-listo-acciones">
+      <button type="button" class="pagina-cta" id="arr-copiar" onclick="arrCopiar()">Copiar el texto</button>
+      <a class="pagina-cta pagina-cta-2" id="arr-mail" href="#">Mandarlo por mail</a>
+    </div>
+  </div>
+
+  <h2>O escribinos directo</h2>
+  <p>No hace falta llenar nada: escribinos por WhatsApp al
+  <a href="https://wa.me/5491155038905">+54 9 11 5503 8905</a> y decinos que te querés arrepentir
+  de tu compra. Con eso alcanza.</p>
+
+  <script>
+  function _arrTexto() {
+    var g = function (id) { return (document.getElementById(id).value || '').trim(); };
+    var l = [];
+    l.push('PEDIDO DE ARREPENTIMIENTO');
+    l.push('');
+    l.push('Nombre: ' + g('arr-nombre'));
+    l.push('Contacto: ' + g('arr-contacto'));
+    l.push('Pedido: ' + g('arr-pedido'));
+    if (g('arr-que'))     l.push('Qué devuelvo: ' + g('arr-que'));
+    if (g('arr-motivo'))  l.push('Motivo: ' + g('arr-motivo'));
+    l.push('');
+    l.push('Fecha del pedido: ' + new Date().toLocaleDateString('es-AR'));
+    return l.join(String.fromCharCode(10));
+  }
+
+  function arrEnviar(e) {
+    e.preventDefault();
+    var texto = _arrTexto();
+    document.getElementById('arr-copia').value = texto;
+    document.getElementById('arr-mail').href =
+      'mailto:tadeoustariz@maleu.com.ar?subject=' +
+      encodeURIComponent('Pedido de arrepentimiento') +
+      '&body=' + encodeURIComponent(texto);
+    document.getElementById('arr-listo').hidden = false;
+    window.open('https://wa.me/5491155038905?text=' + encodeURIComponent(texto), '_blank');
+    document.getElementById('arr-listo').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return false;
+  }
+
+  function arrCopiar() {
+    var t = document.getElementById('arr-copia');
+    t.select(); t.setSelectionRange(0, 99999);
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (err) {}
+    if (navigator.clipboard) { navigator.clipboard.writeText(t.value); ok = true; }
+    /* Decir que se copio cuando no se copio es peor que no decir nada. */
+    document.getElementById('arr-copiar').textContent = ok ? 'Copiado' : 'Copialo a mano';
+  }
+  </script>
+
+  <div class="pagina-cierre">
+    <p>¿Te quedó alguna duda?</p>
+    <a class="pagina-cta" href="https://wa.me/5491155038905" target="_blank" rel="noopener">Escribinos por WhatsApp</a>
+    <a class="pagina-cta pagina-cta-2" href="/">Ver la tienda</a>
+  </div>
+</main>
+
+<footer class="pagina-footer">
+  <p>Maleu · Comida lista para cocinar · Pilar, Buenos Aires</p>
+  <a class="arr-link" href="/arrepentimiento.html">Botón de arrepentimiento</a>
+</footer>
+
+<script>
+/* El menu de estas paginas no puede usar el toggleMenu() de app.js: app.js
+   son 4000 lineas que arrancan el catalogo, el carrito y los modales de
+   zona y fecha. Cargarlo aca solo por el menu traeria todo eso a una
+   pagina que no tiene donde pintarlo. */
+function togglePageMenu() {
+  var p = document.getElementById('menu-panel');
+  var o = document.getElementById('menu-overlay');
+  var b = document.getElementById('menu-btn');
+  var abriendo = p.hidden;
+  p.hidden = !abriendo;
+  o.hidden = !abriendo;
+  b.setAttribute('aria-expanded', abriendo ? 'true' : 'false');
+  b.classList.toggle('is-open', abriendo);
+  document.body.style.overflow = abriendo ? 'hidden' : '';
+}
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && !document.getElementById('menu-panel').hidden) togglePageMenu();
+});
+</script>
+
+</body>
+</html>
