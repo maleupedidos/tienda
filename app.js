@@ -4693,6 +4693,9 @@ document.addEventListener('keydown', function(e) {
    en el scratchpad para el por que de cada decision. */
 
 var _busqTexto = '';
+/* Donde venia mirando antes de empezar a buscar, para devolverlo ahi cuando
+   limpie. Ver _busqAcomodarScroll. */
+var _busqScrollPrevio = null;
 
 /* Minusculas y sin tildes, en las dos puntas: asi "pina" encuentra "Piña"
    y "jamon" encuentra "Jamón". */
@@ -4726,11 +4729,70 @@ function _busqTextoDeCard(card) {
   return t;
 }
 
+/* ── DONDE QUEDA EL SCROLL AL BUSCAR ────────────────────────────────
+   Al filtrar, la busqueda esconde "Los mas pedidos", las categorias, el
+   ultimo pedido y todas las cards que no matchean. El documento se achica de
+   golpe —de ~11.000px a ~3.000— y el navegador CLAMPEA el scroll al nuevo
+   final: el cliente escribe una palabra y aterriza abajo de todo, mirando el
+   pie de pagina, sin ver un solo resultado.
+
+   Lo reporto Tadeo el 10/9/2026 desde su iPhone: "busco una palabra y me
+   scrollea hacia el final. deberia arrancar de arriba hacia abajo".
+
+   La regla es esa: los resultados arrancan ARRIBA. Y solo SUBE — si ya
+   estabas mirando el buscador, no te mueve nada; empujar para abajo a alguien
+   que ya esta arriba seria cambiar un problema por otro. */
+function _busqTopeDeResultados() {
+  var cat = $id('catalogo') || $id('catalog-root');
+  if (!cat) return 0;
+  /* _stickyOffsetPx() ya contempla la barra pegada arriba (buscador + info +
+     categorias), asi que el primer resultado queda justo debajo y no tapado.
+     Es la MISMA cuenta que usan los botones de categoria: dos formas de
+     decidir "donde arranca el catalogo" se despegarian sin que nadie se
+     entere. */
+  return Math.max(0, cat.getBoundingClientRect().top + window.pageYOffset - _stickyOffsetPx());
+}
+
+/* El CSS le pone `scroll-behavior:smooth` al <html>, asi que un scrollTo
+   pelado sale ANIMADO. En el celular esa animacion se corta sola apenas el
+   dedo roza la pantalla y el cliente queda tirado a mitad de camino — ya paso
+   con el salto al formulario. Acá ademas seria mareante: esto no es un viaje,
+   es una correccion de posicion, y ocurre con cada tecla. */
+function _busqSaltoSeco(y) {
+  var root = document.documentElement;
+  var prev = root.style.scrollBehavior;
+  root.style.scrollBehavior = 'auto';
+  window.scrollTo(0, y);
+  root.style.scrollBehavior = prev;
+}
+
+function _busqAcomodarScroll(hayBusqueda, habiaAntes) {
+  if (hayBusqueda) {
+    /* La primera tecla: me guardo donde venia mirando. Las siguientes no lo
+       pisan — si no, cada tecla guardaria el tope y al limpiar no volveria a
+       ningun lado. */
+    if (!habiaAntes) _busqScrollPrevio = window.pageYOffset;
+    var tope = _busqTopeDeResultados();
+    if (window.pageYOffset > tope + 2) _busqSaltoSeco(tope);
+    return;
+  }
+  /* Se limpio. Al reaparecer las secciones de arriba el catalogo se corre
+     ~1.700px hacia abajo, asi que quedarse quieto significa aterrizar en
+     cualquier otro lado. Lo devolvemos donde estaba. Vive aca y no en
+     limpiarBusqueda() para que valga tambien cuando borra las letras a mano,
+     que es como se limpia la mitad de las veces. */
+  if (habiaAntes && _busqScrollPrevio !== null) {
+    _busqSaltoSeco(_busqScrollPrevio);
+    _busqScrollPrevio = null;
+  }
+}
+
 function buscarEnCatalogo() {
   var inp = $id('buscador-input');
   if (!inp) return;
   var crudo = String(inp.value || '').trim();
   var q = _busqNorm(crudo).trim();
+  var habia = !!_busqTexto;
   _busqTexto = q;
 
   var x = $id('buscador-x');
@@ -4763,6 +4825,10 @@ function buscarEnCatalogo() {
   });
 
   _busqPintarInfo(visibles, cards.length, crudo);
+
+  /* Al final de todo: la info de arriba cambia el alto de la barra pegada, y
+     el tope se calcula con ese alto ya puesto. */
+  _busqAcomodarScroll(!!q, habia);
 }
 
 function _busqPintarInfo(visibles, total, crudo) {

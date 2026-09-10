@@ -1143,9 +1143,18 @@ header > .menu-btn { margin-left:-.5rem; margin-right:-.2rem; }
 .buscador-input {
   flex: 1 1 auto; min-width: 0;
   border: 0; outline: 0; background: transparent;
-  font-family: var(--font); font-size: .92rem; font-weight: 500; color: var(--brown);
+  font-family: var(--font); font-weight: 500; color: var(--brown);
   padding: .62rem 0; min-height: 44px;   /* minimo tactil */
   -webkit-appearance: none; appearance: none;
+  /* 16px NO ES DECORATIVO: abajo de 16, Safari en iPhone hace zoom solo al
+     enfocar el campo, y despues deja la pagina corrida a lo ancho — hay que
+     volver a mano. Tenia .92rem (14,7px) y Tadeo lo reporto el 10/9/2026:
+     "aprieto el casillero y me hace zoom".
+     Va en px y no en rem porque el umbral de iOS es en pixeles absolutos: si
+     alguien cambia el font-size del <html>, un `1rem` dejaria de ser 16.
+     Y no se arregla con maximum-scale=1 en el viewport: eso le sacaria al
+     cliente el zoom con los dedos en TODA la tienda. */
+  font-size: 16px;
 }
 .buscador-input::placeholder { color: #b0a396; font-weight: 400; }
 /* La X propia de type="search" en Chrome se saca: tenemos la nuestra, de
