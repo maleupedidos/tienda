@@ -45,7 +45,10 @@ const PRODUCTOS = [
      `abbr` es la llave con la que se cruzan las piezas y la que entiende el
      backend. `porPeso` lo confirma `action=precios` (u:"kg") al cargar. */
   { id:30, abbr:"CCo", cat:"Carnes", porPeso:true, nuevo:true, nombre:"Colita de Cuadril", desc:"Jugosa al horno y perfecta a la parrilla. Un corte que nunca falla.", precio:25000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
-  { id:31, abbr:"CEn", cat:"Carnes", porPeso:true, nuevo:true, nombre:"Entra\u00f1a",           desc:"Fina, sabrosa y r\u00e1pida. La que sale primero de la parrilla.",          precio:34000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
+  /* La entrana viene de a DOS tiras por paquete (dato de Lucas, 10/9/2026), y
+     el peso que se ve es el del paquete entero. Sin decirlo, el que elige una
+     de 1,163 kg no sabe si le llega una tira grande o dos. */
+  { id:31, abbr:"CEn", cat:"Carnes", porPeso:true, nuevo:true, nombre:"Entra\u00f1a",           desc:"Fina, sabrosa y r\u00e1pida. La que sale primero de la parrilla.",          precio:34000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo","2 tiras por paquete"] },
   { id:32, abbr:"CLo", cat:"Carnes", porPeso:true, nuevo:true, nombre:"Lomo",              desc:"El corte m\u00e1s tierno. Para la ocasi\u00f3n que se merece el mejor.",       precio:33000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
   { id:33, abbr:"CPi", cat:"Carnes", porPeso:true, nuevo:true, nombre:"Pica\u00f1a",            desc:"El corte brasilero que se volvi\u00f3 infaltable. Con su tapa de grasa.",  precio:26000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
   { id:34, abbr:"CVa", cat:"Carnes", porPeso:true, nuevo:true, nombre:"Vac\u00edo",             desc:"El cl\u00e1sico del asado argentino. Paciencia y fuego bajo.",            precio:26000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
@@ -153,6 +156,20 @@ function getActiveProducts() {
 function getActiveCategories() {
   var cats = currentZone === 'clubes' ? CATEGORIAS_CLUBES : CATEGORIAS;
   return cats.filter(function(c) { return !_catBloqueadaPorBarrio(c.nombre); });
+}
+
+/* Las categorias que de verdad se VEN: las que tienen al menos un producto
+   activo en esta zona.
+
+   Existe porque el criterio vivia en tres lugares y uno no filtraba: el chip
+   "Carnes" se dibujaba en el nav aunque no hubiera ni una pieza, y al tocarlo
+   no pasaba nada — su seccion no existe. Un boton que no hace nada es peor
+   que no tener boton: el cliente concluye que la tienda esta rota. */
+function getCategoriasVisibles() {
+  var prods = getActiveProducts();
+  return getActiveCategories().filter(function (c) {
+    return prods.some(function (p) { return p.cat === c.nombre; });
+  });
 }
 
 /* ══════════════════════════════════════════════════
@@ -516,6 +533,31 @@ function piezasSubtotal() {
 }
 function piezasCount() { return Object.keys(piezaCart).length; }
 
+/* Las piezas del carrito, agrupadas por corte y ordenadas de la mas chica a
+   la mas grande. Tres colitas sueltas se leen como tres productos distintos,
+   y son el mismo corte en tres pedazos.
+
+   Existe como funcion porque este agrupado se dibuja en TRES lados —el
+   carrito, el resumen del formulario y el mensaje de WhatsApp— y las tres
+   tienen que decir lo mismo. Escrito tres veces, se despega. */
+function piezasAgrupadas() {
+  var porCorte = {};
+  Object.keys(piezaCart).forEach(function (pid) {
+    var it = piezaCart[pid];
+    (porCorte[it.abbr] = porCorte[it.abbr] || []).push({ pid: pid, kg: it.kg, precio: it.precio, nombre: it.nombre });
+  });
+  return Object.keys(porCorte).map(function (abbr) {
+    var lista = porCorte[abbr].sort(function (a, b) { return a.kg - b.kg; });
+    return {
+      abbr: abbr,
+      nombre: lista[0].nombre,
+      lista: lista,
+      kg: lista.reduce(function (t, x) { return t + x.kg; }, 0),
+      total: lista.reduce(function (t, x) { return t + x.precio; }, 0)
+    };
+  });
+}
+
 /* Traer el inventario del backend.
 
    ⚠ `action=carnePiezas` NO sirve: pide token de sesion y la tienda no tiene.
@@ -549,6 +591,14 @@ function fetchPiezas() {
       piezasEstado = hubo ? 'ok' : 'sin-datos';
     })
     .catch(function () { _piezasFallo(); });
+}
+
+/* Que piezas hay, en una linea. Sirve para saber si el inventario cambio
+   sin comparar objeto por objeto. */
+function _piezasFirma() {
+  return Object.keys(piezasMap).sort().map(function (a) {
+    return a + ':' + piezasMap[a].map(function (pz) { return pz.id + '@' + pz.kg; }).join(',');
+  }).join('|');
 }
 
 /* Un refresco que falla NO borra lo que ya sabemos.
@@ -730,6 +780,9 @@ let piezasMap = {};
    cuando en realidad todavia no lo sabemos — no saber no es lo mismo que no
    hay, y decirlo al reves es la forma mas facil de perder una venta. */
 let piezasEstado = 'cargando';
+/* El observer que resalta el chip de la categoria que estas mirando. Vive
+   afuera para poder desconectar el anterior en cada repintado. */
+let _catObserver = null;
 let currentZone = null; // 'estancias' | 'pilar' | 'clubes'
 let stockMap = {};            // stock físico actual (lo que hay en el depósito)
 let stockProyectadoMap = {};  // físico + Σ cantidad OC "Pedido" pendientes
@@ -1400,10 +1453,9 @@ function onPilarBarrioChange() {
   _updateZoneChip();
   // Sorrentinos bloqueados en Ayres del Pilar: sacarlos del carrito y re-renderizar
   // catálogo + nav (oculta/reaparece la categoría y sus chips según el barrio).
-  // renderCatNav() va SIEMPRE junto a renderCatalog(): reasigna los id de las
-  // secciones y rearma los chips; sin él, los chips quedan viejos y el tap falla.
+  // renderCatalog() ya repinta el nav y los tiles: no hace falta pedirlo.
   _purgeCartBloqueados();
-  if (typeof renderCatalog === 'function') { renderCatalog(); renderCatNav(); }
+  if (typeof renderCatalog === 'function') renderCatalog();
   // Si cambió Red ↔ no-Red, el cap de stock puede cambiar — refrescar
   _ensureCartFitsDate();
   updateStockDisplay();
@@ -2300,12 +2352,14 @@ function renderTopProductos() {
 
 /* ── RENDER CATÁLOGO ── */
 function renderCatalog() {
-  const cats = getActiveCategories();
+  const cats = getCategoriasVisibles();
   const prods_all = getActiveProducts();
   $id('catalog-root').innerHTML = '<span id="productos-ancla"></span>' + cats.map(cat => {
     const prods = prods_all.filter(p => p.cat === cat.nombre).sort((a,b) => (b.top?1:0) - (a.top?1:0));
     if (!prods.length) return '';
-    return '<section class="cat-section"><div class="cat-header">' +
+    /* El id va EN EL MARKUP y no lo asigna nadie despues: es lo que busca
+       scrollToCat, y una seccion sin id es un boton que no hace nada. */
+    return '<section class="cat-section" id="cat-' + slugify(cat.nombre) + '"><div class="cat-header">' +
       '<div class="cat-title">' + cat.nombre + '</div>' +
       '<div class="cat-nota">' + cat.nota + '</div>' +
       (cat.tip ? '<div class="cat-tip">🍳 ' + cat.tip + '</div>' : '') +
@@ -2317,6 +2371,12 @@ function renderCatalog() {
   // lugares que llaman a renderCatalog y colgarse de uno solo es como se
   // despegan las dos listas.
   renderTopProductos();
+  /* El nav y los tiles se repintan aca por el mismo motivo que los
+     destacados: si aparece o desaparece una categoria, los chips de arriba
+     tienen que decir lo mismo que el catalogo. Colgarlo de los call sites es
+     como los botones dejaron de andar el 10/9/2026 — habia cinco y dos se
+     olvidaron de llamarlo. */
+  renderCatNav();
   // Si hay una busqueda puesta, el catalogo recien dibujado tiene que
   // respetarla. Sin esto, cualquiera de los cuatro repintados la deshace
   // sin decir nada y aparecen productos que el cliente ya habia filtrado.
@@ -2650,19 +2710,10 @@ function updateUI() {
         '</div>' +
       '</div>';
     }).join('');
-    /* Las piezas van agrupadas por corte: tres colitas sueltas se leen como
-       tres productos distintos, y son el mismo corte en tres pedazos. */
-    var porCorte = {};
-    Object.keys(piezaCart).forEach(function (pid) {
-      var it = piezaCart[pid];
-      (porCorte[it.abbr] = porCorte[it.abbr] || []).push({ pid: pid, it: it });
-    });
-    var piezaLinesHtml = Object.keys(porCorte).map(function (abbr) {
-      var lista = porCorte[abbr].sort(function (a, b) { return a.it.kg - b.it.kg; });
-      var kg = lista.reduce(function (t, x) { return t + x.it.kg; }, 0);
-      var tot = lista.reduce(function (t, x) { return t + x.it.precio; }, 0);
+    var piezaLinesHtml = piezasAgrupadas().map(function (g) {
+      var abbr = g.abbr, lista = g.lista, kg = g.kg, tot = g.total;
       var filas = lista.map(function (x) {
-        return '<li>' + kgTexto(x.it.kg) + ' \u00b7 ' + ars(x.it.precio) +
+        return '<li>' + kgTexto(x.kg) + ' \u00b7 ' + ars(x.precio) +
           '<button class="pz-quitar" type="button" aria-label="Sacar esta pieza" ' +
           'onclick="togglePieza(\'' + abbr + '\',\'' + x.pid + '\')">\u00d7</button></li>';
       }).join('');
@@ -2670,7 +2721,7 @@ function updateUI() {
       return '<div class="cart-item cart-item-carne">' +
         '<span class="cart-item-emoji">\ud83e\udd69</span>' +
         '<div class="cart-item-info">' +
-          '<div class="cart-item-name">' + lista[0].it.nombre + '</div>' +
+          '<div class="cart-item-name">' + g.nombre + '</div>' +
           '<div class="cart-item-sub">' + lista.length +
             (una ? ' pieza' : ' piezas') + ' \u00b7 ' + kgTexto(kg) +
             ' \u00b7 <strong>' + ars(tot) + '</strong></div>' +
@@ -2780,6 +2831,17 @@ function updateFormSummary() {
     const p = PROD_MAP[id];
     if (!p) return '';
     return '<div class="summary-line"><span>' + p.nombre + ' <strong>×' + qty + '</strong></span><span>' + ars(p.precio*qty) + '</span></div>';
+  }).join('');
+
+  /* La carne. Faltaba: con un pedido de pura carne el resumen mostraba los
+     totales sin una sola linea de que estabas llevando. Se dice el PESO,
+     porque es lo que se compro: "1,240 kg" dice mas que "1 pieza". */
+  html += piezasAgrupadas().map(function (g) {
+    var detalle = g.lista.length > 1
+      ? ' <span class="summary-pz-detalle">(' + g.lista.map(function (x) { return kgTexto(x.kg); }).join(' + ') + ')</span>'
+      : '';
+    return '<div class="summary-line"><span>\ud83e\udd69 ' + g.nombre + ' <strong>' + kgTexto(g.kg) + '</strong>' +
+      detalle + '</span><span>' + ars(g.total) + '</span></div>';
   }).join('');
 
   // Sub Total: solo si hay descuentos (deja claro de qué monto sale el 10%/cupón).
@@ -3195,17 +3257,14 @@ function enviarPedido() {
      cliente eligio esas piezas y tiene que poder controlarlas una por una
      cuando le llega el pedido. */
   const piezaLinesWA = (function () {
-    var porCorte = {};
-    Object.keys(piezaCart).forEach(function (pid) {
-      var it = piezaCart[pid];
-      (porCorte[it.abbr] = porCorte[it.abbr] || []).push(it);
-    });
-    return Object.keys(porCorte).map(function (abbr) {
-      var l = porCorte[abbr].sort(function (a, b) { return a.kg - b.kg; });
-      var kg = l.reduce(function (t, x) { return t + x.kg; }, 0);
-      var tot = l.reduce(function (t, x) { return t + x.precio; }, 0);
-      return '\ud83e\udd69 ' + l[0].nombre + ' \u2014 ' + kgTexto(kg) + ' \u00b7 ' + ars(tot) +
-        '\n   (' + l.map(function (x) { return kgTexto(x.kg); }).join(' + ') + ')';
+    return piezasAgrupadas().map(function (g) {
+      /* El desglose solo desde DOS piezas: con una sola, "1,163 kg (1,163 kg)"
+         repite el mismo numero y se lee como un error. Mismo criterio que el
+         carrito. */
+      var desglose = g.lista.length > 1
+        ? '\n   (' + g.lista.map(function (x) { return kgTexto(x.kg); }).join(' + ') + ')'
+        : '';
+      return '\ud83e\udd69 ' + g.nombre + ' \u2014 ' + kgTexto(g.kg) + ' \u00b7 ' + ars(g.total) + desglose;
     }).join('\n');
   })();
   const prodLines = [comboLinesWA, _sepAdemas, prodLinesProductos, piezaLinesWA].filter(Boolean).join('\n');
@@ -3262,12 +3321,18 @@ function enviarPedido() {
   //   - Con vendedor Red y ALIAS cargado en Sheets: alias del vendedor.
   //   - Con vendedor Red sin alias: no ponemos alias — el vendedor lo pasa a mano.
   if (pagoEl.value === 'Transferencia') {
-    var aliasWA = '';
-    if (!vendedorMatch)               aliasWA = 'maleump';
-    else if (vendedorMatch.alias)     aliasWA = vendedorMatch.alias;
-    if (aliasWA) {
+    if (!vendedorMatch) {
+      /* Las dos cuentas de Maleu: el cliente transfiere a la que le quede
+         comoda. Van con el banco adelante porque el alias solo no dice a que
+         app entrar. */
       msgLines.push('');
-      msgLines.push('alias: *' + aliasWA + '*');
+      msgLines.push(ALIAS_MALEU.length > 1 ? 'Para transferir, cualquiera de las dos:' : 'alias:');
+      ALIAS_MALEU.forEach(function (c) {
+        msgLines.push('\u2022 ' + c.banco + ': *' + c.alias + '*');
+      });
+    } else if (vendedorMatch.alias) {
+      msgLines.push('');
+      msgLines.push('alias: *' + vendedorMatch.alias + '*');
     }
   }
   var msg = msgLines.join('\n');
@@ -3788,7 +3853,7 @@ function expandForm() {
 function renderCatTiles() {
   const cont = $id('cat-tiles');
   if (!cont) return;
-  const cats = getActiveCategories();
+  const cats = getCategoriasVisibles();
   const prods = getActiveProducts();
   const tiles = cats.map(cat => {
     const suyos = prods.filter(p => p.cat === cat.nombre);
@@ -3815,7 +3880,9 @@ function renderCatNav() {
   renderCatTiles();
   const nav = $id('cat-nav');
   if (!nav) return;
-  const cats = getActiveCategories();
+  /* La MISMA lista que el catalogo: un chip cuya seccion no existe es un
+     boton muerto. */
+  const cats = getCategoriasVisibles();
   nav.innerHTML =
     '<button class="cat-nav-home" type="button" aria-label="Volver al inicio" onclick="window.scrollTo({top:0,behavior:\'smooth\'})">' +
       '<img src="img/logo-icono.png" alt="Maleu">' +
@@ -3830,11 +3897,14 @@ function renderCatNav() {
     // el IntersectionObserver lo resalte al scrollear hasta los combos.
     (getActiveCombos().length ? '<button class="cat-nav-btn cat-nav-combos" data-slug="combos-ancla" onclick="scrollToCombos()">🎁 Combos</button>' : '') +
     '</div></div>';
-  document.querySelectorAll('.cat-section').forEach((section,i) => {
-    const cat = getActiveCategories()[i]; if (!cat) return;
-    section.id = 'cat-' + slugify(cat.nombre);
-  });
-  const observer = new IntersectionObserver(entries => {
+  /* Los id ya vienen en el markup de cada seccion. Aca se asignaban
+     emparejando `.cat-section[i]` con `getActiveCategories()[i]`, y eso
+     estaba mal de dos formas: se perdian en cualquier repintado que no
+     pasara por aca, y la seccion de Combos TAMBIEN tiene `.cat-section`,
+     asi que con una categoria sin productos los id salian corridos y cada
+     boton llevaba a otra categoria. */
+  if (_catObserver) _catObserver.disconnect();   // si no, se acumulan
+  const observer = _catObserver = new IntersectionObserver(entries => {
     if (_scrollingToCat) return;
     entries.forEach(entry => { if (entry.isIntersecting) setActiveNav(entry.target.id.replace('cat-','')); });
   }, { rootMargin:'-20% 0px -70% 0px', threshold:0 });
@@ -3986,7 +4056,14 @@ async function fetchStock() {
   /* Las piezas van con el mismo pulso que el stock: son el stock de la
      carne. Va DESPUES del catch para que un fallo del stock no impida
      traerlas, y viceversa — son dos endpoints distintos. */
-  try { await fetchPiezas(); if (typeof renderCatalog === 'function') { renderCatalog(); renderCatTiles(); } }
+  /* Solo se repinta si la lista de piezas cambio de verdad. Antes se
+     repintaba el catalogo entero cada 60 s pasara lo que pasara: eso le
+     mueve el nav al que esta scrolleando y redibuja 39 productos al pedo. */
+  try {
+    var antes = _piezasFirma();
+    await fetchPiezas();
+    if (_piezasFirma() !== antes && typeof renderCatalog === 'function') renderCatalog();
+  }
   catch (e) { console.warn('fetchPiezas:', e); }
 }
 /* Devuelve el tope a usar para un producto según el modo de stock actual.
@@ -4124,8 +4201,7 @@ function repeatLastOrder() {
 }
 
 /* ── INIT ── */
-renderCatalog();
-renderCatNav();
+renderCatalog();   // repinta tambien el nav y los tiles
 updateCatNavTop();
 window.addEventListener('resize', updateCatNavTop);
 
@@ -4406,7 +4482,15 @@ function updateShippingBar() {
 // getShipping ya maneja FREE_SHIPPING_MIN internamente
 
 /* ── MERCADO PAGO ALIAS ── */
-// El alias maleump es de Maleu central. Si el barrio (Pilar) tiene vendedor Red
+/* Las cuentas de Maleu para transferir. El cliente elige la que le quede
+   comoda: son las mismas dos que el ERP tiene dadas de alta.
+   Una sola lista: la usan el formulario y el mensaje de WhatsApp. */
+const ALIAS_MALEU = [
+  { banco: 'Mercado Pago', alias: 'maleump' },
+  { banco: 'Brubank',      alias: 'maleubru' }
+];
+
+// Los alias de Maleu central. Si el barrio (Pilar) tiene vendedor Red
 // asignado (ej: Marcos Bottcher en El Lucero/Los Tacos), el cobro va al vendedor
 // y el alias de Maleu no aplica — el vendedor le pasa el suyo al confirmar.
 function _barrioPilarTieneVendedor() {
@@ -4427,7 +4511,7 @@ function onPagoChange() {
   // cliente elige transferencia y NO hay vendedor Red (Home, Pilar 'Otra zona',
   // o vendedor Red sin alias propio cargado).
   var mostrarAliasMaleu = esTransfer && (!vendedor || !vendedor.alias);
-  if (mostrarAliasMaleu) { alias.classList.remove('hidden'); }
+  if (mostrarAliasMaleu) { _pintarAliasMaleu(); alias.classList.remove('hidden'); }
   else { alias.classList.add('hidden'); }
   if (aliasNote) {
     if (esTransfer && vendedor) {
@@ -4452,8 +4536,22 @@ function onPagoChange() {
   updateUI();
   updateFormSummary();
 }
-function copyAlias() {
-  navigator.clipboard.writeText('maleump').then(function() { toast('✓ Alias copiado: maleump'); });
+/* Las filas de alias se dibujan desde ALIAS_MALEU y no estan escritas en el
+   HTML: si maniana se suma o se cambia una cuenta, se toca un solo lugar y el
+   WhatsApp dice lo mismo que la pantalla. */
+function _pintarAliasMaleu() {
+  var cont = $id('mp-alias-lista');
+  if (!cont) return;
+  cont.innerHTML = ALIAS_MALEU.map(function (c) {
+    return '<div class="mp-alias-row">' +
+      '<span><span class="mp-alias-banco">' + c.banco + '</span> <strong>' + c.alias + '</strong></span>' +
+      '<button type="button" class="mp-copy-btn" onclick="copyAlias(\'' + c.alias + '\')">Copiar</button>' +
+    '</div>';
+  }).join('');
+}
+function copyAlias(a) {
+  var alias = a || ALIAS_MALEU[0].alias;
+  navigator.clipboard.writeText(alias).then(function() { toast('\u2713 Alias copiado: ' + alias); });
 }
 function copyVendedorAlias(alias, nombreCorto) {
   navigator.clipboard.writeText(alias).then(function() {

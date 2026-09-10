@@ -3,8 +3,9 @@
  *
  *   node _tools/ver-carne.js
  *
- * Abre la tienda local en un Chrome de verdad, con piezas de EJEMPLO. Sirve
- * para mirarla y tocarla; no para decidir precios ni pesos.
+ * Abre la tienda local en un Chrome de verdad, con el inventario de carne
+ * cargado a mano. Sirve para mirarla y tocarla mientras el endpoint publico
+ * del ERP no existe.
  *
  * Por que existe esto y no un `?demo=1` adentro de la tienda: un parametro
  * asi es una segunda puerta que queda viva en produccion y termina mostrando
@@ -15,7 +16,7 @@
  * Lo que hace, en orden:
  *   1. sirve la carpeta del repo en 127.0.0.1:8090
  *   2. abre Chrome (visible) ahi
- *   3. contesta `action=piezas_full` con piezas de ejemplo
+ *   3. contesta `action=piezas_full` con el stock de mas abajo
  *   4. BLOQUEA todo POST — ningun pedido llega al Sheets
  *   5. pinta una banda arriba que dice que es una vista previa
  *
@@ -37,14 +38,17 @@ const CHROMES = [
   'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
 ];
 
-/* Pesos plausibles de piezas envasadas al vacio. Son INVENTADOS: los de
-   verdad salen de pesar cada pieza al recibir la mercaderia. */
+/* El stock REAL al 10/9/2026, que paso Tadeo. Coincide con lo que el ERP
+   tiene contado en el Deposito Moresco: entrana 1,163 kg y vacio 5,610 kg
+   (1,064 + 1,241 + 1,922 + 1,383 = 5,610 exacto). */
 const PIEZAS = {
-  CCo: [{ id: 'DEMO-01', kg: 1.240 }, { id: 'DEMO-02', kg: 0.983 }, { id: 'DEMO-03', kg: 1.412 }],
-  CEn: [{ id: 'DEMO-04', kg: 0.612 }, { id: 'DEMO-05', kg: 0.735 }],
-  CLo: [{ id: 'DEMO-06', kg: 1.805 }, { id: 'DEMO-07', kg: 2.010 }],
-  CPi: [{ id: 'DEMO-08', kg: 1.120 }],
-  CVa: [{ id: 'DEMO-09', kg: 1.640 }, { id: 'DEMO-10', kg: 2.230 }, { id: 'DEMO-11', kg: 1.955 }],
+  // Entraña: 1 paquete de 1,163 kg. Cada paquete trae 2 tiras.
+  CEn: [{ id: 'ENT-01', kg: 1.163 }],
+  // Vacío: 4 unidades.
+  CVa: [{ id: 'VAC-01', kg: 1.064 }, { id: 'VAC-02', kg: 1.241 },
+        { id: 'VAC-03', kg: 1.922 }, { id: 'VAC-04', kg: 1.383 }],
+  // Colita, lomo y picaña: sin stock. Van vacíos a propósito — así se ve que
+  // la tienda NO dibuja un corte que no tiene piezas.
 };
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -95,7 +99,7 @@ function guion() {
     if (document.getElementById('vista-previa-carne')) return;
     var d = document.createElement('div');
     d.id = 'vista-previa-carne';
-    d.textContent = 'VISTA PREVIA \\u00b7 los pesos de la carne son de ejemplo \\u00b7 ningun pedido se guarda';
+    d.textContent = 'VISTA PREVIA \\u00b7 el stock de carne es el real \\u00b7 ningun pedido se guarda';
     d.style.cssText = 'position:fixed;z-index:99999;left:0;right:0;bottom:0;background:#331C1C;' +
       'color:#F2E8C7;font:600 12px/1.5 system-ui,sans-serif;text-align:center;padding:7px 10px;' +
       'letter-spacing:.02em';
@@ -160,7 +164,7 @@ async function main() {
 
   const cortes = Object.keys(PIEZAS).length;
   const piezas = Object.values(PIEZAS).reduce((a, b) => a + b.length, 0);
-  console.log(AMA + 'Piezas de EJEMPLO inyectadas: ' + cortes + ' cortes, ' + piezas + ' piezas.' + RST);
+  console.log(AMA + 'Piezas inyectadas (stock real del 10/9): ' + cortes + ' cortes, ' + piezas + ' piezas.' + RST);
   console.log(DIM + 'Los POST estan bloqueados: podes llegar hasta "Confirmar pedido" sin que se guarde nada.' + RST);
   console.log(DIM + 'Ctrl+C para cerrar.\n' + RST);
 

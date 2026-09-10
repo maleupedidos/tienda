@@ -1411,3 +1411,38 @@ body.busqueda-activa #repeat-block { display: none !important; }
   .carne-card { flex-direction: column; }
   .carne-card .product-thumb { flex: 0 0 auto; aspect-ratio: 16 / 9; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   "LOS MAS PEDIDOS", MAS CHICO  (10/9/2026)
+   Tadeo: "cada producto achicarlo un poco (tanto en compu como en celular),
+   ocupa demasiado espacio en la tienda".
+
+   Medido antes de tocar: a 390px la seccion entera media 1001px —mas que una
+   pantalla de celular— y en escritorio cada card media 618px de alto, de los
+   cuales 432 eran foto. Es una vidriera, no el catalogo: tiene que dejar ver
+   que hay mas abajo.
+
+   Lo que se toca es la FOTO, que es el 70% del alto, y el ancho de columna en
+   escritorio. El catalogo NO se toca: ahi la foto grande esta bien.
+   ══════════════════════════════════════════════════════════ */
+#top-productos .product-thumb { aspect-ratio: 4 / 3; }
+#top-productos .product-body  { padding: .55rem .6rem; }
+#top-productos .product-name  { font-size: .8rem; }
+#top-productos .product-desc  { -webkit-line-clamp: 2; font-size: .68rem; margin-bottom: .3rem; }
+#top-productos .product-chips { margin-bottom: .3rem; }
+
+/* En escritorio, cuatro en fila en vez de tres: la card se angosta y con eso
+   la foto baja sola, sin achicar la letra. */
+@media (min-width: 900px) {
+  #top-productos { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* Las dos cuentas para transferir. */
+.mp-alias-titulo { font-weight: 700; color: #1565C0; }
+.mp-alias-banco  { color: #1565C0; font-weight: 600; }
+.mp-alias-lista  { display: flex; flex-direction: column; gap: .35rem; }
+#mp-alias-lista .mp-alias-row + .mp-alias-row { margin-top: .35rem; }
+
+/* El desglose de pesos en el resumen del formulario, en voz baja: el dato es
+   el peso total, esto es el detalle. */
+.summary-pz-detalle { color: #999; font-size: .92em; }
