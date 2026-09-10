@@ -1045,16 +1045,13 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
 .zona-dias { color:#6b5a50; font-size:.9rem; margin:.25rem 0; line-height:1.5; }
 .zona-envio { font-size:.82rem; color:var(--orange); font-weight:600; }
 
-/* ── Avisos de borrador ──
-   Marcan lo que escribi yo y Tadeo todavia no leyo. Van bien visibles
-   a proposito: un borrador que no se distingue del texto final se
-   publica sin querer. SACAR cuando esten revisados. */
-.borrador-aviso, .borrador-pendiente {
-  background:#FFF8E1; border-left:3px solid #FFC107; border-radius:8px;
-  padding:.9rem 1.1rem; margin-bottom:1.5rem; font-size:.88rem;
-  line-height:1.55; color:#6b5a2a; }
-.borrador-pendiente { margin:1.2rem 0; }
-.borrador-aviso strong, .borrador-pendiente strong { color:#8a6d1a; }
+/* Aca vivian `.borrador-aviso` y `.borrador-pendiente`, dos recuadros amarillos
+   para marcar lo que faltaba revisar. Su propio comentario decia "un borrador
+   que no se distingue del texto final se publica sin querer" — y se publicaron
+   igual, en Sobre Nosotros y en Ser parte, con una nota dirigida a Tadeo a la
+   vista de cualquier cliente. Un aviso VISIBLE no es una red: hay que mirarlo
+   para que sirva. La red es `node _tools/verificar-paginas.js`, que corta.
+   No las traigas de vuelta: un borrador se deja sin commitear. */
 
 /* ── Cierre y footer ── */
 .pagina-cierre { margin-top:2.5rem; padding-top:1.8rem;
