@@ -71,12 +71,20 @@ async function visitar(cli, url) {
   }
   const r = await cli.enviar('Runtime.evaluate', {
     expression: `JSON.stringify({
-      modo: (typeof MODO_AUTOPEDIDO !== 'undefined') ? MODO_AUTOPEDIDO : 'NO EXISTE',
-      zonaPermite: typeof _zonaPermite === 'function',
+      corrio: typeof _zonaPermite === 'function' && typeof PRODUCTOS !== 'undefined',
+      productos: (typeof PRODUCTOS !== 'undefined') ? PRODUCTOS.length : 0,
       versionScript: (document.querySelector('script[src*="app.js"]')||{}).getAttribute
         ? document.querySelector('script[src*="app.js"]').getAttribute('src') : '?'
     })`, returnByValue: true });
   return JSON.parse(r.result.value);
+}
+
+/* El mismo md5 que calcula `_tools/cachebuster.py`: normalizado a LF, 8 hex.
+   Sin normalizar, el MISMO archivo da distinto en Windows y en el runner. */
+function hashDe(buf) {
+  return require('crypto').createHash('md5')
+    .update(Buffer.from(buf).toString('binary').replace(/\r\n/g, '\n'), 'binary')
+    .digest('hex').slice(0, 8);
 }
 
 async function main() {
@@ -105,17 +113,29 @@ async function main() {
 
     const a = await visitar(cli, BASE);
     console.log('  1a visita  ' + a.versionScript);
-    const b = await visitar(cli, BASE + '?autopedido=1');
+    const b = await visitar(cli, BASE + '?r=' + Date.now());
     console.log('  2a visita  ' + b.versionScript + DIM + '  (sin limpiar nada)' + RST);
+
+    /* El marcador es el PROPIO ?v=, no una funcion del momento. La version
+       anterior de este test miraba `MODO_AUTOPEDIDO`, y cuando ese modo se
+       elimino (8/9/2026) el test quedo en rojo midiendo algo que ya no existe:
+       un test atado a una feature envejece con ella. El ?v= dice "esto es el
+       contenido de ahora" y esa afirmacion se puede comprobar sola. */
+    const vVivo = (String(b.versionScript).match(/\?v=([a-f0-9]+)/) || [])[1] || '';
+    const servido = Buffer.from(await (await fetch(BASE + 'app.js?v=' + vVivo)).arrayBuffer());
+    const hServido = hashDe(servido);
+    const hLocal = hashDe(fs.readFileSync(path.resolve(__dirname, '..', 'app.js')));
+    console.log(DIM + '  ?v= vivo ' + vVivo + ' · md5 del app.js servido ' + hServido +
+                ' · md5 del local ' + hLocal + RST);
 
     const chequeo = (t, ok) => { if (!ok) fallas++; console.log('  ' + (ok ? VER + 'ok  ' : RED + 'MAL ') + RST + t); };
     console.log();
     chequeo('el script lleva un ?v= que no es el fijo viejo',
       /\?v=/.test(b.versionScript) && !/v=20260819-1/.test(b.versionScript));
-    chequeo('MODO_AUTOPEDIDO llega al navegador (no "NO EXISTE")', b.modo !== 'NO EXISTE');
-    chequeo('_zonaPermite() llega al navegador', b.zonaPermite === true);
-    chequeo('con el parametro, el modo prende', b.modo === true);
-    chequeo('sin el parametro, el modo queda apagado', a.modo === false);
+    chequeo('el ?v= describe el contenido que el server esta sirviendo', vVivo === hServido);
+    chequeo('lo publicado es el app.js de este repo', hServido === hLocal);
+    chequeo('la 2a visita, sin limpiar, carga esa misma version', b.versionScript === a.versionScript);
+    chequeo('el JS corrio en el navegador (' + b.productos + ' productos)', b.corrio === true);
 
     limpiar();
     console.log('\n  ' + (fallas ? RED + fallas + ' FALLAN' + RST : VER + 'un navegador con cache recibe el codigo de ahora' + RST) + '\n');
