@@ -39,13 +39,42 @@
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     window.addEventListener('pageshow', function(){ window.scrollTo(0, 0); });
   </script>
-  <!-- Google Analytics 4 — reemplazar G-XXXXXXXXXX con tu ID de GA4 -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-H3W8C74PQP"></script>
+  <!-- Google Analytics 4.
+       El script de Google pesa 172 KB TRANSFERIDOS: medido el 10/9/2026, es el
+       archivo mas pesado de la pagina — mas del doble que app.js, que va en 72
+       comprimido. Con `async` no frena el parser, pero en 4G y con la CPU de un
+       celular compite por las dos cosas justo cuando la tienda esta arrancando.
+
+       Asi que se carga DESPUES: al terminar de cargar la pagina, o apenas el
+       cliente toca algo, lo que pase primero.
+
+       No se pierde ninguna medicion, y eso no es optimismo: el `gtag()` de aca
+       abajo empuja a `dataLayer`, que es una COLA. Existe sin el script de
+       Google, y cuando el script llega procesa todo lo encolado — el pageview
+       incluido. Es como GA4 esta disenado. -->
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
     gtag('config', 'G-H3W8C74PQP');
+    (function () {
+      var pedido = false;
+      function traerGA() {
+        if (pedido) return;
+        pedido = true;
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-H3W8C74PQP';
+        document.head.appendChild(s);
+      }
+      /* Si toca algo antes, se trae YA: alguien que interactua es justo la
+         visita que no se quiere perder. */
+      ['pointerdown', 'keydown', 'touchstart'].forEach(function (ev) {
+        window.addEventListener(ev, traerGA, { once: true, passive: true });
+      });
+      if (document.readyState === 'complete') setTimeout(traerGA, 800);
+      else window.addEventListener('load', function () { setTimeout(traerGA, 800); });
+    })();
   </script>
 </head>
 <body>
