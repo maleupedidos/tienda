@@ -1478,3 +1478,33 @@ body.busqueda-activa #repeat-block { display: none !important; }
    algo. Va al final del archivo para ganarle por orden a las reglas de igual
    especificidad que declaran display. */
 .hidden { display: none; }
+
+/* ── MINIMO TACTIL EN EL CELULAR ──
+   Medido el 10/9/2026 a 390px: el carrito 34px, el chip de zona 27, los chips
+   de categoria 39, el "Cambiar zona" del modal 31 y el "Ir a la tienda" de las
+   paginas de seccion 36. El minimo que se puede tocar con el pulgar sin apuntar
+   son 44, y es el mismo piso que ya usa el ERP.
+
+   Va SOLO en el celular a proposito: en escritorio se toca con el mouse, ahi
+   27px se aciertan igual y agrandarlos desacomodaria el header.
+
+   `min-height` y no `height`: un boton que necesite dos renglones tiene que
+   poder crecer, no recortarse. */
+@media (max-width: 560px) {
+  .zone-chip, .date-chip, .cart-btn, .cat-nav-btn, .loc-back-btn,
+  .close-cart-btn {
+    min-height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  /* La ✕ del carrito medía 29px y es el unico modo de cerrarlo sin tocar
+     afuera: se le da ancho tambien, si no queda una franja finita. */
+  .close-cart-btn { min-width: 44px; }
+  .zone-chip, .date-chip { padding: .4rem .8rem; }
+  .loc-back-btn { padding: .4rem 1rem; }
+  /* `a.zone-chip` (el "Ir a la tienda" de las paginas de seccion) ya declara
+     min-height:36px unas lineas mas arriba, y ELEMENTO+CLASE le gana a CLASE
+     sola. Un media query no aporta especificidad: la regla de arriba seguia
+     ganando y el boton se quedaba en 36px con mis 44 escritos al lado.
+     Por eso este selector repite la forma `a.zone-chip`. */
+  a.zone-chip { min-height: 44px; }
+}
