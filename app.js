@@ -3,6 +3,72 @@
    Unifica Home + Delivery en una sola web
    ══════════════════════════════════════════════════ */
 
+/* ── EL ?v= DE LAS FOTOS ──
+   Lo mismo que `app.js?v=` pero para las imagenes, y por la misma razon.
+
+   El 10/9/2026 se optimizaron las fotos —8,7 MB a 3,5— y despues de publicar el
+   navegador SEGUIA bajando las viejas. Medido contra maleu.com.ar, la misma URL
+   contestaba distinto: sin query 222.347 bytes (la vieja), con una query nueva
+   113.648 (la nueva). GitHub Pages las sirve con `Cache-Control: max-age=14400`,
+   asi que el CDN y el navegador tenian guardada esa URL exacta por 4 horas.
+
+   O sea que cambiar una foto —corregir una que salio mal, subir la del producto
+   nuevo— podia no verse en todo el dia, sin ningun error y sin forma de darse
+   cuenta desde aca: `curl` con una query distinta contesta con la nueva y te
+   hace creer que esta todo bien.
+
+   El mapa lo REGENERA `_tools/cachebuster.py` con el md5 de cada archivo, entre
+   los dos anclajes de abajo. No se edita a mano. Una foto que no este en el mapa
+   se sirve sin query — el comportamiento de antes, nunca un link roto. */
+/* IMG_V:INICIO */
+var IMG_V = {
+  "carne-cortes.jpg": "ada9a490",
+  "combo-finde.jpg": "4e0022fd",
+  "combo-freezer.jpg": "2d59c6e7",
+  "combo-mesa.jpg": "c99aab14",
+  "combo-noche.jpg": "e39cfeea",
+  "combo-semana.jpg": "b99c561e",
+  "empanadas-carne-v2.jpg": "6de21882",
+  "empanadas-cebolla-v2.jpg": "b33521e2",
+  "empanadas-jamon-v2.jpg": "68b20155",
+  "empanadas-verdura-v2.jpg": "314eb060",
+  "favicon.png": "f3493058",
+  "franui-new.jpg": "945b0cfa",
+  "logo-icono.png": "d8163724",
+  "logo-maleu-blanco.png": "0327ed85",
+  "logo-maleu.png": "80e04e45",
+  "og-maleu.jpg": "718f79e6",
+  "pack-cebolla-queso-cocida.jpg": "2cff2442",
+  "pack-jamon-queso-cocida.jpg": "069f34ca",
+  "pack-muzarella-cocida.jpg": "44659df8",
+  "pizza-cebolla-cocida.jpg": "251a9b16",
+  "pizza-jamon-morron-cocida.jpg": "60a0bf43",
+  "pizza-jamon-queso-cocida.jpg": "3ac5829a",
+  "pizza-margarita-cocida.jpg": "1e619ec7",
+  "pizza-muzarella-cocida.jpg": "ae0a07d5",
+  "sorrentinos-brie.jpg": "1ff072a2",
+  "sorrentinos-calabaza-v2.jpg": "025b9781",
+  "sorrentinos-cordero-v2.jpg": "d07c39e4",
+  "sorrentinos-espinaca.jpg": "cbbebff6",
+  "sorrentinos-jamon-v2.jpg": "b95db8e0",
+  "sorrentinos-langostinos.jpg": "95c70b57",
+  "sorrentinos-pollo-puerro.jpg": "4cbe12c1",
+  "tarta-calabaza.jpg": "7566975b",
+  "tarta-jamon-queso.jpg": "ad0ddeaa",
+  "tarta-pollo.jpg": "ad152a1c",
+  "tarta-verdura.jpg": "253ea9ae",
+  "torta-coco.jpg": "6713d6d8",
+  "torta-golosa.jpg": "7a2cba95",
+  "torta-lemon.jpg": "4a545bf8",
+  "wrap-carne.jpg": "9515ce4f",
+  "wrap-pollo.jpg": "9a5102fd"
+};
+/* IMG_V:FIN */
+function fotoUrl(nombre) {
+  var n = String(nombre || '');
+  return 'img/' + n + (IMG_V[n] ? '?v=' + IMG_V[n] : '');
+}
+
 /* ── PRODUCTOS ── */
 const PRODUCTOS = [
   { id:1,  cat:"Pizzas Individuales",   nombre:"Pizza Margarita",              desc:"Tomate fresco, mozzarella y albahaca. La que nunca falla.",                        precio:11500, img:"pizza-margarita-cocida.jpg", emoji:"🍕", top:true, chips:["Para 1–2 personas","1 pizza grande","Al horno en 12 min"] },
@@ -2180,7 +2246,7 @@ function _comboCardHTML(c) {
         '<div class="product-footer">' + priceHtml + btn + '</div>';
     return '<article class="product-card combo-card combo-card-full' + cardCls + '" data-id="' + c.id + '">' +
       terminadoBadge +
-      '<img class="combo-full-img" src="img/' + c.img + '" alt="' + c.nombre + '" loading="lazy">' +
+      '<img class="combo-full-img" src="' + fotoUrl(c.img) + '" alt="' + c.nombre + '" loading="lazy">' +
       '<div class="combo-full-foot">' + foot + '</div>' +
     '</article>';
   }
@@ -2196,7 +2262,7 @@ function _comboCardHTML(c) {
         (c.nuevo ? '<span class="chapa-prod chapa-nuevo">Nuevo</span>' : '') +
         (c.top   ? '<span class="chapa-prod chapa-top">Lo más pedido</span>' : '') +
       '</div>' +
-      '<img class="product-thumb-img" src="img/' + c.img + '" alt="' + c.nombre + '" loading="lazy" width="400" height="400" style="object-position:' + (c.imgPos||'center') + '" onerror="this.style.display=\'none\'">' +
+      '<img class="product-thumb-img" src="' + fotoUrl(c.img) + '" alt="' + c.nombre + '" loading="lazy" width="400" height="400" style="object-position:' + (c.imgPos||'center') + '" onerror="this.style.display=\'none\'">' +
     '</div>' +
     '<div class="product-body">' +
       '<h3 class="product-name">' + c.nombre + '</h3>' +
@@ -2304,7 +2370,7 @@ function carneCardHTML(p) {
   return '<article class="product-card carne-card" data-id="' + p.id + '">' +
     '<div class="product-thumb">' +
       (chapas ? '<div class="chapas-prod">' + chapas + '</div>' : '') +
-      '<img class="product-thumb-img" src="img/' + p.img + '" alt="' + p.nombre + '" loading="lazy" width="400" height="400" onerror="this.style.display=\'none\'">' +
+      '<img class="product-thumb-img" src="' + fotoUrl(p.img) + '" alt="' + p.nombre + '" loading="lazy" width="400" height="400" onerror="this.style.display=\'none\'">' +
     '</div>' +
     '<div class="product-body">' +
       '<h3 class="product-name">' + p.nombre + '</h3>' +
@@ -2329,7 +2395,7 @@ function productCardHTML(p) {
   return '<article class="product-card" data-id="' + p.id + '">' +
     '<div class="product-thumb">' +
       (chapas ? '<div class="chapas-prod">' + chapas + '</div>' : '') +
-      '<img class="product-thumb-img" src="img/' + p.img + '" alt="' + p.nombre + '" loading="lazy" width="400" height="400" style="object-position:' + (p.imgPos||'center') + '" onerror="this.style.display=\'none\'">' +
+      '<img class="product-thumb-img" src="' + fotoUrl(p.img) + '" alt="' + p.nombre + '" loading="lazy" width="400" height="400" style="object-position:' + (p.imgPos||'center') + '" onerror="this.style.display=\'none\'">' +
     '</div>' +
     '<div class="product-body">' +
       '<h3 class="product-name">' + p.nombre + '</h3>' +
@@ -2643,7 +2709,7 @@ function renderComboConfig() {
 
   cont.innerHTML =
     '<div class="combo-modal-head">' +
-      (c.fullCard ? '' : '<img class="combo-modal-img" src="img/' + c.img + '" alt="" onerror="this.style.display=\'none\'">') +
+      (c.fullCard ? '' : '<img class="combo-modal-img" src="' + fotoUrl(c.img) + '" alt="" onerror="this.style.display=\'none\'">') +
       '<div><h3 class="combo-modal-title">' + c.nombre + '</h3>' +
       '<p class="combo-modal-desc">' + c.desc + '</p></div>' +
     '</div>' +
@@ -3874,7 +3940,7 @@ function renderCatTiles() {
     const slug = slugify(cat.nombre);
     return '<button class="cat-tile" type="button" onclick="scrollToCat(\'' + slug + '\')" ' +
              'aria-label="Ver ' + cat.nombre + '">' +
-             '<img class="cat-tile-img" src="img/' + foto + '" alt="" loading="lazy">' +
+             '<img class="cat-tile-img" src="' + fotoUrl(foto) + '" alt="" loading="lazy">' +
              '<span class="cat-tile-name">' + cat.nombre + '</span>' +
              '<span class="cat-tile-count">' + suyos.length +
                (suyos.length === 1 ? ' opcion' : ' opciones') + '</span>' +
@@ -3895,7 +3961,7 @@ function renderCatNav() {
   const cats = getCategoriasVisibles();
   nav.innerHTML =
     '<button class="cat-nav-home" type="button" aria-label="Volver al inicio" onclick="window.scrollTo({top:0,behavior:\'smooth\'})">' +
-      '<img src="img/logo-icono.png" alt="Maleu">' +
+      '<img src="' + fotoUrl('logo-icono.png') + '" alt="Maleu">' +
     '</button>' +
     '<div class="cat-nav-wrap" id="cat-nav-wrap"><div class="cat-nav-inner" id="cat-nav-inner">' +
     cats.map((cat,i) => {
