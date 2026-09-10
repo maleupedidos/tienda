@@ -1,7 +1,12 @@
 /**
  * Que la tienda se pueda usar con un dedo, en un celular, sin pelearse.
  *
- *   node _tools/verificar-movil.js
+ *   node _tools/verificar-movil.js                    ← lo que hay en la carpeta
+ *   URL=https://maleu.com.ar node _tools/verificar-movil.js   ← lo que ve el cliente
+ *
+ * Las dos preguntas son distintas y hay que hacer las dos: publicar y que el
+ * navegador del cliente reciba lo publicado no son lo mismo (GitHub Pages
+ * sirve con max-age=14400 y el navegador cachea por URL exacta).
  *
  * POR QUE EXISTE. El 10/9/2026 Tadeo la uso desde su iPhone y encontro dos
  * cosas que ninguna de las otras redes agarra, porque las dos son
@@ -277,7 +282,11 @@ const REVISION = `(async function () {
   const chrome = CHROMES.find((c) => fs.existsSync(c));
   if (!chrome) { console.error('No encontre Chrome ni Edge'); process.exit(1); }
 
-  const srv = await servir();
+  /* Contra produccion no se levanta servidor: se mide lo que el cliente
+     recibe de verdad, con su cache-buster y todo. */
+  const externo = process.env.URL || '';
+  const srv = externo ? { close() {} } : await servir();
+  const destino = externo || ('http://127.0.0.1:' + PUERTO + '/index.html');
   const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'movil-'));
   const puertoCdp = 9500 + Math.floor(Math.random() * 400);
   const proc = spawn(chrome, ['--headless=new', '--disable-gpu', '--no-first-run',
@@ -303,7 +312,8 @@ const REVISION = `(async function () {
     await cli.enviar('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
     await cli.enviar('Page.addScriptToEvaluateOnNewDocument', { source: PREP });
 
-    await cli.enviar('Page.navigate', { url: 'http://127.0.0.1:' + PUERTO + '/index.html' });
+    console.log(DIM + '  ·    midiendo ' + destino + RST);
+    await cli.enviar('Page.navigate', { url: destino });
 
     /* Esperar al catalogo pintado, no a un tiempo fijo: medir una pagina que
        no llego a pintar da "0 problemas" sin haber mirado nada. */
