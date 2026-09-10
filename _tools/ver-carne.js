@@ -57,7 +57,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
   '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2' };
 
 function servir() {
-  return new Promise((listo) => {
+  return new Promise((listo, fallo) => {
     const srv = http.createServer((req, res) => {
       let rel = decodeURIComponent(req.url.split('?')[0]);
       if (rel === '/') rel = '/index.html';
@@ -69,6 +69,15 @@ function servir() {
       res.writeHead(200, { 'Content-Type': MIME[path.extname(abs).toLowerCase()] || 'application/octet-stream',
                            'Cache-Control': 'no-store' });
       fs.createReadStream(abs).pipe(res);
+    });
+    /* Si el puerto esta ocupado, Node tira un stack de 15 lineas que no dice
+       que hacer. Casi siempre es que quedo otra ventana abierta. */
+    srv.on('error', (e) => {
+      if (e.code === 'EADDRINUSE') {
+        fallo(new Error('El puerto ' + PUERTO + ' ya esta ocupado.\n' +
+          '   Suele ser otra ventana de esta misma herramienta: cerrala, o abri esta en otro puerto:\n' +
+          '   PUERTO=8091 node _tools/ver-carne.js'));
+      } else { fallo(e); }
     });
     srv.listen(PUERTO, '127.0.0.1', () => listo(srv));
   });

@@ -1444,5 +1444,22 @@ body.busqueda-activa #repeat-block { display: none !important; }
 #mp-alias-lista .mp-alias-row + .mp-alias-row { margin-top: .35rem; }
 
 /* El desglose de pesos en el resumen del formulario, en voz baja: el dato es
-   el peso total, esto es el detalle. */
-.summary-pz-detalle { color: #999; font-size: .92em; }
+   el peso total, esto es el detalle. En su propio renglon porque al envolver
+   dejaba un "kg)" solo en la linea de abajo. */
+.summary-pz-detalle { display: block; color: #999; font-size: .92em; margin-top: .1rem; }
+
+/* En la carne el 3er chip SI aporta: "2 tiras por paquete" es lo que el
+   cliente necesita saber antes de elegir una pieza de 1,163 kg — si le llega
+   una tira grande o dos. La regla de arriba lo esconde porque en los 29
+   productos de Maleu el tercero era el tiempo de coccion, que ya esta escrito
+   en el subtitulo de la categoria. Aca la card es ancha y hay lugar. */
+.carne-card .product-chips .chip:nth-child(n+3) { display: inline; }
+
+/* `.hidden` GENERICA. No existia: cada componente tenia su propia regla
+   (.loc-overlay.hidden, .mp-alias.hidden, .shipping-bar.hidden) y al cuarto
+   se le olvido. Resultado: `<p class="mp-alias-vendedor-note hidden">` no se
+   ocultaba nunca y quedaba una barra celeste VACIA de 20px en el formulario,
+   debajo de los alias. El JS le pone y le saca la clase creyendo que hace
+   algo. Va al final del archivo para ganarle por orden a las reglas de igual
+   especificidad que declaran display. */
+.hidden { display: none; }
