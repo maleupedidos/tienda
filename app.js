@@ -2471,6 +2471,21 @@ function renderCatalog() {
   // respetarla. Sin esto, cualquiera de los cuatro repintados la deshace
   // sin decir nada y aparecen productos que el cliente ya habia filtrado.
   if (_busqTexto) buscarEnCatalogo();
+  /* Y los carteles de stock, por el MISMO motivo que el nav: redibujar las
+     cards los borra, porque se pintan aparte.
+
+     Colgarlo de los call sites ya fallo: de los cinco que repintan el
+     catalogo, cuatro llamaban a updateStockDisplay y el de fetchPiezas no.
+     Efecto medido contra maleu.com.ar el 10/9/2026: el cliente veia
+     "Sin stock" durante 2 segundos y desaparecia de los 34 productos al
+     llegar el inventario de carne — sin un solo error en consola. Antes de
+     que Lucas cargara las primeras piezas no se notaba, porque sin piezas la
+     firma no cambiaba y este repintado no ocurria nunca.
+
+     No es doble trabajo real: los call sites que ya lo llamaban lo hacen
+     sobre 34 productos y es idempotente. Se dejan igual a proposito — sacar
+     una llamada de mas es mas riesgo que valor. */
+  updateStockDisplay();
 }
 
 /* ── RENDER CARD FOOTER ── */
