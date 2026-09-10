@@ -77,12 +77,36 @@ function revisar(file) {
   return hallazgos;
 }
 
+/* Que ningun link del menu o del pie lleve a un 404.
+   Una pagina nueva se agrega a mano en el menu de las OTRAS ocho, y alcanza con
+   equivocarse en un nombre para que el cliente toque "Politica de Privacidad" y
+   caiga en la pagina de error — que en este sitio, encima, redirige a la tienda,
+   asi que parece que el link "no hace nada". */
+function linksRotos(file) {
+  const src = fs.readFileSync(file, 'utf8');
+  const rotos = [];
+  const re = /href\s*=\s*"(\/[^"#?]*)"/g;
+  let m;
+  while ((m = re.exec(src)) !== null) {
+    const destino = m[1];
+    if (destino === '/') continue;                       // la home
+    const rel = destino.replace(/^\//, '');
+    if (!fs.existsSync(path.join(RAIZ, rel))) rotos.push(destino);
+  }
+  return [...new Set(rotos)];
+}
+
 function main() {
   const archivos = paginas();
   if (!archivos.length) { console.error('No encontre ninguna pagina .html'); process.exit(1); }
 
   let malas = 0;
   archivos.forEach((f) => {
+    const rotos = linksRotos(f);
+    if (rotos.length) {
+      malas += rotos.length;
+      console.log(RED + '  MAL  ' + path.basename(f) + RST + ' apunta a algo que no existe: ' + rotos.join(', '));
+    }
     const h = revisar(f);
     if (!h.length) return;
     malas += h.length;
@@ -94,9 +118,9 @@ function main() {
   });
 
   if (malas) {
-    console.log(RED + '\n' + malas + ' cosa(s) para adentro en paginas que ve el cliente' + RST);
-    console.log(DIM + 'Un borrador se deja SIN COMMITEAR, no se marca con un recuadro amarillo:\n' +
-                'eso ya se probo y se publico igual (10/9/2026).' + RST);
+    console.log(RED + '\n' + malas + ' problema(s) en paginas que ve el cliente' + RST);
+    console.log(DIM + 'Si es un borrador: se deja SIN COMMITEAR, no se marca con un recuadro\n' +
+                'amarillo — eso ya se probo y se publico igual (10/9/2026).' + RST);
     process.exit(1);
   }
   console.log(VER + '  ok   ' + RST + 'las ' + archivos.length + ' paginas hablan solo para el cliente');

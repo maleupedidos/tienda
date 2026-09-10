@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Términos y Condiciones · Maleu</title>
+  <meta name="description" content="Cómo se hace un pedido, cómo se paga, cómo se entrega y qué pasa si querés cambiarlo o cancelarlo." />
+  <link rel="icon" href="img/logo-icono.png?v=d8163724" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=5a94d8ca" />
+</head>
+<body>
+
+<header>
+  <button class="menu-btn" id="menu-btn" type="button" aria-label="Abrir el menú"
+          aria-expanded="false" aria-controls="menu-panel" onclick="togglePageMenu()">
+    <span class="menu-bars" aria-hidden="true"><span></span><span></span><span></span></span>
+  </button>
+  <a href="/" class="logo-wrap">
+    <img class="logo-full" src="img/logo-maleu.png?v=80e04e45" alt="Maleu" width="620" height="120" />
+  </a>
+  <nav class="site-nav" aria-label="Secciones">
+    <a href="/" class="site-nav-link">Tienda</a>
+    <a href="/tips.html" class="site-nav-link">Tips Maleu</a>
+    <a href="/nosotros.html" class="site-nav-link">Sobre Nosotros</a>
+    <a href="/preguntas.html" class="site-nav-link">Preguntas Frecuentes</a>
+    <a href="/contacto.html" class="site-nav-link">Contacto</a>
+    <a href="/ser-parte.html" class="site-nav-link">Ser parte de Maleu</a>
+  </nav>
+  <div class="header-chips">
+    <a class="zone-chip" href="/">Ir a la tienda →</a>
+  </div>
+</header>
+
+<div class="menu-overlay" id="menu-overlay" hidden onclick="togglePageMenu()"></div>
+<nav class="menu-panel" id="menu-panel" hidden aria-label="Menú">
+    <a href="/" class="menu-panel-link">Tienda</a>
+    <a href="/tips.html" class="menu-panel-link">Tips Maleu</a>
+    <a href="/nosotros.html" class="menu-panel-link">Sobre Nosotros</a>
+    <a href="/preguntas.html" class="menu-panel-link">Preguntas Frecuentes</a>
+    <a href="/contacto.html" class="menu-panel-link">Contacto</a>
+    <a href="/ser-parte.html" class="menu-panel-link">Ser parte de Maleu</a>
+</nav>
+
+<main class="pagina">
+  <h1 class="pagina-titulo">Términos y Condiciones</h1>
+  <p class="pagina-intro">Las reglas de la tienda, escritas en criollo. Comprar en
+  maleu.com.ar significa que estás de acuerdo con esto.</p>
+
+  <h2>Qué vendemos</h2>
+  <p>Comida congelada lista para cocinar: pizzas, sorrentinos, empanadas, tartas, wraps,
+  tortas y postres. Todo llega congelado y va del freezer al horno o a la olla, sin
+  descongelar.</p>
+
+  <h2>Cómo se hace un pedido</h2>
+  <p>Elegís los productos en la tienda, cargás tus datos y el día de entrega, y al
+  confirmar se te abre WhatsApp con el pedido armado. <strong>El pedido queda cerrado
+  cuando te lo confirmamos por WhatsApp</strong>, no antes: hasta ese momento puede pasar
+  que algo se haya agotado.</p>
+  <p>Si algo de lo que pediste no está disponible, te avisamos y lo resolvemos con vos
+  —cambiarlo, sacarlo o pasarlo para la próxima entrega—. Nunca te lo cambiamos por otra
+  cosa sin preguntarte.</p>
+
+  <h2>Precios</h2>
+  <p>Están expresados en <strong>pesos argentinos</strong> e incluyen los impuestos que
+  correspondan. El precio que vale es el que ves en la tienda al momento de hacer el
+  pedido.</p>
+
+  <h2>Cómo se paga</h2>
+  <ul>
+    <li><strong>Transferencia</strong> a cualquiera de nuestros dos alias:
+    <strong>maleump</strong> (Mercado Pago) o <strong>maleubru</strong> (Brubank).</li>
+    <li><strong>Efectivo</strong> cuando te lo entregamos, con
+    <strong>10% de descuento</strong>.</li>
+  </ul>
+  <p>No pedimos datos de tarjeta ni claves bancarias en ningún momento.</p>
+
+  <h2>Entregas</h2>
+  <ul>
+    <li><strong>Estancias del Pilar</strong> — lunes de 18 a 19 hs; miércoles, viernes y
+    sábado de 19 a 21 hs; domingo de 11 a 13 hs. Sin costo de envío. No hay cierre
+    semanal: elegís el día que te queda cómodo.</li>
+    <li><strong>Pilar y alrededores</strong> — los viernes, en un horario que coordinamos
+    con vos. Envío $5.000. Los pedidos cierran el <strong>jueves a las 12 hs</strong>.</li>
+    <li><strong>Clubes deportivos</strong> — los viernes, en la cancha. Sin costo de envío.
+    Los pedidos cierran el <strong>jueves a las 12 hs</strong>.</li>
+  </ul>
+  <p>Los horarios son una franja estimada: si vamos a llegar fuera de ese rango, te
+  avisamos por WhatsApp. Necesitamos que haya alguien para recibir el pedido, porque es
+  mercadería congelada y no se puede dejar esperando.</p>
+
+  <h2>Cambios y cancelaciones</h2>
+  <p>Podés cambiar o cancelar tu pedido <strong>mientras el reparto no haya salido</strong>.
+  Escribinos por WhatsApp y lo arreglamos, sin costo. Si ya lo habías pagado y lo cancelás,
+  te devolvemos la plata por el mismo medio.</p>
+
+  <h2>Botón de arrepentimiento</h2>
+  <p>Tenés <strong>10 días corridos</strong> desde que recibís el pedido para arrepentirte,
+  conforme al artículo 34 de la Ley 24.240 de Defensa del Consumidor, y el costo de la
+  devolución corre por nuestra cuenta.</p>
+  <p>Por tratarse de alimentos congelados, para poder devolverlos te pedimos que el
+  producto esté <strong>cerrado, sin abrir y con la cadena de frío mantenida</strong>: una
+  vez que se descongela no lo podemos volver a vender, por seguridad alimentaria.</p>
+  <p><a class="pagina-cta" href="/arrepentimiento.html">Ir al botón de arrepentimiento</a></p>
+
+  <h2>Cómo conservar lo que te llevamos</h2>
+  <p>Guardalo en el freezer apenas lo recibís, a -18 °C. No cortes la cadena de frío: si se
+  descongeló, no lo vuelvas a congelar. Los tiempos y la forma de cocinar cada cosa están
+  en <a href="/tips.html">Tips Maleu</a>.</p>
+
+  <h2>Uso del sitio</h2>
+  <p>Las fotos, los textos, el logo y la marca Maleu son nuestros y no se pueden usar sin
+  permiso. Las fotos de producto son ilustrativas: la presentación puede variar.</p>
+
+  <h2>Tus datos</h2>
+  <p>Cómo tratamos tus datos personales está en la
+  <a href="/privacidad.html">Política de Privacidad</a>.</p>
+
+  <h2>Ley aplicable</h2>
+  <p>Estas condiciones se rigen por la ley argentina, y en particular por la
+  <strong>Ley 24.240 de Defensa del Consumidor</strong>. Nada de lo que dice acá limita los
+  derechos que esa ley te da. Ante cualquier reclamo podés escribirnos primero a nosotros
+  —lo más rápido es WhatsApp— y también recurrir a los organismos de defensa del consumidor
+  a través de
+  <a href="https://www.argentina.gob.ar/produccion/defensadelconsumidor/formulario" target="_blank" rel="noopener">la ventanilla única federal</a>.</p>
+
+  <h2>Cambios</h2>
+  <p>Si actualizamos estas condiciones, queda publicado en esta misma página. La última vez
+  fue el <strong>10 de septiembre de 2026</strong>.</p>
+
+  <div class="pagina-cierre">
+    <p>¿Te quedó alguna duda?</p>
+    <a class="pagina-cta" href="https://wa.me/5491155038905" target="_blank" rel="noopener">Escribinos por WhatsApp</a>
+    <a class="pagina-cta pagina-cta-2" href="/">Ver la tienda</a>
+  </div>
+</main>
+
+<footer class="pagina-footer">
+  <p>Maleu · Comida lista para cocinar · Pilar, Buenos Aires</p>
+  <a class="arr-link" href="/arrepentimiento.html">Botón de arrepentimiento</a>
+  <a class="legal-link" href="/terminos.html">Términos y Condiciones</a>
+  <a class="legal-link" href="/privacidad.html">Política de Privacidad</a>
+</footer>
+
+<script>
+/* El menu de estas paginas no puede usar el toggleMenu() de app.js: app.js
+   son 4000 lineas que arrancan el catalogo, el carrito y los modales de
+   zona y fecha. Cargarlo aca solo por el menu traeria todo eso a una
+   pagina que no tiene donde pintarlo. */
+function togglePageMenu() {
+  var p = document.getElementById('menu-panel');
+  var o = document.getElementById('menu-overlay');
+  var b = document.getElementById('menu-btn');
+  var abriendo = p.hidden;
+  p.hidden = !abriendo;
+  o.hidden = !abriendo;
+  b.setAttribute('aria-expanded', abriendo ? 'true' : 'false');
+  b.classList.toggle('is-open', abriendo);
+  document.body.style.overflow = abriendo ? 'hidden' : '';
+}
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && !document.getElementById('menu-panel').hidden) togglePageMenu();
+});
+</script>
+
+</body>
+</html>

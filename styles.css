@@ -1220,6 +1220,24 @@ body.busqueda-activa #repeat-block { display: none !important; }
    El color se mide, no se mira.) */
 .pagina-footer .arr-link { margin-top: .8rem; }
 
+/* Terminos y Politica de Privacidad.
+   A PROPOSITO mas discretos que el boton de arrepentimiento: la Disposicion
+   954/2025 pide que ESE ocupe un lugar destacado en visibilidad y tamano, y si
+   los tres se ven igual, el que la ley quiere destacado deja de destacarse.
+   Igual llegan al minimo tactil de 44px y al contraste que se puede leer: son
+   los dos links donde el cliente va a buscar como cancelar o que hacemos con
+   sus datos, y esconderlos seria justo lo contrario de lo que dicen. */
+.legal-link {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 44px; padding: .5rem .9rem; margin: 0 .2rem;
+  font-family: var(--font); font-size: .82rem; font-weight: 500;
+  color: rgba(250,250,250,.82); text-decoration: underline;
+  text-underline-offset: 3px; line-height: 1.4;
+  transition: color .15s;
+}
+.legal-link:hover { color: var(--white); }
+.pagina-footer .legal-link { margin-top: .1rem; }
+
 /* Los dos plazos que fija la norma, arriba del formulario. */
 .arr-datos { display: flex; flex-wrap: wrap; gap: .8rem; margin: 1.4rem 0 .5rem; }
 .arr-dato {
