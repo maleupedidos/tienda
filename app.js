@@ -43,15 +43,25 @@ const PRODUCTOS = [
      guardarse. Los precios salen de la hoja Productos.
 
      `abbr` es la llave con la que se cruzan las piezas y la que entiende el
-     backend. `porPeso` lo confirma `action=precios` (u:"kg") al cargar. */
-  { id:30, abbr:"CCo", cat:"Carnes", porPeso:true, nuevo:true, nombre:"Colita de Cuadril", desc:"Jugosa al horno y perfecta a la parrilla. Un corte que nunca falla.", precio:25000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
+     backend. `porPeso` lo confirma `action=precios` (u:"kg") al cargar.
+
+     SOLO ESTANCIAS, y no es una decision comercial: es donde la planilla
+     tiene DONDE guardarlos. La hoja Clubes no tiene columna para la carne, y
+     un pedido de Pilar cuyo barrio tiene vendedor lo deriva el BACKEND a la
+     hoja Red — que tampoco la tiene. En las dos, el pedido entra, el total
+     sale bien, y los kilos no caen en ningun lado: sin error y sin log. Es la
+     misma forma de fallar que el `editarPedido` que cobraba 16 productos sin
+     guardarlos.
+     Se abren las otras zonas el dia que RED_PRODUCT_COLS y CLUBES_PRODUCT_COLS
+     conozcan los ids 30-34. Lo vigila `node _tools/verificar-pedido.js`. */
+  { id:30, abbr:"CCo", cat:"Carnes", porPeso:true, nuevo:true, zonas:["estancias"], nombre:"Colita de Cuadril", desc:"Jugosa al horno y perfecta a la parrilla. Un corte que nunca falla.", precio:25000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
   /* La entrana viene de a DOS tiras por paquete (dato de Lucas, 10/9/2026), y
      el peso que se ve es el del paquete entero. Sin decirlo, el que elige una
      de 1,163 kg no sabe si le llega una tira grande o dos. */
-  { id:31, abbr:"CEn", cat:"Carnes", porPeso:true, nuevo:true, nombre:"Entra\u00f1a",           desc:"Fina, sabrosa y r\u00e1pida. La que sale primero de la parrilla.",          precio:34000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo","2 tiras por paquete"] },
-  { id:32, abbr:"CLo", cat:"Carnes", porPeso:true, nuevo:true, nombre:"Lomo",              desc:"El corte m\u00e1s tierno. Para la ocasi\u00f3n que se merece el mejor.",       precio:33000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
-  { id:33, abbr:"CPi", cat:"Carnes", porPeso:true, nuevo:true, nombre:"Pica\u00f1a",            desc:"El corte brasilero que se volvi\u00f3 infaltable. Con su tapa de grasa.",  precio:26000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
-  { id:34, abbr:"CVa", cat:"Carnes", porPeso:true, nuevo:true, nombre:"Vac\u00edo",             desc:"El cl\u00e1sico del asado argentino. Paciencia y fuego bajo.",            precio:26000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
+  { id:31, abbr:"CEn", cat:"Carnes", porPeso:true, nuevo:true, zonas:["estancias"], nombre:"Entra\u00f1a",           desc:"Fina, sabrosa y r\u00e1pida. La que sale primero de la parrilla.",          precio:34000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo","2 tiras por paquete"] },
+  { id:32, abbr:"CLo", cat:"Carnes", porPeso:true, nuevo:true, zonas:["estancias"], nombre:"Lomo",              desc:"El corte m\u00e1s tierno. Para la ocasi\u00f3n que se merece el mejor.",       precio:33000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
+  { id:33, abbr:"CPi", cat:"Carnes", porPeso:true, nuevo:true, zonas:["estancias"], nombre:"Pica\u00f1a",            desc:"El corte brasilero que se volvi\u00f3 infaltable. Con su tapa de grasa.",  precio:26000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
+  { id:34, abbr:"CVa", cat:"Carnes", porPeso:true, nuevo:true, zonas:["estancias"], nombre:"Vac\u00edo",             desc:"El cl\u00e1sico del asado argentino. Paciencia y fuego bajo.",            precio:26000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
 ];
 
 const CATEGORIAS = [
