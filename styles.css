@@ -1401,13 +1401,6 @@ body.busqueda-activa #repeat-block { display: none !important; }
 /* Con una sola pieza el boton de sacar va en la fila, alineado con los +/- de
    los otros productos del carrito. */
 .pz-quitar-solo { margin-left: .4rem; align-self: center; }
-/* El aviso de que el descuento no cubre la carne. Va discreto: es una
-   aclaracion, no una advertencia — pero tiene que leerse. */
-.pz-aviso-desc {
-  margin: .6rem 0 .2rem; padding: .5rem .65rem; border-radius: 8px;
-  background: var(--cream); color: #6b5a52;
-  font-size: .76rem; line-height: 1.45;
-}
 
 /* El rotulo y su contador en una linea: con la card ancha entran holgados.
    `white-space:nowrap` porque "ELEGI TU PIEZA" partido se lee como un error. */

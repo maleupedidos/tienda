@@ -57,7 +57,7 @@ const CATEGORIAS = [
   /* La carne va TERCERA, pegada a las dos de pizzas, no al final: lo pidio
      Tadeo el 10/9/2026. `img` es propia y no sale del producto destacado
      como en el resto — las fotos de los cortes todavia son de stock. */
-  { nombre:"Carnes",              icono:"🥩", nota:"Cortes frescos de Maleu Carnes · Elegís la pieza que te llevás · Precio de carnicería: no entra en el 10% de efectivo", img:"carne-cortes.jpg" },
+  { nombre:"Carnes",              icono:"🥩", nota:"Cortes frescos de Maleu Carnes · Elegís vos la pieza que te llevás y sabés su peso exacto antes de pedirla", img:"carne-cortes.jpg" },
   { nombre:"Wraps",               icono:"🌯", nota:"Pre-cocidos · Listos al horno en pocos minutos" },
   { nombre:"Empanadas",           icono:"🥟", nota:"x8 unidades · Congeladas, listas para el horno · Cocinar hasta dorar" },
   { nombre:"Sorrentinos",         icono:"🍝", nota:"600g · 16 unidades · Rinde 3 porciones · Solo 4 minutos de cocción", tip:"Hervir agua · Agregar sorrentinos · 4 min con olla destapada · Retirar con espumadera y servir" },
@@ -578,6 +578,24 @@ function combosSubtotal() {
    precio cerrado promocional y no acumula con nada. */
 function combosInCart() { return Object.keys(comboCart).length > 0; }
 
+/* LA BASE DE LOS DESCUENTOS AUTOMATICOS (10% efectivo y +$100K).
+
+   Productos sueltos + carne. Los combos NO: son precio cerrado promocional y
+   no acumulan con nada.
+
+   La carne SI, por decision de Tadeo del 10/9/2026: "el 10% en efectivo es
+   para cualquier compra de Maleu. incluyendo carne". Se lo plantee al reves
+   —con el 10% puesto la entrana pasa de 11,8% a 2,0% de margen y el lomo de
+   13,6% a 4,0%, medido contra los costos de la hoja Productos— y lo
+   reafirmo. Queda escrito por si alguna vez se revisan los margenes de la
+   carne: el numero esta, la decision es comercial.
+
+   Existe como funcion y no repetida en cada lugar porque son SEIS los que la
+   miran (el descuento, su etiqueta, el incentivo del carrito, el hint de
+   pago y las dos barras de promo). Con seis copias, cambiar la regla una vez
+   mas significaria acordarse de seis. */
+function descontableSubtotal() { return productsSubtotal() + piezasSubtotal(); }
+
 /* ── ZONAS ── */
 const ZONAS = {
   estancias: {
@@ -1095,10 +1113,20 @@ function discountsActive() {
 let appliedCoupon = null;
 
 function _itemsInCart() {
-  return Object.entries(cart).map(function(e) {
+  var items = Object.entries(cart).map(function(e) {
     const p = PROD_MAP[e[0]]; if (!p) return null;
     return { id: p.id, abbr: PROD_ABBR[p.id] || '', cat: p.cat, precio: p.precio, qty: e[1] };
   }).filter(Boolean);
+  /* Cada pieza de carne entra como un item de una unidad, con SU precio (el
+     de esa pieza, no el del kilo). Sin esto un cupon que dice "TODO" no
+     cubriria la carne y el cliente veria un descuento mas chico del que le
+     prometieron — y de paso el 10% automatico se le aplicaria encima al
+     pedazo que el cupon no toco. */
+  Object.keys(piezaCart).forEach(function (pid) {
+    var g = piezaCart[pid];
+    items.push({ id: g.id, abbr: g.abbr, cat: 'Carnes', precio: g.precio, qty: 1 });
+  });
+  return items;
 }
 function _subtotalForScope(scope) {
   if (!scope) return 0;
@@ -1127,18 +1155,10 @@ function couponAppliesToAll() {
 }
 
 function getCashDiscount() {
-  // Combos quedan FUERA del 10%: el descuento (efectivo / +$100K) aplica solo a
-  // los productos sueltos. Base y umbral bulk se calculan sobre productsSubtotal
-  // (el combo, a precio cerrado, no recibe descuento ni cuenta para el +$100K).
-  //
-  // LA CARNE TAMPOCO, y no por la misma razon: no da el margen. Medido contra
-  // los costos de la hoja Productos, con el 10% puesto la entrana pasa de
-  // 11,8% a 2,0% de margen y el lomo de 13,6% a 4,0% — o sea $600 por kilo
-  // de entrana. Que `productsSubtotal` no incluya las piezas es lo correcto:
-  // si alguien lo "arregla" para sumarlas, se lleva puesto ese margen y no lo
-  // ve nadie hasta cerrar el mes. El cliente lo sabe: se avisa en la categoria
-  // y en el carrito.
-  const total = productsSubtotal();
+  // Base y umbral salen de descontableSubtotal(): productos + carne, sin los
+  // combos (precio cerrado, no acumulan). El porque de cada uno esta escrito
+  // arriba de esa funcion.
+  const total = descontableSubtotal();
   const sel = document.querySelector('input[name="pago"]:checked');
   const isCash = sel && sel.value === 'Efectivo';
   const isBulk = total >= 100000;
@@ -1163,7 +1183,7 @@ function getCashDiscount() {
 function getDiscountLabel() {
   const sel = document.querySelector('input[name="pago"]:checked');
   const isCash = sel && sel.value === 'Efectivo';
-  const isBulk = productsSubtotal() >= 100000;
+  const isBulk = descontableSubtotal() >= 100000;
   // Hay cupón? Mostrar de qué tipo es el auto (el cupón se muestra en otra línea)
   if (isCash && cashDiscountActive()) return '10% OFF Efectivo';
   if (isBulk && bulkDiscountActive()) return '10% OFF (+$100K)';
@@ -2664,14 +2684,7 @@ function updateUI() {
           : '') +
       '</div>';
     }).join('');
-    /* Si hay carne Y hay descuento, se dice por que el descuento no es sobre
-       todo. Sin esto la cuenta no cierra a la vista y se lee como un error
-       nuestro. Sale solo cuando las dos cosas pasan a la vez: un aviso que
-       aparece siempre se deja de leer. */
-    var avisoCarne = (piezasCount() && getTotalDiscount() > 0)
-      ? '<div class="pz-aviso-desc">El descuento no incluye la carne: se vende a precio de carnicer\u00eda.</div>'
-      : '';
-    bodyEl.innerHTML = comboLines + prodLinesHtml + piezaLinesHtml + avisoCarne;
+    bodyEl.innerHTML = comboLines + prodLinesHtml + piezaLinesHtml;
     $id('cart-subtotal').textContent = ars(subtotal);
     const discRow = $id('cart-discount-row');
     if (discount > 0) {
@@ -2693,11 +2706,11 @@ function updateUI() {
     }
     $id('cart-total').textContent = ars(total);
 
-    // Incentivo inteligente — el 10% aplica solo a productos sueltos (no combos),
-    // así que el umbral y los mensajes usan productsSubtotal. Si el carrito es
-    // solo combos (pSub=0), no hay nada que descontar → se oculta.
+    // Incentivo inteligente — el 10% aplica a productos y carne, no a los
+    // combos: el umbral y los mensajes usan descontableSubtotal. Si el carrito
+    // es solo combos (pSub=0), no hay nada que descontar → se oculta.
     var incentiveEl = $id('cart-incentive');
-    var pSub = productsSubtotal();
+    var pSub = descontableSubtotal();
     if (incentiveEl && discountsActive() && pSub > 0) {
       var falta = 100000 - pSub;
       var sel = document.querySelector('input[name="pago"]:checked');
@@ -2731,7 +2744,7 @@ function updateUI() {
   // (no hay nada descontable → el cartel mentiría).
   var promoBar = $id('promo-bar');
   if (promoBar && discountsActive()) {
-    var soloCombos = combosInCart() && productsSubtotal() === 0;
+    var soloCombos = combosInCart() && descontableSubtotal() === 0;
     promoBar.style.display = soloCombos ? 'none' : '';
   }
   updateFormSummary();
@@ -4325,7 +4338,7 @@ function updatePromoBar() {
   var bar = $id('promo-bar');
   if (!bar) return;
   // Carrito solo-combos: los descuentos no aplican → ocultarlos.
-  var soloCombos = combosInCart() && productsSubtotal() === 0;
+  var soloCombos = combosInCart() && descontableSubtotal() === 0;
   // Construir el ticker mezclando descuentos (si aplican) + cutoff Red (si aplica).
   var chips = [];
   if (discountsActive() && !soloCombos) {
@@ -4360,10 +4373,10 @@ function updatePagoHint() {
   if (!hint) return;
   var sel = document.querySelector('input[name="pago"]:checked');
   var isCash = sel && sel.value === 'Efectivo';
-  // El 10% aplica solo a productos sueltos (no combos): el umbral $100K y el
-  // "hay algo que descontar" se miden sobre productsSubtotal. Si el carrito es
-  // solo combos (pSub=0), no mostrar el cartel.
-  var pSub = productsSubtotal();
+  // El 10% aplica a productos y carne, no a los combos: el umbral $100K y el
+  // "hay algo que descontar" se miden sobre descontableSubtotal. Si el carrito
+  // es solo combos (pSub=0), no mostrar el cartel.
+  var pSub = descontableSubtotal();
   var yaBulk = pSub >= 100000;
   hint.style.display = (cashDiscountActive() && !isCash && !yaBulk && pSub > 0) ? '' : 'none';
 }
