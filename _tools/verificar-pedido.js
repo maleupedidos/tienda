@@ -155,6 +155,13 @@ const COMPRAR = `(async function () {
 
   addToCart(5); addToCart(5);        // 2 Pack Muzzarella x2
   addToCart(11);                     // 1 Empanadas Carne a Cuchillo
+  /* Un sorrentino premium (10/9/2026): son los ultimos ids que se abrieron
+     a Estancias, y el camino que hay que ejercitar es el del id que NO
+     estuvo aca desde el principio. Si el stock del dia no lo deja entrar,
+     el carrito queda sin el y el resto del test corre igual: el mapeo lo
+     cubre revisarZonas (sin comillas invertidas: esto vive adentro de un
+     template literal y una sola lo cerraria), que no depende del stock. */
+  addToCart(22);                     // 1 Sorrentinos Pollo y Puerro
 
   var carne = [];
   Object.keys(piezasMap || {}).forEach(function (abbr) {
@@ -261,18 +268,19 @@ function revisar(p, esp, mapas, conCarne) {
   return { fallas, backend };
 }
 
-/* Un corte no puede ofrecerse en una zona cuyo canal no tenga donde guardarlo.
+/* Un producto no puede ofrecerse en una zona cuyo canal no tenga donde guardarlo.
    Pilar deriva a la hoja Red cuando el barrio tiene vendedor, y eso lo decide
    el backend, no el cliente: por eso Pilar se mira contra Red tambien. */
-function revisarZonas(cortes, mapas) {
+function revisarZonas(prods, mapas) {
   const problemas = [];
   if (!mapas) return problemas;
   const destino = { estancias: [['Home', mapas.home]],
                     pilar: [['Pilar', mapas.pilar], ['Red', mapas.red]],
                     clubes: [['Clubes', mapas.clubes]] };
-  cortes.forEach((c) => {
+  prods.forEach((c) => {
     /* El default NO incluye clubes: esa zona no filtra `PRODUCTOS`, usa una
-       lista aparte (`PRODUCTOS_CLUBES`), asi que un corte no puede aparecer
+       lista aparte (`PRODUCTOS_CLUBES`), asi que un producto de `PRODUCTOS`
+       no puede aparecer
        ahi aunque no declare zonas. Ponerlo daba un problema inventado, y una
        herramienta con ruido se deja de mirar. */
     const zonas = c.zonas || ['estancias', 'pilar'];
@@ -360,18 +368,24 @@ async function main() {
       }
     }
 
-    /* Las zonas donde se ofrece cada corte, leidas del catalogo de verdad. */
+    /* Las zonas donde se ofrece cada producto, leidas del catalogo de verdad.
+       Mira el catalogo ENTERO y no solo la carne: el modo de fallo no es de
+       la carne, es de cualquier id que se ofrezca en una zona cuya hoja no
+       tenga columna para el. El 10/9/2026 se abrieron los 4 sorrentinos
+       premium a Estancias y este chequeo, acotado a `cat==='Carnes'`, no los
+       habria mirado. */
     const rc = await cli.enviar('Runtime.evaluate', {
-      expression: "JSON.stringify(PRODUCTOS.filter(function(p){return p.cat==='Carnes';}).map(function(p){return {id:p.id,nombre:p.nombre,zonas:p.zonas||null};}))",
+      expression: "JSON.stringify(PRODUCTOS.map(function(p){return {id:p.id,nombre:p.nombre,zonas:p.zonas||null};}))",
       returnByValue: true });
     const problemas = revisarZonas(JSON.parse(rc.result.value || '[]'), mapas);
     if (problemas.length) {
       malas += problemas.length;
-      console.log(RED + '  MAL  zonas donde se ofrece la carne' + RST);
+      console.log(RED + '  MAL  zonas donde se ofrece cada producto' + RST);
       problemas.slice(0, 6).forEach((f) => console.log('         ' + f));
       if (problemas.length > 6) console.log(DIM + '         (' + (problemas.length - 6) + ' mas del mismo tipo)' + RST);
     } else {
-      console.log(VER + '  ok   ' + RST + 'cada corte se ofrece solo donde la planilla tiene columna para guardarlo');
+      console.log(VER + '  ok   ' + RST + 'los ' + JSON.parse(rc.result.value || '[]').length +
+        ' productos del catalogo se ofrecen solo donde la planilla tiene columna para guardarlos');
     }
 
     /* Y que el filtro se cumpla EN LA PANTALLA, con el inventario cargado: el
@@ -382,15 +396,27 @@ async function main() {
       const rz = await cli.enviar('Page.addScriptToEvaluateOnNewDocument', { source: prep(ESCENARIOS[1].piezas, zona) });
       guionPrevio = rz.identifier;
       await cli.enviar('Page.navigate', { url: 'http://127.0.0.1:' + PUERTO + '/index.html' });
-      let ok = false;
-      for (let i = 0; i < 60; i++) {
-        const r = await cli.enviar('Runtime.evaluate', {
-          expression: "document.querySelectorAll('.cat-section').length > 0 && typeof piezasEstado !== 'undefined' && piezasEstado !== 'cargando'",
-          returnByValue: true });
-        if (r.result && r.result.value === true) { ok = true; break; }
+      /* 40 s y no 15: `fetchPiezas` corre DESPUES de `fetchStock`, que le pega al
+         Apps Script de verdad — 3 a 8 s, y Apps Script atiende de a una, asi que
+         puede irse bastante mas. Con 15 s este chequeo daba rojo una de cada dos
+         corridas, y un test intermitente es peor que no tenerlo: el dia que el
+         rojo sea cierto nadie le va a creer. Y se dice CUAL de las dos cosas
+         falto, porque no son el mismo problema. */
+      let ok = false, ultimo = null;
+      for (let i = 0; i < 160; i++) {
+        const r = await cli.enviar('Runtime.evaluate', { returnByValue: true, expression:
+          "JSON.stringify({sec: document.querySelectorAll('.cat-section').length," +
+          " pz: typeof piezasEstado !== 'undefined' ? piezasEstado : 'sin-definir'})" });
+        ultimo = JSON.parse(r.result.value || '{}');
+        if (ultimo.sec > 0 && ultimo.pz !== 'cargando' && ultimo.pz !== 'sin-definir') { ok = true; break; }
         await new Promise((s) => setTimeout(s, 250));
       }
-      if (!ok) { console.log(RED + '  MAL  zona ' + zona + ': no cargo' + RST); malas++; continue; }
+      if (!ok) {
+        console.log(RED + '  MAL  zona ' + zona + ': ' + (!ultimo || !ultimo.sec
+          ? 'el catalogo no se dibujo'
+          : 'el inventario de piezas no llego en 40 s (piezasEstado=' + ultimo.pz + ') — sin el, "no se ofrece carne" seria un ok falso') + RST);
+        malas++; continue;
+      }
       await new Promise((s) => setTimeout(s, 500));
       const r = await cli.enviar('Runtime.evaluate', { returnByValue: true, expression:
         "JSON.stringify({cards: document.querySelectorAll('.carne-card').length," +

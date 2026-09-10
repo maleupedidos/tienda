@@ -82,10 +82,10 @@ const PRODUCTOS = [
   { id:8,  cat:"Sorrentinos",      nombre:"Sorrentinos Cordero al Malbec", desc:"Cordero, zanahoria, apio, cebolla y especias. Distinto y muy rico.",             precio:19800, img:"sorrentinos-cordero-v2.jpg", emoji:"🍝", chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
   { id:9,  cat:"Sorrentinos",      nombre:"Sorrentinos Jamón y Queso",     desc:"Relleno cremoso y generoso. El favorito de la familia.",                         precio:18300, img:"sorrentinos-jamon-v2.jpg", emoji:"🍝", top:true, chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
   { id:10, cat:"Sorrentinos",      nombre:"Sorrentinos Calabaza y Queso",  desc:"Suave, dulce y sabroso. Relleno cremoso de calabaza y queso.",                   precio:16500, img:"sorrentinos-calabaza-v2.jpg", emoji:"🍝", chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
-  { id:20, cat:"Sorrentinos",      nombre:"Sorrentinos Queso Brie",        desc:"Queso brie cremoso y perfumado. Gourmet sin vueltas.",                          precio:22100, img:"sorrentinos-brie.jpg",      emoji:"🍝", zonas:["pilar"], chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
-  { id:21, cat:"Sorrentinos",      nombre:"Sorrentinos Langostinos al Azafrán", desc:"Langostinos y azafrán en masa casera. Muy gourmet.",                      precio:22100, img:"sorrentinos-langostinos.jpg",emoji:"🍝", zonas:["pilar"], chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
-  { id:22, cat:"Sorrentinos",      nombre:"Sorrentinos Pollo y Puerro",    desc:"Pollo tierno con puerro salteado. Suave, sabroso y muy rendidor.",              precio:18300, img:"sorrentinos-pollo-puerro.jpg",emoji:"🍝", zonas:["pilar"], chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
-  { id:23, cat:"Sorrentinos",      nombre:"Sorrentinos Espinaca",          desc:"Espinaca con queso cremoso. Verde, suave, tradicional.",                         precio:17000, img:"sorrentinos-espinaca.jpg",   emoji:"🍝", zonas:["pilar"], chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
+  { id:20, cat:"Sorrentinos",      nombre:"Sorrentinos Queso Brie",        desc:"Queso brie cremoso y perfumado. Gourmet sin vueltas.",                          precio:22100, img:"sorrentinos-brie.jpg",      emoji:"🍝", nuevoEn:["estancias"], chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
+  { id:21, cat:"Sorrentinos",      nombre:"Sorrentinos Langostinos al Azafrán", desc:"Langostinos y azafrán en masa casera. Muy gourmet.",                      precio:22100, img:"sorrentinos-langostinos.jpg",emoji:"🍝", nuevoEn:["estancias"], chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
+  { id:22, cat:"Sorrentinos",      nombre:"Sorrentinos Pollo y Puerro",    desc:"Pollo tierno con puerro salteado. Suave, sabroso y muy rendidor.",              precio:18300, img:"sorrentinos-pollo-puerro.jpg",emoji:"🍝", nuevoEn:["estancias"], chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
+  { id:23, cat:"Sorrentinos",      nombre:"Sorrentinos Espinaca",          desc:"Espinaca con queso cremoso. Verde, suave, tradicional.",                         precio:17000, img:"sorrentinos-espinaca.jpg",   emoji:"🍝", nuevoEn:["estancias"], chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
   { id:11, cat:"Empanadas",        nombre:"Empanadas Carne a Cuchillo x8", desc:"Carne cortada a cuchillo, jugosa y bien condimentada. Las que piden todos.",     precio:20000, img:"empanadas-carne-v2.jpg", emoji:"🥟", top:true, chips:["Para 2–4 personas","8 empanadas","Al horno hasta dorar"] },
   { id:12, cat:"Empanadas",        nombre:"Empanadas Jamón y Queso x8",    desc:"Cremosas por dentro, doraditas por fuera. Para cualquier momento.",              precio:18000, img:"empanadas-jamon-v2.jpg", emoji:"🥟", chips:["Para 2–4 personas","8 empanadas","Al horno hasta dorar"] },
   { id:17, cat:"Empanadas",        nombre:"Empanadas Cebolla y Queso Azul x8",  desc:"Cebolla caramelizada con queso azul. Intensas y cremosas.",               precio:18000, img:"empanadas-cebolla-v2.jpg", emoji:"🥟", chips:["Para 2–4 personas","8 empanadas","Al horno hasta dorar"] },
@@ -191,9 +191,12 @@ function _purgeCartBloqueados() {
 /* El modo `?autopedido=1` se ELIMINO el 8/9/2026.
 
    Existio del 1/9 al 8/9 para un caso real: Javier Galarraga, de Estancias,
-   pidio 3 Sorrentinos Espinaca — un producto con zonas:["pilar"] que aca no se
-   muestra. Con el parametro se veia el catalogo completo y Tadeo cargaba el
-   pedido por el cliente.
+   pidio 3 Sorrentinos Espinaca — que en ese momento era exclusivo de Pilar y
+   aca no se mostraba. Con el parametro se veia el catalogo completo y Tadeo
+   cargaba el pedido por el cliente.
+   El 10/9/2026 ese caso dejo de existir: Tadeo abrio los 4 sorrentinos premium
+   a Estancias, asi que el cliente los pide solo. El modo sigue eliminado por
+   el motivo de abajo, que no tiene nada que ver con el catalogo.
 
    El problema no era que anduviera mal. Era que convertia a la tienda en una
    SEGUNDA pantalla para cargar pedidos, en paralelo a la tab AUTOPEDIDO del
@@ -208,6 +211,17 @@ function _purgeCartBloqueados() {
 /* Unico lugar que decide si un producto o combo se muestra en la zona actual.
    Antes esta condicion estaba repetida en tres lados y era facil que una
    quedara sin actualizar. */
+/* La chapita "Nuevo" no siempre es global. Los 4 sorrentinos premium se
+   abrieron a Estancias el 10/9/2026 y ahi son novedad, pero en Pilar los
+   venimos vendiendo hace meses: decirle "Nuevo" a alguien que ya los compro
+   gasta la unica chapita que hace que un cliente frecuente vuelva a mirar el
+   catalogo. `nuevo` sigue siendo el flag de siempre (novedad en todos lados);
+   `nuevoEn` lo acota a las zonas donde de verdad lo es. */
+function _esNuevo(p) {
+  if (p.nuevo) return true;
+  return !!(p.nuevoEn && p.nuevoEn.indexOf(currentZone) >= 0);
+}
+
 function _zonaPermite(zonas) {
   if (!zonas) return true;
   return zonas.indexOf(currentZone) >= 0;
@@ -2334,7 +2348,7 @@ function carneCardHTML(p) {
   var libres = piezasDe(p.abbr);
   var mias = piezasEnCarrito(p.abbr);
   var chapas = '';
-  if (p.nuevo) chapas += '<span class="chapa-prod chapa-nuevo">Nuevo</span>';
+  if (_esNuevo(p)) chapas += '<span class="chapa-prod chapa-nuevo">Nuevo</span>';
 
   var cuerpo;
   if (piezasEstado !== 'ok') {
@@ -2390,7 +2404,7 @@ function productCardHTML(p) {
      El orden importa: "Nuevo" primero, porque es la novedad la que hace que
      alguien que ya conoce el catalogo lo vuelva a mirar. */
   var chapas = '';
-  if (p.nuevo) chapas += '<span class="chapa-prod chapa-nuevo">Nuevo</span>';
+  if (_esNuevo(p)) chapas += '<span class="chapa-prod chapa-nuevo">Nuevo</span>';
   if (p.top)   chapas += '<span class="chapa-prod chapa-top">Lo más pedido</span>';
   return '<article class="product-card" data-id="' + p.id + '">' +
     '<div class="product-thumb">' +

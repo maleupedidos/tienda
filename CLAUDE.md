@@ -124,16 +124,51 @@ Los otros dos:
 como mucho ese rato en verse: el navegador pide el index nuevo, ve un `?v=`
 distinto, y baja el archivo. Si hace falta antes, recarga forzada.
 
-## Los 4 sorrentinos que esta tienda NO muestra
+## Los 7 gustos de sorrentinos se venden en las dos zonas (10/9/2026)
 
-**Cuatro sorrentinos tienen `zonas:["pilar"]`**: Queso Brie, Langostinos al
-Azafrán, Pollo y Puerro y Espinaca. En Estancias no se venden, así que
-`_zonaPermite` los filtra.
+Hasta ese día **cuatro tenían `zonas:["pilar"]`** — Queso Brie, Langostinos al
+Azafrán, Pollo y Puerro y Espinaca — y en Estancias no se mostraban. Tadeo los
+abrió: *"que en estancias también aparezcan… arriame todos los gustos"*.
 
-Un cliente de Estancias los puede pedir igual — pasó el 1/9/2026 con Javier
-Galarraga, 3 Espinaca. **Ese pedido se carga desde el ERP**, en la tab
-AUTOPEDIDO de Ruta: ahí están en un bloque «por encargo» que dice que no salen
-del freezer y qué origen corresponde.
+**No se les puso ningún "sin stock" a mano, y no es un olvido.** La tienda no
+tiene un flag de agotado: lee el stock real del ERP (`action=stock_full`) y de
+ahí sale lo que se ve. O sea que la pantalla dice la verdad sola y se corrige
+sola el día que Tadeo le compre a Le Unike, sin tocar una línea:
+
+| lo que elige el cliente | modo | qué ve |
+|---|---|---|
+| entrega **antes del próximo viernes** | `real` / `proyectado` | los que están en 0 dicen **"Sin stock"** y no entran al carrito |
+| entrega **del viernes en adelante** | `ilimitado` | se pueden pedir: entran en la orden de compra del jueves, igual que el resto del catálogo |
+
+Un flag de agotado escrito a mano habría hecho las dos cosas mal: taparía las
+unidades que sí hay —al abrirlos, **Pollo y Puerro tenía 2 en el freezer**— y
+habría que acordarse de sacarlo el día de la compra, con el catálogo mintiendo
+hasta que alguien se acuerde.
+
+> [!warning] La chapita "Nuevo" es por zona (`nuevoEn`), no global
+> En Pilar estos cuatro se venden hace meses: decirle "Nuevo" a alguien que ya
+> los compró gasta la única chapita que hace que un cliente frecuente vuelva a
+> mirar el catálogo. `nuevo` sigue siendo el flag de siempre; `nuevoEn` lo acota
+> a las zonas donde de verdad es una novedad. Lo resuelve `_esNuevo(p)`.
+
+> [!danger] Abrir un producto a una zona sin mirar la hoja lo cobra y no lo guarda
+> Si el id no tiene columna en la hoja de ese canal, el backend **lo cobra y no
+> lo escribe**: el pedido entra, el total está bien, y la cantidad no cae en
+> ningún lado. Sin error, sin log, sin nada.
+>
+> Estos cuatro estaban cubiertos —`HOME_PRODUCT_COLS` los tiene en 66-69 desde
+> el 1/9/2026, y `PAGE_ID_TO_ABBR`, `PILAR_PRODUCT_COLS` y `RED_PRODUCT_COLS`
+> también—, y se verificó **antes** de abrirlos, no después.
+>
+> Lo vigila `node _tools/verificar-pedido.js`, que desde el 10/9/2026 cruza **el
+> catálogo entero** contra los mapas reales del `Code.js` del ERP. Antes miraba
+> sólo `cat === 'Carnes'`, así que este cambio no lo habría mirado: la red
+> existía para la carne y el modo de fallo no es de la carne, es de cualquier id.
+
+**En la hoja `Proveedores` de la planilla, los cuatro siguen diciendo Canal de
+Venta = "Red y Delivery"**, no "Home". El código no lee esa columna —es
+documentación— así que no rompe nada, pero quedó vieja: hoy también se venden
+en Home.
 
 > [!warning] Existió `?autopedido=1` y se eliminó el 8/9/2026
 > Del 1/9 al 8/9 ese parámetro mostraba el catálogo completo acá. No andaba mal
@@ -144,6 +179,10 @@ del freezer y qué origen corresponde.
 >
 > Si aparece un link viejo con `?autopedido=1`, hoy **no hace nada**: el
 > parámetro se ignora y la tienda filtra por zona como siempre.
+>
+> Y desde el 10/9/2026 el caso que lo motivó tampoco existe: los 4 sorrentinos
+> que Galarraga no podía pedir hoy están en el catálogo de Estancias, así que el
+> cliente los carga solo.
 
 ## Deploy
 
