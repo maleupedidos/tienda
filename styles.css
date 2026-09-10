@@ -1294,3 +1294,127 @@ body.busqueda-activa #repeat-block { display: none !important; }
    por su cuenta: lo apila el flex. Si siguiera absoluto se superpondria con
    las chapitas, porque las dos vivian en top:.5rem/left:.5rem. */
 .chapas-prod .combo-flag { position: static; top: auto; left: auto; }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   CARNE POR PIEZA                                          (10/9/2026)
+   ═══════════════════════════════════════════════════════════════
+   La paleta es la del manual: el marron #331C1C manda, el naranja marca
+   lo elegido, y la crema hace de fondo suave. Ni un color nuevo.
+
+   Los pesos y los precios van con `tabular-nums`: son numeros que se leen
+   en columna, uno abajo del otro, y sin eso los digitos bailan. */
+
+/* Ancho completo: en media columna (165px a 390px) la fila de una pieza
+   necesita 153px y tiene 121 — el precio quedaba cortado. Y de paso separa
+   visualmente un producto que se elige distinto: mirando peso por peso. */
+.products-grid .carne-card { grid-column: 1 / -1; }
+
+/* Con la card ancha, la foto de 4:5 quedaria enorme. Se acuesta y el cuerpo
+   va al lado, que es como se lee una ficha de carniceria. */
+.carne-card { flex-direction: row; align-items: stretch; }
+.carne-card .product-thumb { flex: 0 0 40%; aspect-ratio: auto; }
+.carne-card .product-body { flex: 1 1 auto; gap: 0; min-width: 0; }
+/* Sin footer que empujar, el `flex:1` de la descripcion es un hueco en el
+   medio de la card — y encima estira la foto: 441px de alto en un corte con
+   dos piezas. El contenido se agrupa arriba y la foto sigue su altura. */
+.carne-card .product-desc { flex: 0 0 auto; }
+.carne-card .product-thumb { align-self: stretch; min-height: 190px; }
+/* La imagen sale del flujo: si aporta su altura natural (800x1000) la card la
+   sigue a ella en vez de al contenido — 441px por una card de dos piezas.
+   Con object-fit:cover se recorta y acompana la altura del cuerpo. */
+.carne-card .product-thumb-img { position: absolute; inset: 0; }
+
+/* El precio del kilo es la REFERENCIA, no lo que se paga: va chico y en
+   gris. El numero grande de cada fila es el de la pieza. */
+.pz-kilo {
+  font-family: var(--font); font-size: .82rem; font-weight: 600;
+  color: #8d7a72; margin: .5rem 0 .6rem;
+  font-variant-numeric: tabular-nums;
+}
+.pz-kilo span { font-weight: 500; }
+
+.pz-rotulo {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: .5rem; margin-bottom: .4rem;
+}
+.pz-rotulo > span:first-child {
+  font-size: .72rem; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--brown);
+}
+.pz-quedan { font-size: .72rem; color: #8d7a72; white-space: nowrap; }
+
+.pz-lista { display: flex; flex-direction: column; gap: .35rem; }
+
+/* Cada pieza es un boton de 48px: se toca con el pulgar, en la calle y a una
+   mano. Debajo de 44 no se le pega. */
+.pz-fila {
+  display: flex; align-items: center; gap: .55rem;
+  width: 100%; min-height: 48px; padding: .55rem .7rem;
+  font-family: var(--font); font-size: .92rem; color: var(--brown);
+  background: #fff; border: 1.5px solid #e8ddd0; border-radius: 10px;
+  cursor: pointer; text-align: left;
+  transition: border-color .12s, background .12s;
+}
+.pz-fila:hover { border-color: var(--orange); background: #FFF8F4; }
+
+/* El circulito de la izquierda: vacio, y con el tilde cuando esta elegida.
+   Es lo que hace que se lea como "elegí una", no como un boton de comprar. */
+.pz-check {
+  flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid #d8c9ba; position: relative;
+  transition: border-color .12s, background .12s;
+}
+.pz-kg { flex: 1 1 auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pz-precio { flex: 0 0 auto; font-weight: 700; color: var(--brown); font-variant-numeric: tabular-nums; }
+
+.pz-fila.elegida { border-color: var(--orange); background: #FFF3EC; }
+.pz-fila.elegida .pz-check { border-color: var(--orange); background: var(--orange); }
+.pz-fila.elegida .pz-check::after {
+  content: ''; position: absolute; left: 5px; top: 1px;
+  width: 5px; height: 10px; border: solid #fff;
+  border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.pz-fila.elegida .pz-precio { color: var(--hover-orange); }
+
+.pz-resumen {
+  margin-top: .5rem; padding: .45rem .6rem; border-radius: 8px;
+  background: var(--cream); color: var(--brown);
+  font-size: .82rem; font-variant-numeric: tabular-nums;
+}
+.pz-vacio { font-size: .86rem; color: #8d7a72; margin: .3rem 0 .2rem; }
+
+/* Las piezas dentro del carrito. Van listadas una por una y no como un total:
+   el cliente eligio ESAS piezas y tiene que poder sacar una sin perder las
+   otras. */
+.cart-piezas { list-style: none; margin: .35rem 0 0; padding: 0; display: flex; flex-direction: column; gap: .2rem; }
+.cart-piezas li {
+  display: flex; align-items: center; gap: .4rem;
+  font-size: .78rem; color: #6b5a52; font-variant-numeric: tabular-nums;
+}
+.pz-quitar {
+  margin-left: auto; width: 26px; height: 26px; flex: 0 0 auto;
+  border: 1px solid #e8ddd0; border-radius: 6px; background: #fff;
+  color: #8d7a72; font-size: 1rem; line-height: 1; cursor: pointer;
+}
+.pz-quitar:hover { border-color: var(--orange); color: var(--hover-orange); }
+/* Con una sola pieza el boton de sacar va en la fila, alineado con los +/- de
+   los otros productos del carrito. */
+.pz-quitar-solo { margin-left: .4rem; align-self: center; }
+/* El aviso de que el descuento no cubre la carne. Va discreto: es una
+   aclaracion, no una advertencia — pero tiene que leerse. */
+.pz-aviso-desc {
+  margin: .6rem 0 .2rem; padding: .5rem .65rem; border-radius: 8px;
+  background: var(--cream); color: #6b5a52;
+  font-size: .76rem; line-height: 1.45;
+}
+
+/* El rotulo y su contador en una linea: con la card ancha entran holgados.
+   `white-space:nowrap` porque "ELEGI TU PIEZA" partido se lee como un error. */
+.pz-rotulo > span:first-child { white-space: nowrap; }
+
+/* En pantallas muy angostas la foto al costado deja poco lugar: vuelve arriba. */
+@media (max-width: 430px) {
+  .carne-card { flex-direction: column; }
+  .carne-card .product-thumb { flex: 0 0 auto; aspect-ratio: 16 / 9; }
+}

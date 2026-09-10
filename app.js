@@ -34,31 +34,36 @@ const PRODUCTOS = [
   { id:14, cat:"Tortas", nombre:"Torta Golosa",                  desc:"Masa de chocolate, dulce de leche, mousse de chocolate y almendras acarameladas.", precio:26000, img:"torta-golosa.jpg", emoji:"🎂", chips:["Para 8–10 personas","Torta entera","Lista para cortar y servir"] },
   { id:15, cat:"Tortas", nombre:"Torta Lemon Crumble",           desc:"Base sablée, relleno de limón y crumble crocante espolvoreado.",                 precio:26000, img:"torta-lemon.jpg", emoji:"🎂", chips:["Para 8–10 personas","Torta entera","Lista para cortar y servir"] },
   { id:16, cat:"Tortas", nombre:"Torta Coco",                    desc:"Base crocante, dulce de leche y relleno de coco. Generosa y sin vueltas.",       precio:26000, img:"torta-coco.jpg", emoji:"🎂", chips:["Para 8–10 personas","Torta entera","Lista para cortar y servir"] },
-  /* ═══ CARNES — Diagonal Carnes (Lucas Moresco) ═══════════════════════
-     ⚠ PRECIO PROVISORIO en los cinco. Los marca precioProvisorio y
-     `npm run precios-pendientes` corta mientras sigan puestos.
-     Faltan tambien las fotos reales: hoy los cinco comparten la de la
-     categoria, que es de stock (Pexels 5313880). */
-  { id:40, cat:"Carnes", nuevo:true, nombre:"Lomo",    desc:"El corte mas tierno. Para la ocasion que se merece el mejor.",              precio:32000, img:"carne-cortes.jpg", emoji:"🥩", precioProvisorio:true, chips:["Se vende por kilo","Fresco, no congelado"] },
-  { id:41, cat:"Carnes", nuevo:true, nombre:"Colita",  desc:"Colita de cuadril. Jugosa al horno y perfecta a la parrilla.",              precio:24000, img:"carne-cortes.jpg", emoji:"🥩", precioProvisorio:true, chips:["Se vende por kilo","Fresco, no congelado"] },
-  { id:42, cat:"Carnes", nuevo:true, nombre:"Picaña",  desc:"El corte brasilero que se volvio infaltable. Con su tapa de grasa.",       precio:26000, img:"carne-cortes.jpg", emoji:"🥩", precioProvisorio:true, chips:["Se vende por kilo","Fresco, no congelado"] },
-  { id:43, cat:"Carnes", nuevo:true, nombre:"Entraña", desc:"Fina, sabrosa y rapida. La que sale primero de la parrilla.",              precio:34000, img:"carne-cortes.jpg", emoji:"🥩", precioProvisorio:true, chips:["Se vende por kilo","Fresco, no congelado"] },
-  { id:44, cat:"Carnes", nuevo:true, nombre:"Vacio",   desc:"El clasico del asado argentino. Paciencia y fuego bajo.",                   precio:22000, img:"carne-cortes.jpg", emoji:"🥩", precioProvisorio:true, chips:["Se vende por kilo","Fresco, no congelado"] },
+  /* ═══ CARNES — Maleu Carnes (Lucas Moresco) ════════════════
+     Se venden POR KILO y por PIEZA: el cliente elige la pieza que se lleva,
+     con su peso exacto. Ver el bloque PIEZAS mas abajo.
+
+     Los `id` son los del ERP (HOME_PRODUCT_COLS 30-34), no inventados: con
+     otro numero el backend no encuentra la columna y el pedido se cobra sin
+     guardarse. Los precios salen de la hoja Productos.
+
+     `abbr` es la llave con la que se cruzan las piezas y la que entiende el
+     backend. `porPeso` lo confirma `action=precios` (u:"kg") al cargar. */
+  { id:30, abbr:"CCo", cat:"Carnes", porPeso:true, nuevo:true, nombre:"Colita de Cuadril", desc:"Jugosa al horno y perfecta a la parrilla. Un corte que nunca falla.", precio:25000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
+  { id:31, abbr:"CEn", cat:"Carnes", porPeso:true, nuevo:true, nombre:"Entra\u00f1a",           desc:"Fina, sabrosa y r\u00e1pida. La que sale primero de la parrilla.",          precio:34000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
+  { id:32, abbr:"CLo", cat:"Carnes", porPeso:true, nuevo:true, nombre:"Lomo",              desc:"El corte m\u00e1s tierno. Para la ocasi\u00f3n que se merece el mejor.",       precio:33000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
+  { id:33, abbr:"CPi", cat:"Carnes", porPeso:true, nuevo:true, nombre:"Pica\u00f1a",            desc:"El corte brasilero que se volvi\u00f3 infaltable. Con su tapa de grasa.",  precio:26000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
+  { id:34, abbr:"CVa", cat:"Carnes", porPeso:true, nuevo:true, nombre:"Vac\u00edo",             desc:"El cl\u00e1sico del asado argentino. Paciencia y fuego bajo.",            precio:26000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
 ];
 
 const CATEGORIAS = [
   { nombre:"Pack Pizzas x2",      icono:"🍕", nota:"Pack de 2 unidades · Perfectas para tener siempre a mano" },
   { nombre:"Pizzas Individuales", icono:"🍕", nota:"Pre-cocidas · Listas en minutos · Al horno directo desde el freezer" },
+  /* La carne va TERCERA, pegada a las dos de pizzas, no al final: lo pidio
+     Tadeo el 10/9/2026. `img` es propia y no sale del producto destacado
+     como en el resto — las fotos de los cortes todavia son de stock. */
+  { nombre:"Carnes",              icono:"🥩", nota:"Cortes frescos de Maleu Carnes · Elegís la pieza que te llevás · Precio de carnicería: no entra en el 10% de efectivo", img:"carne-cortes.jpg" },
   { nombre:"Wraps",               icono:"🌯", nota:"Pre-cocidos · Listos al horno en pocos minutos" },
   { nombre:"Empanadas",           icono:"🥟", nota:"x8 unidades · Congeladas, listas para el horno · Cocinar hasta dorar" },
   { nombre:"Sorrentinos",         icono:"🍝", nota:"600g · 16 unidades · Rinde 3 porciones · Solo 4 minutos de cocción", tip:"Hervir agua · Agregar sorrentinos · 4 min con olla destapada · Retirar con espumadera y servir" },
   { nombre:"Tartas",              icono:"🥧", nota:"Pre-cocidas · 16cm · Listas al horno en 10 min", tip:"Precalentar horno al máximo 10 min · Hornear 10 min · Servir" },
   { nombre:"Franuis",             icono:"🍫", nota:"Frambuesas bañadas en chocolate · Listas para servir" },
   { nombre:"Tortas",              icono:"🎂", nota:"Tortas enteras · Listas para cortar y servir" },
-  /* La carne de Diagonal (Lucas Moresco). `img` es propia y no sale del
-     producto destacado como en el resto: las fotos de los cortes todavia
-     son de stock y la de la categoria es la unica elegida a mano. */
-  { nombre:"Carnes",              icono:"🥩", nota:"Cortes frescos de Diagonal Carnes · Se venden por kilo", img:"carne-cortes.jpg" },
 ];
 
 /* ── PRODUCTOS CLUBES (precios especiales, solo pizzas) ── */
@@ -135,6 +140,13 @@ function getActiveProducts() {
   return PRODUCTOS.filter(function(p) {
     if (!_zonaPermite(p.zonas)) return false;
     if (_catBloqueadaPorBarrio(p.cat)) return false;
+    /* Un corte sin piezas cargadas no se ofrece. Es el unico filtro que hace
+       falta: por aca pasan el catalogo, los tiles de categoria y el buscador,
+       asi que con esto la categoria Carnes entera desaparece sola mientras no
+       haya nada, y aparece sola el dia que Lucas cargue el primer envio.
+       Mira el INVENTARIO y no las piezas libres: si el cliente se lleva la
+       ultima, el corte tiene que seguir a la vista con su pieza tildada. */
+    if (esPorPeso(p) && !(piezasMap[p.abbr] || []).length) return false;
     return true;
   });
 }
@@ -404,6 +416,157 @@ function optionAvailable(prodId) {
 }
 
 /* Subtotales separados: productos sueltos vs combos (a precio cerrado). */
+/* ══ PIEZAS DE CARNE ═════════════════════════════════════════
+   La carne se vende por pieza, y cada pieza pesa distinto porque viene
+   envasada al vacio. El cliente elige cual se lleva.
+   ═════════════════════════════════════════════════════════════ */
+
+/* Un peso en kilos, como se escribe en Argentina: coma decimal y hasta tres
+   decimales, que es lo que da una balanza. 1.24 -> "1,240 kg" */
+function kgTexto(kg) {
+  var n = Number(kg) || 0;
+  return n.toFixed(3).replace('.', ',') + ' kg';
+}
+
+/* Lo que sale una pieza: su peso por el precio del kilo.
+   Se redondea al peso porque no existe el centavo, y se redondea UNA sola vez
+   — si cada pantalla redondeara por su cuenta, el total del carrito no daria
+   igual que la suma de las lineas. */
+function piezaPrecio(prod, kg) {
+  return Math.round((Number(kg) || 0) * (prod ? prod.precio : 0));
+}
+
+/* Las piezas disponibles de un corte, sin las que ya estan en el carrito.
+   Devuelve [] si el corte no tiene ninguna, y tambien si todavia no llegaron
+   los datos: quien lo llame tiene que mirar `piezasEstado` para saber cual de
+   las dos cosas es. */
+function piezasDe(abbr) {
+  var lista = piezasMap[abbr];
+  if (!lista || !lista.length) return [];
+  return lista.filter(function (pz) { return !piezaCart[pz.id]; });
+}
+
+/* ¿Este producto se vende por peso? Sale del catalogo, que a su vez lo saca de
+   la hoja Productos (col Q). No hay ninguna lista de cortes escrita a mano
+   aca: si manana un producto de Maleu pasa a venderse por kilo, entra solo. */
+function esPorPeso(p) { return !!(p && p.porPeso); }
+
+/* Cuantas piezas de este corte hay en el carrito, y cuantos kilos suman. */
+function piezasEnCarrito(abbr) {
+  var n = 0, kg = 0;
+  Object.keys(piezaCart).forEach(function (pid) {
+    var it = piezaCart[pid];
+    if (it.abbr === abbr) { n++; kg += it.kg; }
+  });
+  return { n: n, kg: kg };
+}
+
+/* Poner o sacar una pieza del carrito. Es un interruptor y no un +/-: la
+   pieza es unica, o te la llevas o no. */
+function togglePieza(abbr, piezaId) {
+  if (piezaCart[piezaId]) {
+    var fuera = piezaCart[piezaId];
+    delete piezaCart[piezaId];
+    toast('Sacaste ' + fuera.nombre + ' de ' + kgTexto(fuera.kg));
+  } else {
+    var prod = PRODUCTOS.filter(function (x) { return x.abbr === abbr; })[0];
+    var pz = (piezasMap[abbr] || []).filter(function (x) { return x.id === piezaId; })[0];
+    /* Si la pieza ya no esta en el inventario es porque el catalogo se
+       refresco y alguien se la llevo. Decirlo es mejor que agregar algo que
+       no existe. */
+    if (!prod || !pz) { toast('⚠️ Esa pieza ya no está disponible', 3000); return; }
+    piezaCart[piezaId] = { abbr: abbr, id: prod.id, kg: pz.kg,
+                           precio: piezaPrecio(prod, pz.kg), nombre: prod.nombre };
+    toast('✓ ' + prod.nombre + ' de ' + kgTexto(pz.kg) + ' agregado');
+    _track('add_to_cart', { item_name: prod.nombre + ' ' + kgTexto(pz.kg),
+                            price: piezaPrecio(prod, pz.kg), zone: currentZone });
+  }
+  /* updateUI y no updateCart: esa funcion NO EXISTE en este archivo y la
+     llame de memoria. Parsea perfecto y revienta recien al tocar la pieza,
+     que es el peor momento. updateFormVisibility va con ella — es lo mismo
+     que hace modifyCart, que es el camino equivalente para los productos por
+     unidad. */
+  updateUI();
+  updateFormVisibility();
+  /* Se repinta SOLO la card del corte y no el catalogo entero: al agregar la
+     pieza aparece el resumen, la card crece, y redibujar todo le mueve el
+     scroll al que esta eligiendo. */
+  _repintarCarne(abbr);
+}
+
+/* querySelectorAll y no querySelector: un producto puede estar dibujado dos
+   veces (su categoria y "Lo mas pedido"), y las dos copias tienen que decir lo
+   mismo. Hoy ningun corte esta destacado, pero el dia que lo este esto ya
+   funciona. */
+function _repintarCarne(abbr) {
+  var prod = PRODUCTOS.filter(function (x) { return x.abbr === abbr; })[0];
+  if (!prod) return;
+  var cards = document.querySelectorAll('.carne-card[data-id="' + prod.id + '"]');
+  if (!cards.length) return;
+  var html = carneCardHTML(prod);
+  cards.forEach(function (card) {
+    var tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    card.replaceWith(tmp.firstElementChild);
+  });
+}
+
+function piezasSubtotal() {
+  return Object.keys(piezaCart).reduce(function (s, k) { return s + piezaCart[k].precio; }, 0);
+}
+function piezasCount() { return Object.keys(piezaCart).length; }
+
+/* Traer el inventario del backend.
+
+   ⚠ `action=carnePiezas` NO sirve: pide token de sesion y la tienda no tiene.
+   Se pide `piezas_full`, que es el equivalente publico de `stock_full` y hoy
+   TODAVIA NO EXISTE — esta pedido a la sesion del ERP.
+
+   Mientras no exista, esto termina en `sin-datos` y la categoria Carnes no se
+   dibuja. La tienda queda exactamente como antes, sin un solo error a la
+   vista, y el dia que el endpoint responda la carne aparece sola. */
+function fetchPiezas() {
+  return fetch(APPS_SCRIPT_URL + '?action=piezas_full&t=' + Date.now(), { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      /* Se pide FORMA, no que la respuesta exista: un {ok:false, err:"..."}
+         tiene claves y pasaria un chequeo de "vino algo". Es el mismo error
+         que en el ERP vacio la tabla de precios entera. */
+      if (!d || typeof d !== 'object' || d.ok === false) { _piezasFallo(); return; }
+      var limpio = {}, hubo = 0;
+      Object.keys(d).forEach(function (abbr) {
+        var lista = d[abbr];
+        if (!Array.isArray(lista)) return;
+        var ok = lista.filter(function (pz) {
+          return pz && pz.id && Number(pz.kg) > 0;
+        }).map(function (pz) { return { id: String(pz.id), kg: Number(pz.kg) }; });
+        /* De la mas chica a la mas grande: el que compra carne casi siempre
+           busca "una de kilo y medio", y ordenadas se encuentra de un vistazo. */
+        ok.sort(function (a, b) { return a.kg - b.kg; });
+        if (ok.length) { limpio[abbr] = ok; hubo += ok.length; }
+      });
+      piezasMap = limpio;
+      piezasEstado = hubo ? 'ok' : 'sin-datos';
+    })
+    .catch(function () { _piezasFallo(); });
+}
+
+/* Un refresco que falla NO borra lo que ya sabemos.
+
+   Solo la primera consulta puede concluir "no hay datos". Despues, si ya
+   habia piezas, se dejan: un corte de red de un segundo no puede dejar al
+   cliente con cinco cortes que dicen "Cargando..." y no se pueden comprar.
+   Es la misma regla de siempre — no saber no es lo mismo que no hay. */
+function _piezasFallo() {
+  if (Object.keys(piezasMap).length) return;   // ya tenemos: se queda lo que hay
+  piezasEstado = 'sin-datos';
+}
+
+/* ¿Hay algo de carne para mostrar? Decide si la categoria se dibuja. */
+function hayPiezas() {
+  return piezasEstado === 'ok' && Object.keys(piezasMap).length > 0;
+}
+
 function productsSubtotal() {
   return Object.entries(cart).reduce(function(s, e) { const p = PROD_MAP[e[0]]; return s + (p ? p.precio * e[1] : 0); }, 0);
 }
@@ -540,6 +703,15 @@ function _fechaBloqueadaPorCutoff(zone, iso) {
 /* ── ESTADO ── */
 let cart = {};
 let comboCart = {}; // { [signature]: { comboId, qty, comp, picks } } — instancias configuradas
+/* Las piezas de carne elegidas. Cada una es UNICA: no hay cantidad, esta o no
+   esta. { "PZ-0012": {abbr, id, kg, precio, nombre} } */
+let piezaCart = {};
+/* El inventario que manda el backend: { "CCo": [{id, kg}, ...] }, ya ordenado. */
+let piezasMap = {};
+/* 'cargando' | 'ok' | 'sin-datos'. Se mira para no afirmar que algo no hay
+   cuando en realidad todavia no lo sabemos — no saber no es lo mismo que no
+   hay, y decirlo al reves es la forma mas facil de perder una venta. */
+let piezasEstado = 'cargando';
 let currentZone = null; // 'estancias' | 'pilar' | 'clubes'
 let stockMap = {};            // stock físico actual (lo que hay en el depósito)
 let stockProyectadoMap = {};  // físico + Σ cantidad OC "Pedido" pendientes
@@ -805,8 +977,8 @@ const PROD_ABBR = {
 /* ── HELPERS ── */
 function $id(id) { return document.getElementById(id); }
 function ars(n) { return '$' + n.toLocaleString('es-AR'); }
-function cartTotal() { return productsSubtotal() + combosSubtotal(); }
-function cartCount() { return Object.values(cart).reduce((a,b)=>a+b, 0) + Object.values(comboCart).reduce((a,inst)=>a+(inst.qty||0), 0); }
+function cartTotal() { return productsSubtotal() + combosSubtotal() + piezasSubtotal(); }
+function cartCount() { return Object.values(cart).reduce((a,b)=>a+b, 0) + Object.values(comboCart).reduce((a,inst)=>a+(inst.qty||0), 0) + piezasCount(); }
 
 /* ── SALDO A FAVOR DEL CLIENTE (auto-detección por teléfono) ──
    Cuando el cliente termina de escribir el teléfono en el checkout, consultamos
@@ -958,6 +1130,14 @@ function getCashDiscount() {
   // Combos quedan FUERA del 10%: el descuento (efectivo / +$100K) aplica solo a
   // los productos sueltos. Base y umbral bulk se calculan sobre productsSubtotal
   // (el combo, a precio cerrado, no recibe descuento ni cuenta para el +$100K).
+  //
+  // LA CARNE TAMPOCO, y no por la misma razon: no da el margen. Medido contra
+  // los costos de la hoja Productos, con el 10% puesto la entrana pasa de
+  // 11,8% a 2,0% de margen y el lomo de 13,6% a 4,0% — o sea $600 por kilo
+  // de entrana. Que `productsSubtotal` no incluya las piezas es lo correcto:
+  // si alguien lo "arregla" para sumarlas, se lleva puesto ese margen y no lo
+  // ve nadie hasta cerrar el mes. El cliente lo sabe: se avisa en la categoria
+  // y en el carrito.
   const total = productsSubtotal();
   const sel = document.querySelector('input[name="pago"]:checked');
   const isCash = sel && sel.value === 'Efectivo';
@@ -1846,7 +2026,7 @@ function applyZone() {
   // Promo bar: ocultar si no hay descuentos activos (clubes, o pilar sin "Otro barrio")
   updatePromoBar();
   // Limpiar carrito al cambiar zona (productos/precios cambian)
-  cart = {}; comboCart = {};
+  cart = {}; comboCart = {}; piezaCart = {};
   // Ocultar último pedido (se re-evalúa con loadLastOrder)
   var repeatBlock = $id('repeat-block');
   if (repeatBlock) repeatBlock.style.display = 'none';
@@ -1999,7 +2179,63 @@ function renderCombosSectionHTML() {
    la copia se quedaria mostrando "Sin stock" viejo — o peor, nada — sin un
    solo error en consola. Es el mismo bug que costo caro en el ERP con
    nuevoView. Los combos siguen usando id porque no se duplican. */
+/* La card de un corte que se vende por peso. Tiene su propio armador porque
+   cambia la mitad de abajo: donde va el precio y el boton "+ Agregar" va la
+   lista de piezas, que es a la vez el precio, el stock y el selector. */
+function carneCardHTML(p) {
+  var libres = piezasDe(p.abbr);
+  var mias = piezasEnCarrito(p.abbr);
+  var chapas = '';
+  if (p.nuevo) chapas += '<span class="chapa-prod chapa-nuevo">Nuevo</span>';
+
+  var cuerpo;
+  if (piezasEstado !== 'ok') {
+    /* Todavia no sabemos que hay. No decimos "sin stock": no saber no es lo
+       mismo que no hay. */
+    cuerpo = '<p class="pz-vacio">Cargando las piezas de esta semana…</p>';
+  } else if (!libres.length && !mias.n) {
+    cuerpo = '<p class="pz-vacio">Se agotó por esta semana.</p>';
+  } else {
+    var filas = (piezasMap[p.abbr] || []).map(function (pz) {
+      var elegida = !!piezaCart[pz.id];
+      return '<button type="button" class="pz-fila' + (elegida ? ' elegida' : '') + '"' +
+        ' onclick="togglePieza(\'' + p.abbr + '\',\'' + pz.id + '\')"' +
+        ' aria-pressed="' + (elegida ? 'true' : 'false') + '">' +
+          '<span class="pz-check" aria-hidden="true"></span>' +
+          '<span class="pz-kg">' + kgTexto(pz.kg) + '</span>' +
+          '<span class="pz-precio">' + ars(piezaPrecio(p, pz.kg)) + '</span>' +
+        '</button>';
+    }).join('');
+    var cuantas = (piezasMap[p.abbr] || []).length;
+    cuerpo =
+      '<div class="pz-rotulo">' +
+        '<span>Eleg\u00ed tu pieza</span>' +
+        '<span class="pz-quedan">' + cuantas + (cuantas === 1 ? ' disponible' : ' disponibles') + '</span>' +
+      '</div>' +
+      '<div class="pz-lista">' + filas + '</div>' +
+      (mias.n
+        ? '<div class="pz-resumen">Llev\u00e1s <strong>' + mias.n +
+          (mias.n === 1 ? ' pieza' : ' piezas') + '</strong> \u00b7 ' + kgTexto(mias.kg) + '</div>'
+        : '');
+  }
+
+  return '<article class="product-card carne-card" data-id="' + p.id + '">' +
+    '<div class="product-thumb">' +
+      (chapas ? '<div class="chapas-prod">' + chapas + '</div>' : '') +
+      '<img class="product-thumb-img" src="img/' + p.img + '" alt="' + p.nombre + '" loading="lazy" width="400" height="400" onerror="this.style.display=\'none\'">' +
+    '</div>' +
+    '<div class="product-body">' +
+      '<h3 class="product-name">' + p.nombre + '</h3>' +
+      '<p class="product-desc">' + p.desc + '</p>' +
+      (p.chips ? '<div class="product-chips">' + p.chips.map(function (c) { return '<span class="chip">' + c + '</span>'; }).join('') + '</div>' : '') +
+      '<div class="pz-kilo">' + ars(p.precio) + ' <span>por kilo</span></div>' +
+      cuerpo +
+    '</div>' +
+  '</article>';
+}
+
 function productCardHTML(p) {
+  if (esPorPeso(p)) return carneCardHTML(p);
   /* Las chapitas van SOBRE la foto y no en el cuerpo: es lo primero que se
      mira, y es donde las ponen Frizata, Comodos y Breaders. Abajo quedaban
      a 10,4px, que es el tamaño de la letra chica de un contrato.
@@ -2394,7 +2630,48 @@ function updateUI() {
         '</div>' +
       '</div>';
     }).join('');
-    bodyEl.innerHTML = comboLines + prodLinesHtml;
+    /* Las piezas van agrupadas por corte: tres colitas sueltas se leen como
+       tres productos distintos, y son el mismo corte en tres pedazos. */
+    var porCorte = {};
+    Object.keys(piezaCart).forEach(function (pid) {
+      var it = piezaCart[pid];
+      (porCorte[it.abbr] = porCorte[it.abbr] || []).push({ pid: pid, it: it });
+    });
+    var piezaLinesHtml = Object.keys(porCorte).map(function (abbr) {
+      var lista = porCorte[abbr].sort(function (a, b) { return a.it.kg - b.it.kg; });
+      var kg = lista.reduce(function (t, x) { return t + x.it.kg; }, 0);
+      var tot = lista.reduce(function (t, x) { return t + x.it.precio; }, 0);
+      var filas = lista.map(function (x) {
+        return '<li>' + kgTexto(x.it.kg) + ' \u00b7 ' + ars(x.it.precio) +
+          '<button class="pz-quitar" type="button" aria-label="Sacar esta pieza" ' +
+          'onclick="togglePieza(\'' + abbr + '\',\'' + x.pid + '\')">\u00d7</button></li>';
+      }).join('');
+      var una = lista.length === 1;
+      return '<div class="cart-item cart-item-carne">' +
+        '<span class="cart-item-emoji">\ud83e\udd69</span>' +
+        '<div class="cart-item-info">' +
+          '<div class="cart-item-name">' + lista[0].it.nombre + '</div>' +
+          '<div class="cart-item-sub">' + lista.length +
+            (una ? ' pieza' : ' piezas') + ' \u00b7 ' + kgTexto(kg) +
+            ' \u00b7 <strong>' + ars(tot) + '</strong></div>' +
+          /* El desglose recien desde DOS piezas: con una sola repetiria el
+             renglon de arriba palabra por palabra. */
+          (una ? '' : '<ul class="cart-piezas">' + filas + '</ul>') +
+        '</div>' +
+        (una
+          ? '<button class="pz-quitar pz-quitar-solo" type="button" aria-label="Sacar esta pieza" ' +
+            'onclick="togglePieza(\'' + abbr + '\',\'' + lista[0].pid + '\')">\u00d7</button>'
+          : '') +
+      '</div>';
+    }).join('');
+    /* Si hay carne Y hay descuento, se dice por que el descuento no es sobre
+       todo. Sin esto la cuenta no cierra a la vista y se lee como un error
+       nuestro. Sale solo cuando las dos cosas pasan a la vez: un aviso que
+       aparece siempre se deja de leer. */
+    var avisoCarne = (piezasCount() && getTotalDiscount() > 0)
+      ? '<div class="pz-aviso-desc">El descuento no incluye la carne: se vende a precio de carnicer\u00eda.</div>'
+      : '';
+    bodyEl.innerHTML = comboLines + prodLinesHtml + piezaLinesHtml + avisoCarne;
     $id('cart-subtotal').textContent = ars(subtotal);
     const discRow = $id('cart-discount-row');
     if (discount > 0) {
@@ -2901,7 +3178,24 @@ function enviarPedido() {
   // Cuando hay combo Y productos sueltos, un encabezado "Además:" deja clarísimo
   // qué entra en el combo y qué es adicional (hoy se confunden).
   const _sepAdemas = (comboLinesWA && prodLinesProductos) ? '\nAdemás:' : '';
-  const prodLines = [comboLinesWA, _sepAdemas, prodLinesProductos].filter(Boolean).join('\n');
+  /* La carne va con el peso de CADA pieza, no con el total del corte: el
+     cliente eligio esas piezas y tiene que poder controlarlas una por una
+     cuando le llega el pedido. */
+  const piezaLinesWA = (function () {
+    var porCorte = {};
+    Object.keys(piezaCart).forEach(function (pid) {
+      var it = piezaCart[pid];
+      (porCorte[it.abbr] = porCorte[it.abbr] || []).push(it);
+    });
+    return Object.keys(porCorte).map(function (abbr) {
+      var l = porCorte[abbr].sort(function (a, b) { return a.kg - b.kg; });
+      var kg = l.reduce(function (t, x) { return t + x.kg; }, 0);
+      var tot = l.reduce(function (t, x) { return t + x.precio; }, 0);
+      return '\ud83e\udd69 ' + l[0].nombre + ' \u2014 ' + kgTexto(kg) + ' \u00b7 ' + ars(tot) +
+        '\n   (' + l.map(function (x) { return kgTexto(x.kg); }).join(' + ') + ')';
+    }).join('\n');
+  })();
+  const prodLines = [comboLinesWA, _sepAdemas, prodLinesProductos, piezaLinesWA].filter(Boolean).join('\n');
 
   let direccionStr;
   if (currentZone === 'estancias') {
@@ -2978,6 +3272,28 @@ function enviarPedido() {
   const items = Object.entries(expanded).map(([id,qty]) => {
     const p = PROD_MAP[id]; return p ? {id:p.id, nombre:p.nombre, qty, precio:p.precio} : null;
   }).filter(Boolean);
+  /* La carne entra como un item mas, con la cantidad EN KILOS: es lo que
+     guarda la columna de la hoja y de lo que salen el precio, el costo, el
+     margen y el sugeridor de compra. Los ids de las piezas viajan aparte para
+     que el backend pueda darlas de baja del inventario — hoy las ignora, y
+     eso no rompe nada. */
+  (function () {
+    var porCorte = {};
+    Object.keys(piezaCart).forEach(function (pid) {
+      var it = piezaCart[pid];
+      var g = porCorte[it.abbr] = porCorte[it.abbr] || { id: it.id, nombre: it.nombre, kg: 0, precio: 0, piezas: [] };
+      g.kg += it.kg; g.precio += it.precio; g.piezas.push(pid);
+    });
+    Object.keys(porCorte).forEach(function (abbr) {
+      var g = porCorte[abbr];
+      items.push({ id: g.id, nombre: g.nombre,
+                   /* al gramo: mas precision no la da ninguna balanza, y sin
+                      redondear un 1.2000000000000002 llega tal cual a la hoja */
+                   qty: Math.round(g.kg * 1000) / 1000,
+                   precio: (PROD_MAP[g.id] || {}).precio || 0,
+                   unidad: 'kg', abbr: abbr, importe: g.precio, piezas: g.piezas });
+    });
+  })();
   // Trazabilidad del combo (receta + sabores elegidos) para uso futuro del backend / Panel.
   const combosPayload = Object.values(comboCart).map((inst) => {
     const c = COMBO_MAP[inst.comboId]; if (!c) return null;
@@ -3088,7 +3404,7 @@ function enviarPedido() {
       window.location.href = 'https://wa.me/' + waTarget + '?text=' + urlText;
     }, 800);
     setTimeout(() => {
-      cart = {}; comboCart = {}; updateUI();
+      cart = {}; comboCart = {}; piezaCart = {}; updateUI();
       getActiveProducts().forEach(p => renderCardFooter(p.id));
       getActiveCombos().forEach(c => renderComboFooter(c.id));
       $id('f-dia').value = '';
@@ -3654,6 +3970,11 @@ async function fetchStock() {
     updateStockDisplay();
     loadLastOrder();
   } catch (e) { console.warn('fetchStock:', e); }
+  /* Las piezas van con el mismo pulso que el stock: son el stock de la
+     carne. Va DESPUES del catch para que un fallo del stock no impida
+     traerlas, y viceversa — son dos endpoints distintos. */
+  try { await fetchPiezas(); if (typeof renderCatalog === 'function') { renderCatalog(); renderCatTiles(); } }
+  catch (e) { console.warn('fetchPiezas:', e); }
 }
 /* Devuelve el tope a usar para un producto según el modo de stock actual.
    Si es 'ilimitado', devuelve null (sin tope). */
