@@ -694,11 +694,12 @@ Estuvo en producción unas horas del 11/9 —los 4 vacíos del 10/9 al 5%— y T
 la dio de baja esa misma noche: *"te cancelo la idea del descuento a carne
 antigua. Pone todo en orden. De menor a mayor"*.
 
-> [!important] El backend puede seguir mandando `v` y `of`, y la tienda los IGNORA
-> `_piezaDeRespuesta` toma el id y el peso, nada más: el precio de una pieza es
-> su peso por el kilo, y su lugar en la lista, su peso. Lo sostiene
-> `verificar-piezas.js`, cuyo inventario los trae **a propósito**. Se le avisó a
-> Backend el 11/9 que los puede sacar de `piezas_full`.
+> [!important] Si `v` u `of` vuelven a aparecer, la tienda los IGNORA
+> Backend los sacó de `piezas_full` el mismo 11/9 (@580): hoy devuelve sólo
+> `{id, kg}`, de menor a mayor, y `_piezasAsignar_` ya no anota la oferta.
+> Igual `_piezaDeRespuesta` toma el id y el peso y nada más: el precio de una
+> pieza es su peso por el kilo, y su lugar en la lista, su peso. Lo sostiene
+> `verificar-piezas.js`, cuyo inventario los trae **a propósito**.
 
 > [!note] Si algún día vuelve, está en el historial de git
 > El código y su test (`_tools/verificar-oferta.js`) están hasta el commit
