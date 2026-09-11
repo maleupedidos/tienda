@@ -753,7 +753,7 @@ de ventas estamos cagados"*. Un pedido de **$84.600 del 10/9** le llegó por
 WhatsApp y **nunca llegó a la planilla**: ni una fila en `Log Pedidos` (que
 anota hasta los reintentos repetidos) ni en `Log Errores`. O sea que el POST no
 llegó ni a ejecutarse en el backend. Se cargó a mano el 11/9/2026: es el
-**Home N° 933**, entregado el 10/9 y sin cobrar.
+**Home N° 933**. Se cargó como entregado por error (sólo se había confirmado que no estaba cobrado) y esa misma tarde se volvió a pendiente, con el stock devuelto al freezer: se entrega el 11/9.
 
 > [!danger] La causa: la tienda mandaba a WhatsApp SIN confirmación, siempre
 > El flujo viejo (21/06/26) mandaba al cliente a WhatsApp a los **3,8 s** si
