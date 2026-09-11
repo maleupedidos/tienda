@@ -394,7 +394,7 @@ fuerte, y **sólo si no hay ni un resultado** entra el débil.
 ### El renglón de abajo: cuántos y qué hacer con ellos
 
 ```
-3 de 34 productos coinciden                        Limpiar
+3 productos coinciden con tu búsqueda              Limpiar
 Seguí bajando para pedirlos ↓
 ```
 
@@ -414,13 +414,22 @@ Seguí bajando para pedirlos ↓
 > Lo que sí faltaba era **la segunda línea**: un número solo no dice qué hacer
 > con él.
 
-> [!danger] El texto NO dice "con tu búsqueda", y no es por ahorrar palabras
-> Medido a 390px: esa cola parte el renglón en dos y **la barra pegada crece de
-> 47 a 62px**. Tal como quedó, el texto entra adentro de los 44px que el botón
-> «Limpiar» ya ocupaba, o sea que no cuesta un solo píxel de pantalla.
+> [!important] Y un rato después se fue también el total del catálogo
+> Tadeo: *"no me gusta que diga de 36 productos. Prefiero que diga por ejemplo
+> 5 productos coinciden con tu búsqueda"*. El total **no es lo que uno vino a
+> buscar**, y obliga a restar de cabeza para saber cuántos quedaron afuera.
+
+> [!danger] "con tu búsqueda" entra SÓLO desde que se fue el "de 36"
+> Esa cola se había sacado unas horas antes justamente porque partía el renglón
+> en dos y **la barra pegada subía de 47 a 62px**. Con las dos cosas juntas el
+> texto medía 43 caracteres; ahora mide **37**, o sea más que los 27 de la
+> versión sin cola, pero menos que los 43 que no entraban.
 >
-> Y es redundante: estás parado en el buscador, con la palabra escrita adentro,
-> y el renglón de abajo ya dice qué hacer.
+> **Medido a 390px: un renglón, 47px** — el mismo alto de siempre, porque
+> «Limpiar» ya ocupaba 44 y el texto entra adentro. No cuesta un solo píxel.
+>
+> Si se toca el texto **se vuelve a medir**: dos renglones suben la barra 15px,
+> y `_busqAcomodarScroll` calcula el tope del scroll con ese alto ya puesto.
 
 Singular y plural se dicen bien (*coincide* / *coinciden*), y sin resultados no
 aparece la invitación a bajar — no hay adónde.

@@ -335,7 +335,10 @@ const POS = `Math.round(window.pageYOffset)`;
        mismo dia: "abortalo, que solo aparezca 3 de 36 productos coinciden con
        tu busqueda, continua bajando para pedir". Los resultados ya quedan
        justo debajo de la barra, asi que nombrarlos arriba era decir dos veces
-       lo mismo. Lo que tiene que decir es cuantos y que hacer, en UN renglon. */
+       lo mismo. Y un rato despues se fue tambien el "de 36": "no me gusta que
+       diga de 36 productos. Prefiero que diga por ejemplo 5 productos coinciden
+       con tu busqueda".
+       Lo que tiene que decir es cuantos y que hacer, en UN renglon. */
     console.log('\n' + DIM + 'EL RENGLON DEL BUSCADOR' + RST);
     const renglon = async (q) => {
       await ev("(function(){document.getElementById('buscador-input').value='" + q + "';" +
@@ -354,20 +357,25 @@ const POS = `Math.round(window.pageYOffset)`;
     };
 
     const r3 = await renglon('cebolla');
-    chk(/3 de \d+ productos coinciden/.test(r3.texto),
+    chk(/3 productos coinciden con tu b/.test(r3.texto),
         'dice cuantos coincidieron: "' + r3.texto.split('Segu')[0].trim() + '"');
+    /* El total del catalogo se fue porque no es lo que uno vino a buscar:
+       obliga a restar para saber cuantos quedaron afuera. */
+    chk(!/de \d+ producto/.test(r3.texto),
+        'y NO dice de cuantos del catalogo salieron');
     chk(r3.guia, 'y dice que hacer con ellos (Segui bajando para pedirlos)');
     chk(r3.chips === 0, 'ya no hay chips: los resultados estan abajo, nombrarlos era decirlo dos veces');
 
     /* El alto es lo que hace que esto sea gratis: "Limpiar" ya ocupaba 44px,
-       asi que el texto entra adentro y la barra pegada no crece. Con "con tu
-       busqueda" al final se partia en dos renglones y se iba a 62. */
+       asi que el texto entra adentro y la barra pegada no crece. "con tu
+       busqueda" entra SOLO desde que se fue el "de 36": con los dos juntos,
+       medido, se partia en dos renglones y la barra se iba a 62px. */
     chk(r3.renglones === 1 && r3.alto <= 50,
         'entra en UN renglon, asi la barra pegada no crece (' + r3.alto + 'px)');
 
     const r1 = await renglon('cordero');
-    chk(/1 de \d+ productos coincide(?!n)/.test(r1.texto),
-        'con uno solo dice "coincide", no "coinciden"');
+    chk(/1 producto coincide(?!n) con tu b/.test(r1.texto),
+        'con uno solo va todo en singular: "1 producto coincide"');
 
     const rd = await renglon('zanahoria');
     chk(rd.porDescripcion && /por su descripci/.test(rd.texto),

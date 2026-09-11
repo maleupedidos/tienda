@@ -5008,7 +5008,7 @@ function buscarEnCatalogo() {
     sec.classList.toggle('busq-oculto', palabras.length > 0 && quedan === 0);
   });
 
-  _busqPintarInfo(visibles, cards.length, crudo, palabras, porDescripcion);
+  _busqPintarInfo(visibles, crudo, porDescripcion);
 
   /* Al final de todo: la info de arriba cambia el alto de la barra pegada, y
      el tope se calcula con ese alto ya puesto. */
@@ -5025,7 +5025,7 @@ function buscarEnCatalogo() {
 
    Lo que si hacia falta era la segunda linea: el numero solo no dice que hay
    que hacer con el. */
-function _busqPintarInfo(visibles, total, crudo, palabras, porDescripcion) {
+function _busqPintarInfo(visibles, crudo, porDescripcion) {
   var info = $id('buscador-info');
   if (!info) return;
   if (!_busqTexto) { info.hidden = true; info.innerHTML = ''; return; }
@@ -5038,17 +5038,25 @@ function _busqPintarInfo(visibles, total, crudo, palabras, porDescripcion) {
     return;
   }
   info.className = 'buscador-info';
-  var verbo = visibles === 1 ? ' coincide' : ' coinciden';
+  var sust = visibles === 1 ? ' producto ' : ' productos ';
+  var verbo = visibles === 1 ? 'coincide' : 'coinciden';
   /* Si ningun producto SE LLAMA asi, se dice. Sin eso, "cebolla" y
      "zanahoria" devuelven renglones que se leen igual y significan cosas
      distintas. */
   var cuenta = porDescripcion
-    ? '<b>' + visibles + '</b> de ' + total + verbo + ' por su descripción'
-    : '<b>' + visibles + '</b> de ' + total + ' productos' + verbo;
-  /* Sin "con tu busqueda" a proposito: medido a 390px esa cola parte el
-     renglon en dos y la barra pegada crece 15px. Y es redundante — estas
-     parado en el buscador, con la palabra escrita adentro, y el renglon de
-     abajo ya dice que hacer. */
+    ? '<b>' + visibles + '</b>' + sust + verbo + ' por su descripción'
+    : '<b>' + visibles + '</b>' + sust + verbo + ' con tu búsqueda';
+  /* NO se dice "de 34": Tadeo lo saco el 10/9/2026 — el total del catalogo
+     no es lo que vino a buscar, y obliga a restar de cabeza para saber cuantos
+     quedaron afuera.
+
+     Y recien ahi entro "con tu busqueda", que hace unas horas habia que sacar
+     porque partia el renglon en dos. El texto es MAS largo que el de antes (37
+     caracteres contra 27), pero mas corto que el que no entraba — los dos
+     juntos eran 43. Medido a 390px: un renglon, 47px, el mismo alto de siempre.
+
+     Si se toca el texto, se vuelve a medir: dos renglones suben la barra
+     pegada 15px, y el tope del scroll se calcula con ese alto. */
   info.innerHTML =
     '<div class="busq-texto">' +
       '<span class="busq-cuenta' + (porDescripcion ? ' busq-porque' : '') + '">' + cuenta + '</span>' +
