@@ -871,11 +871,17 @@ function combosSubtotal() {
   return Object.values(comboCart).reduce((s, inst) => { const c = COMBO_MAP[inst.comboId]; return s + (c ? c.precio * inst.qty : 0); }, 0);
 }
 /* ¿Hay al menos un combo en el carrito? Si hay, se inhabilitan TODOS los
-   descuentos del pedido (10% efectivo, +$100K y cupones): el combo ya es
-   precio cerrado promocional y no acumula con nada. */
+   descuentos del pedido (10% efectivo y cupones): el combo ya es precio
+   cerrado promocional y no acumula con nada. */
 function combosInCart() { return Object.keys(comboCart).length > 0; }
 
-/* LA BASE DE LOS DESCUENTOS AUTOMATICOS (10% efectivo y +$100K).
+/* LA BASE DEL DESCUENTO AUTOMATICO (el 10% en efectivo).
+
+   Hasta el 11/9/2026 habia otro: 10% por superar $100.000. Lo dio de baja
+   Tadeo: "saquemos el 10% off superando los $100.000 porque con la carne ahora
+   es muy facil". Con dos piezas de lomo ya se pasa el umbral, y el descuento
+   se comia el margen de la carne entero (ver abajo). Los descuentos puntuales
+   se arman a mano desde el AUTOPEDIDO del ERP.
 
    Productos sueltos + carne. Los combos NO: son precio cerrado promocional y
    no acumulan con nada.
@@ -1382,26 +1388,23 @@ function pilarIsOtroBarrio() {
   var el = $id('f-pilar-barrio');
   return !!(el && el.value === '__otro__');
 }
-// Descuentos separados por tipo (jun/26):
-//   10% Efectivo  → Home (Estancias) y los ex-Home de Pilar (Los Alcanfores /
-//                   Estancias del Río, ver BARRIOS_EX_HOME).
-//   10% +$100K    → Home (Estancias) Y Pilar NO-Red (Pilara, El Ocho,
-//                   Otro barrio). Pilar Red (Marcos) y Clubes nunca.
+// El unico descuento automatico: 10% en efectivo, en Home (Estancias) y en los
+// ex-Home de Pilar (Los Alcanfores / Estancias del Río, ver BARRIOS_EX_HOME).
+// El de "10% +$100K" (Home y Pilar no-Red) se dio de baja el 11/9/2026: ver
+// arriba de descontableSubtotal. Si vuelve, tiene que volver TAMBIEN en la
+// salvaguarda de _doPostHome del ERP, que recalcula el descuento de cada pedido
+// de la tienda: con una sola de las dos puntas, el cliente ve un total y el ERP
+// guarda otro.
 function cashDiscountActive() {
   if (currentZone === 'estancias') return true;
   // Ex-Home: conservan el 10% en efectivo aunque ahora estén en zona Pilar.
   if (_pilarBarrioEsExHome()) return true;
   return false;
 }
-function bulkDiscountActive() {
-  if (currentZone === 'estancias') return true;
-  if (currentZone === 'pilar') return !_pilarBarrioIsRed();
-  return false;
-}
 function discountsActive() {
-  // Hay AL MENOS UN descuento activo en la zona — usado para mostrar la
-  // promo bar y el incentivo del carrito en general.
-  return cashDiscountActive() || bulkDiscountActive();
+  // Hay algun descuento automatico en la zona — decide la promo bar y el
+  // incentivo del carrito. Desde el 11/9/2026 es solo el del efectivo.
+  return cashDiscountActive();
 }
 
 /* ── CUPÓN aplicado ─────────────────────────────────────────
@@ -1409,8 +1412,8 @@ function discountsActive() {
    o null si no hay cupón.
 
    Regla por producto: gana el descuento más alto entre cupón y auto
-   (efectivo/+$100K). El cupón aplica solo a su scope (todo, cat, prod),
-   y los auto aplican solo a lo que NO está cubierto por el cupón. */
+   (el 10% en efectivo). El cupón aplica solo a su scope (todo, cat, prod),
+   y el auto aplica solo a lo que NO está cubierto por el cupón. */
 let appliedCoupon = null;
 
 function _itemsInCart() {
@@ -1456,38 +1459,29 @@ function couponAppliesToAll() {
 }
 
 function getCashDiscount() {
-  // Base y umbral salen de descontableSubtotal(): productos + carne, sin los
-  // combos (precio cerrado, no acumulan). El porque de cada uno esta escrito
-  // arriba de esa funcion.
-  const total = descontableSubtotal();
+  // El 10% en efectivo, y nada mas: el de "+$100K" se dio de baja el 11/9/2026.
+  // La base sale de descontableSubtotal(): productos + carne, sin los combos
+  // (precio cerrado, no acumulan). El porque esta escrito arriba de esa funcion.
   const sel = document.querySelector('input[name="pago"]:checked');
   const isCash = sel && sel.value === 'Efectivo';
-  const isBulk = total >= 100000;
-  if (!isCash && !isBulk) return 0;
-  if (isCash && !cashDiscountActive() && (!isBulk || !bulkDiscountActive())) return 0;
-  if (!isCash && isBulk && !bulkDiscountActive()) return 0;
+  if (!isCash || !cashDiscountActive()) return 0;
 
   // Base = subtotal NO cubierto por el cupón (la parte del cupón ya tiene su descuento).
   // Excepción: si cupón=ENVIO, no afecta base. Si cupón con stack=true, base = subtotal completo.
+  const total = descontableSubtotal();
   let base = total;
   if (appliedCoupon && appliedCoupon.tipo !== 'ENVIO' && !appliedCoupon.stack) {
     const cubierto = _subtotalForScope(appliedCoupon.scope);
     base = Math.max(0, total - cubierto);
   }
   if (base <= 0) return 0;
-
-  const aplicaEfectivo = isCash && cashDiscountActive();
-  const aplicaBulk     = isBulk && bulkDiscountActive();
-  if (aplicaEfectivo || aplicaBulk) return Math.round(base * 0.10);
-  return 0;
+  return Math.round(base * 0.10);
 }
 function getDiscountLabel() {
   const sel = document.querySelector('input[name="pago"]:checked');
   const isCash = sel && sel.value === 'Efectivo';
-  const isBulk = descontableSubtotal() >= 100000;
-  // Hay cupón? Mostrar de qué tipo es el auto (el cupón se muestra en otra línea)
+  // El cupón se muestra en su propia línea; esta es la del automático.
   if (isCash && cashDiscountActive()) return '10% OFF Efectivo';
-  if (isBulk && bulkDiscountActive()) return '10% OFF (+$100K)';
   return '';
 }
 function getTotalDiscount() {
@@ -3169,30 +3163,22 @@ function updateUI() {
     }
     $id('cart-total').textContent = ars(total);
 
-    // Incentivo inteligente — el 10% aplica a productos y carne, no a los
-    // combos: el umbral y los mensajes usan descontableSubtotal. Si el carrito
-    // es solo combos (pSub=0), no hay nada que descontar → se oculta.
+    // Incentivo — el 10% en efectivo aplica a productos y carne, no a los
+    // combos: si el carrito es solo combos (pSub=0), no hay nada que
+    // descontar y se oculta. Hasta el 11/9/2026 habia otro renglon, "Estás a
+    // $X de tener 10% OFF por superar los $100.000": se fue con ese descuento.
     var incentiveEl = $id('cart-incentive');
     var pSub = descontableSubtotal();
     if (incentiveEl && discountsActive() && pSub > 0) {
-      var falta = 100000 - pSub;
       var sel = document.querySelector('input[name="pago"]:checked');
       var isCash = sel && sel.value === 'Efectivo';
-      var yaDescuento = discount > 0;
-      var cashOK = cashDiscountActive();
-      var bulkOK = bulkDiscountActive();
 
-      if (yaDescuento) {
+      if (discount > 0) {
         // Ya tiene descuento — felicitarlo
         incentiveEl.innerHTML = '<strong>🎉 ¡Descuento aplicado!</strong><br>Estás ahorrando <strong>' + ars(discount) + '</strong>';
         incentiveEl.style.display = '';
-      } else if (bulkOK && falta > 0 && falta <= 40000 && pSub >= 60000) {
-        // Cerca de $100K — incentivar a llegar (sin contar combos)
-        incentiveEl.innerHTML = '🔥 Estás a <strong>' + ars(falta) + '</strong> de tener <strong>10% OFF</strong> por superar los $100.000' +
-          (cashOK && !isCash ? '<div class="incentive-cash">💵 También podés pagar en efectivo y tener 10% OFF</div>' : '');
-        incentiveEl.style.display = '';
-      } else if (cashOK && !isCash && pSub > 0 && pSub < 60000) {
-        // Pedido chico — solo recordar el efectivo
+      } else if (!isCash) {
+        // Recordar el efectivo, sea el pedido chico o grande
         incentiveEl.innerHTML = '<div class="incentive-cash" style="border:none;margin:0;padding:0;">💵 Pagando en efectivo tenés 10% OFF</div>';
         incentiveEl.style.display = '';
       } else {
@@ -3264,7 +3250,7 @@ function updateFormSummary() {
   if (cuponDesc > 0 && appliedCoupon) {
     html += '<div class="summary-line discount-line" style="color:#2e7d32"><span>🎟️ ' + appliedCoupon.codigo + ' · ' + (appliedCoupon.mensaje || '') + '</span><span>-' + ars(cuponDesc) + '</span></div>';
   }
-  // Auto-descuento (efectivo / +$100K)
+  // Auto-descuento (el 10% en efectivo)
   if (autoDesc > 0) {
     html += '<div class="summary-line discount-line"><span>' + getDiscountLabel() + '</span><span>-' + ars(autoDesc) + '</span></div>';
   }
@@ -4892,11 +4878,10 @@ function updatePromoBar() {
   // Construir el ticker mezclando descuentos (si aplican) + cutoff Red (si aplica).
   var chips = [];
   if (discountsActive() && !soloCombos) {
-    if (cashDiscountActive()) chips.push('💵 10% OFF en efectivo');
-    if (bulkDiscountActive()) chips.push('🔥 10% OFF superando $100.000');
-    // Aclaraciones legales para evitar el malentendido "20% off si pago efectivo Y supero 100K":
-    // los descuentos NO se suman, y los combos NO participan de la promoción.
-    if (chips.length > 1) chips.push('ℹ️ No son acumulables · Máximo 10% OFF por pedido');
+    /* Hasta el 11/9/2026 iban tambien "🔥 10% OFF superando $100.000" y "No son
+       acumulables · Máximo 10% OFF por pedido", que aclaraba que los dos no se
+       sumaban. Con un solo descuento, esa aclaracion no tiene de que hablar. */
+    chips.push('💵 10% OFF en efectivo');
     chips.push('🎁 Combos no participan de esta promoción');
   }
   // Chip de cutoff Red (aplica en Pilar Red haya descuentos o no).
@@ -4923,12 +4908,13 @@ function updatePagoHint() {
   if (!hint) return;
   var sel = document.querySelector('input[name="pago"]:checked');
   var isCash = sel && sel.value === 'Efectivo';
-  // El 10% aplica a productos y carne, no a los combos: el umbral $100K y el
-  // "hay algo que descontar" se miden sobre descontableSubtotal. Si el carrito
-  // es solo combos (pSub=0), no mostrar el cartel.
+  // El 10% aplica a productos y carne, no a los combos: "hay algo que
+  // descontar" se mide sobre descontableSubtotal. Si el carrito es solo combos
+  // (pSub=0), no mostrar el cartel. Hasta el 11/9/2026 se escondia tambien
+  // arriba de $100.000, porque ahi ya tenia el 10% por monto: ese se fue, y
+  // el efectivo vuelve a ser la unica forma de tenerlo.
   var pSub = descontableSubtotal();
-  var yaBulk = pSub >= 100000;
-  hint.style.display = (cashDiscountActive() && !isCash && !yaBulk && pSub > 0) ? '' : 'none';
+  hint.style.display = (cashDiscountActive() && !isCash && pSub > 0) ? '' : 'none';
 }
 function updateShippingBar() {
   const bar = $id('shipping-bar');

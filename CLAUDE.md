@@ -887,6 +887,42 @@ sería prometer por Lucas.
 la carne agotada (Carnes a la vista) y con el backend caído (Carnes no se
 dibuja). Antes el "no se dibuja" era el inventario vacío.
 
+## El 10% por superar $100.000 se dio de baja (11/9/2026)
+
+Tadeo: *"saquemos el 10% off superando los $100.000 porque con la carne ahora es
+muy fácil... saquemos ese descuento y tengamos la libertad en AUTOPEDIDO para
+armar el descuento que queramos!"*. Con dos piezas de lomo ya se pasa el umbral,
+y con el 10% la entraña deja 2% de margen. **El único descuento automático que
+queda es el 10% en efectivo** (Home y los ex-Home de Pilar). Los descuentos
+puntuales se arman a mano en el AUTOPEDIDO del ERP, que ya tenía % global, % por
+categoría y regalo en pesos.
+
+Se fue de los seis lugares donde vivía: el cálculo, su etiqueta, el renglón *"Estás
+a $X de tener 10% OFF por superar los $100.000"* del carrito, el chip de la barra
+de promo (y su aclaración *"No son acumulables"*, que ya no tiene de qué hablar) y
+el cartel del medio de pago, que se escondía arriba de $100.000 y ahora recuerda el
+efectivo en cualquier pedido. Las páginas estáticas no lo mencionaban.
+
+> [!danger] El descuento lo recalcula el ERP: la tienda sola no lo puede sacar
+> La salvaguarda de `_doPostHome` recalcula el descuento de cada pedido de la
+> tienda con su propia regla. Con el umbral sacado solo de este lado, un pedido de
+> $120.000 por transferencia se vería a $120.000 y el ERP lo guardaría a $108.000.
+> Por eso **se publicó después del backend**, y si el 10% por monto volviera algún
+> día, tiene que volver en las dos puntas.
+
+> [!important] Los pedidos cargados antes conservan su descuento
+> Al darlo de baja había dos pedidos reservados con el 10% por monto (Home #931 y
+> #939). El cobro y la edición del ERP los respetan: *"el precio que vale es el
+> que ves en la tienda al momento de hacer el pedido"*, dicen los términos. Eso lo
+> resolvió Backend del lado del ERP.
+
+La red es **`node _tools/verificar-descuento.js [ancho]`**: un carrito de más de
+$100.000 con carne, por transferencia (sin descuento en ningún lado, ni la palabra
+"100.000"), en efectivo (el 10%), el JSON que se le manda al ERP (descuento 0 y
+total = subtotal) y Pilar fuera de los ex-Home. **17 chequeos**, verdes a 390 y
+1440px. Contra la tienda de antes da **10 rojos**. Corta todo POST dos veces,
+adentro de la página y por CDP.
+
 ## Un pedido se da por registrado SOLO cuando el ERP lo confirma (11/9/2026)
 
 Tadeo: *"nos hacen un pedido, nos llega el mensaje por WhatsApp, y en el ERP
