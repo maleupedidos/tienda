@@ -236,6 +236,111 @@ La cuenta la decide la carpeta (`includeIf` en `C:\Users\tadeu\.gitconfig`):
 todo lo que cuelga de `Trabajo\` firma como **maleupedidos**. No corras
 `gh auth switch`.
 
+## El píxel de Meta (10/9/2026)
+
+Está instalado en `index.html` y los cuatro eventos cuelgan de **`_track`**, la
+misma función por la que ya pasaban los de GA4. No se cuelgan de cada botón: de
+los cinco caminos que repintan el catálogo, uno se olvidó del stock ese mismo
+día, y con seis call sites pasaría igual.
+
+| lo que hace el cliente | evento de Meta | dónde |
+|---|---|---|
+| entra al catálogo | `ViewContent` | `select_zone` |
+| agrega algo | `AddToCart` | los 3 `add_to_cart` (producto, combo, pieza de carne) |
+| va al formulario | `InitiateCheckout` | `goToForm` |
+| manda el pedido | `Purchase` | `enviarPedido` |
+
+`AddToCart`, `InitiateCheckout` y `Purchase` viajan con **`value` + `currency:
+'ARS'`**. Sin moneda, Meta no puede calcular el retorno y el número queda mudo.
+
+> [!important] El `eventID` del Purchase es el `clientOrderId`
+> El mismo con el que el backend deduplica un reintento. Hoy no hace falta
+> —sólo manda el navegador—, pero el día que el ERP mande la compra por la API
+> de Conversiones, Meta reconoce que es **el mismo hecho** y no cuenta la venta
+> dos veces. Ponerlo ahora es gratis; ponerlo después obliga a tocar las dos
+> puntas a la vez.
+
+> [!warning] `fbevents.js` va diferido, pero se FUERZA antes de un Purchase
+> Se difiere igual que GA4 y por el mismo motivo (pesa, y la tienda arranca en
+> un celular con 4G). Se puede, porque el stub es una **cola**: lo encolado se
+> manda cuando el script llega.
+>
+> Pero antes de `InitiateCheckout` y `Purchase` se llama a `_metaForzarCarga()`.
+> Sin eso, quien compra rápido se lleva el evento sin enviar: la tienda salta a
+> WhatsApp enseguida y una cola pendiente se va con la página. Es justo el
+> evento que más importa.
+
+> [!danger] El `<noscript>` va en el BODY, no en el head
+> Un `<img>` dentro del `<head>` no está permitido: el parser **cierra el head
+> ahí mismo** y manda al body todo lo que venga después. Hoy no hay nada
+> después, pero el día que alguien agregue un `<link>` al final del head se le
+> iría al body sin que nada lo avise.
+
+### ⚠ Al 10/9/2026 el píxel NO está midiendo, y no es el código
+
+Está instalado con el conjunto **856053897491524**, que es el de *WhatsApp
+Marketing Message Event Sharing* — el que Meta creó solo el 9/3/2026. **Ese
+conjunto no recibe eventos de navegador.**
+
+Lo que se midió, en este orden:
+
+| | |
+|---|---|
+| los 4 eventos se arman bien | **22 ok · 0 mal** contra maleu.com.ar |
+| llamadas a `facebook.com/tr` | **cero** |
+| el píxel ¿intenta mandar por alguna vía? | **no** — ni `Image`, ni `fetch`, ni `sendBeacon`, ni `XHR` |
+| eventos registrados en el conjunto | **0**, incluso tras mandarle dos hits directos por HTTP |
+
+> [!important] Lo que descarta que sea nuestro: el CONTROL
+> Se armó una página de diez líneas con el **snippet oficial de Meta**, sin una
+> sola línea de la tienda, y tampoco manda. `fbevents.js` carga (v2.9.398),
+> baja el config del píxel (357 KB, termina en `configLoaded`), se instancia
+> —`fbq.instance.pixelsByID` lo tiene— y **se calla, sin un warning**.
+>
+> También se descartó `navigator.webdriver`: con la bandera de automation
+> apagada, igual no manda.
+
+**Qué falta:** crear un conjunto de datos nuevo, de sitio web, y cambiar el ID.
+La API de Meta **no permite crear datasets** (se revisó: hay herramientas para
+eventos, parámetros y catálogos, ninguna para crear el conjunto), así que ese
+paso lo tiene que hacer una persona desde el Administrador de eventos.
+
+Cuando el ID nuevo exista, **se cambia en un solo lugar**: `index.html`, en el
+`fbq('init', ...)` y en el `<noscript>`. Los dos tests lo leen de ahí, no lo
+tienen escrito.
+
+> [!danger] La lección, que costó una tarde: "22 ok · 0 mal" no era medir
+> El primer test verificaba que los eventos se **encolaran** bien — y lo hacían,
+> perfecto, con todos sus parámetros. Pero bloqueaba `fbevents.js` a propósito
+> para poder leer la cola, así que **nunca probó que Meta los recibiera**.
+>
+> Es la misma distinción que ya está anotada más arriba para el caché: *"`curl`
+> dice que el servidor lo tiene, y eso es otra pregunta distinta de si el
+> navegador lo recibe"*. Acá: **que el evento salga bien armado es otra pregunta
+> distinta de si Meta lo registra.**
+>
+> Por eso ahora son dos redes y hay que correr las dos:
+>
+> ```bash
+> node _tools/verificar-pixel.js          # que los 4 eventos se armen bien
+> node _tools/verificar-pixel-red.js      # que LLEGUEN a facebook.com/tr
+> ```
+>
+> La segunda es la que hoy da rojo, y tiene que dar verde antes de decir que el
+> píxel anda.
+
+### La privacidad tuvo que decir la verdad
+
+`privacidad.html` decía *"no cedemos tus datos a terceros con fines
+publicitarios"*, y con un píxel instalado eso deja de ser cierto. Se corrigió el
+mismo día: Meta entra en la lista de con quién se comparte, y se dice qué recibe
+—datos de uso— y qué **no**: nombre, teléfono ni dirección. Eso es verificable
+en el código: los eventos mandan `value`, `currency`, `content_ids` y el
+`clientOrderId`, nada del formulario.
+
+**No es el tema legal que está en pausa** (ese es CUIT y razón social). Es que
+una página publicada no puede mentir por algo que acabamos de instalar nosotros.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en
