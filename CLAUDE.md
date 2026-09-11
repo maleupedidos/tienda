@@ -425,6 +425,47 @@ Seguí bajando para pedirlos ↓
 Singular y plural se dicen bien (*coincide* / *coinciden*), y sin resultados no
 aparece la invitación a bajar — no hay adónde.
 
+## Las fotos de los 5 cortes de carne (10/9/2026)
+
+> [!warning] Son **generadas con IA**, no fotos del producto real
+> Las hizo Tadeo con ChatGPT. No hay problema de derechos — son suyas — pero
+> **la pieza que se ve no es la que el cliente recibe**, y en una tienda de
+> alimentos eso importa: la carne se vende envasada al vacío y estas se ven
+> sueltas sobre mármol.
+>
+> **Quedan hasta que Lucas fotografíe un paquete de cada gusto**, que es lo que
+> acordaron el 10/9/2026 a la noche. Cuando lleguen, se reemplazan y este bloque
+> se borra.
+
+| corte | foto |
+|---|---|
+| Entraña | `carne-entrana.jpg` — muestra las 2 tiras, que es lo que dice su chip |
+| Vacío | `carne-vacio.jpg` |
+| Colita, Lomo, Picaña | **`carne-cortes.jpg`, la misma para los tres** |
+
+Hasta ese día **los cinco compartían `carne-cortes.jpg`**, así que en el
+catálogo se veían todos iguales.
+
+> [!tip] Se generan a 16:9, y no es un gusto
+> `.carne-card .product-thumb` tiene `aspect-ratio:16/9` en el celular — que es
+> donde compra el 100% de los clientes — con `object-fit:cover`. Una foto
+> vertical se recorta a una franja del medio y pierde las puntas de la pieza.
+> El script que las preparó está en el scratchpad (`fotos_carne.py`): recorte
+> centrado a 16:9, 1100x619, y la calidad más alta que entre por debajo de
+> 100 KB, como el resto de `img/`.
+
+> [!danger] Una foto nueva hay que sellarla en `IMG_V`
+> El `?v=` de cada imagen sale de ese mapa, entre los anclajes `IMG_V:INICIO` y
+> `IMG_V:FIN` de `app.js`, y lo genera `python _tools/cachebuster.py`. Sin
+> sellarla la foto se sirve **sin** `?v=`: hoy no molesta porque el archivo es
+> nuevo, pero el día que se reemplace por la foto real, el navegador del
+> cliente seguiría mostrando la vieja hasta 4 horas.
+
+> [!note] Al publicar, el `app.js` sale antes que las imágenes
+> Medido el 10/9/2026: el catálogo nuevo estaba a los **45 segundos** y las dos
+> fotos recién a los **3 minutos**. En esa ventana las cards apuntan a un 404 y
+> el `onerror` las deja sin imagen. Se pasa solo; no hay que tocar nada.
+
 ## La tienda se comporta como una app, no como un documento (10/9/2026)
 
 ### El fondo se queda quieto
