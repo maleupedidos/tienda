@@ -738,12 +738,83 @@ un `of` basura—, verdes a 390 y 1440px. Probada en la dirección contraria con
 cuatro bugs reinyectados (ordenar sólo por peso, la firma sin la oferta, no
 validar el %, el carrito a precio de lista): **los cuatro se agarran**.
 
-> [!warning] Lo que falta es del lado del ERP
-> `piezas_full` todavía no manda `v` ni `of`. El prompt para la sesión Backend se
-> armó el 11/9/2026 con el contrato completo: la tanda es el **día de la
-> col Recibida** (no "7 días", porque las 5 primeras piezas tienen Recibida =
-> 10/9, el día que se cargaron, no el que llegaron), el % en
-> **`CARNE_OFERTA_PCT`** de Config_Maleu (default 5) y el piso contra el costo.
+> [!note] Del lado del ERP está publicado desde el 11/9/2026
+> `piezas_full` manda `v` y `of` cuando en un corte conviven **dos tandas**. La
+> tanda es el **día de la col Recibida** (no "7 días", porque las 5 primeras
+> piezas tienen Recibida = 10/9, el día que se cargaron, no el que llegaron),
+> el % sale de **`CARNE_OFERTA_PCT`** en Config_Maleu (default 5) y lo topea el
+> piso contra el costo.
+>
+> Con una sola tanda no manda ninguno de los dos, y la tienda se ve sin
+> ofertas: es lo correcto. Así estaba el 11/9 a la tarde, con las 5 piezas del
+> 10/9 como única tanda.
+
+## La carne se elige pieza por pieza, en una grilla que se despliega (11/9/2026)
+
+A la tarde del 11/9 se probó elegir la carne por **rango de 200 g**: el cliente
+elegía *"1,2 a 1,4 kg"* y quien arma agarraba cualquier pieza de esa bolsa. Se
+construyó de los dos lados y esa misma tarde Tadeo y Lucas lo dieron vuelta:
+*"si hacemos por rango estaríamos categorizando por precio y perdiendo plata.
+Cada peso de pieza tiene un precio distinto"*.
+
+**No llegó a publicarse en la tienda**, y el backend lo sacó de producción
+(@579). El contrato quedó el de siempre: `piezas_full` `{id, kg, v, of}` y
+`piezas: [ids]` en cada item de carne del pedido.
+
+> [!important] El rango quería resolver dos problemas, y los dos siguen resueltos
+> · **Una lista de 25 piezas tapa el catálogo.** Lo resuelve la grilla de abajo.
+> · **En el freezer cuesta encontrar la pieza que eligió el cliente.** Desde el
+>   ERP v296, ARMADO y RUTA dicen la pieza exacta de cada pedido: *"Carne Vacío ·
+>   2 piezas: 1,241 y 1,383 kg"*. Para que eso sirva en el freezer, **cada
+>   paquete tiene que llevar su peso escrito** desde que se pesa en RECIBIR CARNE.
+
+**La grilla:**
+
+| | |
+|---|---|
+| cada pieza | un botón de 56px con el peso grande y el precio abajo, como los talles de una tienda de ropa |
+| columnas | `auto-fill` con mínimo 120px: 2 por fila en el celular, 3 en la compu, sin un media query por pantalla |
+| con **9 o más** | se ven las primeras 6 y *"Ver las 14 piezas · de 0,950 a 2,140 kg"* despliega el resto |
+| con 8 o menos | se ven todas: esconder una o dos detrás de un botón es un toque de más |
+| la oferta | el cartel *"5% OFF"* va montado sobre el borde de arriba de la pieza; el tachado va antes del precio, en el mismo renglón |
+| el resumen | *"Llevás 2 piezas · 3,090 kg · $80.340"* |
+
+- **Lo elegido se ve siempre**, plegada o no: si el cliente elige la de 2,1 kg
+  con la lista abierta y la cierra, su pieza no puede desaparecer.
+- **El estado vive en `pzDesplegado`, fuera del DOM.** La card se redibuja
+  entera al elegir una pieza y con cada refresco del catálogo: guardado en la
+  card, cada toque la volvería a plegar.
+- **Al plegar, el scroll se corre para que el botón quede bajo el dedo.** Si
+  no, con la lista abierta abajo de todo, al cerrarla se aparece en el medio
+  del corte siguiente. Ese salto va con `scroll-behavior` apagado: el html lo
+  tiene en `smooth`, y animado el botón se iría de abajo del dedo y volvería.
+- **Por qué no un `<select>`:** no deja elegir dos piezas, no puede mostrar el
+  tachado de la oferta, y en el iPhone abre una ruedita de números sin precios.
+
+### La red: `node _tools/verificar-piezas.js [ancho]`
+
+**30 chequeos**, verdes a 390 y 1440px:
+
+1. plegado, con el orden (la tanda anterior primero) y el rango de kilos del botón;
+2. los bordes: con 9 se pliega, con 8 no, con 3 no;
+3. desplegar y elegir con **toques de verdad** (el mouse de Chrome en el centro
+   del botón: si algo lo tapa, el toque le cae a otro);
+4. la elegida sigue a la vista al plegar, y el botón no se mueve de abajo del dedo;
+5. el estado sobrevive a `renderCatalog()`;
+6. el cartel de la oferta no tapa otra pieza ni el rótulo;
+7. cero POST.
+
+Probada en la dirección contraria con **6 bugs reinyectados**, uno por vez en
+una copia de la tienda: no se pliega nunca, se pliega desde 7, la elegida
+desaparece al plegar, el botón se va de abajo del dedo, un redibujo pierde lo
+desplegado y el cartel de la oferta pisa la pieza de arriba. **Los 6 se agarran.**
+
+> [!warning] Sembrar `maleu_zone` no alcanza para TOCAR la tienda desde un test
+> Falta la fecha, y el modal de zona queda abierto encima de todo. La primera
+> versión de este test tocaba el calendario creyendo que tocaba una pieza. Los
+> tests que llaman funciones no lo notan; uno que toca, sí. Hay que elegir zona
+> y fecha como una persona (`ELEGIR_ZONA`, copiado de `verificar-paneles.js`)
+> y cortar si el modal sigue abierto.
 
 ## Un pedido se da por registrado SOLO cuando el ERP lo confirma (11/9/2026)
 

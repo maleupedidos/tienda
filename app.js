@@ -573,14 +573,15 @@ function piezasDe(abbr) {
    aca: si manana un producto de Maleu pasa a venderse por kilo, entra solo. */
 function esPorPeso(p) { return !!(p && p.porPeso); }
 
-/* Cuantas piezas de este corte hay en el carrito, y cuantos kilos suman. */
+/* Cuantas piezas de este corte hay en el carrito, cuantos kilos y cuanta
+   plata suman. */
 function piezasEnCarrito(abbr) {
-  var n = 0, kg = 0;
+  var n = 0, kg = 0, total = 0;
   Object.keys(piezaCart).forEach(function (pid) {
     var it = piezaCart[pid];
-    if (it.abbr === abbr) { n++; kg += it.kg; }
+    if (it.abbr === abbr) { n++; kg += it.kg; total += it.precio; }
   });
-  return { n: n, kg: kg };
+  return { n: n, kg: kg, total: total };
 }
 
 /* Poner o sacar una pieza del carrito. Es un interruptor y no un +/-: la
@@ -636,6 +637,60 @@ function _repintarCarne(abbr) {
     tmp.innerHTML = html;
     card.replaceWith(tmp.firstElementChild);
   });
+}
+
+/* LA LISTA DE PIEZAS SE DESPLIEGA (11/9/2026).
+
+   El 11/9 a la tarde se probo elegir la carne por rango de peso (no llego a
+   publicarse), y esa misma tarde Tadeo y Lucas lo dieron vuelta: "si hacemos
+   por rango estariamos
+   categorizando por precio y perdiendo plata: cada peso de pieza tiene un
+   precio distinto". Vuelven todas las piezas, cada una con su peso y su precio.
+
+   Pero una tanda de 80 kg son 10 a 25 piezas por corte, y en una columna de
+   filas de 48px eso tapa el resto del catalogo. Por eso van en una GRILLA de
+   botones grandes —como los talles de una tienda de ropa— y, cuando son
+   muchas, se ven las primeras seis y un boton despliega el resto. Seis son
+   tres filas en el celular (dos columnas) y dos en la compu (tres).
+
+   Se pliega recien desde nueve: esconder una o dos detras de un boton es un
+   toque de mas para nada.
+
+   Lo que el cliente ya eligio se ve SIEMPRE, este plegada o no: si elige la de
+   1,9 kg con la lista abierta y la cierra, su pieza no puede desaparecer. */
+var PZ_A_LA_VISTA = 6;
+var PZ_PLEGAR_DESDE = 9;
+/* Que cortes estan desplegados. Vive fuera del DOM porque la card se redibuja
+   entera al elegir una pieza y con cada refresco del catalogo: guardado en la
+   card, cada toque la volveria a plegar. */
+var pzDesplegado = {};
+
+function verPiezas(abbr, btn) {
+  var abrir = !pzDesplegado[abbr];
+  pzDesplegado[abbr] = abrir;
+  var cards = [].slice.call(document.querySelectorAll('.carne-card'));
+  var idx = btn ? cards.indexOf(btn.closest('.carne-card')) : -1;
+  var antes = btn ? btn.getBoundingClientRect().top : null;
+  _repintarCarne(abbr);
+  /* Al PLEGAR, las piezas que se esconden estan arriba del boton y el boton
+     sube: el scroll se corre lo mismo para que quede bajo el dedo. Sin eso,
+     con la lista abierta abajo de todo, al cerrarla aparecés en el medio del
+     corte siguiente sin saber donde estas. Al desplegar no hace falta: lo
+     nuevo aparece justo donde estas mirando. */
+  if (!abrir && antes !== null && idx >= 0) {
+    var nueva = document.querySelectorAll('.carne-card')[idx];
+    var b = nueva && nueva.querySelector('.pz-mas');
+    /* El html tiene `scroll-behavior:smooth`, y con eso este scrollBy se
+       animaria: el boton se iria de abajo del dedo y volveria medio segundo
+       despues. Se apaga para este salto y se devuelve como estaba. */
+    if (b) {
+      var raiz = document.documentElement, antesSB = raiz.style.scrollBehavior;
+      raiz.style.scrollBehavior = 'auto';
+      window.scrollBy(0, b.getBoundingClientRect().top - antes);
+      raiz.style.scrollBehavior = antesSB;
+    }
+  }
+  if (abrir) _track('ver_piezas', { id: abbr, zone: currentZone });
 }
 
 function piezasSubtotal() {
@@ -2450,14 +2505,19 @@ function carneCardHTML(p) {
   } else if (!libres.length && !mias.n) {
     cuerpo = '<p class="pz-vacio">Se agotó por esta semana.</p>';
   } else {
-    var filas = (piezasMap[p.abbr] || []).map(function (pz) {
+    var todas = piezasMap[p.abbr] || [];
+    /* Con muchas piezas se pliega: ver LA LISTA DE PIEZAS SE DESPLIEGA. */
+    var plegable = todas.length >= PZ_PLEGAR_DESDE;
+    var plegada = plegable && !pzDesplegado[p.abbr];
+    var filas = todas.map(function (pz, i) {
       var elegida = !!piezaCart[pz.id];
+      var oculta = plegada && i >= PZ_A_LA_VISTA && !elegida;
       var precio = piezaPrecio(p, pz.kg, pz.of);
-      /* Con oferta, el precio va en dos renglones \u2014el de lista tachado arriba,
-         el que se paga abajo\u2014 para no ensanchar la fila: en el celular la card
-         mide 330px y el tachado al lado empujaba el peso contra el borde.
-         El nombre accesible se dice entero: leido tal cual, "5% OFF $27.664
-         $26.281" no dice cual de los dos se paga. */
+      /* Con oferta, el de lista tachado va ANTES del que se paga y en el mismo
+         renglon: es como se lee un precio rebajado en cualquier tienda, y en
+         una grilla dos renglones de precio harian una pieza mas alta que su
+         vecina. El nombre accesible se dice entero: leido tal cual, "5% OFF
+         $27.664 $26.281" no dice cual de los dos se paga. */
       var precioHtml = pz.of
         ? '<span class="pz-precio pz-precio-oferta"><s>' + ars(piezaPrecio(p, pz.kg)) + '</s>' + ars(precio) + '</span>'
         : '<span class="pz-precio">' + ars(precio) + '</span>';
@@ -2465,7 +2525,8 @@ function carneCardHTML(p) {
         ? ' aria-label="' + p.nombre + ' de ' + kgTexto(pz.kg) + ', en oferta: ' + ars(precio) +
           ' en vez de ' + ars(piezaPrecio(p, pz.kg)) + '"'
         : '';
-      return '<button type="button" class="pz-fila' + (elegida ? ' elegida' : '') + (pz.of ? ' en-oferta' : '') + '"' +
+      return '<button type="button" class="pz-fila' + (elegida ? ' elegida' : '') + (pz.of ? ' en-oferta' : '') +
+        (oculta ? ' pz-oculta' : '') + '"' +
         ' onclick="togglePieza(\'' + p.abbr + '\',\'' + pz.id + '\')"' + etiqueta +
         ' aria-pressed="' + (elegida ? 'true' : 'false') + '">' +
           '<span class="pz-check" aria-hidden="true"></span>' +
@@ -2474,8 +2535,22 @@ function carneCardHTML(p) {
           precioHtml +
         '</button>';
     }).join('');
-    var cuantas = (piezasMap[p.abbr] || []).length;
-    var cuantasOf = (piezasMap[p.abbr] || []).filter(function (pz) { return pz.of; }).length;
+    var cuantas = todas.length;
+    var cuantasOf = todas.filter(function (pz) { return pz.of; }).length;
+    /* El boton dice cuantas son y DE CUANTO A CUANTO van: con la lista
+       plegada se ven las primeras seis, y el que busca una de dos kilos tiene
+       que saber que existe antes de tocar. */
+    var botonMas = '';
+    if (plegable) {
+      var kgs = todas.map(function (pz) { return pz.kg; });
+      botonMas = '<button type="button" class="pz-mas" aria-expanded="' + (plegada ? 'false' : 'true') + '"' +
+        ' onclick="verPiezas(\'' + p.abbr + '\', this)">' +
+          '<span class="pz-mas-txt">' + (plegada ? 'Ver las ' + cuantas + ' piezas' : 'Ver menos') +
+            '<span class="pz-mas-flecha" aria-hidden="true"></span></span>' +
+          (plegada ? '<span class="pz-mas-rango">de ' + kgTexto(Math.min.apply(null, kgs)).replace(' kg', '') +
+            ' a ' + kgTexto(Math.max.apply(null, kgs)) + '</span>' : '') +
+        '</button>';
+    }
     cuerpo =
       '<div class="pz-rotulo">' +
         '<span>Eleg\u00ed tu pieza</span>' +
@@ -2483,9 +2558,11 @@ function carneCardHTML(p) {
           (cuantasOf ? ' \u00b7 ' + cuantasOf + ' en oferta' : '') + '</span>' +
       '</div>' +
       '<div class="pz-lista">' + filas + '</div>' +
+      botonMas +
       (mias.n
         ? '<div class="pz-resumen">Llev\u00e1s <strong>' + mias.n +
-          (mias.n === 1 ? ' pieza' : ' piezas') + '</strong> \u00b7 ' + kgTexto(mias.kg) + '</div>'
+          (mias.n === 1 ? ' pieza' : ' piezas') + '</strong> \u00b7 ' + kgTexto(mias.kg) +
+          ' \u00b7 ' + ars(mias.total) + '</div>'
         : '');
   }
 

@@ -1459,32 +1459,50 @@ body.busqueda-activa #repeat-block { display: none !important; }
 }
 .pz-quedan { font-size: .72rem; color: #8d7a72; white-space: nowrap; }
 
-.pz-lista { display: flex; flex-direction: column; gap: .35rem; }
+/* LAS PIEZAS VAN EN GRILLA, COMO LOS TALLES (11/9/2026). Una tanda de 80 kg
+   son 10 a 25 piezas por corte: en una columna, 25 filas de 48px tapan el
+   resto del catalogo. En grilla entran dos por fila en el celular y tres en la
+   compu, y cada una sigue siendo un boton grande.
 
-/* Cada pieza es un boton de 48px: se toca con el pulgar, en la calle y a una
-   mano. Debajo de 44 no se le pega. */
+   `auto-fill` con un minimo de 120px hace la cuenta segun el ancho de la
+   card, sin un media query por pantalla: 333px de cuerpo son 2 columnas, 498
+   son 3. El `padding-top` y el `row-gap` le dejan lugar al cartel de la
+   oferta, que va montado sobre el borde de arriba de la pieza. */
+.pz-lista {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  column-gap: .45rem; row-gap: .7rem; padding-top: .45rem;
+}
+
+/* Cada pieza es un boton de 56px: se toca con el pulgar, en la calle y a una
+   mano. El peso arriba y grande —es lo que se elige—, el precio abajo. */
 .pz-fila {
-  display: flex; align-items: center; gap: .55rem;
-  width: 100%; min-height: 48px; padding: .55rem .7rem;
-  font-family: var(--font); font-size: .92rem; color: var(--brown);
-  background: #fff; border: 1.5px solid #e8ddd0; border-radius: 10px;
-  cursor: pointer; text-align: left;
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: .12rem; width: 100%; min-height: 56px; padding: .5rem .45rem;
+  font-family: var(--font); font-size: .9rem; color: var(--brown);
+  background: #fff; border: 1.5px solid #e8ddd0; border-radius: 12px;
+  cursor: pointer; text-align: center;
   transition: border-color .12s, background .12s;
 }
 .pz-fila:hover { border-color: var(--orange); background: #FFF8F4; }
+/* Plegada: la pieza existe (el lector de pantalla y el conteo la ven) pero no
+   se dibuja. Con `.pz-fila` adelante para ganarle al `display:flex`. */
+.pz-fila.pz-oculta { display: none; }
 
-/* El circulito de la izquierda: vacio, y con el tilde cuando esta elegida.
-   Es lo que hace que se lea como "elegí una", no como un boton de comprar. */
+/* El tilde de la elegida, en la esquina. Sin elegir no se dibuja nada: una
+   grilla de botones ya se lee como "elegí una", igual que los talles. */
 .pz-check {
-  flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%;
-  border: 2px solid #d8c9ba; position: relative;
-  transition: border-color .12s, background .12s;
+  display: none; position: absolute; top: 6px; left: 6px;
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid var(--orange); background: var(--orange);
 }
-.pz-kg { flex: 1 1 auto; font-weight: 700; font-variant-numeric: tabular-nums; }
-.pz-precio { flex: 0 0 auto; font-weight: 700; color: var(--brown); font-variant-numeric: tabular-nums; }
+.pz-kg { font-size: 1rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.pz-precio { font-weight: 700; color: var(--brown); font-variant-numeric: tabular-nums; line-height: 1.2; }
 
-.pz-fila.elegida { border-color: var(--orange); background: #FFF3EC; }
-.pz-fila.elegida .pz-check { border-color: var(--orange); background: var(--orange); }
+/* La elegida lleva el borde el doble de grueso (la sombra de adentro suma el
+   otro 1,5px): en el sol, un cambio de color solo no se ve. */
+.pz-fila.elegida { border-color: var(--orange); background: #FFF3EC; box-shadow: inset 0 0 0 1.5px var(--orange); }
+.pz-fila.elegida .pz-check { display: block; }
 .pz-fila.elegida .pz-check::after {
   content: ''; position: absolute; left: 5px; top: 1px;
   width: 5px; height: 10px; border: solid #fff;
@@ -1496,15 +1514,17 @@ body.busqueda-activa #repeat-block { display: none !important; }
    el margen lo aguanta, con el de lista tachado. El precio va en dos renglones
    para no ensanchar la fila, y en el verde del ahorro tambien estando elegida:
    si se volviera naranja al tocarla, parece que perdio la oferta. */
+/* El cartel va MONTADO sobre el borde de arriba, a la derecha: adentro de una
+   pieza de 150px chocaba con el peso. */
 .pz-off {
-  display: inline-block; margin-left: .4rem; padding: .12rem .38rem;
-  border-radius: 5px; background: #2e7d32; color: #fff;
+  position: absolute; top: -.62rem; right: .45rem;
+  padding: .12rem .38rem; border-radius: 5px; background: #2e7d32; color: #fff;
   font-size: .66rem; font-weight: 700; letter-spacing: .02em;
-  vertical-align: .08em; white-space: nowrap;
+  white-space: nowrap; line-height: 1.2;
 }
 .pz-precio-oferta {
-  display: flex; flex-direction: column; align-items: flex-end;
-  line-height: 1.15; color: #2e7d32;
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline;
+  column-gap: .3rem; color: #2e7d32;
 }
 .pz-fila.elegida .pz-precio-oferta { color: #2e7d32; }
 /* El de lista, tachado: apagado pero legible — es la referencia del ahorro y
@@ -1514,6 +1534,27 @@ body.busqueda-activa #repeat-block { display: none !important; }
   font-size: .74rem; font-weight: 600; color: #6b5a52;
 }
 .pz-antes { margin-right: .15rem; }
+
+/* "Ver las 14 piezas": ancho completo y 52px, con la cuenta de kilos abajo
+   para que se sepa si la que se busca esta del otro lado antes de tocar. */
+.pz-mas {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: .05rem; width: 100%; min-height: 48px; margin-top: .6rem; padding: .45rem .8rem;
+  font-family: var(--font); color: var(--brown);
+  background: var(--cream); border: 1.5px solid #e8ddd0; border-radius: 10px;
+  cursor: pointer; transition: border-color .12s;
+}
+.pz-mas:hover { border-color: var(--orange); }
+.pz-mas-txt {
+  display: inline-flex; align-items: center; gap: .5rem;
+  font-size: .88rem; font-weight: 700;
+}
+.pz-mas-rango { font-size: .76rem; font-weight: 500; color: #6b5a52; font-variant-numeric: tabular-nums; }
+.pz-mas-flecha {
+  width: 7px; height: 7px; border: solid currentColor; border-width: 0 2px 2px 0;
+  transform: translateY(-2px) rotate(45deg);
+}
+.pz-mas[aria-expanded="true"] .pz-mas-flecha { transform: translateY(2px) rotate(-135deg); }
 
 .pz-resumen {
   margin-top: .5rem; padding: .45rem .6rem; border-radius: 8px;
