@@ -102,6 +102,10 @@ const DE_AFUERA = new Set([
   'String','Number','Boolean','Array','Object','JSON','Math','Date','RegExp','Error','Promise','Map','Set','Symbol',
   'alert','confirm','prompt','open','close','focus','blur','scrollTo','scrollBy','matchMedia',
   'getComputedStyle','structuredClone','queueMicrotask','btoa','atob','gtag',
+  /* Los dos los define el <head> del index.html, no app.js: gtag es la cola
+     de GA4 y fbq la del pixel de Meta. app.js las llama guardadas con un
+     typeof, asi que si el head no cargara no revienta nada. */
+  'fbq',
   'require','module','exports','console',
   'Intl','URL','URLSearchParams','FormData','Blob','File','FileReader','AbortController','Image','Audio',
   'CustomEvent','Event','MutationObserver','IntersectionObserver','ResizeObserver',

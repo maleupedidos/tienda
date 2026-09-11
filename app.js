@@ -585,7 +585,7 @@ function togglePieza(abbr, piezaId) {
     piezaCart[piezaId] = { abbr: abbr, id: prod.id, kg: pz.kg,
                            precio: piezaPrecio(prod, pz.kg), nombre: prod.nombre };
     toast('✓ ' + prod.nombre + ' de ' + kgTexto(pz.kg) + ' agregado');
-    _track('add_to_cart', { item_name: prod.nombre + ' ' + kgTexto(pz.kg),
+    _track('add_to_cart', { id: prod.abbr || prod.id, item_name: prod.nombre + ' ' + kgTexto(pz.kg),
                             price: piezaPrecio(prod, pz.kg), zone: currentZone });
   }
   /* updateUI y no updateCart: esa funcion NO EXISTE en este archivo y la
@@ -2542,11 +2542,101 @@ function modifyCart(id, delta) {
   updateFormVisibility();
   updateShippingBar();
 }
-function _track(event, params) { if (typeof gtag === 'function') gtag('event', event, params || {}); }
+/* Un solo lugar manda los eventos a los dos lados. Colgar Meta de cada call
+   site serian 6 lugares de los que acordarse, y ya sabemos como termina eso:
+   de los cinco que repintan el catalogo, uno se olvidaba del stock. */
+function _track(event, params) {
+  params = params || {};
+  if (typeof gtag === 'function') gtag('event', event, params);
+  _trackMeta(event, params);
+}
+
+/* Que hay en el carrito, en el formato que espera Meta. Se arma aca y no en
+   cada llamada: `cart` es la fuente, y pasarlo por parametro seria copiarla. */
+function _metaContents() {
+  var out = [];
+  try {
+    Object.keys(cart || {}).forEach(function (id) {
+      var q = Number(cart[id]) || 0;
+      if (q > 0) out.push({ id: String(id), quantity: q });
+    });
+    /* La carne va por pieza y no entra en `cart`: su cantidad son KILOS. */
+    if (typeof piezaCart === 'object' && piezaCart) {
+      var porCorte = {};
+      Object.keys(piezaCart).forEach(function (pid) {
+        var pz = piezaCart[pid];
+        if (!pz || !pz.abbr) return;
+        porCorte[pz.abbr] = (porCorte[pz.abbr] || 0) + (Number(pz.kg) || 0);
+      });
+      Object.keys(porCorte).forEach(function (ab) {
+        out.push({ id: ab, quantity: Math.round(porCorte[ab] * 1000) / 1000 });
+      });
+    }
+  } catch (e) { /* un evento de medicion no puede voltear un pedido */ }
+  return out;
+}
+
+/* Traduce los eventos de la tienda a los ESTANDAR de Meta. Los nombres
+   importan: `AddToCart` lo entiende y optimiza, `add_to_cart` es un evento
+   inventado que no sirve para optimizar ni para armar publico.
+
+   `currency` va SIEMPRE junto con `value`. Sin moneda, Meta no puede calcular
+   el retorno y el numero queda mudo. */
+function _trackMeta(event, params) {
+  if (typeof fbq !== 'function') return;
+  try {
+    var v = Number(params.value != null ? params.value : params.price);
+    var base = {};
+    if (!isNaN(v) && v > 0) { base.value = v; base.currency = 'ARS'; }
+
+    if (event === 'add_to_cart') {
+      base.content_type = 'product';
+      if (params.id != null) base.content_ids = [String(params.id)];
+      if (params.item_name) base.content_name = params.item_name;
+      fbq('track', 'AddToCart', base);
+
+    } else if (event === 'begin_checkout') {
+      base.content_type = 'product';
+      base.contents = _metaContents();
+      if (params.items) base.num_items = params.items;
+      _metaForzarCarga();
+      fbq('track', 'InitiateCheckout', base);
+
+    } else if (event === 'purchase') {
+      base.content_type = 'product';
+      base.contents = _metaContents();
+      if (params.items) base.num_items = params.items;
+      /* eventID = el mismo clientOrderId con el que el backend deduplica.
+         Hoy no hace falta —solo manda el navegador—, pero el dia que el ERP
+         mande la compra por la API de Conversiones, Meta reconoce que son el
+         MISMO hecho y no cuenta la venta dos veces. Ponerlo ahora es gratis;
+         ponerlo despues obliga a tocar las dos puntas a la vez. */
+      var opciones = params.orderId ? { eventID: String(params.orderId) } : undefined;
+      _metaForzarCarga();
+      fbq('track', 'Purchase', base, opciones);
+
+    } else if (event === 'select_zone') {
+      /* El momento en que el visitante deja de mirar la portada y entra al
+         catalogo. Es el publico que sirve para volver a buscarlo despues:
+         miro la comida y no compro. */
+      fbq('track', 'ViewContent', { content_type: 'product', content_category: params.zone || '' });
+    }
+  } catch (e) { /* idem: medir nunca puede romper la compra */ }
+}
+
+/* Trae `fbevents.js` YA, sin esperar al diferido.
+
+   Sin esto, el que compra rapido se lleva el Purchase sin enviar: la tienda
+   salta a WhatsApp apenas termina, y un evento encolado en `fbq.queue` con el
+   script todavia en camino se va con la pagina. Es justo el evento que mas
+   importa. */
+function _metaForzarCarga() {
+  try { if (typeof window.traerMeta === 'function') window.traerMeta(); } catch (e) {}
+}
 function addToCart(id) {
   modifyCart(id, 1);
   const p = PROD_MAP[id];
-  _track('add_to_cart', { item_name: p.nombre, price: p.precio, zone: currentZone });
+  _track('add_to_cart', { id: p.id, item_name: p.nombre, price: p.precio, zone: currentZone });
   toast('✓ ' + p.nombre + ' agregado');
   const badge = $id('cart-badge');
   badge.classList.remove('bounce');
@@ -2569,7 +2659,7 @@ function addComboInstance(comboId, comp, picks) {
   }
   if (comboCart[sig]) comboCart[sig].qty = existing + 1;
   else comboCart[sig] = { comboId, qty: 1, comp, picks: picks || [] };
-  _track('add_to_cart', { item_name: c.nombre, price: c.precio, zone: currentZone, combo: true });
+  _track('add_to_cart', { id: 'combo-' + c.id, item_name: c.nombre, price: c.precio, zone: currentZone, combo: true });
   toast('✓ ' + c.nombre + ' agregado');
   const badge = $id('cart-badge');
   if (badge) { badge.classList.remove('bounce'); void badge.offsetWidth; badge.classList.add('bounce'); }
@@ -3549,7 +3639,7 @@ function enviarPedido() {
     postData.cupon = appliedCoupon.codigo;
     postData.cuponDescuento = cuponDescW;
   }
-  _track('purchase', { value: total, zone: currentZone, items: cartCount(), discount: discount, payment: pagoEl.value, cupon: appliedCoupon ? appliedCoupon.codigo : '', vendedor: vendedorMatch ? vendedorMatch.nombre : '' });
+  _track('purchase', { value: total, orderId: postData.clientOrderId, zone: currentZone, items: cartCount(), discount: discount, payment: pagoEl.value, cupon: appliedCoupon ? appliedCoupon.codigo : '', vendedor: vendedorMatch ? vendedorMatch.nombre : '' });
 
   // Estrategia de envío (21/06/26):
   //  - sendBeacon dispara PRIMERO (garantizado por spec, sobrevive al redirect).

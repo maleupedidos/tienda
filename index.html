@@ -76,8 +76,57 @@
       else window.addEventListener('load', function () { setTimeout(traerGA, 800); });
     })();
   </script>
+  <!-- Pixel de Meta (10/9/2026). Conjunto de datos 856053897491524, el de
+       Distribuidora Maleu.
+
+       DIFERIDO igual que GA4, y por el mismo motivo: `fbevents.js` pesa y la
+       tienda arranca en un celular con 4G. Se puede diferir sin perder nada
+       porque el stub de abajo ES una cola — `fbq.queue` existe sin el script,
+       y cuando el script llega procesa todo lo encolado, el PageView incluido.
+       Es como Meta lo disenio, igual que `dataLayer` en GA4.
+
+       El snippet oficial de Meta inserta `fbevents.js` el mismo; aca esa parte
+       se le saco a proposito y la trae `traerMeta()`, enganchada a los mismos
+       eventos que GA4: al primer toque, o al terminar de cargar la pagina.
+
+       OJO: `_metaForzarCarga()` en app.js lo trae YA cuando esta por salir un
+       Purchase. Sin eso, alguien que compra rapido y salta a WhatsApp se lleva
+       el evento sin enviar — justo el que mas importa. -->
+  <script>
+    !function (f, b, e, v, n) {
+      if (f.fbq) return; n = f.fbq = function () {
+        n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+      };
+      if (!f._fbq) f._fbq = n; n.push = n; n.loaded = !0; n.version = '2.0'; n.queue = [];
+    }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '856053897491524');
+    fbq('track', 'PageView');
+    (function () {
+      var pedido = false;
+      window.traerMeta = function () {
+        if (pedido) return;
+        pedido = true;
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://connect.facebook.net/en_US/fbevents.js';
+        document.head.appendChild(s);
+      };
+      ['pointerdown', 'keydown', 'touchstart'].forEach(function (ev) {
+        window.addEventListener(ev, window.traerMeta, { once: true, passive: true });
+      });
+      if (document.readyState === 'complete') setTimeout(window.traerMeta, 800);
+      else window.addEventListener('load', function () { setTimeout(window.traerMeta, 800); });
+    })();
+  </script>
 </head>
 <body>
+<!-- El <noscript> del pixel va ACA y no en el head: un <img> adentro del head
+     no esta permitido, asi que el parser CIERRA el head ahi mismo y manda al
+     body todo lo que venga despues. Hoy no hay nada despues, pero el dia que
+     alguien agregue un <link> al final del head se le iria al body sin que
+     nada lo avise. -->
+<noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=856053897491524&ev=PageView&noscript=1" alt="" /></noscript>
 
 <!-- MODAL BIENVENIDA (zona + fecha) -->
 <div class="loc-overlay" id="loc-overlay">
@@ -559,6 +608,6 @@
   </div>
 </div>
 
-<script src="app.js?v=6e23e2d7"></script>
+<script src="app.js?v=e61b5a15"></script>
 </body>
 </html>
