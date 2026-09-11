@@ -89,6 +89,24 @@ async function esperarPagina(puerto) {
 
 const dormir = (ms) => new Promise((s) => setTimeout(s, ms));
 
+const ES_HIT = /google-analytics.com\/[a-z]?\/?collect|analytics.google.com/;
+
+/* Esperar AL HIT, no un tiempo fijo.
+
+   Medido el 11/9/2026: desde el toque, el pageview tarda ~5,2 s — y lo que
+   manda no es la tienda sino la descarga de gtag/js, 172 KB, desde Google.
+   El test dormia 1500 ms en esa rama y 5000 en la otra: la primera fallaba
+   SIEMPRE y la segunda estaba a un mal dia de red de volverse intermitente.
+   Un numero fijo aca mide la conexion del dia, no si Analytics anda. */
+async function esperarHit(urls, tope) {
+  const t0 = Date.now();
+  for (let i = 0; i < tope * 10; i++) {
+    if (urls.some((u) => ES_HIT.test(u))) return Date.now() - t0;
+    await dormir(100);
+  }
+  return -1;
+}
+
 async function correr(cli, urls, tocar) {
   urls.length = 0;
   await cli.enviar('Page.navigate', { url: 'http://127.0.0.1:' + PUERTO + '/index.html?ga=' + Date.now() });
@@ -99,18 +117,21 @@ async function correr(cli, urls, tocar) {
     await dormir(100);
   }
   const tGtagAntes = urls.filter((u) => u.indexOf('gtag/js') >= 0).length;
+  let tardo = -1;
   if (tocar) {
     /* Un toque de verdad: el listener es `pointerdown` con {once:true}. */
     await cli.enviar('Input.dispatchMouseEvent', { type: 'mousePressed', x: 30, y: 300, button: 'left', clickCount: 1 });
     await cli.enviar('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 30, y: 300, button: 'left', clickCount: 1 });
-    await dormir(1500);
+    tardo = await esperarHit(urls, 20);
   } else {
-    await dormir(5000);   // load + los 800 ms del diferido, con margen
+    tardo = await esperarHit(urls, 25);   // load + los 800 ms del diferido + la descarga
   }
+  await dormir(300);   // que entre el hit si salio justo en el ultimo sondeo
   return {
     antesDelToque: tGtagAntes,
+    tardo: tardo,
     script: urls.some((u) => u.indexOf('googletagmanager.com/gtag/js') >= 0),
-    hits: urls.filter((u) => /google-analytics\.com\/[a-z]?\/?collect|analytics\.google\.com/.test(u)),
+    hits: urls.filter((u) => ES_HIT.test(u)),
   };
 }
 
@@ -140,12 +161,12 @@ async function main() {
 
     const a = await correr(cli, urls, false);
     chequeo('el script de Google llega solo, sin tocar nada', a.script === true);
-    chequeo('el pageview sale (' + a.hits.length + ' hit' + (a.hits.length === 1 ? '' : 's') + ')', a.hits.length > 0);
+    chequeo('el pageview sale solo (' + a.hits.length + ' hit, ' + a.tardo + ' ms)', a.hits.length > 0);
 
     const b = await correr(cli, urls, true);
     chequeo('no se pide antes de tiempo', b.antesDelToque === 0);
     chequeo('al tocar la pantalla se trae en el acto', b.script === true);
-    chequeo('y el pageview sale igual (' + b.hits.length + ')', b.hits.length > 0);
+    chequeo('y el pageview sale igual (' + b.hits.length + ' hit, ' + b.tardo + ' ms)', b.hits.length > 0);
 
     /* Que el ID sea el de Maleu y no haya quedado el de ejemplo. */
     const idOk = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8').indexOf('G-H3W8C74PQP') >= 0;

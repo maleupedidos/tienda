@@ -49,7 +49,7 @@ body.modal-open { overflow:hidden; height:100%; touch-action:none; }
 /* Botones de zona (paso 1) */
 .loc-btn { display:block; width:100%; padding:.9rem; margin-bottom:.6rem; border:2px solid #eee; border-radius:12px; background:#fff; font-family:var(--font); font-size:.95rem; font-weight:600; cursor:pointer; transition:all .15s; text-align:left; }
 .loc-btn:hover { border-color:var(--orange); background:#FFF8F4; }
-.loc-btn small { display:block; font-weight:400; font-size:.75rem; color:#888; margin-top:2px; }
+.loc-btn small { display:block; font-weight:400; font-size:.75rem; color:#6b6b6b; margin-top:2px; }
 .loc-btn .loc-price { float:right; color:var(--orange); font-weight:700; }
 /* Anotación destacada dentro de un botón de zona (ej: cutoff de pedidos en
    Pilar). Es un bloque que ocupa el ancho del botón y deja que el texto
@@ -79,7 +79,7 @@ body.modal-open { overflow:hidden; height:100%; touch-action:none; }
 /* Grilla de fechas (paso 2) */
 .loc-dates-grid { display:flex; flex-direction:column; gap:1rem; margin-bottom:.5rem; text-align:left; }
 .loc-date-section { display:flex; flex-direction:column; gap:.55rem; }
-.loc-date-section-title { font-size:.7rem; font-weight:700; color:#999; text-transform:uppercase; letter-spacing:1.2px; padding-left:.15rem; }
+.loc-date-section-title { font-size:.7rem; font-weight:700; color:#767676; text-transform:uppercase; letter-spacing:1.2px; padding-left:.15rem; }
 .loc-date-section-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap:.5rem; }
 @media (min-width: 640px) { .loc-date-section-grid { grid-template-columns: repeat(3, 1fr); } }
 
@@ -112,15 +112,15 @@ body.modal-open { overflow:hidden; height:100%; touch-action:none; }
 .loc-any-btn .any-icon { font-size:1.6rem; flex-shrink:0; }
 .loc-any-btn .any-text { display:flex; flex-direction:column; gap:.1rem; flex:1; }
 .loc-any-btn .any-text strong { font-size:1rem; color:var(--brown); font-weight:700; }
-.loc-any-btn .any-text small { font-size:.75rem; color:#888; font-weight:400; }
+.loc-any-btn .any-text small { font-size:.75rem; color:#6b6b6b; font-weight:400; }
 
 .loc-date-card { position:relative; padding:.85rem .35rem .7rem; border:2px solid #eee; border-radius:12px; background:#fff; cursor:pointer; transition:all .15s; font-family:var(--font); display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:96px; }
 .loc-date-card:hover { border-color:var(--orange); background:#FFF8F4; transform:translateY(-1px); }
-.loc-date-card .dc-day { font-size:.7rem; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:.5px; margin-bottom:.15rem; }
+.loc-date-card .dc-day { font-size:.7rem; font-weight:700; color:#6b6b6b; text-transform:uppercase; letter-spacing:.5px; margin-bottom:.15rem; }
 .loc-date-card .dc-day.dc-day-flag { color:var(--orange); font-size:.72rem; letter-spacing:.8px; }
 .loc-date-card .dc-num { font-size:1.85rem; font-weight:700; color:var(--brown); line-height:1; }
 .loc-date-card .dc-mon { font-size:.7rem; color:#666; margin-top:.1rem; }
-.loc-date-card .dc-time { font-size:.65rem; color:#999; margin-top:.4rem; line-height:1.1; }
+.loc-date-card .dc-time { font-size:.65rem; color:#767676; margin-top:.4rem; line-height:1.1; }
 .loc-date-card.next { border-color:var(--orange); background:#FFF8F4; }
 .loc-date-card.next::before { content:'Próxima'; position:absolute; top:-8px; left:50%; transform:translateX(-50%); background:var(--orange); color:#fff; font-size:.6rem; font-weight:700; padding:.15rem .5rem; border-radius:8px; letter-spacing:.5px; white-space:nowrap; }
 
@@ -133,7 +133,7 @@ body.modal-open { overflow:hidden; height:100%; touch-action:none; }
 .loc-later-content { animation: fadeIn .25s ease-out; padding-top:.6rem; }
 .loc-later-content[hidden] { display:none; }
 
-.loc-back-btn { background:none; border:none; color:#888; cursor:pointer; font-size:.85rem; font-family:var(--font); margin-top:.5rem; padding:.4rem .8rem; }
+.loc-back-btn { background:none; border:none; color:#6b6b6b; cursor:pointer; font-size:.85rem; font-family:var(--font); margin-top:.5rem; padding:.4rem .8rem; }
 .loc-back-btn:hover { color:var(--orange); }
 
 /* Chip de fecha en header (mismo estilo que zone-chip) */
@@ -158,10 +158,10 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 
 /* ── HERO ── */
 .hero { padding:2.5rem 1.5rem 2rem; text-align:center; background:linear-gradient(to bottom, var(--cream) 0%, var(--cream) 75%, #fff 100%); }
-.hero h2 { font-size:1.7rem; font-weight:700; line-height:1.2; margin-bottom:.5rem; }
-.hero h2 span { color:var(--orange); }
+.hero h1 { font-size:1.7rem; font-weight:700; line-height:1.2; margin-bottom:.5rem; }
+.hero h1 span { color:var(--orange); }
 .hero .hero-sub { color:#666; font-size:.95rem; margin-bottom:.5rem; }
-.hero .hero-delivery { font-size:.8rem; color:#999; margin-bottom:1.2rem; }
+.hero .hero-delivery { font-size:.8rem; color:#767676; margin-bottom:1.2rem; }
 .hero-cta { display:inline-block; background:var(--orange); color:#fff; text-decoration:none; padding:.7rem 1.8rem; border-radius:50px; font-weight:700; font-size:.9rem; transition:background .15s; }
 .hero-cta:hover { background:var(--hover-orange); }
 .hero-cta.hero-cta-combos { display:block; width:fit-content; margin:.7rem auto 0; background:#fff; color:var(--orange); border:1.6px solid var(--orange); }
@@ -214,7 +214,7 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .cat-section { margin-top:2rem; }
 .cat-header { margin-bottom:1rem; }
 .cat-title { font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:.4rem; letter-spacing:.05em; }
-.cat-nota { font-size:.75rem; color:#999; margin-top:.15rem; }
+.cat-nota { font-size:.75rem; color:#767676; margin-top:.15rem; }
 .cat-tip { font-size:.75rem; color:var(--orange); margin-top:.25rem; }
 .products-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:.8rem; }
 @media(min-width:600px) { .products-grid { grid-template-columns:repeat(3, 1fr); } }
@@ -226,7 +226,7 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .product-thumb-img { width:100%; height:100%; object-fit:cover; }
 .product-body { padding:.7rem; display:flex; flex-direction:column; flex:1; }
 .product-name { font-size:.82rem; font-weight:700; margin-bottom:.2rem; line-height:1.2; }
-.product-desc { font-size:.7rem; color:#888; line-height:1.35; flex:1; margin-bottom:.4rem; }
+.product-desc { font-size:.7rem; color:#6b6b6b; line-height:1.35; flex:1; margin-bottom:.4rem; }
 .product-chips { display:flex; flex-wrap:wrap; gap:.25rem; margin-bottom:.4rem; }
 .chip { font-size:.6rem; background:#f5f5f5; color:#666; padding:.15rem .4rem; border-radius:20px; }
 .stock-indicator { display:block; margin-bottom:.3rem; }
@@ -294,18 +294,23 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .combo-modal { position:relative; background:#fff; width:100%; max-width:480px; max-height:92vh; overflow-y:auto; border-radius:18px 18px 0 0; padding:1.1rem 1.1rem 1.4rem; box-shadow:0 -4px 30px rgba(0,0,0,.2); animation:cmbUp .22s ease; }
 @media(min-width:600px){ .combo-modal { border-radius:18px; } }
 @keyframes cmbUp { from{ transform:translateY(24px); opacity:.6 } to{ transform:translateY(0); opacity:1 } }
-.combo-modal-close { position:absolute; top:.5rem; right:.6rem; width:34px; height:34px; border:none; background:#f3f3f3; border-radius:50%; font-size:1.3rem; line-height:1; color:#666; cursor:pointer; }
+/* 44px, el mismo minimo tactil que .add-btn: es el boton de salir del
+   configurador y se toca con el pulgar. Medido a 34px el 11/9/2026. */
+.combo-modal-close { position:absolute; top:.5rem; right:.6rem; width:44px; height:44px; border:none; background:#f3f3f3; border-radius:50%; font-size:1.3rem; line-height:1; color:#666; cursor:pointer; display:flex; align-items:center; justify-content:center; }
 .combo-modal-head { display:flex; gap:.7rem; align-items:center; margin-bottom:.9rem; padding-right:1.8rem; }
 .combo-modal-img { width:64px; height:64px; border-radius:12px; object-fit:cover; flex-shrink:0; }
 .combo-modal-title { font-size:1.05rem; font-weight:700; }
-.combo-modal-desc { font-size:.74rem; color:#888; line-height:1.35; margin-top:.15rem; }
+.combo-modal-desc { font-size:.74rem; color:#6b6b6b; line-height:1.35; margin-top:.15rem; }
 .cfg-slot { margin-bottom:1rem; }
 .cfg-slot-label { font-size:.8rem; font-weight:700; color:var(--brown,#5a3a22); margin-bottom:.45rem; text-transform:uppercase; letter-spacing:.03em; }
 .cfg-pick-n { color:var(--orange,#E65100); font-weight:700; text-transform:none; letter-spacing:0; }
 .cfg-pickblock { margin-bottom:.5rem; }
 .cfg-pick-idx { font-size:.66rem; font-weight:700; color:#b08968; margin-bottom:.3rem; }
 .cfg-opts { display:grid; grid-template-columns:1fr 1fr; gap:.45rem; margin-bottom:.45rem; }
-.cfg-opt { display:flex; flex-direction:column; align-items:flex-start; gap:.1rem; text-align:left; background:#fff; border:1.5px solid #eee; border-radius:10px; padding:.55rem .6rem; font-size:.74rem; font-weight:600; color:#444; cursor:pointer; transition:border-color .12s, background .12s; }
+/* min-height 44px: es LO que se toca para armar el combo —elegir cada gusto—
+   y medido daba 34. Va como minimo y no como alto fijo, asi que una opcion de
+   dos renglones sigue creciendo en vez de recortarse. */
+.cfg-opt { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:.1rem; min-height:44px; text-align:left; background:#fff; border:1.5px solid #eee; border-radius:10px; padding:.55rem .6rem; font-size:.74rem; font-weight:600; color:#444; cursor:pointer; transition:border-color .12s, background .12s; }
 .cfg-opt:hover { border-color:#FFCC80; }
 .cfg-opt.active { border-color:var(--orange,#E65100); background:#FFF3E0; color:#E65100; }
 .cfg-opt.out { opacity:.5; cursor:not-allowed; }
@@ -324,7 +329,7 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .card-qty-controls { display:flex; align-items:center; justify-content:center; gap:.5rem; }
 .card-qty-btn { width:32px; height:32px; border-radius:50%; border:1.5px solid var(--orange); background:#fff; font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:600; color:var(--orange); }
 .card-qty-btn:disabled { opacity:.35; cursor:not-allowed; }
-.card-qty-btn.remove { border-color:#ccc; color:#999; }
+.card-qty-btn.remove { border-color:#ccc; color:#767676; }
 .card-qty-val { font-weight:700; font-size:1rem; min-width:1.4rem; text-align:center; }
 
 /* ── CART SIDEBAR ── */
@@ -334,18 +339,18 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .cart-sidebar.open { right:0; }
 .cart-head { display:flex; justify-content:space-between; align-items:center; padding:1rem 1.2rem; border-bottom:1px solid #f0f0f0; }
 .cart-head h3 { font-size:1.1rem; font-weight:700; }
-.close-cart-btn { background:none; border:none; font-size:1.6rem; cursor:pointer; color:#999; }
+.close-cart-btn { background:none; border:none; font-size:1.6rem; cursor:pointer; color:#767676; }
 .cart-body { flex:1; overflow-y:auto; padding:1rem 1.2rem; }
-.cart-empty-msg { text-align:center; color:#999; padding:3rem 0; }
+.cart-empty-msg { text-align:center; color:#767676; padding:3rem 0; }
 .cart-empty-msg span { display:block; font-size:2rem; margin-bottom:.5rem; }
 .cart-item { display:flex; align-items:center; gap:.7rem; padding:.7rem 0; border-bottom:1px solid #f5f5f5; }
 .cart-item-emoji { font-size:1.3rem; }
 .cart-item-info { flex:1; }
 .cart-item-name { font-size:.85rem; font-weight:600; }
-.cart-item-sub { font-size:.75rem; color:#888; }
+.cart-item-sub { font-size:.75rem; color:#6b6b6b; }
 .qty-controls { display:flex; align-items:center; gap:.35rem; }
 .qty-btn { width:26px; height:26px; border-radius:50%; border:1.5px solid var(--orange); color:var(--orange); background:#fff; font-size:.95rem; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:600; }
-.qty-btn:first-child { border-color:#ccc; color:#999; }
+.qty-btn:first-child { border-color:#ccc; color:#767676; }
 .cart-incentive { background:linear-gradient(135deg,#fff8e1,#fff3e0); border:1.5px solid #F07D47; border-radius:10px; padding:10px 12px; margin-bottom:10px; text-align:center; font-size:.82rem; line-height:1.5; color:#331C1C; }
 .cart-incentive strong { color:#F07D47; }
 .cart-incentive .incentive-cash { margin-top:6px; padding-top:6px; border-top:1px solid #f0d9c4; font-size:.78rem; color:#2e7d32; font-weight:600; }
@@ -374,17 +379,17 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .form-expand-btn { display:none; width:100%; padding:.9rem; background:var(--cream); color:var(--brown); border:none; border-radius:12px; font-family:var(--font); font-weight:700; font-size:.9rem; cursor:pointer; }
 .form-wrap { background:#fff; border:1px solid #f0f0f0; border-radius:16px; padding:1.5rem; }
 .section-heading { font-size:1.2rem; font-weight:700; margin-bottom:.3rem; }
-.section-sub { font-size:.85rem; color:#888; margin-bottom:1.2rem; }
+.section-sub { font-size:.85rem; color:#6b6b6b; margin-bottom:1.2rem; }
 .order-summary-box { background:#FAFAFA; border-radius:10px; padding:1rem; margin-bottom:1.2rem; }
-.order-summary-box h4 { font-size:.85rem; font-weight:700; margin-bottom:.5rem; }
+.order-summary-box h3 { font-size:.85rem; font-weight:700; margin-bottom:.5rem; }
 .summary-line { display:flex; justify-content:space-between; font-size:.8rem; padding:.2rem 0; }
 .summary-line.shipping-line { color:var(--orange); }
 .summary-line.subtotal-line { border-top:1px solid #eee; padding-top:.45rem; margin-top:.3rem; font-weight:600; }
 .total-line { font-weight:700; border-top:1px solid #eee; padding-top:.5rem; margin-top:.3rem; font-size:.9rem; }
 .summary-line-combo { align-items:flex-start; }
 .summary-line-combo > span:first-child { display:flex; flex-direction:column; gap:.1rem; }
-.summary-combo-picks { font-size:.68rem; color:#999; line-height:1.3; }
-.summary-empty { font-size:.8rem; color:#bbb; }
+.summary-combo-picks { font-size:.68rem; color:#767676; line-height:1.3; }
+.summary-empty { font-size:.8rem; color:#767676; }
 .form-grid { display:flex; flex-direction:column; gap:.8rem; }
 
 
@@ -431,7 +436,7 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .pilar-restriccion { display:block; margin-top:.55rem; padding:.65rem .85rem; background:#FFF8E1; border:1px solid #FFE082; border-radius:10px; font-size:.78rem; color:#7A4A00; line-height:1.4; }
 .pilar-restriccion strong { color:#5C3700; }
 .select-wrapper { position:relative; }
-.select-wrapper::after { content:'▾'; position:absolute; right:.8rem; top:50%; transform:translateY(-50%); pointer-events:none; color:#999; font-size:.8rem; }
+.select-wrapper::after { content:'▾'; position:absolute; right:.8rem; top:50%; transform:translateY(-50%); pointer-events:none; color:#767676; font-size:.8rem; }
 .form-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:.8rem; }
 .horario-hint { font-size:.78rem; color:var(--orange); font-weight:600; display:none; }
 .pago-fieldset { border:none; }
@@ -465,7 +470,7 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .cumple-done-txt strong { color:var(--orange); white-space:nowrap; }
 .cumple-edit-btn { background:#fff; border:1.5px solid #e7d6b0; color:#9a8157; font-family:var(--font); font-size:.74rem; font-weight:700; padding:.4rem .7rem; border-radius:8px; cursor:pointer; transition:all .15s; }
 .cumple-edit-btn:hover { border-color:var(--orange); color:var(--orange); }
-.form-note { font-size:.75rem; color:#999; text-align:center; margin:1rem 0 .8rem; }
+.form-note { font-size:.75rem; color:#767676; text-align:center; margin:1rem 0 .8rem; }
 .whatsapp-btn { display:flex; align-items:center; justify-content:center; gap:.5rem; width:100%; padding:.85rem; background:#25D366; color:#fff; border:none; border-radius:12px; font-family:var(--font); font-weight:700; font-size:1rem; cursor:pointer; transition:background .15s; }
 .whatsapp-btn:hover { background:#20BD5A; }
 .whatsapp-btn svg { width:22px; height:22px; }
@@ -519,7 +524,7 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
 .coupon-msg.success { color:#2E7D32; }
 .coupon-msg.error { color:#e57373; }
 .coupon-applied { display:flex; justify-content:space-between; align-items:center; background:#E8F5E9; padding:.5rem .7rem; border-radius:8px; font-size:.8rem; color:#2E7D32; font-weight:600; }
-.coupon-applied button { background:none; border:none; color:#999; cursor:pointer; font-size:.9rem; }
+.coupon-applied button { background:none; border:none; color:#767676; cursor:pointer; font-size:.9rem; }
 
 /* ── AHORRO VS SUPER ── */
 .savings-badge { display:inline-block; font-size:.6rem; background:#E8F5E9; color:#2E7D32; padding:.15rem .45rem; border-radius:20px; font-weight:700; margin-bottom:.2rem; }
@@ -541,8 +546,8 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
 .nl-box input[type="email"]:focus { outline:none; border-color:var(--orange); }
 .nl-box .nl-btn { display:block; width:100%; padding:.75rem; background:var(--orange); color:#fff; border:none; border-radius:10px; font-family:var(--font); font-weight:700; font-size:.95rem; cursor:pointer; }
 .nl-box .nl-btn:hover { background:var(--hover-orange); }
-.nl-box .nl-skip { background:none; border:none; color:#999; font-size:.78rem; cursor:pointer; margin-top:.7rem; font-family:var(--font); }
-.nl-close { position:absolute; top:.7rem; right:.7rem; background:none; border:none; font-size:1.3rem; color:#ccc; cursor:pointer; }
+.nl-box .nl-skip { background:none; border:none; color:#767676; font-size:.78rem; cursor:pointer; margin-top:.7rem; font-family:var(--font); }
+.nl-close { position:absolute; top:.7rem; right:.7rem; background:none; border:none; font-size:1.3rem; color:#767676; cursor:pointer; }
 
 /* Day Picker — calendario 14 días */
 .day-picker { display:flex; flex-direction:column; gap:.4rem; padding:.7rem; background:#faf7f2; border:1.5px solid #e8ddd0; border-radius:12px; }
@@ -791,7 +796,7 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
       veces y pagarlo con el tamaño de la foto. Sigue en el HTML: si
       algun dia hay ficha de producto, esta ahi para usarlo. */
 .product-chips { display:block; margin-bottom:.35rem; font-size:.66rem;
-                 color:#8a8a8a; line-height:1.3; }
+                 color:#6b6b6b; line-height:1.3; }
 .product-chips .chip { display:inline; background:none; padding:0;
                        border-radius:0; font-size:inherit; color:inherit; }
 .product-chips .chip + .chip::before { content:" · "; color:#c8c8c8; }

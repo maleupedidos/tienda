@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=f8d96994" />
+  <link rel="stylesheet" href="styles.css?v=d5dd4b27" />
   <script>
     // Forzar inicio arriba en cada carga (incluye refresh, back-forward cache de iOS).
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
@@ -236,7 +236,10 @@
 
 <!-- HERO -->
 <section class="hero">
-  <h2>Hoy no tenés que<br>pensar qué cocinar.<br><span>Pensá en Maleu.</span></h2>
+  <!-- h1 y no h2: es el encabezado principal de la home. Era la unica de
+       las 9 paginas sin h1 (11/9/2026). Se ve exactamente igual: el CSS
+       se mudo de `.hero h2` a `.hero h1` con las mismas reglas. -->
+  <h1>Hoy no tenés que<br>pensar qué cocinar.<br><span>Pensá en Maleu.</span></h1>
   <p class="hero-delivery" id="hero-delivery"></p>
   <div class="hero-schedule" id="hero-schedule" style="display:none"></div>
   <!-- Aviso del cutoff para Clubes Deportivos. Va acá y no en el modal porque
@@ -334,7 +337,9 @@
     <p class="section-sub">Revisá el resumen y completá tus datos.</p>
 
     <div class="order-summary-box">
-      <h4>Resumen</h4>
+      <!-- h3 y no h4: viene despues del h2 "Completa tu pedido" y saltarse un
+           nivel desordena el indice para quien lee la pagina por voz. -->
+      <h3>Resumen</h3>
       <div id="form-summary"><p class="summary-empty">Agregá productos para ver el resumen.</p></div>
     </div>
 
@@ -611,6 +616,6 @@
   </div>
 </div>
 
-<script src="app.js?v=a6923fe9"></script>
+<script src="app.js?v=5af71e71"></script>
 </body>
 </html>

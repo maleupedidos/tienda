@@ -565,6 +565,116 @@ Probado en las dos direcciones, con los tres bugs reinyectados — **los tres se
 agarran**, y el tercero reproduce el síntoma exacto que reportó Tadeo:
 *"cebolla trae 4"* con el sorrentino de cordero adentro.
 
+## Escaneo general de la tienda (11/9/2026)
+
+Tadeo, yéndose a dormir: *"Escaneo general de la tienda. Tanto para computadora
+como para celular. Ajustar cada cosa que sientas que hay trabas o fallas. Si ves
+alguna mejora, implementala"*.
+
+### Lo que está sano — no volver a auditarlo sin motivo
+
+| Qué | Resultado |
+|---|---|
+| Las **12 redes** del repo | verdes a 390 y 1440px |
+| **Errores de consola** en todo el camino del cliente | **0 excepciones** |
+| El flujo entero | agregar · combo · carrito · formulario · WhatsApp, sin una traba |
+| Accesibilidad | 0 imágenes sin `alt`, 0 campos sin nombre, 0 botones mudos, `lang="es"` |
+| **Foco de teclado** | anda: **todos** los controles muestran `:focus-visible` con Tab |
+| **CLS de la carga** | **0** con 4G simulado (Google pide ≤ 0,1) |
+| Peso de las fotos | ninguna pasa el tope de 160 KB que fija `verificar-imagenes.js` |
+| Links internos | 0 rotos entre las 9 páginas |
+
+### Lo que se arregló
+
+| Qué | Antes | Ahora |
+|---|---|---|
+| **El foco al validar el formulario** | te llevaba al campo que falta y ahí te soltaba | queda el foco puesto: se escribe derecho |
+| **Los controles del combo** | 34px (cerrar, y cada opción de gusto) | **44px**, el mismo mínimo que `.add-btn` |
+| **La home no tenía `h1`** | era la única de las 9 sin encabezado principal | el título del hero, **sin cambiar cómo se ve** |
+| **Compartir por WhatsApp** | sólo `index.html` tenía `og:image` y `canonical` | las **9** páginas |
+| **Contraste de los grises** | `#888` 3,55 · `#999` 2,85 · `#8a8a8a` 3,45 | **24 reglas** arriba de 4,5 |
+| Un encabezado saltado | `h2` → `h4` en «Resumen» | `h3` |
+
+> [!important] Los grises que se tocaron son NEUTROS, y los de marca NO
+> Se subieron `#888`, `#999`, `#8a8a8a`, y dos controles que casi no se veían
+> (`.summary-empty` en #bbb, la × del newsletter en #ccc). Ninguna de esas
+> reglas declara fondo propio —todas heredan blanco o crema—, así que
+> oscurecerlas no podía empeorar ningún caso.
+>
+> **No se tocó el precio viejo tachado** (`.combo-price-old`, #bbb): va apagado
+> a propósito y además tachado, se entiende sin leerlo.
+
+### Lo que NO se tocó, y por qué — leer esto antes de "arreglar el contraste"
+
+> [!danger] El naranja de marca da 2,72 y NO es un bug que haya que arreglar
+> `--orange #F07D47` con texto blanco —el botón «+ Agregar», «Armar mi pedido»,
+> el chip de categoría activo— da **2,72**, por debajo del 4,5 de WCAG. Lo mismo
+> el naranja sobre crema (2,22) y las chapitas `#E65100` sobre `#FFF3E0` (3,46).
+>
+> **Es la identidad de Maleu y la decide el manual de marca, no un escaneo.**
+> Cambiar `--orange` mueve la tienda entera. Si algún día se toca, es una
+> decisión de Tadeo con Juani Peña delante, no un arreglo al pasar.
+
+> [!warning] Y tres "hallazgos" del escaneo eran del instrumento, no de la tienda
+> · **Contraste 1,0 y 1,16** en `.cat-tile-name`, `.cat-tile-count` y el chip
+>   «🎁 Combos»: es texto blanco sobre **imagen** y sobre **gradiente**. Medir el
+>   contraste subiendo por el DOM a buscar `background-color` no ve ese fondo y
+>   da un falso positivo. Se comprobó mirando la captura: se leen perfecto.
+> · **"Los controles no tienen foco visible"**: Chrome dibuja el anillo sólo con
+>   `:focus-visible`, o sea con **teclado**. Un `.focus()` desde JS no lo dispara.
+>   Con Tab de verdad: **ninguno sin anillo**.
+> · **CLS 0,321**: el salto ocurre al **elegir zona**, y los shifts dentro de los
+>   500 ms de una interacción no cuentan. Un click programático **no marca**
+>   `hadRecentInput`, así que le atribuía a la carga un salto que dispara el
+>   usuario. Medido por tramos: la carga es **0**.
+
+> [!note] Dos cosas medidas que se dejan como están
+> · **771 KB de fotos se bajan antes de elegir zona**, mientras el cliente mira el
+>   modal. Suena a desperdicio y es lo contrario: son las primeras cards, iguales
+>   en todas las zonas, así que cuando elige ya están. Diferirlas haría aparecer
+>   el catálogo sin fotos.
+> · **El logo se pide 6 veces sin `loading=lazy`** — es el mismo archivo: el
+>   navegador lo baja una sola vez.
+
+### La red nueva: `node _tools/verificar-formulario.js [ancho]`
+
+Es el último paso de la compra y **no lo miraba nada**: `verificar-pedido.js`
+comprueba que el pedido armado llegue bien al backend, no que la tienda frene el
+que está a medias. Falla en las dos direcciones — si valida de más, un cliente
+que quiere comprar no puede; si valida de menos, entra un pedido sin nombre, sin
+lote o sin día y no hay a quién entregárselo.
+
+Prueba los tres estados: carrito vacío · con productos y sin datos · completo.
+
+> [!danger] Tres trampas de medición, las tres pisadas al escribirlo
+> · **El pedido sale por DOS vías**: `sendBeacon` (que sobrevive al redirect) y
+>   `fetch`. Mirar sólo `fetch` dice *"no manda"* sobre un pedido que sí salió.
+> · **Al enviar, la página NAVEGA a WhatsApp** y se lleva puesto cualquier
+>   `window.__loQueSea` donde uno venía anotando. Por eso los POST se capturan
+>   por CDP, fuera de la página — que es exactamente la razón por la que el
+>   código usa `sendBeacon`.
+> · **El día no es un `<select>`**: `f-dia` es un input hidden y la fecha se
+>   elige clickeando una celda. Y las celdas se marcan `.available` / `.past` /
+>   `.unavailable` — **no existe `.disabled`**, así que un `:not(.disabled)`
+>   agarra un día pasado, el click no hace nada, y el test culpa al formulario.
+
+### El test de Analytics medía su propia impaciencia
+
+Estaba en **rojo** y la tienda no tenía nada: dormía **1500 ms** fijos esperando
+el pageview, y el hit tarda **~5,2 s** desde el toque — lo que manda no es la
+tienda sino la descarga de `gtag/js`, 172 KB, desde Google. La otra rama dormía
+5000 para algo que tarda 5100: estaba a un mal día de red de volverse
+intermitente.
+
+Ahora **espera al hit** y dice cuánto tardó (1668 ms solo · 5204 ms con toque).
+
+> [!tip] Cuando un test falla sobre código que no tocaste, sospechá del test
+> Es la lección que ya está escrita tres veces en el CLAUDE.md del ERP, y en este
+> escaneo aparecieron **cinco** casos: el de Analytics, el contraste sobre
+> gradiente, el foco con `.focus()`, el CLS con click programático, y un servidor
+> de prueba que devolvía 404 en todo porque comparaba rutas de Windows con
+> barras normales contra `path.join`, que las normaliza a `\`.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

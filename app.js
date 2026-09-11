@@ -3417,7 +3417,21 @@ function enviarPedido() {
     if(!primerInvalido) primerInvalido=_dpRoot || $id('f-dia');
   }
   if (!pagoEl) { $id('err-pago').classList.add('visible'); if(!primerInvalido) primerInvalido=$id('pago-group'); }
-  if (primerInvalido) { primerInvalido.scrollIntoView({behavior:'smooth',block:'center'}); return; }
+  if (primerInvalido) {
+    primerInvalido.scrollIntoView({behavior:'smooth',block:'center'});
+    /* Y ademas el FOCO, que faltaba: sin el, la pagina te lleva hasta el campo
+       que falta y ahi te suelta — hay que tocarlo a mano para poder escribir,
+       con el teclado del celular todavia cerrado. Con foco se escribe derecho.
+       · preventScroll para no pelearse con el scrollIntoView suave de arriba:
+         el foco por si solo salta de golpe y se pierde el hacia donde vamos.
+       · Un contenedor (pago-group, day-picker) no toma foco: se busca adentro
+         el primer control de verdad, y si no hay ninguno no se fuerza nada. */
+    var _aFocar = /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(primerInvalido.tagName)
+      ? primerInvalido
+      : primerInvalido.querySelector('input,select,textarea,button');
+    if (_aFocar) { try { _aFocar.focus({preventScroll:true}); } catch(e) { try { _aFocar.focus(); } catch(e2){} } }
+    return;
+  }
 
   // Guardar en localStorage
   try {
