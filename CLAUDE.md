@@ -327,6 +327,24 @@ navegador automatizado.
 headless** y es el que hay que correr ante cualquier cambio: mide como se arma
 el evento, no como viaja.
 
+> [!important] Verificado de punta a punta el 10/9/2026 a las 22:11
+> Tadeo entro a `maleu.com.ar` desde un telefono de verdad, toco productos y los
+> agrego al carrito. El `last_fired_time` del conjunto paso de **21:51:31** —mis
+> dos hits de prueba por `curl`— a **22:11:31**, que es el minuto exacto en que
+> el entro. **El pixel mide con un navegador de verdad, y lo que no manda es
+> Chrome headless.**
+
+> [!warning] El desglose por tipo de evento tarda; `last_fired_time` es inmediato
+> `ads_get_dataset_stats` agrega **por hora**, y el bucket de la hora en curso
+> puede no existir todavia. Consultado a las 22:14, seguia mostrando solo los dos
+> hits de las 21:00 y **nada de la visita de las 22:11** — que ya habia llegado.
+>
+> O sea que mirar ahi y no ver nada **no prueba que el evento no llego**. Es la
+> misma trampa que ya costo una tarde con el headless: el instrumento contesta
+> una pregunta distinta de la que uno cree estar haciendo. Para *"¿llego algo?"*
+> va `last_fired_time`; para *"¿que llego?"*, los stats, pero recien una hora
+> despues.
+
 ### La privacidad tuvo que decir la verdad
 
 `privacidad.html` decía *"no cedemos tus datos a terceros con fines
