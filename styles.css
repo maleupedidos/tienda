@@ -1205,51 +1205,15 @@ header > .menu-btn { margin-left:-.5rem; margin-right:-.2rem; }
 }
 .buscador-limpiar:hover { color: var(--hover-orange); }
 
-/* Los resultados se NOMBRAN, no se cuentan — ver el bloque del buscador en
-   app.js. La fila scrollea en horizontal, asi que 2 chips o 12 miden lo
-   mismo: la barra pegada NO crece. El alto sale de los 44px que el boton
-   "Limpiar" ya ocupaba (40 del chip + 2+2 de padding), asi que el renglon
-   queda exactamente como estaba. */
-.busq-lista {
+/* El renglon de abajo del buscador: dos lineas, el numero y que hacer con el.
+   Entra en los 44px que el boton "Limpiar" ya ocupaba, asi que la barra
+   pegada de arriba no crece. */
+.busq-texto {
   flex: 1; min-width: 0;   /* sin min-width:0 un hijo flex no encoge y desborda */
-  display: flex; align-items: center; gap: .4rem;
-  overflow-x: auto; padding: 2px .1rem;
-  scrollbar-width: none; -ms-overflow-style: none;
+  display: flex; flex-direction: column; gap: 1px;
 }
-.busq-lista::-webkit-scrollbar { display: none; }
-.busq-cuenta { flex-shrink: 0; white-space: nowrap; }
 .busq-cuenta.busq-porque { color: var(--orange); }
-
-/* "Hay mas, desliza". Es el mismo recurso que .cat-nav-wrap::after, que ya
-   ensena eso mismo una fila mas abajo. Va por mask y no por un ::after
-   encima, porque el contenedor scrollea y un pseudo-elemento absoluto
-   viajaria con el contenido. */
-.busq-lista.hay-mas {
-  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent);
-          mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent);
-}
-
-/* Clase propia y no .cat-nav-btn aunque se vean parecidos: apoyarse en la
-   clase de otro componente es como se rompio el chip de Dormidos en el ERP. */
-.busq-chip {
-  flex-shrink: 0; white-space: nowrap; cursor: pointer;
-  min-height: 40px; padding: .5rem .85rem;
-  border: 1.5px solid #eee; border-radius: 50px; background: #fff;
-  font-family: var(--font); font-size: .78rem; font-weight: 700;
-  color: var(--brown); letter-spacing: .02em;
-  box-shadow: 0 1px 2px rgba(0,0,0,.04);
-  transition: border-color .18s, background .18s, transform .1s;
-}
-.busq-chip:hover { border-color: var(--orange); background: #FFF8F4; }
-.busq-chip:active { transform: scale(.96); }
-
-/* Adonde aterrizaste. Con el catalogo filtrado todas las cards se parecen, y
-   sin esto el salto no se entiende. */
-@keyframes busqDestaca {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(231, 98, 40, 0); }
-  15%, 55% { box-shadow: 0 0 0 3px rgba(231, 98, 40, .55); }
-}
-.busq-destaca { animation: busqDestaca 1.5s ease-out; }
+.busq-guia { font-size: .72rem; font-weight: 600; color: #a3948a; }
 
 /* ══════════════════════════════════════════════════════════════════
    LA INTERFAZ NO SE SELECCIONA                            (10/9/2026)
@@ -1299,11 +1263,9 @@ body.busqueda-activa #repeat-block { display: none !important; }
 @media (max-width: 600px) {
   .buscador { margin: .45rem .75rem .35rem; }
   .buscador-info { margin: 0 .85rem .45rem; }
-  /* Con los nombres a la vista, "Limpiar" se lleva ~70px de los 390 para hacer
-     exactamente lo mismo que la x que ya esta 40px mas arriba, adentro del
-     input. En el celular ese ancho vale mas como resultado que como segundo
-     boton de limpiar; en escritorio sobra lugar y se queda. */
-  .buscador-info.con-chips .buscador-limpiar { display: none; }
+  /* En el celular el texto manda y "Limpiar" no puede empujarlo a tres
+     renglones: la x del input hace lo mismo y esta 40px mas arriba. */
+  .buscador-info .buscador-limpiar { padding: 0; }
 }
 
 

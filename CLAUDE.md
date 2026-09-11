@@ -357,7 +357,7 @@ en el código: los eventos mandan `value`, `currency`, `content_ids` y el
 **No es el tema legal que está en pausa** (ese es CUIT y razón social). Es que
 una página publicada no puede mentir por algo que acabamos de instalar nosotros.
 
-## El buscador nombra lo que encontró, y busca el PRODUCTO (10/9/2026)
+## El buscador busca el PRODUCTO, no su descripción (10/9/2026)
 
 Tadeo, desde el celular: *"cuando pongo cor de cordero, en vez de que diga 5 de
 36 productos, aunque sea poner los productos que el usuario está tipeando"*. Y
@@ -391,42 +391,39 @@ fuerte, y **sólo si no hay ni un resultado** entra el débil.
 > descripción"** en naranja: `cebolla` y `zanahoria` devolverían listas que se
 > leen igual y significan cosas distintas.
 
-### Y el renglón dice QUÉ encontró, no cuántos
+### El renglón de abajo: cuántos y qué hacer con ellos
 
-En vez de `5 de 36 productos`, una fila de chips tocables con los nombres. Cada
-uno lleva a su card con un salto seco y la deja destacada 1,5 s.
+```
+3 de 34 productos coinciden                        Limpiar
+Seguí bajando para pedirlos ↓
+```
 
-- **En la misma fila que el contador**, y la fila scrollea en horizontal: 2
-  chips o 12 miden lo mismo y **la barra pegada no crece ni un píxel** (los
-  44px ya los ocupaba el botón «Limpiar»).
-- **Ordenados por relevancia**: el que matchea en el nombre va antes que el que
-  matchea por la categoría. El catálogo de abajo **no** se reordena — se
-  reordena el índice, que es lo que uno mira.
-- **Entre 2 y 12 resultados.** Con uno, la card ya está ahí abajo; con trece,
-  deja de ser un vistazo.
-- El fade de la derecha sale **sólo si de verdad sobra fila** (`hay-mas`):
-  ponerlo siempre destiñe el último chip y miente sobre que hay más.
-
-> [!danger] El nombre se acorta, pero sólo mientras siga distinguiendo
-> `"Sorrentinos Cordero al Malbec"` adentro de Sorrentinos se come la fila
-> entera: medido a 390px, se veía **un** resultado de cinco. Se le saca el
-> prefijo que repite la categoría, con **dos frenos**, y los dos hicieron falta:
+> [!important] Tuvo chips con el nombre de cada resultado, y duraron una hora
+> Se hicieron a pedido de Tadeo —*"en vez de que diga 5 de 36 productos, aunque
+> sea poner los productos que el usuario está tipeando"*— y los dio de baja el
+> mismo día: *"abortalo, que solo aparezca 3 de 36 productos coinciden con tu
+> búsqueda, continuá bajando para pedir"*.
 >
-> · **desambiguar** — `jam` dejaba cuatro chips *"Jamón y Queso"* idénticos, que
->   no son un índice sino ruido. Los que chocan vuelven al nombre completo.
-> · **emparejar por categoría** — *"Torta Golosa / Lemon Crumble / Torta Coco"*
->   se lee como un error de tipeo. Si a uno de una categoría no se le puede
->   sacar, no se le saca a ninguno.
+> **Y tiene razón de fondo:** `_busqAcomodarScroll` ya deja el primer resultado
+> justo debajo de la barra, así que los productos **ya están a la vista**.
+> Nombrarlos arriba era decir dos veces lo mismo, a cambio de 140 líneas de
+> código (acortar el nombre sin perder de qué producto se habla, desambiguar
+> los que chocaban, emparejar por categoría, el salto a la card, el destello).
+> Se borraron las 140.
 >
-> **El orden entre los dos importa y no es intercambiable**: desambiguar
-> primero. Al revés, revertir un duplicado volvía a romper la coherencia de su
-> categoría. Así es estable, porque emparejar sólo ALARGA y un nombre completo
-> no puede chocar con otro.
+> Lo que sí faltaba era **la segunda línea**: un número solo no dice qué hacer
+> con él.
 
-> [!tip] En el celular «Limpiar» se esconde cuando hay chips
-> Se llevaba ~70px de los 390 para hacer **exactamente lo mismo** que la «×» que
-> está 40px más arriba, adentro del input. Ese ancho vale más como resultado que
-> como segundo botón de limpiar. En escritorio sobra lugar y se queda.
+> [!danger] El texto NO dice "con tu búsqueda", y no es por ahorrar palabras
+> Medido a 390px: esa cola parte el renglón en dos y **la barra pegada crece de
+> 47 a 62px**. Tal como quedó, el texto entra adentro de los 44px que el botón
+> «Limpiar» ya ocupaba, o sea que no cuesta un solo píxel de pantalla.
+>
+> Y es redundante: estás parado en el buscador, con la palabra escrita adentro,
+> y el renglón de abajo ya dice qué hacer.
+
+Singular y plural se dicen bien (*coincide* / *coinciden*), y sin resultados no
+aparece la invitación a bajar — no hay adónde.
 
 ## La tienda se comporta como una app, no como un documento (10/9/2026)
 
@@ -499,7 +496,8 @@ problema que se sentía era el otro, y ya no está.
 ### La red: `node _tools/verificar-paneles.js`
 
 **45 chequeos** a 390px — el fondo quieto panel por panel, la superposición, el
-scroll adentro del panel, la selección de texto y los chips del buscador.
+scroll adentro del panel, la selección de texto, y el buscador (que busque el
+nombre, y que su renglón entre en una línea).
 
 > [!danger] La rueda de una compu NO puede reproducir el bug de iOS
 > En escritorio el que frena es `overflow:hidden`; en el iPhone es

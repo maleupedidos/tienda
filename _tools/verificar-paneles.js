@@ -330,47 +330,53 @@ const POS = `Math.round(window.pageYOffset)`;
     const nada = await buscar('xyzqw');
     chk(nada.productos.length === 0, 'algo que no existe sigue sin traer nada');
 
-    /* ── EL BUSCADOR NOMBRA LO QUE ENCONTRO ─────────────────── */
-    console.log('\n' + DIM + 'EL BUSCADOR NOMBRA LO QUE ENCONTRO' + RST);
-    chk(ceb.chips.length === 3, '"cebolla" nombra los 3 en vez de contarlos (' + ceb.chips.join(' · ') + ')');
+    /* EL RENGLON DE ABAJO DEL BUSCADOR
+       Tuvo chips con el nombre de cada resultado; Tadeo los dio de baja el
+       mismo dia: "abortalo, que solo aparezca 3 de 36 productos coinciden con
+       tu busqueda, continua bajando para pedir". Los resultados ya quedan
+       justo debajo de la barra, asi que nombrarlos arriba era decir dos veces
+       lo mismo. Lo que tiene que decir es cuantos y que hacer, en UN renglon. */
+    console.log('\n' + DIM + 'EL RENGLON DEL BUSCADOR' + RST);
+    const renglon = async (q) => {
+      await ev("(function(){document.getElementById('buscador-input').value='" + q + "';" +
+               "buscarEnCatalogo();})()");
+      await dormir(250);
+      return JSON.parse(await ev("JSON.stringify((function(){" +
+        "var i=document.getElementById('buscador-info');" +
+        "var c=i.querySelector('.busq-cuenta');" +
+        "var lh=parseFloat(getComputedStyle(c||i).lineHeight)||16;" +
+        "return { texto:(i.innerText||'').replace(/\\s+/g,' ').trim()," +
+        "         alto:Math.round(i.getBoundingClientRect().height)," +
+        "         renglones:c?Math.round(c.getBoundingClientRect().height/lh):0," +
+        "         guia:!!i.querySelector('.busq-guia')," +
+        "         porDescripcion:!!i.querySelector('.busq-porque')," +
+        "         chips:i.querySelectorAll('.busq-chip').length };})())"));
+    };
 
-    /* Relevancia: el que matchea en el NOMBRE le gana al que matchea por la
-       categoria. Con "pizza", las individuales se llaman Pizza; los packs
-       entran por su categoria "Pack Pizzas x2". */
-    const piz = await buscar('pizza');
-    const primeras = piz.chips.slice(0, 5).join(' ');
-    chk(!/x2/.test(primeras),
-        'con "pizza" las que SE LLAMAN pizza van antes que los packs (' + piz.chips.slice(0, 3).join(' · ') + ')');
+    const r3 = await renglon('cebolla');
+    chk(/3 de \d+ productos coinciden/.test(r3.texto),
+        'dice cuantos coincidieron: "' + r3.texto.split('Segu')[0].trim() + '"');
+    chk(r3.guia, 'y dice que hacer con ellos (Segui bajando para pedirlos)');
+    chk(r3.chips === 0, 'ya no hay chips: los resultados estan abajo, nombrarlos era decirlo dos veces');
 
-    const jam = await buscar('jam');
-    chk(jam.chips.length === new Set(jam.chips).size,
-        '"jam" no repite ningun chip: los cortos que chocarian vuelven al nombre completo');
+    /* El alto es lo que hace que esto sea gratis: "Limpiar" ya ocupaba 44px,
+       asi que el texto entra adentro y la barra pegada no crece. Con "con tu
+       busqueda" al final se partia en dos renglones y se iba a 62. */
+    chk(r3.renglones === 1 && r3.alto <= 50,
+        'entra en UN renglon, asi la barra pegada no crece (' + r3.alto + 'px)');
 
-    /* Coherencia: adentro de una categoria, o se acortan todos o ninguno. */
-    const indiv = piz.chips.filter((c) => /margarita|caramelizada|muzzarella|morron/i.test(c));
-    const conPref = indiv.filter((c) => /^pizza/i.test(c)).length;
-    chk(indiv.length > 1 && (conPref === 0 || conPref === indiv.length),
-        'las pizzas individuales se nombran igual entre si (' + indiv.join(' · ') + ')');
+    const r1 = await renglon('cordero');
+    chk(/1 de \d+ productos coincide(?!n)/.test(r1.texto),
+        'con uno solo dice "coincide", no "coinciden"');
 
-    /* Y que el chip LLEVE a la card. */
-    await buscar('cebolla');
-    await ev(IR_A(0)); await dormir(150);
-    const fue = await ev("(function(){var c=[].slice.call(document.querySelectorAll('.busq-chip'))" +
-      ".filter(function(b){return /azul/i.test(b.textContent);})[0];if(!c)return false;c.click();return true;})()");
-    await dormir(700);
-    const salto = JSON.parse(await ev(`JSON.stringify((function(){
-      var m=document.querySelector('.product-card.busq-destaca');
-      var r=m?m.getBoundingClientRect():null;
-      var sh=document.querySelector('.sticky-header').getBoundingClientRect();
-      return { hay:!!m, top:r?Math.round(r.top):null, barra:Math.round(sh.bottom),
-               y:Math.round(window.pageYOffset),
-               foco: document.activeElement.id };
-    })())`));
-    chk(fue && salto.y > 0, 'tocar un chip te lleva a su producto (scroll ' + salto.y + ')');
-    chk(salto.hay, 'la card queda destacada, asi sabes donde aterrizaste');
-    chk(salto.top !== null && salto.top >= salto.barra - 12,
-        'y no queda tapada por la barra pegada (card en ' + salto.top + ', barra termina en ' + salto.barra + ')');
-    chk(salto.foco !== 'buscador-input', 'suelta el foco del buscador, asi el teclado no tapa media pantalla');
+    const rd = await renglon('zanahoria');
+    chk(rd.porDescripcion && /por su descripci/.test(rd.texto),
+        'avisa cuando el resultado vino de la descripcion: "' + rd.texto.split('Segu')[0].trim() + '"');
+    chk(rd.renglones === 1 && rd.alto <= 50, 'ese tambien entra en un renglon (' + rd.alto + 'px)');
+
+    const r0 = await renglon('xyzqw');
+    chk(/No encontramos nada/.test(r0.texto) && !r0.guia,
+        'sin resultados no invita a bajar a ningun lado');
 
     console.log('\n' + (mal ? RED : VER) + ok + ' ok · ' + mal + ' mal' + RST +
                 DIM + '   (iPhone 390x844)' + RST);

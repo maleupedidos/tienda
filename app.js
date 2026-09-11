@@ -4990,18 +4990,11 @@ function buscarEnCatalogo() {
   }
 
   var visibles = 0;
-  /* Los ids que quedaron a la vista, en el orden del catalogo. Se deduplican
-     porque un mismo producto puede tener card en mas de un lado. */
-  var hallados = [];
   Array.prototype.forEach.call(cards, function(card) {
     var t = _busqTextosDeCard(card);
     var entra = _busqEntra(porDescripcion ? (t.fuerte + ' ' + t.debil) : t.fuerte, palabras);
     card.classList.toggle('busq-oculto', !entra);
-    if (entra) {
-      visibles++;
-      var id = card.dataset.id;
-      if (hallados.indexOf(id) === -1) hallados.push(id);
-    }
+    if (entra) visibles++;
   });
 
   /* Una categoria sin ninguna card visible no tiene por que dejar su titulo
@@ -5013,154 +5006,24 @@ function buscarEnCatalogo() {
     sec.classList.toggle('busq-oculto', palabras.length > 0 && quedan === 0);
   });
 
-  _busqPintarInfo(visibles, cards.length, crudo, hallados, palabras, porDescripcion);
+  _busqPintarInfo(visibles, cards.length, crudo, palabras, porDescripcion);
 
   /* Al final de todo: la info de arriba cambia el alto de la barra pegada, y
      el tope se calcula con ese alto ya puesto. */
   _busqAcomodarScroll(!!q, habia);
 }
 
-/* ── LOS RESULTADOS SE NOMBRAN, NO SE CUENTAN ───────────────────────
-   Lo pidio Tadeo el 10/9/2026 desde el celular: "cuando pongo cor de cordero,
-   en vez de que diga 5 de 36 productos, aunque sea poner los productos que
-   el usuario esta tipeando".
+/* El renglon que va debajo del buscador.
 
-   El caso que lo motivo, medido sobre el catalogo real: "cor" devuelve OCHO
-   productos repartidos en CUATRO categorias — el sorrentino de cordero, unas
-   empanadas, tres tortas y tres cortes de carne —, asi que para ver que
-   encontro hay que scrollear todo el catalogo filtrado. Un numero pelado no
-   dice nada de eso.
+   Tuvo chips con los nombres de cada resultado, y Tadeo los dio de baja el
+   mismo 10/9/2026: "abortalo, que solo aparezca 3 de 36 productos coinciden
+   con tu busqueda, continua bajando para pedir". Los resultados ya quedan
+   justo debajo de la barra —de eso se ocupa _busqAcomodarScroll—, asi que
+   nombrarlos arriba era decir dos veces lo mismo.
 
-   Van en la MISMA fila que el contador y la fila scrollea en horizontal, asi
-   que dos resultados o doce ocupan lo mismo: la barra pegada arriba no crece
-   ni un pixel, que es lo unico que no se podia pagar en un celular. */
-
-/* Arriba de esto la lista deja de ser un vistazo y se vuelve otra cosa para
-   scrollear. Ahi el contador solo es mas honesto. */
-var _BUSQ_CHIPS_MAX = 12;
-
-function _busqNombreDe(id) {
-  var p = PROD_MAP[id] || COMBO_MAP[id];
-  return p ? String(p.nombre || '') : '';
-}
-
-/* El que matchea en el NOMBRE va antes que el que matchea por la descripcion.
-   Sin esto, buscar "cor" deja al cordero sexto, entre tortas y lomos: los
-   otros siete entran por la palabra "corte" de su descripcion. El catalogo de
-   abajo NO se reordena — se reordena el indice, que es lo que uno mira. */
-function _busqRank(nombre, palabras) {
-  var n = _busqNorm(nombre), r = 0;
-  for (var i = 0; i < palabras.length; i++) {
-    var pos = n.indexOf(palabras[i]);
-    if (pos === 0) r += 3;                              // arranca el nombre
-    else if (pos > 0) r += (n.charAt(pos - 1) === ' ' ? 2 : 1);  // arranca una palabra
-  }
-  return r;
-}
-
-/* El nombre repite la categoria en la que vive: "Sorrentinos Cordero al
-   Malbec" esta adentro de Sorrentinos. Medido a 390px, ese prefijo se come la
-   fila entera y deja ver UN resultado de cinco — justo lo que este renglon
-   venia a resolver.
-
-   Se saca solo si lo que queda se sostiene solo (dos palabras o mas): "Torta
-   Golosa" se queda entero, porque "Golosa" no es el nombre de nada. */
-function _busqChipTexto(p) {
-  var nom = String(p.nombre || ''), cat = String(p.cat || '');
-  if (!cat) return nom;
-  var m = nom.match(/^(\S+)\s+(.+)$/);
-  if (!m) return nom;
-  var pri = cat.split(/\s+/)[0];              // "Pizzas Individuales" -> "Pizzas"
-  var cabeza = _busqNorm(m[1]);
-  if (cabeza !== _busqNorm(pri) && cabeza !== _busqNorm(pri.replace(/s$/i, ''))) return nom;
-  return m[2].split(/\s+/).length >= 2 ? m[2] : nom;
-}
-
-/* ...pero solo mientras el nombre corto SIGA DISTINGUIENDO. Buscar "jam" trae
-   seis productos de seis categorias distintas y los cortos serian cuatro
-   "Jamon y Queso" identicos: cuatro chips iguales no son un indice, son
-   ruido. Los que chocan vuelven a su nombre completo; los que no, se quedan
-   cortos. */
-/* Y si a uno de una categoria no se le puede sacar el prefijo, no se le saca a
-   ninguno de esa categoria: "Torta Golosa / Lemon Crumble / Torta Coco" se lee
-   como un error de tipeo, no como una lista. */
-function _busqCoherentePorCategoria(items) {
-  var entera = {};
-  items.forEach(function(x) { if (x.texto === x.nombre) entera[x.cat] = true; });
-  items.forEach(function(x) { if (entera[x.cat]) x.texto = x.nombre; });
-  return items;
-}
-
-function _busqDesambiguar(items) {
-  var cuenta = {};
-  items.forEach(function(x) { cuenta[x.texto] = (cuenta[x.texto] || 0) + 1; });
-  items.forEach(function(x) { if (cuenta[x.texto] > 1) x.texto = x.nombre; });
-  return items;
-}
-
-function _busqChipsHTML(hallados, palabras) {
-  var orden = [];
-  for (var i = 0; i < hallados.length; i++) {
-    var p = PROD_MAP[hallados[i]] || COMBO_MAP[hallados[i]];
-    if (!p || !p.nombre) continue;
-    orden.push({ id: hallados[i], nombre: String(p.nombre), cat: String(p.cat || ''),
-                 texto: _busqChipTexto(p), r: _busqRank(String(p.nombre), palabras), i: i });
-  }
-  /* El desempate por indice mantiene el orden del catalogo entre los que valen
-     lo mismo, en vez de dejarlo librado a como ordene cada navegador. */
-  orden.sort(function(a, b) { return b.r - a.r || a.i - b.i; });
-  /* El ORDEN importa y no es intercambiable: desambiguar primero y emparejar
-     despues. Al reves, revertir un duplicado volvia a romper la coherencia de
-     su categoria — con "jam" quedaba "Pizza Jamon y Queso" al lado de "Jamon y
-     Morron". Y asi es estable: emparejar solo ALARGA, y un nombre completo no
-     puede chocar con otro (son unicos). */
-  _busqCoherentePorCategoria(_busqDesambiguar(orden));
-  return orden.map(function(x) {
-    /* El title lleva el nombre COMPLETO: el chip corto alcanza para elegir,
-       pero si alguien duda no tiene que adivinar. */
-    return '<button type="button" class="busq-chip" data-id="' + _busqEsc(String(x.id)) +
-           '" title="' + _busqEsc(x.nombre) + '"' +
-           ' onclick="_busqIrA(this.dataset.id)">' + _busqEsc(x.texto) + '</button>';
-  }).join('');
-}
-
-/* Te lleva a la card. Salto SECO y no animado, por lo mismo que
-   _busqSaltoSeco: el smooth del CSS se corta solo en el iPhone apenas el dedo
-   roza la pantalla y quedas tirado a mitad de camino. */
-function _busqIrA(id) {
-  var cards = document.querySelectorAll('#catalog-root .product-card[data-id]');
-  var card = null;
-  for (var i = 0; i < cards.length; i++) {
-    if (cards[i].dataset.id === String(id) && !cards[i].classList.contains('busq-oculto')) {
-      card = cards[i]; break;
-    }
-  }
-  if (!card) return;
-
-  /* En el celular el teclado tapa media pantalla: si no lo bajamos, aterrizas
-     mirando el teclado. */
-  var inp = $id('buscador-input');
-  if (inp) inp.blur();
-
-  var ir = function() {
-    var y = card.getBoundingClientRect().top + window.pageYOffset - _stickyOffsetPx();
-    _busqSaltoSeco(Math.max(0, y));
-  };
-  ir();
-  /* Y otra vez cuando el teclado termino de bajar: el documento se reacomoda y
-     el primer salto queda corrido. Con salto seco el segundo no se ve. */
-  setTimeout(ir, 320);
-
-  /* Con el catalogo filtrado todas las cards se parecen; sin el destello, el
-     salto no se entiende. El reflow del medio reinicia la animacion cuando se
-     tocan dos chips seguidos. */
-  card.classList.remove('busq-destaca');
-  void card.offsetWidth;
-  card.classList.add('busq-destaca');
-  setTimeout(function() { card.classList.remove('busq-destaca'); }, 1500);
-}
-
-function _busqPintarInfo(visibles, total, crudo, hallados, palabras, porDescripcion) {
+   Lo que si hacia falta era la segunda linea: el numero solo no dice que hay
+   que hacer con el. */
+function _busqPintarInfo(visibles, total, crudo, palabras, porDescripcion) {
   var info = $id('buscador-info');
   if (!info) return;
   if (!_busqTexto) { info.hidden = true; info.innerHTML = ''; return; }
@@ -5173,27 +5036,23 @@ function _busqPintarInfo(visibles, total, crudo, hallados, palabras, porDescripc
     return;
   }
   info.className = 'buscador-info';
-  /* Con un solo resultado la card ya esta ahi abajo: nombrarla seria repetirla. */
-  var conChips = visibles >= 2 && visibles <= _BUSQ_CHIPS_MAX;
-  /* Si ningun producto SE LLAMA asi, se dice: sin eso, "cebolla" y
-     "zanahoria" devolverian listas que se leen igual y significan cosas
+  var verbo = visibles === 1 ? ' coincide' : ' coinciden';
+  /* Si ningun producto SE LLAMA asi, se dice. Sin eso, "cebolla" y
+     "zanahoria" devuelven renglones que se leen igual y significan cosas
      distintas. */
   var cuenta = porDescripcion
-    ? '<span class="busq-cuenta busq-porque"><b>' + visibles + '</b> por la descripción</span>'
-    : '<span class="busq-cuenta"><b>' + visibles + '</b> de ' + total +
-      (conChips ? '' : (total === 1 ? ' producto' : ' productos')) + '</span>';
+    ? '<b>' + visibles + '</b> de ' + total + verbo + ' por su descripción'
+    : '<b>' + visibles + '</b> de ' + total + ' productos' + verbo;
+  /* Sin "con tu busqueda" a proposito: medido a 390px esa cola parte el
+     renglon en dos y la barra pegada crece 15px. Y es redundante — estas
+     parado en el buscador, con la palabra escrita adentro, y el renglon de
+     abajo ya dice que hacer. */
   info.innerHTML =
-    '<div class="busq-lista">' + cuenta +
-    (conChips ? _busqChipsHTML(hallados || [], palabras || []) : '') + '</div>' +
+    '<div class="busq-texto">' +
+      '<span class="busq-cuenta' + (porDescripcion ? ' busq-porque' : '') + '">' + cuenta + '</span>' +
+      '<span class="busq-guia">Seguí bajando para pedirlos ↓</span>' +
+    '</div>' +
     '<button type="button" class="buscador-limpiar" onclick="limpiarBusqueda()">Limpiar</button>';
-  /* La clase le da el ancho a la fila en el celular: ver styles.css. */
-  if (conChips) info.classList.add('con-chips');
-
-  /* El fade de la derecha se pone solo SI de verdad sobra fila. Ponerlo
-     siempre desteniria el ultimo chip cuando entran todos, y estaria
-     mintiendo sobre que hay mas. */
-  var lista = info.querySelector('.busq-lista');
-  if (lista) lista.classList.toggle('hay-mas', lista.scrollWidth > lista.clientWidth + 2);
 }
 
 function limpiarBusqueda() {
