@@ -752,7 +752,8 @@ no aparece... un negocio funciona cuando vende, y si tenemos fallas en el flujo
 de ventas estamos cagados"*. Un pedido de **$84.600 del 10/9** le llegó por
 WhatsApp y **nunca llegó a la planilla**: ni una fila en `Log Pedidos` (que
 anota hasta los reintentos repetidos) ni en `Log Errores`. O sea que el POST no
-llegó ni a ejecutarse en el backend.
+llegó ni a ejecutarse en el backend. Se cargó a mano el 11/9/2026: es el
+**Home N° 933**, entregado el 10/9 y sin cobrar.
 
 > [!danger] La causa: la tienda mandaba a WhatsApp SIN confirmación, siempre
 > El flujo viejo (21/06/26) mandaba al cliente a WhatsApp a los **3,8 s** si
@@ -840,13 +841,15 @@ cliente a WhatsApp como si estuviera registrado.
 parámetro (`function (alTocar) { alTocar(); }`) se marcaba como llamada a algo
 inexistente. Probado en la dirección contraria: sigue agarrando `updateCart()`.
 
-> [!note] Lo que falta es del lado del ERP
-> Dos cosas, pedidas a la sesión Backend el 11/9/2026:
-> · **El dedup marca el pedido como visto ANTES de guardarlo.** Si `_doPostHome`
->   revienta, los reintentos reciben `{ok:true, dedup:true}` y la tienda lo da
->   por confirmado. Hoy no pasó (no hay errores en septiembre), pero es la
->   próxima forma de perder un pedido.
-> · **Una alarma que no dependa del navegador del cliente**: cada mensaje de la
+> [!note] Lo que se le pidió al ERP el 11/9/2026
+> · **Resuelto ese mismo día (backend @576):** el dedup marcaba el pedido como
+>   visto ANTES de guardarlo, así que si `_doPostHome` reventaba, los reintentos
+>   recibían `{ok:true, dedup:true}` y la tienda lo daba por confirmado. Ahora se
+>   marca después de guardar. La contracara, aceptada a propósito: si algo
+>   revienta DESPUÉS de escribir la fila, el reintento la duplica. Un duplicado
+>   se ve y se borra; un pedido perdido no se ve.
+> · **Pendiente, lo tiene Backend:** una alarma que no dependa del navegador
+>   del cliente: cada mensaje de la
 >   tienda que entra por WATI tiene que tener su fila en `Log Pedidos` (se cruza
 >   por la referencia). Si a los 15 minutos no la tiene, avisar. Es lo único
 >   que agarra un pedido perdido **por cualquier causa**, incluidas las que la
