@@ -15,9 +15,30 @@ body { font-family:var(--font); background:#fff; color:var(--brown); line-height
 /* ── MODAL BIENVENIDA (zona + fecha) ── */
 .loc-overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:9999; display:flex; align-items:center; justify-content:center; padding:1rem; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
 .loc-overlay.hidden { display:none; }
-/* Cuando el modal está abierto, el body no scrollea (evita scroll fantasma en mobile) */
-body.modal-open, html.modal-open { overflow:hidden; height:100%; touch-action:none; }
+/* Con un panel abierto, el fondo no scrollea (ver _fondoQuieto en app.js).
+   `touch-action:none` es la parte que de verdad frena el dedo en iOS;
+   `overflow:hidden` frena la rueda y las teclas.
+
+   El `height:100%` va SOLO en el body, nunca en el html: medido el 10/9/2026,
+   con el html en 100% el documento se recorta y el navegador CLAMPEA el scroll
+   a 0 — abrias el carrito mirando la mitad del catalogo, lo cerrabas y
+   aparecias arriba de todo. Sin el, la posicion queda intacta (1200 -> 1200).
+   No se notaba antes porque el unico que usaba esta clase era el modal de
+   zona, que sale al abrir la tienda, con el scroll ya en 0. */
+html.modal-open { overflow:hidden; touch-action:none; }
+body.modal-open { overflow:hidden; height:100%; touch-action:none; }
 .loc-overlay, .loc-box { touch-action:pan-y; }
+/* `touch-action:none` sobre html y body apaga el dedo en TODA la pagina, asi
+   que hay que volver a prenderlo adentro de cada panel — si no, el carrito
+   largo o el combo con muchas opciones quedan sin poder scrollearse.
+   Y `overscroll-behavior:contain` es la otra mitad: sin eso, al llegar al
+   final del panel el scroll "se pasa" al fondo, que es la misma sensacion que
+   se vino a sacar. */
+.cart-overlay, .cart-sidebar, .cart-body,
+.combo-modal-overlay, .combo-modal,
+.menu-overlay, .menu-panel,
+.send-overlay { touch-action:pan-y; }
+.cart-body, .combo-modal, .menu-panel, .loc-box { overscroll-behavior:contain; }
 .loc-box { background:#fff; border-radius:16px; max-width:560px; width:100%; padding:2rem 1.5rem; text-align:center; max-height:calc(100vh - 2rem); overflow-y:auto; }
 .loc-box img { height:48px; margin-bottom:1rem; }
 .loc-box h2 { font-size:1.35rem; margin-bottom:.3rem; color:var(--brown); }
@@ -1184,6 +1205,85 @@ header > .menu-btn { margin-left:-.5rem; margin-right:-.2rem; }
 }
 .buscador-limpiar:hover { color: var(--hover-orange); }
 
+/* Los resultados se NOMBRAN, no se cuentan — ver el bloque del buscador en
+   app.js. La fila scrollea en horizontal, asi que 2 chips o 12 miden lo
+   mismo: la barra pegada NO crece. El alto sale de los 44px que el boton
+   "Limpiar" ya ocupaba (40 del chip + 2+2 de padding), asi que el renglon
+   queda exactamente como estaba. */
+.busq-lista {
+  flex: 1; min-width: 0;   /* sin min-width:0 un hijo flex no encoge y desborda */
+  display: flex; align-items: center; gap: .4rem;
+  overflow-x: auto; padding: 2px .1rem;
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.busq-lista::-webkit-scrollbar { display: none; }
+.busq-cuenta { flex-shrink: 0; white-space: nowrap; }
+.busq-cuenta.busq-porque { color: var(--orange); }
+
+/* "Hay mas, desliza". Es el mismo recurso que .cat-nav-wrap::after, que ya
+   ensena eso mismo una fila mas abajo. Va por mask y no por un ::after
+   encima, porque el contenedor scrollea y un pseudo-elemento absoluto
+   viajaria con el contenido. */
+.busq-lista.hay-mas {
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent);
+          mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent);
+}
+
+/* Clase propia y no .cat-nav-btn aunque se vean parecidos: apoyarse en la
+   clase de otro componente es como se rompio el chip de Dormidos en el ERP. */
+.busq-chip {
+  flex-shrink: 0; white-space: nowrap; cursor: pointer;
+  min-height: 40px; padding: .5rem .85rem;
+  border: 1.5px solid #eee; border-radius: 50px; background: #fff;
+  font-family: var(--font); font-size: .78rem; font-weight: 700;
+  color: var(--brown); letter-spacing: .02em;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  transition: border-color .18s, background .18s, transform .1s;
+}
+.busq-chip:hover { border-color: var(--orange); background: #FFF8F4; }
+.busq-chip:active { transform: scale(.96); }
+
+/* Adonde aterrizaste. Con el catalogo filtrado todas las cards se parecen, y
+   sin esto el salto no se entiende. */
+@keyframes busqDestaca {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(231, 98, 40, 0); }
+  15%, 55% { box-shadow: 0 0 0 3px rgba(231, 98, 40, .55); }
+}
+.busq-destaca { animation: busqDestaca 1.5s ease-out; }
+
+/* ══════════════════════════════════════════════════════════════════
+   LA INTERFAZ NO SE SELECCIONA                            (10/9/2026)
+   ══════════════════════════════════════════════════════════════════
+   Lo pidio Tadeo: "manteniendo una palabra o una oracion puedo seleccionar y
+   copiar, y eso en una tienda online no se puede". Lo que se siente mal es
+   concreto: en el celular, mantener el dedo sobre un boton o el nombre de un
+   producto pinta todo de azul y salta el menu de Copiar/Buscar/Compartir.
+   Eso es comportamiento de documento, no de aplicacion.
+
+   `-webkit-touch-callout:none` es la mitad que mas se nota en el iPhone: saca
+   ese menu y la vista previa al mantener apretado.
+
+   OJO — NO se bloquea todo, y no es por descuido. La tienda le dice al cliente
+   "Copia el alias, manda el pedido y transferi desde tu app": si la seleccion
+   se bloquea ahi y el boton Copiar falla (clipboard puede fallar y el codigo no
+   lo cubre), el cliente se queda sin poder pagar. El alias y los campos del
+   formulario quedan seleccionables a proposito. */
+body.tienda {
+  -webkit-user-select: none; -moz-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+}
+/* Lo que el cliente SI tiene que poder seleccionar y copiar. */
+body.tienda input,
+body.tienda textarea,
+body.tienda select,
+body.tienda [contenteditable],
+body.tienda .mp-alias, body.tienda .mp-alias *,
+body.tienda .mp-alias-vendedor-note, body.tienda .mp-alias-vendedor-note *,
+body.tienda .copiable, body.tienda .copiable * {
+  -webkit-user-select: text; -moz-user-select: text; user-select: text;
+  -webkit-touch-callout: default;
+}
+
 /* Lo que el buscador esconde. */
 .busq-oculto { display: none !important; }
 
@@ -1199,6 +1299,11 @@ body.busqueda-activa #repeat-block { display: none !important; }
 @media (max-width: 600px) {
   .buscador { margin: .45rem .75rem .35rem; }
   .buscador-info { margin: 0 .85rem .45rem; }
+  /* Con los nombres a la vista, "Limpiar" se lleva ~70px de los 390 para hacer
+     exactamente lo mismo que la x que ya esta 40px mas arriba, adentro del
+     input. En el celular ese ancho vale mas como resultado que como segundo
+     boton de limpiar; en escritorio sobra lugar y se queda. */
+  .buscador-info.con-chips .buscador-limpiar { display: none; }
 }
 
 

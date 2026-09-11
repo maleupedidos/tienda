@@ -357,6 +357,166 @@ en el código: los eventos mandan `value`, `currency`, `content_ids` y el
 **No es el tema legal que está en pausa** (ese es CUIT y razón social). Es que
 una página publicada no puede mentir por algo que acabamos de instalar nosotros.
 
+## El buscador nombra lo que encontró, y busca el PRODUCTO (10/9/2026)
+
+Tadeo, desde el celular: *"cuando pongo cor de cordero, en vez de que diga 5 de
+36 productos, aunque sea poner los productos que el usuario está tipeando"*. Y
+al rato: *"busqué cebolla y me aparecieron 4 productos… el de cordero no
+debería, aparece por la descripción"*.
+
+Son dos problemas distintos del mismo renglón, y el segundo es el de fondo.
+
+### Se busca el nombre; la descripción es el respaldo
+
+Cada card guarda **dos** textos (`_busqTextosDeCard`): el **fuerte** —nombre +
+categoría— y el **débil** —descripción, porciones y chips—. Se filtra por el
+fuerte, y **sólo si no hay ni un resultado** entra el débil.
+
+| | antes | ahora |
+|---|---|---|
+| `cebolla` | **4** (el sorrentino de cordero entraba por su descripción) | **3**, los que se llaman cebolla |
+| `cor` | **8** en 4 categorías | **1**, el cordero |
+| `pollo` · `queso` | 3 · 9 | **iguales** |
+| `zanahoria` · `apio` | 1 | **1, avisando** que salió de la descripción |
+
+> [!danger] Los CHIPS eran la mitad del ruido, y no se veía venir
+> Van del lado débil aunque parezcan etiquetas de producto: son de
+> presentación —*"Para 2-3 personas"*, *"600g · 16 unidades"*, *"Lista para
+> cortar y servir"*—. **Ese último metía las TRES tortas en una búsqueda de
+> "cor"**, por la palabra *cortar*. Sacar sólo la descripción no alcanzaba.
+
+> [!important] El respaldo existe para no mentir por omisión
+> Sin él, buscar `zanahoria` o `apio` daría *"no encontramos nada"* sobre un
+> producto que **sí** los lleva. Con él aparece, y el renglón dice **"1 por la
+> descripción"** en naranja: `cebolla` y `zanahoria` devolverían listas que se
+> leen igual y significan cosas distintas.
+
+### Y el renglón dice QUÉ encontró, no cuántos
+
+En vez de `5 de 36 productos`, una fila de chips tocables con los nombres. Cada
+uno lleva a su card con un salto seco y la deja destacada 1,5 s.
+
+- **En la misma fila que el contador**, y la fila scrollea en horizontal: 2
+  chips o 12 miden lo mismo y **la barra pegada no crece ni un píxel** (los
+  44px ya los ocupaba el botón «Limpiar»).
+- **Ordenados por relevancia**: el que matchea en el nombre va antes que el que
+  matchea por la categoría. El catálogo de abajo **no** se reordena — se
+  reordena el índice, que es lo que uno mira.
+- **Entre 2 y 12 resultados.** Con uno, la card ya está ahí abajo; con trece,
+  deja de ser un vistazo.
+- El fade de la derecha sale **sólo si de verdad sobra fila** (`hay-mas`):
+  ponerlo siempre destiñe el último chip y miente sobre que hay más.
+
+> [!danger] El nombre se acorta, pero sólo mientras siga distinguiendo
+> `"Sorrentinos Cordero al Malbec"` adentro de Sorrentinos se come la fila
+> entera: medido a 390px, se veía **un** resultado de cinco. Se le saca el
+> prefijo que repite la categoría, con **dos frenos**, y los dos hicieron falta:
+>
+> · **desambiguar** — `jam` dejaba cuatro chips *"Jamón y Queso"* idénticos, que
+>   no son un índice sino ruido. Los que chocan vuelven al nombre completo.
+> · **emparejar por categoría** — *"Torta Golosa / Lemon Crumble / Torta Coco"*
+>   se lee como un error de tipeo. Si a uno de una categoría no se le puede
+>   sacar, no se le saca a ninguno.
+>
+> **El orden entre los dos importa y no es intercambiable**: desambiguar
+> primero. Al revés, revertir un duplicado volvía a romper la coherencia de su
+> categoría. Así es estable, porque emparejar sólo ALARGA y un nombre completo
+> no puede chocar con otro.
+
+> [!tip] En el celular «Limpiar» se esconde cuando hay chips
+> Se llevaba ~70px de los 390 para hacer **exactamente lo mismo** que la «×» que
+> está 40px más arriba, adentro del input. Ese ancho vale más como resultado que
+> como segundo botón de limpiar. En escritorio sobra lugar y se queda.
+
+## La tienda se comporta como una app, no como un documento (10/9/2026)
+
+### El fondo se queda quieto
+
+Tadeo: *"cuando pongo ver pedido… lo que está atrás debería estar estable y
+fijo, y no se debería poder scrollear"*.
+
+> [!danger] Había DOS mecanismos y sólo uno funciona en el iPhone
+> | quién | usaba | ¿frena en iOS? |
+> |---|---|---|
+> | modal de zona | clase `modal-open` (html + body + `touch-action:none`) | **sí** |
+> | **carrito**, combo, envío, menú | `body.style.overflow='hidden'` | **no** |
+>
+> Safari en iOS **ignora** `overflow:hidden` sobre el body. Por eso se notaba
+> justo en el carrito, que es el que más se abre. Y el comentario del menú
+> lateral decía que arreglaba el scroll de atrás — no lo arreglaba.
+
+Hoy hay una sola puerta, **`_fondoQuieto(quien, bloquear)`**, y la usan los
+cinco. Lleva **la cuenta de quién lo pidió, con nombre**, no un contador ni un
+booleano: los paneles se superponen (desde el carrito se va al formulario y
+encima aparece el overlay de envío) y hay cierres que corren sin que ese panel
+estuviera abierto. Con un contador, ese cierre de más le devolvería el scroll al
+fondo con otro panel todavía abierto.
+
+> [!danger] Al unificarlo apareció un bug PEOR que el original
+> Con `html.modal-open{height:100%}` el documento se recorta y el navegador
+> **clampea el scroll a 0**: abrías el carrito mirando la mitad del catálogo, lo
+> cerrabas, y aparecías arriba de todo. Medido: 1200 → **0**.
+>
+> No se veía antes porque el único que usaba esa clase era el modal de zona, que
+> sale al abrir la tienda, **con el scroll ya en 0**. El `height:100%` queda sólo
+> en el body; sin él en el html, la posición se conserva exacta (1200 → 1200).
+
+Y `touch-action:none` apaga el dedo en **toda** la página, así que hay que
+volver a prenderlo adentro de cada panel (`pan-y`) o el carrito largo queda sin
+poder scrollearse. `overscroll-behavior:contain` es la otra mitad: sin eso, al
+llegar al final del panel el scroll se pasa al fondo.
+
+### La interfaz no se selecciona; el alias sí
+
+Tadeo: *"manteniendo una palabra puedo seleccionar y copiar, y eso en una tienda
+online no se puede"*. Lo que se siente mal es concreto: mantener el dedo sobre
+un botón pinta todo de azul y salta el menú *Copiar / Buscar / Compartir*.
+`-webkit-touch-callout:none` es la mitad que más se nota en el iPhone.
+
+> [!danger] NO se bloquea todo, y no es por descuido
+> La tienda le dice al cliente **"Copiá el alias, mandá el pedido y transferí
+> desde tu app"**. Si la selección se bloquea ahí y el botón Copiar falla
+> (`navigator.clipboard` puede fallar y el código no lo cubre), **el cliente se
+> queda sin poder pagar**. El alias y los campos del formulario quedan
+> seleccionables a propósito.
+
+Y cuelga de `body.tienda`, **no de `body` a secas**: `styles.css` lo comparten
+las 9 páginas, y en las de texto (términos, privacidad, preguntas) impedir
+copiar sería hostil.
+
+### El zoom ya estaba resuelto — y bloquearlo sería un retroceso
+
+Tadeo también pidió *"tampoco debería poder hacer zoom"*. **La causa real ya se
+había arreglado esa misma mañana**: iOS hace zoom solo al enfocar un campo con
+`font-size < 16px`, y por eso el buscador pasó a 16px. Verificado el 10/9 a la
+noche: de los **19 campos, los 17 de texto miden 16px o más**; los 2 menores son
+`radio`, que no disparan zoom.
+
+**No se bloqueó el pinch**, y está anotado desde el 19/8/2026 en el `<head>`: le
+saca al cliente que necesita agrandar la letra la única forma de leer. El
+problema que se sentía era el otro, y ya no está.
+
+### La red: `node _tools/verificar-paneles.js`
+
+**45 chequeos** a 390px — el fondo quieto panel por panel, la superposición, el
+scroll adentro del panel, la selección de texto y los chips del buscador.
+
+> [!danger] La rueda de una compu NO puede reproducir el bug de iOS
+> En escritorio el que frena es `overflow:hidden`; en el iPhone es
+> `touch-action:none`. O sea que un verde en la prueba de la rueda **convive
+> perfectamente con el fondo scrolleándose en el teléfono de Tadeo**. Por eso el
+> test mide `touch-action` directo sobre la propiedad, además de la rueda.
+
+> [!important] El control no es opcional
+> Si la rueda no mueve el fondo **ni siquiera sin panel abierto**, entonces "el
+> fondo no se movió" no prueba nada: prueba que el instrumento no sabe
+> scrollear. El test **corta** en ese caso en vez de dar verde. Ya pasó una vez
+> en el ERP con `page.mouse.wheel`.
+
+Probado en las dos direcciones, con los tres bugs reinyectados — **los tres se
+agarran**, y el tercero reproduce el síntoma exacto que reportó Tadeo:
+*"cebolla trae 4"* con el sorrentino de cordero adentro.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

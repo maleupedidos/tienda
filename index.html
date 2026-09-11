@@ -119,7 +119,10 @@
     })();
   </script>
 </head>
-<body>
+<!-- class="tienda": el CSS de no-seleccionar cuelga de aca y NO de body a
+     secas, porque styles.css lo comparten las 9 paginas y en las de texto
+     (terminos, privacidad, preguntas) impedir copiar seria hostil. -->
+<body class="tienda">
 <!-- El <noscript> del pixel va ACA y no en el head: un <img> adentro del head
      no esta permitido, asi que el parser CIERRA el head ahi mismo y manda al
      body todo lo que venga despues. Hoy no hay nada despues, pero el dia que
