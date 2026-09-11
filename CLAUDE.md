@@ -434,34 +434,41 @@ Seguí bajando para pedirlos ↓
 Singular y plural se dicen bien (*coincide* / *coinciden*), y sin resultados no
 aparece la invitación a bajar — no hay adónde.
 
-## Las fotos de los 5 cortes de carne (10/9/2026)
+## Las fotos de los 5 cortes de carne (10/9 y 11/9/2026)
 
-> [!warning] Son **generadas con IA**, no fotos del producto real
-> Las hizo Tadeo con ChatGPT. No hay problema de derechos — son suyas — pero
-> **la pieza que se ve no es la que el cliente recibe**, y en una tienda de
-> alimentos eso importa: la carne se vende envasada al vacío y estas se ven
-> sueltas sobre mármol.
->
-> **Quedan hasta que Lucas fotografíe un paquete de cada gusto**, que es lo que
-> acordaron el 10/9/2026 a la noche. Cuando lleguen, se reemplazan y este bloque
-> se borra.
+| corte | foto | de dónde salió |
+|---|---|---|
+| Colita | `carne-colita.jpg` | la pasó Tadeo el 11/9/2026 |
+| Lomo | `carne-lomo.jpg` | la pasó Tadeo el 11/9/2026 |
+| Vacío | `carne-vacio.jpg` | la pasó Tadeo el 11/9/2026: *"un vacío en serio, como la gente"*. Reemplazó a la del 10/9, que no parecía un vacío |
+| Entraña | `carne-entrana.jpg` | **generada con IA** el 10/9/2026 — muestra las 2 tiras, que es lo que dice su chip |
+| Picaña | `carne-cortes.jpg` | **la genérica**, la misma de la categoría Carnes. Al 11/9 no tiene piezas, así que no se ve |
 
-| corte | foto |
-|---|---|
-| Entraña | `carne-entrana.jpg` — muestra las 2 tiras, que es lo que dice su chip |
-| Vacío | `carne-vacio.jpg` |
-| Colita, Lomo, Picaña | **`carne-cortes.jpg`, la misma para los tres** |
-
-Hasta ese día **los cinco compartían `carne-cortes.jpg`**, así que en el
+Hasta el 10/9 **los cinco compartían `carne-cortes.jpg`**, así que en el
 catálogo se veían todos iguales.
 
-> [!tip] Se generan a 16:9, y no es un gusto
+> [!warning] La de la entraña es **generada con IA**, no el producto real
+> La hizo Tadeo con ChatGPT. No hay problema de derechos — es suya — pero **la
+> pieza que se ve no es la que el cliente recibe**, y en una tienda de alimentos
+> eso importa: la carne se vende envasada al vacío y ésta se ve suelta sobre
+> mármol. De las tres del 11/9 no quedó dicho si son fotos propias o generadas.
+>
+> Lo acordado con Lucas el 10/9/2026 a la noche sigue en pie: **fotografiar un
+> paquete de cada corte**. Cuando lleguen, se reemplazan.
+
+> [!tip] Se preparan con `python _tools/fotos-producto.py ORIGEN img/destino.jpg`
 > `.carne-card .product-thumb` tiene `aspect-ratio:16/9` en el celular — que es
-> donde compra el 100% de los clientes — con `object-fit:cover`. Una foto
-> vertical se recorta a una franja del medio y pierde las puntas de la pieza.
-> El script que las preparó está en el scratchpad (`fotos_carne.py`): recorte
-> centrado a 16:9, 1100x619, y la calidad más alta que entre por debajo de
-> 100 KB, como el resto de `img/`.
+> donde compra el 100% de los clientes — con `object-fit:cover`. Una foto que no
+> es 16:9 se recorta a una franja del medio y pierde las puntas de la pieza.
+> El script la deja en 1100x619 y con la calidad más alta que entre por debajo
+> de 100 KB, como el resto de `img/`.
+>
+> **Una foto cuadrada va con `--extender`**: en vez de cortarle las puntas a la
+> pieza, agranda el fondo a los costados con el color del borde de cada lado.
+> Así se hizo el vacío del 11/9 (1080x1080, con `--filas 90:950` para acercarlo).
+> Sirve sólo si el fondo es liso y la pieza no toca los bordes laterales:
+> **mirá el resultado antes de publicar**. La primera versión desenfocaba la foto
+> entera para el fondo, y a los costados aparecía un fantasma rosado de la carne.
 
 > [!danger] Una foto nueva hay que sellarla en `IMG_V`
 > El `?v=` de cada imagen sale de ese mapa, entre los anclajes `IMG_V:INICIO` y
@@ -675,79 +682,30 @@ Ahora **espera al hit** y dice cuánto tardó (1668 ms solo · 5204 ms con toque
 > de prueba que devolvía 404 en todo porque comparaba rutas de Windows con
 > barras normales contra `path.join`, que las normaliza a `\`.
 
-## La carne de la tanda anterior va primero, y en oferta (11/9/2026)
+## La oferta de la tanda anterior: se probó y se dio de baja (11/9/2026)
 
 Lucas, por Tadeo: *"si un cliente nos quiere pedir entraña, no darle la que
-vamos a recibir hoy: entregarle la de la semana pasada"*. La carne fresca dura
-**dos semanas** desde que llega y cada semana entra una tanda nueva, así que la
-vieja tiene que salir primero. La idea: que se vea como primera opción, con el
-precio de lista tachado y uno más bajo al lado.
+vamos a recibir hoy: entregarle la de la semana pasada"*. Se construyó de los
+dos lados: el backend manda en `piezas_full` `v:1` (la pieza no es de la última
+tanda) y `of:5` (su % de oferta, topeado contra el costo), y la tienda ponía
+esas piezas primero, con el precio de lista tachado y la chapita "Oferta".
 
-**La tienda no decide nada de esto: lo manda el backend** en `piezas_full`, con
-dos campos opcionales por pieza.
+Estuvo en producción unas horas del 11/9 —los 4 vacíos del 10/9 al 5%— y Tadeo
+la dio de baja esa misma noche: *"te cancelo la idea del descuento a carne
+antigua. Pone todo en orden. De menor a mayor"*.
 
-| campo | qué es | qué hace la tienda |
-|---|---|---|
-| `v:1` | la pieza **no es de la última tanda** de su corte | la pone **primera** |
-| `of:5` | el **%** de oferta de esa pieza | tachado + precio con el %, chapita **5% OFF**, y **Oferta** sobre la foto |
+> [!important] El backend puede seguir mandando `v` y `of`, y la tienda los IGNORA
+> `_piezaDeRespuesta` toma el id y el peso, nada más: el precio de una pieza es
+> su peso por el kilo, y su lugar en la lista, su peso. Lo sostiene
+> `verificar-piezas.js`, cuyo inventario los trae **a propósito**. Se le avisó a
+> Backend el 11/9 que los puede sacar de `piezas_full`.
 
-```
-{ "CVa": [{"id":"P-0002","kg":1.064,"v":1,"of":5}, {"id":"P-0007","kg":1.1}] }
-```
-
-> [!important] Sin `v` ni `of` la tienda queda EXACTAMENTE como antes
-> Es como responde el backend hasta que publique su parte: por eso esto se
-> publicó antes y no rompe nada. El día que el ERP mande los campos, la oferta
-> aparece sola. Lo verifica el escenario 1 de `verificar-oferta.js`.
-
-**Por qué la regla vive del otro lado:** es el backend el que sabe de cuándo es
-cada pieza y cuánto costó —la tienda es pública y no puede saber el costo—, y el
-que tiene la palanca en Config_Maleu. Una regla escrita en los dos lados se
-despega.
-
-> [!danger] La oferta SE SUMA al 10% de efectivo, y por eso necesita un piso
-> Si no se sumara, al que paga en efectivo le convendría la pieza **nueva**
-> (10% contra 5%) y la oferta empujaría al revés de lo que se quiere.
->
-> Pero sumada, dos cortes quedan abajo del costo: con el 10% la entraña ya deja
-> **2%** y el lomo **4%** (anotado en `descontableSubtotal`). Por eso el backend
-> topea el % para que la pieza nunca quede abajo del costo **ni pagando en
-> efectivo**, y si el tope da menos de 2% no manda `of`: la pieza va primera
-> igual (por `v`), sin tachado. Al 11/9/2026 eso deja **la entraña sin oferta**
-> —justo el corte que nombró Lucas—, el lomo en 4% y el resto en 5%.
-
-**Lo que viaja en el pedido:** el precio con oferta ya va adentro de `importe` y
-de `subtotalSinDescuento`, así que el backend no recalcula nada. Aparte, el item
-de carne lleva `ofertas: {"P-0002": 5}` para poder medir si la oferta movió la
-tanda vieja — **aparte de `piezas`**, que el backend lee como lista de ids y no
-puede cambiar de forma.
-
-**El precio queda fijo al elegir la pieza.** Si el catálogo se refresca y el %
-cambia, al cliente se le respeta el que vio. La firma de `_piezasFirma` lleva la
-oferta adentro: si sólo cambia el % en Config_Maleu, las piezas no cambian de id
-ni de peso, y sin eso el catálogo seguiría mostrando el precio de antes.
-
-**Un `of` que no es un entero entre 1 y 50 se ignora.** Un 90 por un tipeo en la
-planilla vendería la carne al 10%.
-
-### La red: `node _tools/verificar-oferta.js [ancho]`
-
-**44 chequeos** en seis escenarios —como responde el ERP hoy, con oferta, al
-elegir la pieza, si cambia el %, el pedido que viaja y el mensaje de WhatsApp, y
-un `of` basura—, verdes a 390 y 1440px. Probada en la dirección contraria con
-cuatro bugs reinyectados (ordenar sólo por peso, la firma sin la oferta, no
-validar el %, el carrito a precio de lista): **los cuatro se agarran**.
-
-> [!note] Del lado del ERP está publicado desde el 11/9/2026
-> `piezas_full` manda `v` y `of` cuando en un corte conviven **dos tandas**. La
-> tanda es el **día de la col Recibida** (no "7 días", porque las 5 primeras
-> piezas tienen Recibida = 10/9, el día que se cargaron, no el que llegaron),
-> el % sale de **`CARNE_OFERTA_PCT`** en Config_Maleu (default 5) y lo topea el
-> piso contra el costo.
->
-> Con una sola tanda no manda ninguno de los dos, y la tienda se ve sin
-> ofertas: es lo correcto. Así estaba el 11/9 a la tarde, con las 5 piezas del
-> 10/9 como única tanda.
+> [!note] Si algún día vuelve, está en el historial de git
+> El código y su test (`_tools/verificar-oferta.js`) están hasta el commit
+> `e927498`. Dos cosas que ya estaban resueltas y conviene no redescubrir: la
+> oferta **se suma** al 10% de efectivo, así que necesita un piso contra el costo
+> (con el 10% la entraña ya deja 2% y el lomo 4%); y el precio tiene que quedar
+> fijo al elegir la pieza, aunque el catálogo se refresque con otro %.
 
 ## La carne se elige pieza por pieza, en una grilla que se despliega (11/9/2026)
 
@@ -758,8 +716,9 @@ construyó de los dos lados y esa misma tarde Tadeo y Lucas lo dieron vuelta:
 Cada peso de pieza tiene un precio distinto"*.
 
 **No llegó a publicarse en la tienda**, y el backend lo sacó de producción
-(@579). El contrato quedó el de siempre: `piezas_full` `{id, kg, v, of}` y
-`piezas: [ids]` en cada item de carne del pedido.
+(@579). El contrato quedó el de siempre: `piezas_full` `{id, kg}` —el backend
+puede agregar `v`/`of`, que se ignoran, ver arriba— y `piezas: [ids]` en cada
+item de carne del pedido.
 
 > [!important] El rango quería resolver dos problemas, y los dos siguen resueltos
 > · **Una lista de 25 piezas tapa el catálogo.** Lo resuelve la grilla de abajo.
@@ -776,7 +735,7 @@ Cada peso de pieza tiene un precio distinto"*.
 | columnas | `auto-fill` con mínimo 120px: 2 por fila en el celular, 3 en la compu, sin un media query por pantalla |
 | con **9 o más** | se ven las primeras 6 y *"Ver las 14 piezas · de 0,950 a 2,140 kg"* despliega el resto |
 | con 8 o menos | se ven todas: esconder una o dos detrás de un botón es un toque de más |
-| la oferta | el cartel *"5% OFF"* va montado sobre el borde de arriba de la pieza; el tachado va antes del precio, en el mismo renglón |
+| el orden | de la más chica a la más grande. A igual peso decide el id, para que dos piezas iguales no se crucen en cada refresco |
 | el resumen | *"Llevás 2 piezas · 3,090 kg · $80.340"* |
 
 - **Lo elegido se ve siempre**, plegada o no: si el cliente elige la de 2,1 kg
@@ -788,26 +747,29 @@ Cada peso de pieza tiene un precio distinto"*.
   no, con la lista abierta abajo de todo, al cerrarla se aparece en el medio
   del corte siguiente. Ese salto va con `scroll-behavior` apagado: el html lo
   tiene en `smooth`, y animado el botón se iría de abajo del dedo y volvería.
-- **Por qué no un `<select>`:** no deja elegir dos piezas, no puede mostrar el
-  tachado de la oferta, y en el iPhone abre una ruedita de números sin precios.
+- **Por qué no un `<select>`:** no deja elegir dos piezas, y en el iPhone abre
+  una ruedita de números sin precios.
 
 ### La red: `node _tools/verificar-piezas.js [ancho]`
 
 **30 chequeos**, verdes a 390 y 1440px:
 
-1. plegado, con el orden (la tanda anterior primero) y el rango de kilos del botón;
+1. plegado, de la más chica a la más grande aunque el backend mande `v`, y el
+   rango de kilos del botón;
 2. los bordes: con 9 se pliega, con 8 no, con 3 no;
 3. desplegar y elegir con **toques de verdad** (el mouse de Chrome en el centro
    del botón: si algo lo tapa, el toque le cae a otro);
 4. la elegida sigue a la vista al plegar, y el botón no se mueve de abajo del dedo;
 5. el estado sobrevive a `renderCatalog()`;
-6. el cartel de la oferta no tapa otra pieza ni el rótulo;
+6. cada pieza sale peso × kilo y no queda rastro de la oferta, aunque el
+   backend mande `of`;
 7. cero POST.
 
-Probada en la dirección contraria con **6 bugs reinyectados**, uno por vez en
-una copia de la tienda: no se pliega nunca, se pliega desde 7, la elegida
+Probada en la dirección contraria con bugs reinyectados, uno por vez en una
+copia de la tienda: no se pliega nunca, se pliega desde 7, la elegida
 desaparece al plegar, el botón se va de abajo del dedo, un redibujo pierde lo
-desplegado y el cartel de la oferta pisa la pieza de arriba. **Los 6 se agarran.**
+desplegado, vuelve el orden por tanda y vuelve el precio con `of`. **Todos se
+agarran.**
 
 > [!warning] Sembrar `maleu_zone` no alcanza para TOCAR la tienda desde un test
 > Falta la fecha, y el modal de zona queda abierto encima de todo. La primera
@@ -815,6 +777,71 @@ desplegado y el cartel de la oferta pisa la pieza de arriba. **Los 6 se agarran.
 > tests que llaman funciones no lo notan; uno que toca, sí. Hay que elegir zona
 > y fecha como una persona (`ELEGIR_ZONA`, copiado de `verificar-paneles.js`)
 > y cortar si el modal sigue abierto.
+
+## La carne aparece al instante: en paralelo y con la copia de la última visita (11/9/2026)
+
+Tadeo: *"cuando cargo la página, tarda 10 segundos en que aparezca la carne
+como categoría y como producto"*. Tenía una causa concreta: `stock_full` y
+`piezas_full` tardan **~4 s cada una** —el piso de cualquier consulta a Apps
+Script— y la tienda las pedía **una detrás de la otra**: `fetchStock` esperaba
+el stock y recién después pedía las piezas.
+
+Medido contra el backend real, desde que arranca la página hasta que llegan las
+piezas (3 vueltas, `tiempo_carne.js` en el scratchpad):
+
+| | antes (maleu.com.ar) | ahora |
+|---|---|---|
+| primera visita | **8,9 s** | **5,6 s** |
+| vuelve a entrar | **6,9 s** | **0,1 s** |
+
+**En paralelo:** `fetchStock` arranca `_refrescarPiezas()` antes de pedir el
+stock y la espera al final. Son dos endpoints distintos y ninguno necesita al
+otro; que falle uno no frena al otro.
+
+**La copia:** cada inventario que llega se guarda en `localStorage`
+(`maleu_piezas_v1`), y al abrir la tienda la carne se dibuja de ahí antes de
+preguntarle nada al backend. Cuando llega el de ahora se reemplaza sola. Importa
+más de lo que parece: Carnes es la **tercera** categoría, y cuando aparecía a
+los 10 s empujaba para abajo todo lo que el cliente ya estaba mirando.
+
+> [!important] La copia vence a las 12 horas, y una rota se ignora
+> La de la semana pasada son piezas que ya no existen: mostrarlas aunque sea
+> unos segundos es prometer carne que no hay. Sin copia válida la tienda hace lo
+> de siempre, esperar. Si el backend dice que no queda ninguna pieza, la copia se
+> borra.
+
+> [!danger] Lo que la copia habilita: elegir una pieza que ya se vendió
+> En esos segundos se ve el inventario de la última visita. Si el cliente elige
+> una pieza que otro se llevó mientras tanto, cuando llega el de ahora
+> `_piezasConciliarCarrito` se la saca del carrito y lo dice: *"La pieza de
+> 1,064 kg de Vacío ya se vendió y salió de tu carrito"*.
+>
+> Y no es sólo por la copia: vale para cada refresco (cada 60 s). Antes, una
+> pieza que se vendía mientras el cliente tenía la tienda abierta —otro cliente,
+> o Lucas desde el AUTOPEDIDO del ERP, que desde el v298 también la reserva—
+> quedaba en su carrito, y el pedido entraba con una pieza que no existe.
+>
+> **Con un pedido en camino no se toca** (`_enviando`): la pieza que
+> "desaparece" es la suya, que el backend acaba de marcar vendida.
+
+### La red: `node _tools/verificar-carga-carne.js [ancho]`
+
+**24 chequeos**, verdes a 390 y 1440px, con el backend contestado desde la
+página y con demoras a propósito:
+
+1. primera visita: las piezas se piden junto con el stock y ANTES de que vuelva,
+   la carne se ve a los ~2 s de un backend que tarda 2, y queda la copia;
+2. con copia: la carne sale sin esperar al backend, ordenada por peso; el
+   cliente elige una pieza ya vendida, y cuando llega el inventario de ahora sale
+   del carrito, con el aviso, y la copia se actualiza;
+3. con un pedido en camino, el carrito no se toca;
+4. sin piezas, la copia se borra;
+5. una copia de hace 13 horas o rota no se usa;
+6. cero POST.
+
+Probada en la dirección contraria con 5 bugs reinyectados: las piezas otra vez
+después del stock, sin copia, la copia que no vence, el carrito que no se
+concilia y el que se concilia con un pedido en camino. **Los 5 se agarran.**
 
 ## Un pedido se da por registrado SOLO cuando el ERP lo confirma (11/9/2026)
 

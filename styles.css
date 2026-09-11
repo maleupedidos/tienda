@@ -1400,10 +1400,6 @@ body.busqueda-activa #repeat-block { display: none !important; }
 .chapa-nuevo { background: var(--brown); color: var(--white); }
 /* "Lo mas pedido" en el naranja suave que ya usaba, para no gritar las dos. */
 .chapa-top   { background: #FFF3E0; color: #E65100; }
-/* "Oferta" en el verde que la tienda ya usa para todo lo que es ahorro (el 10%
-   en efectivo, el cupon aplicado): no es un color nuevo, es el que ya dice
-   "esto te sale menos". Blanco sobre #2e7d32 da 5,13 de contraste. */
-.chapa-oferta { background: #2e7d32; color: #fff; }
 
 /* El flag del combo entro al mismo contenedor, asi que deja de posicionarse
    por su cuenta: lo apila el flex. Si siguiera absoluto se superpondria con
@@ -1466,11 +1462,10 @@ body.busqueda-activa #repeat-block { display: none !important; }
 
    `auto-fill` con un minimo de 120px hace la cuenta segun el ancho de la
    card, sin un media query por pantalla: 333px de cuerpo son 2 columnas, 498
-   son 3. El `padding-top` y el `row-gap` le dejan lugar al cartel de la
-   oferta, que va montado sobre el borde de arriba de la pieza. */
+   son 3. */
 .pz-lista {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  column-gap: .45rem; row-gap: .7rem; padding-top: .45rem;
+  gap: .45rem;
 }
 
 /* Cada pieza es un boton de 56px: se toca con el pulgar, en la calle y a una
@@ -1509,31 +1504,6 @@ body.busqueda-activa #repeat-block { display: none !important; }
   border-width: 0 2px 2px 0; transform: rotate(45deg);
 }
 .pz-fila.elegida .pz-precio { color: var(--hover-orange); }
-
-/* LA OFERTA DE LA TANDA ANTERIOR (11/9/2026). La pieza vieja va primero y, si
-   el margen lo aguanta, con el de lista tachado. El precio va en dos renglones
-   para no ensanchar la fila, y en el verde del ahorro tambien estando elegida:
-   si se volviera naranja al tocarla, parece que perdio la oferta. */
-/* El cartel va MONTADO sobre el borde de arriba, a la derecha: adentro de una
-   pieza de 150px chocaba con el peso. */
-.pz-off {
-  position: absolute; top: -.62rem; right: .45rem;
-  padding: .12rem .38rem; border-radius: 5px; background: #2e7d32; color: #fff;
-  font-size: .66rem; font-weight: 700; letter-spacing: .02em;
-  white-space: nowrap; line-height: 1.2;
-}
-.pz-precio-oferta {
-  display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline;
-  column-gap: .3rem; color: #2e7d32;
-}
-.pz-fila.elegida .pz-precio-oferta { color: #2e7d32; }
-/* El de lista, tachado: apagado pero legible — es la referencia del ahorro y
-   tiene que poder leerse. #6b5a52 es el gris calido del carrito (6,6 de
-   contraste); el #8d7a72 de los rotulos da 4,1 y no llega. */
-.pz-precio-oferta s, .pz-antes {
-  font-size: .74rem; font-weight: 600; color: #6b5a52;
-}
-.pz-antes { margin-right: .15rem; }
 
 /* "Ver las 14 piezas": ancho completo y 52px, con la cuenta de kilos abajo
    para que se sepa si la que se busca esta del otro lado antes de tocar. */

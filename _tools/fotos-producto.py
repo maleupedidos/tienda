@@ -1,18 +1,32 @@
 # -*- coding: utf-8 -*-
-"""Las fotos de entrana y vacio que paso Tadeo, al formato del catalogo.
+"""Una foto de producto al formato del catalogo.
+
+    python _tools/fotos-producto.py ORIGEN img/carne-colita.jpg
+    python _tools/fotos-producto.py ORIGEN img/carne-vacio.jpg --extender --filas 90:950
 
 En el celular la card de carne muestra la foto en 16:9 (.carne-card
 .product-thumb tiene aspect-ratio:16/9) con object-fit:cover. O sea que lo que
-importa es que el corte quede centrado en una franja horizontal.
+importa es que el corte quede entero en una franja horizontal.
+
+Dos formas de llegar a 16:9:
+  · RECORTE (por defecto): se corta arriba y abajo, centrado. Sirve cuando la
+    foto ya es apaisada (3:2, 4:3) y la pieza no toca los bordes.
+  · --extender: para una foto CUADRADA o vertical, donde el recorte le come
+    las puntas a la pieza. En vez de cortar la pieza se agranda el fondo: cada
+    costado se arma con el color del borde de su lado, fila por fila, y la foto
+    se funde con un degrade. Sirve si el fondo es liso (marmol, mesada) y la
+    pieza NO toca los bordes laterales — si los toca, el costado sale del color
+    de la carne. Mirá siempre el resultado antes de publicar.
+    `--filas A:B` recorta antes esas filas del original, para acercar la pieza.
+
+Sale a 1100x619 (alcanza para retina en una card de ~360px) y con la calidad
+mas alta que entre por debajo de 100 KB, como el resto de img/. Despues hay que
+correr `python _tools/cachebuster.py` para sellar la foto en IMG_V.
 """
-import io, os, sys
-from PIL import Image
+import argparse, os
+from PIL import Image, ImageFilter
 
-SUB = r"C:\Users\tadeu\.claude\uploads\990d6a28-342a-4b1b-9161-1562b5b5fb80"
-DEST = r"C:\Tadeo Ustariz\Trabajo\Grupo Matriz\Maleu\tienda\img"
-TMP = r"C:\Users\tadeu\AppData\Local\Temp\claude\c--Tadeo-Ustariz-Trabajo-Grupo-Matriz-Maleu-tienda\990d6a28-342a-4b1b-9161-1562b5b5fb80\scratchpad"
-
-ANCHO = 1100          # alcanza para retina en una card de ~360px
+ANCHO = 1100
 RATIO = 16.0 / 9.0
 
 
@@ -28,39 +42,61 @@ def recortar(im, ratio):
     return im.crop((x, y, x + nw, y + nh))
 
 
-def procesar(origen, salida, etiqueta):
-    im = Image.open(origen)
+def extender(im, ratio, borde=120):
+    """Lleva la foto a `ratio` agrandando el fondo a los costados."""
+    w, h = im.size
+    nw = int(round(h * ratio))
+    if nw <= w:
+        return recortar(im, ratio)
+    x0 = (nw - w) // 2
+
+    def panel(x_a, x_b):
+        # El color del borde, fila por fila, desenfocado en vertical para que
+        # una veta del marmol no se estire como una raya.
+        col = im.crop((x_a, 0, x_b, h)).resize((1, h), Image.BOX)
+        col = col.resize((8, h), Image.BILINEAR).filter(ImageFilter.GaussianBlur(40)).resize((1, h), Image.BOX)
+        return col.resize((nw, h), Image.BILINEAR)
+
+    # Debajo de todo el lienzo, un degrade del color del borde izquierdo al del
+    # derecho: el borde difuminado de la foto se funde con eso y no con negro.
+    rampa = Image.linear_gradient("L").rotate(90).resize((nw, h))
+    lienzo = Image.composite(panel(w - 10, w), panel(0, 10), rampa)
+    mascara = Image.new("L", (w, h), 255)
+    px = mascara.load()
+    for x in range(borde):
+        a = int(255 * x / float(borde))
+        for y in range(h):
+            px[x, y] = a
+            px[w - 1 - x, y] = a
+    lienzo.paste(im, (x0, 0), mascara)
+    return lienzo
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("origen")
+    ap.add_argument("destino")
+    ap.add_argument("--extender", action="store_true")
+    ap.add_argument("--filas", help="A:B, filas del original que se conservan antes de encuadrar")
+    a = ap.parse_args()
+
+    im = Image.open(a.origen)
     if im.mode != "RGB":
         im = im.convert("RGB")
     antes = im.size
-    im = recortar(im, RATIO)
+    if a.filas:
+        y0, y1 = [int(v) for v in a.filas.split(":")]
+        im = im.crop((0, y0, im.size[0], y1))
+    im = extender(im, RATIO) if a.extender else recortar(im, RATIO)
     im = im.resize((ANCHO, int(round(ANCHO / RATIO))), Image.LANCZOS)
-    # Calidad la mas alta que entre por debajo de 100 KB, como las demas.
     for q in (86, 82, 78, 74, 70):
-        im.save(salida, "JPEG", quality=q, optimize=True, progressive=True)
-        kb = os.path.getsize(salida) / 1024.0
+        im.save(a.destino, "JPEG", quality=q, optimize=True, progressive=True)
+        kb = os.path.getsize(a.destino) / 1024.0
         if kb <= 100:
             break
-    print("  %-10s %sx%s -> %sx%s  calidad %d  %.0f KB" %
-          (etiqueta, antes[0], antes[1], im.size[0], im.size[1], q, kb))
-    return salida
+    print("%s  %sx%s -> %sx%s  calidad %d  %.0f KB" %
+          (os.path.basename(a.destino), antes[0], antes[1], im.size[0], im.size[1], q, kb))
 
 
-print("Generando:")
-e = procesar(os.path.join(SUB, "7a9be690-image.png"), os.path.join(TMP, "carne-entrana.jpg"), "entrana")
-v = procesar(os.path.join(SUB, "d7cd0425-image.png"), os.path.join(TMP, "carne-vacio.jpg"), "vacio")
-
-# Una tira comparativa para mirarla antes de publicar: la generica de hoy
-# arriba, las dos nuevas abajo.
-gen = Image.open(os.path.join(DEST, "carne-cortes.jpg")).convert("RGB")
-gen = recortar(gen, RATIO).resize((ANCHO, int(ANCHO / RATIO)), Image.LANCZOS)
-ims = [("HOY (la misma en los 5 cortes)", gen),
-       ("ENTRANA nueva", Image.open(e)),
-       ("VACIO nuevo", Image.open(v))]
-alto = sum(i.size[1] for _, i in ims) + 20 * (len(ims) - 1)
-tira = Image.new("RGB", (ANCHO, alto), (255, 255, 255))
-y = 0
-for _, i in ims:
-    tira.paste(i, (0, y)); y += i.size[1] + 20
-tira.save(os.path.join(TMP, "comparacion.jpg"), "JPEG", quality=84, optimize=True)
-print("\nComparacion en comparacion.jpg")
+if __name__ == "__main__":
+    main()

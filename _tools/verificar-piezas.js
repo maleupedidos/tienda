@@ -14,7 +14,13 @@
  *   · la pieza elegida desaparece al plegar     → el cliente no ve lo que lleva
  *   · al plegar, el boton se va de abajo del dedo → aparece en otro corte
  *   · la card se redibuja y se pliega sola      → cada toque cierra la lista
- *   · el cartel de la oferta tapa otra pieza    → se toca la que no es
+ *   · la tienda le hace caso a `v`/`of`         → la pieza no va por peso,
+ *                                                 o no sale peso × kilo
+ *
+ * Sobre lo ultimo: del 11/9/2026 a la tarde el backend manda `v` (tanda
+ * anterior) y `of` (% de oferta), y la tienda puso esas piezas primero y con
+ * el precio tachado. Tadeo lo dio de baja el mismo dia. El inventario de este
+ * test los TRAE a proposito: la tienda los tiene que ignorar.
  *
  * NADA SALE A INTERNET QUE ESCRIBA: el inventario se contesta desde la pagina
  * y todo POST lo corta CDP. Este test no manda ningun pedido: si aparece un
@@ -47,7 +53,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 
 /* ── el inventario ─────────────────────────────────────────────────────────
    Desordenado a proposito: el orden lo tiene que poner la tienda.
-     · vacio   14 → se pliega (4 de la tanda anterior en oferta)
+     · vacio   14 → se pliega (4 traen `v`/`of`: se tienen que ignorar)
      · lomo     9 → el borde: se pliega
      · picaña   8 → el otro borde: NO se pliega
      · entraña  3 → pocas, sin boton                                          */
@@ -140,30 +146,25 @@ function leer(abbr) {
   var prod = PRODUCTOS.filter(function (p) { return p.abbr === '${abbr}'; })[0];
   var card = prod && document.querySelector('.carne-card[data-id="' + prod.id + '"]');
   if (!card) return null;
-  var rotulo = card.querySelector('.pz-rotulo');
-  var rr = rotulo ? rotulo.getBoundingClientRect() : null;
   var filas = [].map.call(card.querySelectorAll('.pz-fila'), function (f) {
     var r = f.getBoundingClientRect();
-    var off = f.querySelector('.pz-off');
-    var ro = off ? off.getBoundingClientRect() : null;
     var kgEl = f.querySelector('.pz-kg');
     var pr = f.querySelector('.pz-precio');
     return {
       kg: kgEl && kgEl.firstChild ? String(kgEl.firstChild.textContent).trim() : '',
-      precio: pr && pr.lastChild ? String(pr.lastChild.textContent).trim() : '',
-      off: off ? off.textContent.trim() : '',
+      precio: pr ? String(pr.textContent).trim() : '',
       visible: r.width > 0 && r.height > 0,
       elegida: f.getAttribute('aria-pressed') === 'true',
       x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height),
-      desborda: f.scrollWidth > f.clientWidth + 1,
-      offRect: ro ? { x: ro.left, y: ro.top, w: ro.width, h: ro.height } : null
+      desborda: f.scrollWidth > f.clientWidth + 1
     };
   });
   var b = card.querySelector('.pz-mas');
   var br = b ? b.getBoundingClientRect() : null;
   return {
     filas: filas,
-    rotuloAbajo: rr ? rr.bottom : null,
+    /* Cualquier rastro de la oferta: el texto, un precio tachado o la chapita. */
+    oferta: /OFF|oferta/i.test(card.textContent) || !!card.querySelector('s, .chapa-oferta, .pz-off'),
     boton: b ? { txt: (b.querySelector('.pz-mas-txt') || b).textContent.trim(),
                  rango: ((b.querySelector('.pz-mas-rango') || {}).textContent || '').trim(),
                  exp: b.getAttribute('aria-expanded'), top: br.top, h: Math.round(br.height) } : null,
@@ -196,7 +197,6 @@ const IR_A = (y) => `(function(){var r=document.documentElement,p=r.style.scroll
 const num = (t) => Number(String(t || '').replace(/[^\d]/g, '')) || 0;
 const kgNum = (t) => Number(String(t || '').replace(' kg', '').replace(',', '.'));
 const kgTxt = (n) => n.toFixed(3).replace('.', ',');
-const choca = (a, b) => a.x < b.x + b.w - 0.5 && b.x < a.x + a.w - 0.5 && a.y < b.y + b.h - 0.5 && b.y < a.y + a.h - 0.5;
 
 async function main() {
   const chrome = CHROMES.find((c) => fs.existsSync(c));
@@ -284,8 +284,8 @@ async function main() {
     chk(v.filas.length === 14, 'las 14 piezas estan en la card (' + v.filas.length + ')');
     chk(vis.length === 6, 'plegada se ven 6 (' + vis.length + ')');
     const kgsVis = vis.map((f) => kgNum(f.kg));
-    chk(JSON.stringify(kgsVis) === JSON.stringify([1.064, 1.241, 1.383, 1.922, 0.95, 1.102]),
-        'primero las 4 de la tanda anterior (de chica a grande), despues las mas chicas: ' + kgsVis.join(' · '));
+    chk(JSON.stringify(kgsVis) === JSON.stringify([0.95, 1.064, 1.102, 1.156, 1.241, 1.275]),
+        'de la mas chica a la mas grande, aunque 4 traigan `v`: ' + kgsVis.join(' · '));
     chk(!!v.boton && v.boton.txt === 'Ver las 14 piezas', 'el boton dice "Ver las 14 piezas" ("' + (v.boton ? v.boton.txt : '(no esta)') + '")');
     const todosKg = MUCHAS.CVa.map((p) => p.kg);
     const rangoOk = 'de ' + kgTxt(Math.min(...todosKg)) + ' a ' + kgTxt(Math.max(...todosKg)) + ' kg';
@@ -299,17 +299,12 @@ async function main() {
     chk(filaUno.length === colsEsperadas, colsEsperadas + ' piezas por fila (' + filaUno.length + ')');
     chk(vis.every((f) => f.h >= 48 && f.h <= 72), 'cada pieza mide entre 48 y 72px (' + Math.min(...vis.map((f) => f.h)) + '-' + Math.max(...vis.map((f) => f.h)) + ')');
     chk(vis.every((f) => !f.desborda), 'ninguna pieza se sale de su caja');
-    /* El cartel de la oferta va montado sobre el borde: no puede tapar a otra
-       pieza ni al rotulo de arriba. */
-    let tapa = 0;
-    vis.forEach((f, i) => {
-      if (!f.offRect) return;
-      vis.forEach((g, j) => { if (i !== j && choca(f.offRect, g)) tapa++; });
-      if (v.rotuloAbajo !== null && f.offRect.y < v.rotuloAbajo - 0.5) tapa++;
-    });
-    chk(tapa === 0, 'ningun cartel de oferta tapa otra pieza ni el rotulo (' + tapa + ' choques)');
-    chk(vis.slice(0, 4).every((f) => f.off === '5% OFF') && vis.slice(4).every((f) => !f.off),
-        'las 4 de la tanda anterior dicen "5% OFF" y las otras no');
+    /* El precio es el peso por el kilo ($26.000), tambien en las 4 que traen
+       `of: 5`: con la oferta, la de 1,064 kg saldria $26.281 y no $27.664. */
+    const malPrecio = v.filas.filter((f) => num(f.precio) !== Math.round(kgNum(f.kg) * 26000));
+    chk(malPrecio.length === 0, 'las 14 salen peso × kilo, aunque 4 traigan `of` (' +
+        (malPrecio.map((f) => f.kg + ' ' + f.precio).join(', ') || 'todas bien') + ')');
+    chk(!v.oferta, 'ni "OFF", ni "oferta", ni un precio tachado en la card');
 
     // ── 2. Los bordes: 9 se pliega, 8 no, 3 no ─────────────────────────
     console.log('\n' + DIM + '== 2. Cuando se pliega y cuando no ==' + RST);
