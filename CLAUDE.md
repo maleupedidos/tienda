@@ -675,6 +675,76 @@ Ahora **espera al hit** y dice cuánto tardó (1668 ms solo · 5204 ms con toque
 > de prueba que devolvía 404 en todo porque comparaba rutas de Windows con
 > barras normales contra `path.join`, que las normaliza a `\`.
 
+## La carne de la tanda anterior va primero, y en oferta (11/9/2026)
+
+Lucas, por Tadeo: *"si un cliente nos quiere pedir entraña, no darle la que
+vamos a recibir hoy: entregarle la de la semana pasada"*. La carne fresca dura
+**dos semanas** desde que llega y cada semana entra una tanda nueva, así que la
+vieja tiene que salir primero. La idea: que se vea como primera opción, con el
+precio de lista tachado y uno más bajo al lado.
+
+**La tienda no decide nada de esto: lo manda el backend** en `piezas_full`, con
+dos campos opcionales por pieza.
+
+| campo | qué es | qué hace la tienda |
+|---|---|---|
+| `v:1` | la pieza **no es de la última tanda** de su corte | la pone **primera** |
+| `of:5` | el **%** de oferta de esa pieza | tachado + precio con el %, chapita **5% OFF**, y **Oferta** sobre la foto |
+
+```
+{ "CVa": [{"id":"P-0002","kg":1.064,"v":1,"of":5}, {"id":"P-0007","kg":1.1}] }
+```
+
+> [!important] Sin `v` ni `of` la tienda queda EXACTAMENTE como antes
+> Es como responde el backend hasta que publique su parte: por eso esto se
+> publicó antes y no rompe nada. El día que el ERP mande los campos, la oferta
+> aparece sola. Lo verifica el escenario 1 de `verificar-oferta.js`.
+
+**Por qué la regla vive del otro lado:** es el backend el que sabe de cuándo es
+cada pieza y cuánto costó —la tienda es pública y no puede saber el costo—, y el
+que tiene la palanca en Config_Maleu. Una regla escrita en los dos lados se
+despega.
+
+> [!danger] La oferta SE SUMA al 10% de efectivo, y por eso necesita un piso
+> Si no se sumara, al que paga en efectivo le convendría la pieza **nueva**
+> (10% contra 5%) y la oferta empujaría al revés de lo que se quiere.
+>
+> Pero sumada, dos cortes quedan abajo del costo: con el 10% la entraña ya deja
+> **2%** y el lomo **4%** (anotado en `descontableSubtotal`). Por eso el backend
+> topea el % para que la pieza nunca quede abajo del costo **ni pagando en
+> efectivo**, y si el tope da menos de 2% no manda `of`: la pieza va primera
+> igual (por `v`), sin tachado. Al 11/9/2026 eso deja **la entraña sin oferta**
+> —justo el corte que nombró Lucas—, el lomo en 4% y el resto en 5%.
+
+**Lo que viaja en el pedido:** el precio con oferta ya va adentro de `importe` y
+de `subtotalSinDescuento`, así que el backend no recalcula nada. Aparte, el item
+de carne lleva `ofertas: {"P-0002": 5}` para poder medir si la oferta movió la
+tanda vieja — **aparte de `piezas`**, que el backend lee como lista de ids y no
+puede cambiar de forma.
+
+**El precio queda fijo al elegir la pieza.** Si el catálogo se refresca y el %
+cambia, al cliente se le respeta el que vio. La firma de `_piezasFirma` lleva la
+oferta adentro: si sólo cambia el % en Config_Maleu, las piezas no cambian de id
+ni de peso, y sin eso el catálogo seguiría mostrando el precio de antes.
+
+**Un `of` que no es un entero entre 1 y 50 se ignora.** Un 90 por un tipeo en la
+planilla vendería la carne al 10%.
+
+### La red: `node _tools/verificar-oferta.js [ancho]`
+
+**44 chequeos** en seis escenarios —como responde el ERP hoy, con oferta, al
+elegir la pieza, si cambia el %, el pedido que viaja y el mensaje de WhatsApp, y
+un `of` basura—, verdes a 390 y 1440px. Probada en la dirección contraria con
+cuatro bugs reinyectados (ordenar sólo por peso, la firma sin la oferta, no
+validar el %, el carrito a precio de lista): **los cuatro se agarran**.
+
+> [!warning] Lo que falta es del lado del ERP
+> `piezas_full` todavía no manda `v` ni `of`. El prompt para la sesión Backend se
+> armó el 11/9/2026 con el contrato completo: la tanda es el **día de la
+> col Recibida** (no "7 días", porque las 5 primeras piezas tienen Recibida =
+> 10/9, el día que se cargaron, no el que llegaron), el % en
+> **`CARNE_OFERTA_PCT`** de Config_Maleu (default 5) y el piso contra el costo.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

@@ -541,8 +541,21 @@ function kgTexto(kg) {
    Se redondea al peso porque no existe el centavo, y se redondea UNA sola vez
    — si cada pantalla redondeara por su cuenta, el total del carrito no daria
    igual que la suma de las lineas. */
-function piezaPrecio(prod, kg) {
-  return Math.round((Number(kg) || 0) * (prod ? prod.precio : 0));
+function piezaPrecio(prod, kg, of) {
+  var lista = (Number(kg) || 0) * (prod ? prod.precio : 0);
+  /* Con oferta tambien se redondea una sola vez, sobre el resultado: redondear
+     la lista primero y despues descontar da un peso de diferencia contra la
+     misma cuenta hecha en otro lado. */
+  return Math.round(of ? lista * (100 - of) / 100 : lista);
+}
+
+/* Un precio con su referencia tachada al lado, cuando la hay. Se usa en el
+   carrito y en el resumen; la card tiene su propio armado porque ahi van en
+   dos renglones. */
+function _precioConAntes(lista, precio) {
+  return lista > precio
+    ? '<s class="pz-antes">' + ars(lista) + '</s> ' + ars(precio)
+    : ars(precio);
 }
 
 /* Las piezas disponibles de un corte, sin las que ya estan en el carrito.
@@ -584,11 +597,16 @@ function togglePieza(abbr, piezaId) {
        refresco y alguien se la llevo. Decirlo es mejor que agregar algo que
        no existe. */
     if (!prod || !pz) { toast('⚠️ Esa pieza ya no está disponible', 3000); return; }
-    piezaCart[piezaId] = { abbr: abbr, id: prod.id, kg: pz.kg,
-                           precio: piezaPrecio(prod, pz.kg), nombre: prod.nombre };
-    toast('✓ ' + prod.nombre + ' de ' + kgTexto(pz.kg) + ' agregado');
+    /* El precio queda FIJO al momento de elegirla: si despues el catalogo se
+       refresca y la oferta cambia, al cliente se le respeta lo que vio. `lista`
+       viaja al lado para poder mostrar cuanto se ahorro. */
+    piezaCart[piezaId] = { abbr: abbr, id: prod.id, kg: pz.kg, of: pz.of || 0,
+                           precio: piezaPrecio(prod, pz.kg, pz.of),
+                           lista: piezaPrecio(prod, pz.kg), nombre: prod.nombre };
+    toast('✓ ' + prod.nombre + ' de ' + kgTexto(pz.kg) + ' agregado' +
+          (pz.of ? ' — ' + pz.of + '% OFF' : ''));
     _track('add_to_cart', { id: prod.abbr || prod.id, item_name: prod.nombre + ' ' + kgTexto(pz.kg),
-                            price: piezaPrecio(prod, pz.kg), zone: currentZone });
+                            price: piezaCart[piezaId].precio, zone: currentZone });
   }
   /* updateUI y no updateCart: esa funcion NO EXISTE en este archivo y la
      llame de memoria. Parsea perfecto y revienta recien al tocar la pieza,
@@ -636,7 +654,10 @@ function piezasAgrupadas() {
   var porCorte = {};
   Object.keys(piezaCart).forEach(function (pid) {
     var it = piezaCart[pid];
-    (porCorte[it.abbr] = porCorte[it.abbr] || []).push({ pid: pid, kg: it.kg, precio: it.precio, nombre: it.nombre });
+    (porCorte[it.abbr] = porCorte[it.abbr] || []).push({ pid: pid, kg: it.kg, precio: it.precio,
+      /* `lista` puede faltar en un carrito armado antes del 11/9/2026: sin ella
+         la pieza se trata como sin oferta, que es lo que era. */
+      lista: it.lista || it.precio, of: it.of || 0, nombre: it.nombre });
   });
   return Object.keys(porCorte).map(function (abbr) {
     var lista = porCorte[abbr].sort(function (a, b) { return a.kg - b.kg; });
@@ -645,7 +666,8 @@ function piezasAgrupadas() {
       nombre: lista[0].nombre,
       lista: lista,
       kg: lista.reduce(function (t, x) { return t + x.kg; }, 0),
-      total: lista.reduce(function (t, x) { return t + x.precio; }, 0)
+      total: lista.reduce(function (t, x) { return t + x.precio; }, 0),
+      totalLista: lista.reduce(function (t, x) { return t + x.lista; }, 0)
     };
   });
 }
@@ -673,10 +695,8 @@ function fetchPiezas() {
         if (!Array.isArray(lista)) return;
         var ok = lista.filter(function (pz) {
           return pz && pz.id && Number(pz.kg) > 0;
-        }).map(function (pz) { return { id: String(pz.id), kg: Number(pz.kg) }; });
-        /* De la mas chica a la mas grande: el que compra carne casi siempre
-           busca "una de kilo y medio", y ordenadas se encuentra de un vistazo. */
-        ok.sort(function (a, b) { return a.kg - b.kg; });
+        }).map(_piezaDeRespuesta);
+        ok.sort(_piezaOrden);
         if (ok.length) { limpio[abbr] = ok; hubo += ok.length; }
       });
       piezasMap = limpio;
@@ -685,11 +705,52 @@ function fetchPiezas() {
     .catch(function () { _piezasFallo(); });
 }
 
+/* LA OFERTA DE LA TANDA ANTERIOR (11/9/2026).
+
+   La carne fresca dura dos semanas desde que llega, y cada semana entra una
+   tanda nueva. Lucas: "si un cliente nos pide entrana, no darle la que vamos a
+   recibir hoy: entregarle la de la semana pasada". Por eso la pieza vieja va
+   PRIMERO y, si el margen lo aguanta, con el precio de lista tachado.
+
+   Los dos datos los manda el backend, y aca no hay ninguna regla escrita:
+     · `v`  — no es de la ultima tanda de su corte. Decide el ORDEN.
+     · `of` — el % de oferta de esa pieza. Decide el PRECIO.
+   Es el backend el que sabe de cuando es cada pieza y cuanto costo — la tienda
+   es publica y no puede saber el costo —, y el que tiene la palanca en
+   Config_Maleu. Una regla escrita en los dos lados se despega.
+
+   Se valida la FORMA: un `of` que no es un entero entre 1 y 50 se ignora y la
+   pieza va a precio de lista. Un 90 por un error de tipeo en la planilla
+   venderia la carne al 10%, y eso no puede depender de que nadie se equivoque.
+   Sin `v` ni `of` —como responde el backend hasta que esto se publique de su
+   lado— la tienda queda exactamente como antes. */
+function _piezaDeRespuesta(pz) {
+  var o = { id: String(pz.id), kg: Number(pz.kg) };
+  if (pz.v) o.v = true;
+  var of = Number(pz.of);
+  if (Math.round(of) === of && of >= 1 && of <= 50) { o.of = of; o.v = true; }
+  return o;
+}
+
+/* Primero la tanda anterior, y adentro de cada tanda de la mas chica a la mas
+   grande: el que compra carne casi siempre busca "una de kilo y medio", y
+   ordenadas se encuentra de un vistazo. */
+function _piezaOrden(a, b) {
+  if (!!a.v !== !!b.v) return a.v ? -1 : 1;
+  return a.kg - b.kg;
+}
+
 /* Que piezas hay, en una linea. Sirve para saber si el inventario cambio
-   sin comparar objeto por objeto. */
+   sin comparar objeto por objeto.
+
+   Lleva la oferta adentro: si alguien cambia el % en Config_Maleu, las piezas
+   no cambian de id ni de peso — cambia solo su `of`. Sin eso la firma daria
+   igual y el catalogo seguiria mostrando el precio de antes. */
 function _piezasFirma() {
   return Object.keys(piezasMap).sort().map(function (a) {
-    return a + ':' + piezasMap[a].map(function (pz) { return pz.id + '@' + pz.kg; }).join(',');
+    return a + ':' + piezasMap[a].map(function (pz) {
+      return pz.id + '@' + pz.kg + (pz.v ? 'v' : '') + (pz.of ? '%' + pz.of : '');
+    }).join(',');
   }).join('|');
 }
 
@@ -2375,6 +2436,11 @@ function carneCardHTML(p) {
   var mias = piezasEnCarrito(p.abbr);
   var chapas = '';
   if (_esNuevo(p)) chapas += '<span class="chapa-prod chapa-nuevo">Nuevo</span>';
+  /* "Oferta" sobre la foto: es lo primero que se mira mientras se scrollea, y
+     la oferta que no se ve no tienta a nadie. Sale solo si queda alguna pieza
+     en oferta SIN elegir — con todas ya en el carrito no hay nada que ofrecer. */
+  var enOferta = libres.filter(function (pz) { return pz.of; }).length;
+  if (enOferta) chapas += '<span class="chapa-prod chapa-oferta">Oferta</span>';
 
   var cuerpo;
   if (piezasEstado !== 'ok') {
@@ -2386,19 +2452,35 @@ function carneCardHTML(p) {
   } else {
     var filas = (piezasMap[p.abbr] || []).map(function (pz) {
       var elegida = !!piezaCart[pz.id];
-      return '<button type="button" class="pz-fila' + (elegida ? ' elegida' : '') + '"' +
-        ' onclick="togglePieza(\'' + p.abbr + '\',\'' + pz.id + '\')"' +
+      var precio = piezaPrecio(p, pz.kg, pz.of);
+      /* Con oferta, el precio va en dos renglones \u2014el de lista tachado arriba,
+         el que se paga abajo\u2014 para no ensanchar la fila: en el celular la card
+         mide 330px y el tachado al lado empujaba el peso contra el borde.
+         El nombre accesible se dice entero: leido tal cual, "5% OFF $27.664
+         $26.281" no dice cual de los dos se paga. */
+      var precioHtml = pz.of
+        ? '<span class="pz-precio pz-precio-oferta"><s>' + ars(piezaPrecio(p, pz.kg)) + '</s>' + ars(precio) + '</span>'
+        : '<span class="pz-precio">' + ars(precio) + '</span>';
+      var etiqueta = pz.of
+        ? ' aria-label="' + p.nombre + ' de ' + kgTexto(pz.kg) + ', en oferta: ' + ars(precio) +
+          ' en vez de ' + ars(piezaPrecio(p, pz.kg)) + '"'
+        : '';
+      return '<button type="button" class="pz-fila' + (elegida ? ' elegida' : '') + (pz.of ? ' en-oferta' : '') + '"' +
+        ' onclick="togglePieza(\'' + p.abbr + '\',\'' + pz.id + '\')"' + etiqueta +
         ' aria-pressed="' + (elegida ? 'true' : 'false') + '">' +
           '<span class="pz-check" aria-hidden="true"></span>' +
-          '<span class="pz-kg">' + kgTexto(pz.kg) + '</span>' +
-          '<span class="pz-precio">' + ars(piezaPrecio(p, pz.kg)) + '</span>' +
+          '<span class="pz-kg">' + kgTexto(pz.kg) +
+            (pz.of ? '<span class="pz-off">' + pz.of + '% OFF</span>' : '') + '</span>' +
+          precioHtml +
         '</button>';
     }).join('');
     var cuantas = (piezasMap[p.abbr] || []).length;
+    var cuantasOf = (piezasMap[p.abbr] || []).filter(function (pz) { return pz.of; }).length;
     cuerpo =
       '<div class="pz-rotulo">' +
         '<span>Eleg\u00ed tu pieza</span>' +
-        '<span class="pz-quedan">' + cuantas + (cuantas === 1 ? ' disponible' : ' disponibles') + '</span>' +
+        '<span class="pz-quedan">' + cuantas + (cuantas === 1 ? ' disponible' : ' disponibles') +
+          (cuantasOf ? ' \u00b7 ' + cuantasOf + ' en oferta' : '') + '</span>' +
       '</div>' +
       '<div class="pz-lista">' + filas + '</div>' +
       (mias.n
@@ -2934,7 +3016,7 @@ function updateUI() {
     var piezaLinesHtml = piezasAgrupadas().map(function (g) {
       var abbr = g.abbr, lista = g.lista, kg = g.kg, tot = g.total;
       var filas = lista.map(function (x) {
-        return '<li>' + kgTexto(x.kg) + ' \u00b7 ' + ars(x.precio) +
+        return '<li>' + kgTexto(x.kg) + ' \u00b7 ' + _precioConAntes(x.lista, x.precio) +
           '<button class="pz-quitar" type="button" aria-label="Sacar esta pieza" ' +
           'onclick="togglePieza(\'' + abbr + '\',\'' + x.pid + '\')">\u00d7</button></li>';
       }).join('');
@@ -2945,7 +3027,7 @@ function updateUI() {
           '<div class="cart-item-name">' + g.nombre + '</div>' +
           '<div class="cart-item-sub">' + lista.length +
             (una ? ' pieza' : ' piezas') + ' \u00b7 ' + kgTexto(kg) +
-            ' \u00b7 <strong>' + ars(tot) + '</strong></div>' +
+            ' \u00b7 <strong>' + _precioConAntes(g.totalLista, tot) + '</strong></div>' +
           /* El desglose recien desde DOS piezas: con una sola repetiria el
              renglon de arriba palabra por palabra. */
           (una ? '' : '<ul class="cart-piezas">' + filas + '</ul>') +
@@ -3061,8 +3143,11 @@ function updateFormSummary() {
     var detalle = g.lista.length > 1
       ? ' <span class="summary-pz-detalle">(' + g.lista.map(function (x) { return kgTexto(x.kg); }).join(' + ') + ')</span>'
       : '';
+    /* Con oferta, el de lista tachado al lado. Va en la misma linea y no como
+       un renglon de descuento aparte: el subtotal ya viene con la oferta
+       adentro, y un "-$1.383" abajo se leeria como que se resta dos veces. */
     return '<div class="summary-line"><span>\ud83e\udd69 ' + g.nombre + ' <strong>' + kgTexto(g.kg) + '</strong>' +
-      detalle + '</span><span>' + ars(g.total) + '</span></div>';
+      detalle + '</span><span>' + _precioConAntes(g.totalLista, g.total) + '</span></div>';
   }).join('');
 
   // Sub Total: solo si hay descuentos (deja claro de qué monto sale el 10%/cupón).
@@ -3496,10 +3581,15 @@ function enviarPedido() {
       /* El desglose solo desde DOS piezas: con una sola, "1,163 kg (1,163 kg)"
          repite el mismo numero y se lee como un error. Mismo criterio que el
          carrito. */
+      /* La oferta se nombra pieza por pieza: es lo que le dice a quien arma el
+         pedido cual es la de la tanda anterior, y al cliente por que ese precio
+         no es el del kilo por el peso. */
+      var off = function (x) { return x.of ? ' ' + x.of + '% OFF' : ''; };
       var desglose = g.lista.length > 1
-        ? '\n   (' + g.lista.map(function (x) { return kgTexto(x.kg); }).join(' + ') + ')'
+        ? '\n   (' + g.lista.map(function (x) { return kgTexto(x.kg) + off(x); }).join(' + ') + ')'
         : '';
-      return '\ud83e\udd69 ' + g.nombre + ' \u2014 ' + kgTexto(g.kg) + ' \u00b7 ' + ars(g.total) + desglose;
+      var sola = g.lista.length === 1 && g.lista[0].of ? ' (' + g.lista[0].of + '% OFF)' : '';
+      return '\ud83e\udd69 ' + g.nombre + ' \u2014 ' + kgTexto(g.kg) + ' \u00b7 ' + ars(g.total) + sola + desglose;
     }).join('\n');
   })();
   const prodLines = [comboLinesWA, _sepAdemas, prodLinesProductos, piezaLinesWA].filter(Boolean).join('\n');
@@ -3594,17 +3684,24 @@ function enviarPedido() {
     var porCorte = {};
     Object.keys(piezaCart).forEach(function (pid) {
       var it = piezaCart[pid];
-      var g = porCorte[it.abbr] = porCorte[it.abbr] || { id: it.id, nombre: it.nombre, kg: 0, precio: 0, piezas: [] };
+      var g = porCorte[it.abbr] = porCorte[it.abbr] || { id: it.id, nombre: it.nombre, kg: 0, precio: 0, piezas: [], ofertas: {} };
       g.kg += it.kg; g.precio += it.precio; g.piezas.push(pid);
+      if (it.of) g.ofertas[pid] = it.of;
     });
     Object.keys(porCorte).forEach(function (abbr) {
       var g = porCorte[abbr];
-      items.push({ id: g.id, nombre: g.nombre,
+      var item = { id: g.id, nombre: g.nombre,
                    /* al gramo: mas precision no la da ninguna balanza, y sin
                       redondear un 1.2000000000000002 llega tal cual a la hoja */
                    qty: Math.round(g.kg * 1000) / 1000,
                    precio: (PROD_MAP[g.id] || {}).precio || 0,
-                   unidad: 'kg', abbr: abbr, importe: g.precio, piezas: g.piezas });
+                   unidad: 'kg', abbr: abbr, importe: g.precio, piezas: g.piezas };
+      /* Que piezas se vendieron en oferta, y a cuanto. El precio ya viaja
+         adentro de `importe`; esto es para poder medir despues si la oferta
+         movio la tanda vieja. Va APARTE de `piezas`, que el backend lee como
+         una lista de ids: cambiarle la forma romperia la asignacion. */
+      if (Object.keys(g.ofertas).length) item.ofertas = g.ofertas;
+      items.push(item);
     });
   })();
   // Trazabilidad del combo (receta + sabores elegidos) para uso futuro del backend / Panel.
