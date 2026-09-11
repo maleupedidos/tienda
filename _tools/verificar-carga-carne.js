@@ -284,6 +284,68 @@ async function main() {
     await abrir({ copia: '{esto no es json', piezas: AHORA, demoraPiezas: 1500, demoraStock: 300 });
     chk(await esperar('!!window.__t.carne', 6000), 'una rota se ignora sin romper nada, y la carne aparece igual');
 
+    // ── 6. Los cortes sin stock se muestran, y solo cuando lo sabemos ───
+    /* Tadeo, 11/9/2026: "si bien ya no hay algunos gustos de carne por no
+       tener stock, estaria bueno que avisemos". AHORA trae solo vacio: los
+       otros cuatro cortes tienen que aparecer con "Sin stock", al final y en
+       chico. Y si el inventario NO llego, ninguno: no saber no es no haber. */
+    console.log('\n' + DIM + '== 6. Cortes sin stock ==' + RST);
+    const CARNES = `JSON.stringify((function () {
+      var sec = document.getElementById('cat-carnes');
+      var cards = sec ? [].map.call(sec.querySelectorAll('.carne-card'), function (c) {
+        var p = PRODUCTOS.filter(function (x) { return String(x.id) === c.getAttribute('data-id'); })[0];
+        return { a: p && p.abbr, agot: c.classList.contains('agotada'), h: Math.round(c.getBoundingClientRect().height),
+          chapas: [].map.call(c.querySelectorAll('.chapa-prod'), function (x) { return x.textContent.trim(); }).join('+'),
+          filas: c.querySelectorAll('.pz-fila').length, txt: c.textContent };
+      }) : [];
+      var tile = [].filter.call(document.querySelectorAll('.cat-tile'), function (t) { return /Carnes/.test(t.textContent); })[0];
+      return { estado: piezasEstado, cards: cards, tile: tile ? tile.querySelector('.cat-tile-count').textContent : null,
+        chip: !!document.querySelector('.cat-nav-btn[data-slug="carnes"]'),
+        desborde: document.documentElement.scrollWidth > window.innerWidth };
+    })())`;
+    await abrir({ piezas: AHORA, demoraPiezas: 300, demoraStock: 300 });
+    chk(await esperar('!!window.__t.carne', 6000), 'con solo vacio en el inventario, la carne aparece');
+    let c6 = JSON.parse(await ev(CARNES));
+    chk(c6.cards.map((x) => x.a).join(',') === 'CVa,CCo,CEn,CLo,CPi',
+        'estan los cinco cortes, el que hay primero y los agotados al final (' + c6.cards.map((x) => x.a).join(',') + ')');
+    const agot6 = c6.cards.filter((x) => x.agot), disp6 = c6.cards.filter((x) => !x.agot);
+    chk(agot6.length === 4 && disp6.length === 1 && disp6[0].a === 'CVa', 'cuatro marcados agotados y vacio no');
+    chk(agot6.every((x) => x.chapas === 'Sin stock' && /Sin stock por ahora/.test(x.txt) && x.filas === 0),
+        'cada agotado dice "Sin stock" sobre la foto y en el cuerpo, sin "Nuevo" y sin piezas para tocar');
+    chk(!/Sin stock/.test(disp6[0].txt) && disp6[0].filas === 3, 'el vacio no dice "Sin stock" y muestra sus 3 piezas');
+    /* Un renglon, no una card: en la compu el que hay mide ~205px con tres
+       piezas, asi que la proporcion sola no alcanza — va con techo fijo. */
+    chk(agot6.every((x) => x.h <= 160 && x.h < disp6[0].h),
+        'los agotados van en chico: ' + agot6[0].h + 'px contra ' + disp6[0].h + 'px del que hay');
+    chk(c6.tile === '1 opción', 'el tile de Carnes cuenta lo que se puede elegir: "' + c6.tile + '"');
+    chk(!c6.desborde, 'no desborda a lo ancho');
+    await ev("(function(){ var i = document.getElementById('buscador-input'); i.value = 'picaña'; buscarEnCatalogo(); })()");
+    const busq6 = JSON.parse(await ev(`JSON.stringify({ vis: [].map.call(document.querySelectorAll('#catalog-root .product-card[data-id]:not(.busq-oculto)'),
+      function (c) { return c.classList.contains('agotada') ? 'agotada' : 'otra'; }).join(','),
+      info: (document.getElementById('buscador-info') || {}).textContent || '' })`));
+    chk(busq6.vis === 'agotada', 'buscar "picaña" la encuentra agotada, en vez de "no encontramos nada" (' + busq6.vis + ')');
+    await ev('limpiarBusqueda()');
+
+    await ev('window.__piezasAhora = {}; window.__demoraPiezas = 100;');
+    await ev('_refrescarPiezas()');
+    c6 = JSON.parse(await ev(CARNES));
+    chk(c6.estado === 'vacio' && c6.cards.length === 5 && c6.cards.every((x) => x.agot),
+        'si el backend dice que no queda ninguna, los cinco quedan a la vista con "Sin stock" (' + c6.estado + ', ' + c6.cards.length + ')');
+    chk(c6.tile === 'Sin stock' && c6.chip, 'el tile dice "Sin stock" y el chip de Carnes sigue llevando a algo');
+
+    await ev('window.__piezasAhora = { ok: false, error: "se cayo" };');
+    await ev('_refrescarPiezas()');
+    c6 = JSON.parse(await ev(CARNES));
+    chk(c6.estado === 'vacio' && c6.cards.length === 5,
+        'un refresco que falla no borra un "Sin stock" que era cierto (' + c6.estado + ', ' + c6.cards.length + ' cards)');
+
+    await abrir({ piezas: { ok: false, error: 'se cayo' }, demoraPiezas: 300, demoraStock: 300 });
+    chk(await esperar('!!window.__t.piezasFin', 4000), 'con el backend caido desde el arranque, la respuesta llega');
+    await dormir(300);
+    c6 = JSON.parse(await ev(CARNES));
+    chk(c6.estado === 'sin-datos' && c6.cards.length === 0 && !c6.chip,
+        'y no se muestra ningun corte: sin inventario no se afirma "sin stock" (' + c6.estado + ', ' + c6.cards.length + ' cards, chip ' + c6.chip + ')');
+
     chk(posts.length === 0, 'no salio ningun POST (' + posts.length + ')');
   } catch (e) {
     mal++;

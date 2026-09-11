@@ -827,7 +827,7 @@ los 10 s empujaba para abajo todo lo que el cliente ya estaba mirando.
 
 ### La red: `node _tools/verificar-carga-carne.js [ancho]`
 
-**24 chequeos**, verdes a 390 y 1440px, con el backend contestado desde la
+**38 chequeos**, verdes a 390 y 1440px, con el backend contestado desde la
 página y con demoras a propósito:
 
 1. primera visita: las piezas se piden junto con el stock y ANTES de que vuelva,
@@ -838,11 +838,54 @@ página y con demoras a propósito:
 3. con un pedido en camino, el carrito no se toca;
 4. sin piezas, la copia se borra;
 5. una copia de hace 13 horas o rota no se usa;
-6. cero POST.
+6. los cortes sin stock (ver abajo): los cinco a la vista con el que hay
+   primero, "Sin stock" en la foto y en el cuerpo, en chico, el tile contando
+   lo elegible, el buscador encontrándolos; con todo agotado, los cinco; un
+   refresco que falla no los borra; y con el backend caído desde el arranque,
+   ninguno;
+7. cero POST.
 
 Probada en la dirección contraria con 5 bugs reinyectados: las piezas otra vez
 después del stock, sin copia, la copia que no vence, el carrito que no se
-concilia y el que se concilia con un pedido en camino. **Los 5 se agarran.**
+concilia y el que se concilia con un pedido en camino. **Los 5 se agarran.** Y
+el bloque 6, contra la tienda de antes (los cortes sin piezas desaparecían),
+falla desde el primer chequeo.
+
+## Los cortes sin stock se muestran, en chico y al final (11/9/2026)
+
+Tadeo: *"si bien ya no hay algunos gustos de carne por no tener stock, estaría
+bueno que avisemos"*. Hasta ese día un corte sin piezas **desaparecía**, y se
+leía como *"acá no venden colita"*; ahora dice **Sin stock**, que se lee como
+*"hoy no hay, vuelvo"*.
+
+| | |
+|---|---|
+| Dónde va | al final de Carnes: el que entra tiene que ver primero lo que puede comprar |
+| Cómo se ve | un renglón (147px a 390, contra 469 de uno con piezas): foto en gris con la chapita **Sin stock**, el nombre, el kilo y *"Sin stock por ahora. Reponemos la carne todas las semanas."* Sin descripción ni chips |
+| El tile de Carnes | cuenta lo que se puede elegir (*"3 opciones"*), y con todo agotado dice *"Sin stock"* |
+| El buscador | lo encuentra: buscar "picaña" trae la card agotada en vez de *"no encontramos nada"* |
+
+> [!important] Solo cuando SABEMOS que no hay
+> `piezasEstado` tiene ahora dos estados que antes eran uno: **`vacio`** (el
+> backend contestó y no queda ninguna pieza: se muestran los cinco con "Sin
+> stock") y **`sin-datos`** (no se pudo traer: no se muestra ningún corte).
+> Afirmar "sin stock" sin haber mirado sería mentir.
+>
+> Y un refresco que falla **no borra un "Sin stock" que era cierto**: es la misma
+> regla que ya protegía las piezas (`_piezasFallo`).
+
+> [!warning] La firma del inventario arranca con "conocido / no"
+> De *cargando* a *vacío* las piezas son las mismas —ninguna— pero la pantalla
+> cambia. Sin esa marca en `_piezasFirma()`, el catálogo no se repintaba y los
+> cortes agotados no aparecían nunca.
+
+**No se promete un día** (*"vuelve el jueves"*): la carne se pide los martes y
+llega los jueves, pero no se repone cada corte cada semana, y prometer una fecha
+sería prometer por Lucas.
+
+`verificar-navegacion.js` pasó a tener **tres** escenarios: con carne, con toda
+la carne agotada (Carnes a la vista) y con el backend caído (Carnes no se
+dibuja). Antes el "no se dibuja" era el inventario vacío.
 
 ## Un pedido se da por registrado SOLO cuando el ERP lo confirma (11/9/2026)
 

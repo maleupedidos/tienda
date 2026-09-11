@@ -15,8 +15,8 @@
  * porque los id los asignaba `renderCatNav()` despues del render, y un
  * repintado que no lo llamaba dejaba el catalogo entero sin id.
  *
- * QUE VERIFICA, en los dos escenarios que importan (con carne y sin carne,
- * que es como esta produccion hasta que el ERP publique el inventario):
+ * QUE VERIFICA, en los tres escenarios que importan (con carne, con toda la
+ * carne agotada, y con el inventario sin llegar — ahi Carnes no se dibuja):
  *
  *   1. cada chip del nav tiene su seccion
  *   2. cada tile de "Categorias" tiene su seccion
@@ -178,12 +178,18 @@ const REVISION = `(async function () {
     tieneCarnes: chips.indexOf('carnes') >= 0, fallas: fallas });
 })()`;
 
-/* Sin carne es como esta produccion HOY, hasta que el ERP publique el
-   inventario. Con carne es como va a quedar. Los dos tienen que andar: el
-   bug de los id corridos aparecia justo cuando una categoria no se dibujaba. */
+/* Los tres tienen que andar: el bug de los id corridos aparecia justo cuando
+   una categoria no se dibujaba.
+
+   Desde el 11/9/2026 un inventario VACIO ya no esconde la categoria: los
+   cortes se muestran con "Sin stock" (Tadeo: "estaria bueno que avisemos").
+   La que desaparece ahora es la del backend caido — no saber no es no haber.
+   Por eso el caso "Carnes no se dibuja" pasa a ser ese, y el vacio es uno
+   aparte, con la categoria a la vista. */
 const ESCENARIOS = [
-  { nombre: 'sin carne (produccion hoy)', piezas: {} },
-  { nombre: 'con carne', piezas: {
+  { nombre: 'sin inventario (backend caido)', piezas: { ok: false, error: 'caido' }, carnes: false },
+  { nombre: 'toda la carne agotada', piezas: {}, carnes: true },
+  { nombre: 'con carne', carnes: true, piezas: {
       CEn: [{ id: 'x1', kg: 1.163 }],
       CVa: [{ id: 'x2', kg: 1.064 }, { id: 'x3', kg: 1.922 }] } },
 ];
@@ -247,7 +253,7 @@ async function main() {
       /* Que el escenario sea el que dice ser. Sin este control, un fallo al
          inyectar el inventario pasa como "todo verde" sobre una tienda que
          nunca mostro carne. */
-      const conCarne = Object.keys(esc.piezas).length > 0;
+      const conCarne = esc.carnes;
       const hayCarne = o.chips > 0 && o.secciones > 0 && o.tieneCarnes;
       if (conCarne !== hayCarne) {
         malas++;

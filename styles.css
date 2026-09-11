@@ -1561,6 +1561,34 @@ body.busqueda-activa #repeat-block { display: none !important; }
   .carne-card .product-thumb { flex: 0 0 auto; aspect-ratio: 16 / 9; }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   CARNE SIN STOCK                                          (11/9/2026)
+   ═══════════════════════════════════════════════════════════════
+   El corte sin piezas se muestra —Tadeo: "estaria bueno que avisemos"— pero
+   en chico: una fila con la foto al costado, el nombre, el kilo y el aviso.
+   A tamaño completo, dos cortes agotados eran 840px de scroll a 390px para
+   decir "no hay".
+
+   Sin descripcion ni chips: venderle a alguien lo que no puede comprar
+   frustra. La foto va en gris, que es la senal de "no disponible" que
+   cualquiera lee sin leer.
+
+   `.carne-card.agotada` (dos clases) le gana a las reglas de `.carne-card`
+   de arriba, incluida la del celular que la pone en columna: por eso la fila
+   se mantiene en todos los anchos sin repetir el media query entero. */
+.carne-card.agotada { flex-direction: row; }
+.carne-card.agotada .product-thumb { flex: 0 0 180px; aspect-ratio: auto; min-height: 104px; }
+.carne-card.agotada .product-thumb-img { filter: grayscale(1); opacity: .55; }
+.carne-card.agotada .product-desc,
+.carne-card.agotada .product-chips { display: none; }
+.carne-card.agotada .product-name { color: #6b5a52; }
+.chapa-agotado { background: var(--white); color: var(--brown); }
+.pz-agotado { font-size: .84rem; line-height: 1.4; color: #6b5a52; margin: .35rem 0 .1rem; }
+.pz-agotado strong { display: block; color: var(--brown); }
+@media (max-width: 430px) {
+  .carne-card.agotada .product-thumb { flex-basis: 112px; }
+}
+
 /* ══════════════════════════════════════════════════════════
    "LOS MAS PEDIDOS", MAS CHICO  (10/9/2026)
    Tadeo: "cada producto achicarlo un poco (tanto en compu como en celular),

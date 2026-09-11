@@ -237,13 +237,17 @@ function getActiveProducts() {
   return PRODUCTOS.filter(function(p) {
     if (!_zonaPermite(p.zonas)) return false;
     if (_catBloqueadaPorBarrio(p.cat)) return false;
-    /* Un corte sin piezas cargadas no se ofrece. Es el unico filtro que hace
-       falta: por aca pasan el catalogo, los tiles de categoria y el buscador,
-       asi que con esto la categoria Carnes entera desaparece sola mientras no
-       haya nada, y aparece sola el dia que Lucas cargue el primer envio.
-       Mira el INVENTARIO y no las piezas libres: si el cliente se lleva la
-       ultima, el corte tiene que seguir a la vista con su pieza tildada. */
-    if (esPorPeso(p) && !(piezasMap[p.abbr] || []).length) return false;
+    /* La carne se muestra solo cuando SABEMOS que hay: mientras el inventario
+       viaja, o si no se pudo traer, no se dibuja ningun corte. Decir "sin
+       stock" sin haber mirado seria mentir: no saber no es lo mismo que no hay.
+
+       Sabiendolo, un corte sin piezas SE MUESTRA, con "Sin stock" (11/9/2026).
+       Hasta ese dia desaparecia, y Tadeo lo pidio al reves: "si bien ya no hay
+       algunos gustos de carne por no tener stock, estaria bueno que avisemos".
+       Un corte que no esta se lee como "aca no venden colita"; uno que dice
+       "sin stock" se lee como "hoy no hay, vuelvo". Va al final de su
+       categoria (renderCatalog) y en chico, para no empujar los que si hay. */
+    if (esPorPeso(p) && !_carneConocida()) return false;
     return true;
   });
 }
@@ -721,7 +725,10 @@ function fetchPiezas() {
       if (!d || typeof d !== 'object' || d.ok === false) { _piezasFallo(); return false; }
       var r = _piezasLimpiar(d);
       piezasMap = r.mapa;
-      piezasEstado = r.hubo ? 'ok' : 'sin-datos';
+      /* 'vacio' y no 'sin-datos': el backend CONTESTO y dijo que no queda
+         ninguna pieza. Es un dato, y la tienda lo muestra ("Sin stock"). Un
+         fallo de red es otra cosa y queda en 'sin-datos' (_piezasFallo). */
+      piezasEstado = r.hubo ? 'ok' : 'vacio';
       _piezasGuardarCopia(r.mapa, r.hubo);
       return true;
     })
@@ -814,9 +821,14 @@ function _piezaOrden(a, b) {
 }
 
 /* Que piezas hay, en una linea. Sirve para saber si el inventario cambio
-   sin comparar objeto por objeto. */
+   sin comparar objeto por objeto.
+
+   Arranca diciendo si el inventario es CONOCIDO: de "cargando" a "el backend
+   dijo que no hay ninguna" las piezas son las mismas (ninguna), pero la
+   pantalla cambia — aparecen los cortes con "Sin stock". Sin esa marca, la
+   firma no cambiaba y el catalogo no se repintaba nunca. */
 function _piezasFirma() {
-  return Object.keys(piezasMap).sort().map(function (a) {
+  return (_carneConocida() ? 'k' : 'u') + '#' + Object.keys(piezasMap).sort().map(function (a) {
     return a + ':' + piezasMap[a].map(function (pz) { return pz.id + '@' + pz.kg; }).join(',');
   }).join('|');
 }
@@ -824,17 +836,32 @@ function _piezasFirma() {
 /* Un refresco que falla NO borra lo que ya sabemos.
 
    Solo la primera consulta puede concluir "no hay datos". Despues, si ya
-   habia piezas, se dejan: un corte de red de un segundo no puede dejar al
-   cliente con cinco cortes que dicen "Cargando..." y no se pueden comprar.
+   habia piezas —o si el backend ya habia dicho que no quedaba ninguna—, se
+   deja: un corte de red de un segundo no puede dejar al cliente con cinco
+   cortes que dicen "Cargando..." y no se pueden comprar, ni hacer
+   desaparecer un "Sin stock" que era cierto.
    Es la misma regla de siempre — no saber no es lo mismo que no hay. */
 function _piezasFallo() {
-  if (Object.keys(piezasMap).length) return;   // ya tenemos: se queda lo que hay
+  if (Object.keys(piezasMap).length || piezasEstado === 'vacio') return;   // ya sabemos: se queda
   piezasEstado = 'sin-datos';
 }
 
-/* ¿Hay algo de carne para mostrar? Decide si la categoria se dibuja. */
+/* ¿Hay algo de carne para comprar? */
 function hayPiezas() {
   return piezasEstado === 'ok' && Object.keys(piezasMap).length > 0;
+}
+
+/* ¿Sabemos que hay de carne? Sí si el backend contesto, con piezas ('ok') o
+   sin ninguna ('vacio'). Decide si los cortes se dibujan. */
+function _carneConocida() {
+  return piezasEstado === 'ok' || piezasEstado === 'vacio';
+}
+
+/* Un corte sin ninguna pieza en el inventario. Mira el INVENTARIO y no las
+   piezas libres: si el cliente tiene en su carrito la ultima, el corte no esta
+   agotado para el — tiene que seguir a la vista con su pieza tildada. */
+function carneAgotada(p) {
+  return esPorPeso(p) && !(piezasMap[p.abbr] || []).length;
 }
 
 function productsSubtotal() {
@@ -2502,16 +2529,25 @@ function renderCombosSectionHTML() {
 function carneCardHTML(p) {
   var libres = piezasDe(p.abbr);
   var mias = piezasEnCarrito(p.abbr);
+  var agotada = _carneConocida() && carneAgotada(p);
   var chapas = '';
-  if (_esNuevo(p)) chapas += '<span class="chapa-prod chapa-nuevo">Nuevo</span>';
+  /* Agotada, la unica chapita es "Sin stock": un "Nuevo" sobre algo que no se
+     puede comprar gasta la chapita que hace que el cliente vuelva a mirar. */
+  if (agotada) chapas += '<span class="chapa-prod chapa-agotado">Sin stock</span>';
+  else if (_esNuevo(p)) chapas += '<span class="chapa-prod chapa-nuevo">Nuevo</span>';
 
   var cuerpo;
-  if (piezasEstado !== 'ok') {
+  if (!_carneConocida()) {
     /* Todavia no sabemos que hay. No decimos "sin stock": no saber no es lo
-       mismo que no hay. */
+       mismo que no hay. (Hoy getActiveProducts ni siquiera dibuja la card en
+       este estado; queda por si alguien la pide igual.) */
     cuerpo = '<p class="pz-vacio">Cargando las piezas de esta semana…</p>';
-  } else if (!libres.length && !mias.n) {
-    cuerpo = '<p class="pz-vacio">Se agotó por esta semana.</p>';
+  } else if (agotada) {
+    /* "Reponemos todas las semanas" y no un dia: la carne se pide los martes
+       y llega los jueves, pero no se repone cada corte cada semana, y
+       prometer "vuelve el jueves" seria prometer por Lucas. */
+    cuerpo = '<p class="pz-agotado"><strong>Sin stock por ahora.</strong> ' +
+      '<span>Reponemos la carne todas las semanas.</span></p>';
   } else {
     var todas = piezasMap[p.abbr] || [];
     /* Con muchas piezas se pliega: ver LA LISTA DE PIEZAS SE DESPLIEGA. */
@@ -2558,10 +2594,10 @@ function carneCardHTML(p) {
         : '');
   }
 
-  return '<article class="product-card carne-card" data-id="' + p.id + '">' +
+  return '<article class="product-card carne-card' + (agotada ? ' agotada' : '') + '" data-id="' + p.id + '">' +
     '<div class="product-thumb">' +
       (chapas ? '<div class="chapas-prod">' + chapas + '</div>' : '') +
-      '<img class="product-thumb-img" src="' + fotoUrl(p.img) + '" alt="' + p.nombre + '" loading="lazy" width="400" height="400" onerror="this.style.display=\'none\'">' +
+      '<img class="product-thumb-img" src="' + fotoUrl(p.img) + '" alt="' + p.nombre + (agotada ? ' (sin stock)' : '') + '" loading="lazy" width="400" height="400" onerror="this.style.display=\'none\'">' +
     '</div>' +
     '<div class="product-body">' +
       '<h3 class="product-name">' + p.nombre + '</h3>' +
@@ -2622,7 +2658,11 @@ function renderCatalog() {
   const cats = getCategoriasVisibles();
   const prods_all = getActiveProducts();
   $id('catalog-root').innerHTML = '<span id="productos-ancla"></span>' + cats.map(cat => {
-    const prods = prods_all.filter(p => p.cat === cat.nombre).sort((a,b) => (b.top?1:0) - (a.top?1:0));
+    /* Los destacados primero y los cortes sin stock al final: el que entra a
+       Carnes tiene que ver primero lo que puede comprar. El sort es estable,
+       asi que adentro de cada grupo queda el orden de PRODUCTOS. */
+    const prods = prods_all.filter(p => p.cat === cat.nombre)
+      .sort((a,b) => ((b.top?1:0) - (a.top?1:0)) || ((carneAgotada(a)?1:0) - (carneAgotada(b)?1:0)));
     if (!prods.length) return '';
     /* El id va EN EL MARKUP y no lo asigna nadie despues: es lo que busca
        scrollToCat, y una seccion sin id es un boton que no hace nada. */
@@ -4277,12 +4317,16 @@ function renderCatTiles() {
     // ninguno de sus productos.
     const foto = cat.img || (suyos.find(p => p.top) || suyos[0]).img;
     const slug = slugify(cat.nombre);
+    /* El contador dice lo que se puede ELEGIR: con dos cortes sin stock,
+       "5 opciones" promete de mas. Solo cambia algo en Carnes — en el resto
+       carneAgotada es siempre false. */
+    const elegibles = suyos.filter(p => !carneAgotada(p)).length;
+    const cuenta = elegibles ? elegibles + (elegibles === 1 ? ' opción' : ' opciones') : 'Sin stock';
     return '<button class="cat-tile" type="button" onclick="scrollToCat(\'' + slug + '\')" ' +
              'aria-label="Ver ' + cat.nombre + '">' +
              '<img class="cat-tile-img" src="' + fotoUrl(foto) + '" alt="" loading="lazy">' +
              '<span class="cat-tile-name">' + cat.nombre + '</span>' +
-             '<span class="cat-tile-count">' + suyos.length +
-               (suyos.length === 1 ? ' opcion' : ' opciones') + '</span>' +
+             '<span class="cat-tile-count">' + cuenta + '</span>' +
            '</button>';
   }).filter(Boolean).join('');
   cont.innerHTML = tiles;
