@@ -7,6 +7,21 @@
  *
  * Es la misma diferencia que curl vs el navegador: "el servidor lo tiene" y
  * "el cliente lo recibe" son dos preguntas distintas.
+ *
+ * ⚠ OJO, ESTE TEST DA FALSO NEGATIVO DESDE HEADLESS (10/9/2026).
+ *
+ * Medido: en --headless=new, fbevents.js carga, baja el config del pixel, se
+ * instancia y NO INTENTA ENVIAR por ninguna via — ni Image, ni fetch, ni
+ * sendBeacon, ni XHR, y sin un solo warning. Tampoco lo arregla apagar
+ * navigator.webdriver. Pasa igual con el snippet OFICIAL de Meta en una pagina
+ * de diez lineas, asi que no es de la tienda.
+ *
+ * O sea: si este test da cero hits, NO se puede concluir que el pixel no anda.
+ * Un dia costo esa conclusion, y era falsa — el conjunto recibia perfecto los
+ * eventos mandados por curl.
+ *
+ * La verificacion que SI vale: que entre una persona con un telefono de verdad
+ * y despues preguntarle a la API de Meta (last_fired_time y eventos por tipo).
  */
 const fs = require('fs'); const os = require('os'); const path = require('path');
 const { spawn } = require('child_process');

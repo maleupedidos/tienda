@@ -276,58 +276,56 @@ día, y con seis call sites pasaría igual.
 > después, pero el día que alguien agregue un `<link>` al final del head se le
 > iría al body sin que nada lo avise.
 
-### ⚠ Al 10/9/2026 el píxel NO está midiendo, y no es el código
+### El conjunto 856053897491524 SI recibe eventos web (10/9/2026)
 
-Está instalado con el conjunto **856053897491524**, que es el de *WhatsApp
-Marketing Message Event Sharing* — el que Meta creó solo el 9/3/2026. **Ese
-conjunto no recibe eventos de navegador.**
+Y esto corrige un diagnostico que estuvo escrito aca **veinte minutos** y era
+falso: decia que ese conjunto —el de *WhatsApp Marketing Message Event
+Sharing*— no aceptaba eventos de navegador, y mandaba a crear uno nuevo.
 
-Lo que se midió, en este orden:
+**La prueba de que si acepta**, medida contra la API de Meta:
 
-| | |
-|---|---|
-| los 4 eventos se arman bien | **22 ok · 0 mal** contra maleu.com.ar |
-| llamadas a `facebook.com/tr` | **cero** |
-| el píxel ¿intenta mandar por alguna vía? | **no** — ni `Image`, ni `fetch`, ni `sendBeacon`, ni `XHR` |
-| eventos registrados en el conjunto | **0**, incluso tras mandarle dos hits directos por HTTP |
+| | antes | despues de mandarle dos hits por `curl` |
+|---|---|---|
+| `last_fired_time` | `1969-12-31` (nunca) | **`2026-09-10T17:51:31`** |
+| eventos registrados | `[]` | **`PageView` 1 · `AddToCart` 1** |
 
-> [!important] Lo que descarta que sea nuestro: el CONTROL
-> Se armó una página de diez líneas con el **snippet oficial de Meta**, sin una
-> sola línea de la tienda, y tampoco manda. `fbevents.js` carga (v2.9.398),
-> baja el config del píxel (357 KB, termina en `configLoaded`), se instancia
-> —`fbq.instance.pixelsByID` lo tiene— y **se calla, sin un warning**.
+Son exactamente los dos que se le mandaron a mano a
+`https://www.facebook.com/tr/?id=856053897491524&ev=...`, que es la misma via
+del `<noscript>`. **El conjunto sirve y no hay que crear ninguno.**
+
+> [!danger] Lo que no manda es CHROME HEADLESS, no el pixel
+> Desde `--headless=new`, `fbevents.js` carga (v2.9.398), baja el config del
+> pixel, se instancia... y **no intenta enviar por ninguna via** — ni `Image`,
+> ni `fetch`, ni `sendBeacon`, ni `XHR`, sin un solo warning. Tampoco lo
+> arregla apagar `navigator.webdriver`.
 >
-> También se descartó `navigator.webdriver`: con la bandera de automation
-> apagada, igual no manda.
+> O sea que **`_tools/verificar-pixel-red.js` da un falso negativo desde un
+> navegador headless**, y no se puede usar para concluir que el pixel no anda.
 
-**Qué falta:** crear un conjunto de datos nuevo, de sitio web, y cambiar el ID.
-La API de Meta **no permite crear datasets** (se revisó: hay herramientas para
-eventos, parámetros y catálogos, ninguna para crear el conjunto), así que ese
-paso lo tiene que hacer una persona desde el Administrador de eventos.
+> [!danger] La leccion, y es sobre el CONTROL — no sobre Meta
+> Para descartar que el problema fuera nuestro se armo una pagina de diez
+> lineas con el snippet **oficial** de Meta, sin una linea de la tienda. Tampoco
+> mandaba, y de ahi salió la conclusion falsa: *"no es el codigo, entonces es
+> el dataset"*.
+>
+> **El control estaba mal armado.** Un control tiene que variar UNA sola cosa, y
+> el mio variaba el codigo dejando fijo el entorno — cuando el entorno
+> (headless) era justamente la causa. Los dos lados del experimento compartian
+> el vicio, asi que la comparacion no podia detectarlo.
+>
+> Lo destapo mirar el dato desde **otro angulo que no fuera el navegador**:
+> preguntarle a la API de Meta si habia recibido algo. Cuando dos caminos
+> independientes se contradicen, el que tiene mas piezas en el medio es el
+> sospechoso — y un Chrome headless tiene muchas mas que una consulta HTTP.
 
-Cuando el ID nuevo exista, **se cambia en un solo lugar**: `index.html`, en el
-`fbq('init', ...)` y en el `<noscript>`. Los dos tests lo leen de ahí, no lo
-tienen escrito.
+**Como se verifica de verdad, entonces:** que entre una persona con un telefono
+de verdad a `maleu.com.ar`, y despues consultar el conjunto por la API
+(`last_fired_time` y los eventos por tipo). Es lo unico que no depende de un
+navegador automatizado.
 
-> [!danger] La lección, que costó una tarde: "22 ok · 0 mal" no era medir
-> El primer test verificaba que los eventos se **encolaran** bien — y lo hacían,
-> perfecto, con todos sus parámetros. Pero bloqueaba `fbevents.js` a propósito
-> para poder leer la cola, así que **nunca probó que Meta los recibiera**.
->
-> Es la misma distinción que ya está anotada más arriba para el caché: *"`curl`
-> dice que el servidor lo tiene, y eso es otra pregunta distinta de si el
-> navegador lo recibe"*. Acá: **que el evento salga bien armado es otra pregunta
-> distinta de si Meta lo registra.**
->
-> Por eso ahora son dos redes y hay que correr las dos:
->
-> ```bash
-> node _tools/verificar-pixel.js          # que los 4 eventos se armen bien
-> node _tools/verificar-pixel-red.js      # que LLEGUEN a facebook.com/tr
-> ```
->
-> La segunda es la que hoy da rojo, y tiene que dar verde antes de decir que el
-> píxel anda.
+`_tools/verificar-pixel.js` (los 4 eventos y sus parametros) **si sirve desde
+headless** y es el que hay que correr ante cualquier cambio: mide como se arma
+el evento, no como viaja.
 
 ### La privacidad tuvo que decir la verdad
 
