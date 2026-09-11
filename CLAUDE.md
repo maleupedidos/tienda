@@ -170,6 +170,48 @@ Venta = "Red y Delivery"**, no "Home". El código no lee esa columna —es
 documentación— así que no rompe nada, pero quedó vieja: hoy también se venden
 en Home.
 
+## Los carteles de stock se borran solos si alguien repinta el catálogo (10/9/2026)
+
+> [!danger] Medido contra maleu.com.ar: el cliente veía "Sin stock" 2 segundos
+> Y después desaparecía **de los 34 productos**, sin un solo error en consola.
+> Muestreado cada 400 ms contra producción:
+>
+> | | renderCatalog | updateStockDisplay | el cartel |
+> |---|---|---|---|
+> | 0,0 s | 1 | 3 | **"Sin stock"** |
+> | 2,0 s — llega el inventario de carne | **2** | 3 | **vacío** |
+
+La causa: **los badges se pintan aparte del HTML de la card**, así que cualquier
+`renderCatalog()` los borra. De los **cinco** caminos que repintan el catálogo,
+cuatro llamaban a `updateStockDisplay()` y el de `fetchPiezas` no.
+
+Es el mismo patrón que el comentario de `renderCatNav()` ya tenía anotado tres
+líneas más arriba —*"colgarlo de los call sites es como los botones dejaron de
+andar el 10/9/2026: había cinco y dos se olvidaron de llamarlo"*— y el stock
+había quedado afuera de esa lección. Por eso **se arregló en la raíz**:
+`renderCatalog()` repinta el stock él mismo. Un sexto lugar del que acordarse
+habría durado hasta el séptimo camino.
+
+> [!warning] Estuvo LATENTE hasta que Lucas cargó las primeras piezas de carne
+> Sin piezas, `piezas_full` devuelve `{}`, la firma no cambia y ese segundo
+> repintado **no ocurre nunca**. El bug se activó solo, sin que nadie tocara la
+> tienda, la noche del 10/9/2026.
+
+> [!danger] Y el test lo daba VERDE, por culpa de su propio stub
+> El escenario devolvía `{}` en `piezas_full` para simplificar. Con eso la firma
+> nunca cambiaba y **el repintado no se ejercitaba**: 37 ok sobre un bug que
+> estaba vivo en producción. Ahora el stub devuelve piezas de verdad y hay un
+> chequeo explícito — leer el cartel, llamar a `renderCatalog()`, leerlo otra vez
+> y exigir que diga lo mismo.
+>
+> Es la lección de siempre dada vuelta: un stub que simplifica de más no hace
+> fallar algo que anda, **hace pasar algo que está roto**.
+
+> [!tip] Lo encontró una captura de pantalla, no un número
+> El test daba verde y las redes también. Salió de sacar la foto para mostrarle
+> el resultado a Tadeo: la primera captura mostraba "Sin stock" y la segunda, un
+> minuto después, no. **Mirá la pantalla, no sólo los números.**
+
 > [!warning] Existió `?autopedido=1` y se eliminó el 8/9/2026
 > Del 1/9 al 8/9 ese parámetro mostraba el catálogo completo acá. No andaba mal
 > — el problema era que convertía a la tienda en una **segunda pantalla para
