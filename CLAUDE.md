@@ -907,14 +907,28 @@ efectivo en cualquier pedido. Las páginas estáticas no lo mencionaban.
 > La salvaguarda de `_doPostHome` recalcula el descuento de cada pedido de la
 > tienda con su propia regla. Con el umbral sacado solo de este lado, un pedido de
 > $120.000 por transferencia se vería a $120.000 y el ERP lo guardaría a $108.000.
-> Por eso **se publicó después del backend**, y si el 10% por monto volviera algún
-> día, tiene que volver en las dos puntas.
+> Por eso **se publicó después del backend** (@582, el mismo día), y si el 10% por
+> monto volviera algún día, tiene que volver en las dos puntas.
+
+> [!important] Una pestaña vieja no le cobra de más a nadie
+> Un cliente puede tener la tienda abierta desde antes del cambio y estar viendo
+> todavía el 10%. La regla del ERP (`_descAutoPedido_`) acepta lo que manda la
+> tienda **solo si es 0 o el 10% exacto del subtotal**: con eso, el que vio el
+> descuento lo paga, y cualquier otro valor se corrige como siempre.
+>
+> De paso quedó alineado un desfasaje que existía antes: **Pilar en efectivo**.
+> La tienda no le da el 10% a esa zona y el ERP se lo forzaba igual, así que
+> guardaba 10% menos de lo que el cliente había visto. Ahora cada pantalla guarda
+> lo que mostró.
 
 > [!important] Los pedidos cargados antes conservan su descuento
-> Al darlo de baja había dos pedidos reservados con el 10% por monto (Home #931 y
-> #939). El cobro y la edición del ERP los respetan: *"el precio que vale es el
-> que ves en la tienda al momento de hacer el pedido"*, dicen los términos. Eso lo
-> resolvió Backend del lado del ERP.
+> Al darlo de baja eran **tres** los pedidos reservados con el 10% por monto:
+> Home **#931**, **#939** y **#944** (Inés Canale, $217.400). El cobro y la
+> edición del ERP los respetan — *"el precio que vale es el que ves en la tienda
+> al momento de hacer el pedido"*, dicen los términos —, y **no por una fecha de
+> corte**: el ERP los reconoce por lo que el pedido tiene guardado (el 10% exacto
+> de su subtotal sin ser en efectivo). Si al editarlo el pedido baja de $100.000,
+> pierde el descuento, igual que con la regla vieja. Eso lo resolvió Backend.
 
 La red es **`node _tools/verificar-descuento.js [ancho]`**: un carrito de más de
 $100.000 con carne, por transferencia (sin descuento en ningún lado, ni la palabra
