@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=a0833d4f" />
+  <link rel="stylesheet" href="styles.css?v=441dae2a" />
   <script>
     // Forzar inicio arriba en cada carga (incluye refresh, back-forward cache de iOS).
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
@@ -612,10 +612,14 @@
     </div>
     <h3 id="send-title">Enviando tu pedido…</h3>
     <p id="send-sub">Estamos confirmando con Maleu. En unos segundos te llevamos a WhatsApp.</p>
+    <div class="send-fallback">
+      <button type="button" class="send-wa-btn" id="send-wa-btn">Mandar por WhatsApp</button>
+      <p class="send-fallback-nota">Mientras tanto seguimos intentando: si se registra, te llevamos solo.</p>
+    </div>
     <div class="send-progress"><div class="send-progress-bar"></div></div>
   </div>
 </div>
 
-<script src="app.js?v=70cc7278"></script>
+<script src="app.js?v=0a76d4ff"></script>
 </body>
 </html>

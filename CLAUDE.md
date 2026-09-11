@@ -745,6 +745,113 @@ validar el %, el carrito a precio de lista): **los cuatro se agarran**.
 > 10/9, el día que se cargaron, no el que llegaron), el % en
 > **`CARNE_OFERTA_PCT`** de Config_Maleu (default 5) y el piso contra el costo.
 
+## Un pedido se da por registrado SOLO cuando el ERP lo confirma (11/9/2026)
+
+Tadeo: *"nos hacen un pedido, nos llega el mensaje por WhatsApp, y en el ERP
+no aparece... un negocio funciona cuando vende, y si tenemos fallas en el flujo
+de ventas estamos cagados"*. Un pedido de **$84.600 del 10/9** le llegó por
+WhatsApp y **nunca llegó a la planilla**: ni una fila en `Log Pedidos` (que
+anota hasta los reintentos repetidos) ni en `Log Errores`. O sea que el POST no
+llegó ni a ejecutarse en el backend.
+
+> [!danger] La causa: la tienda mandaba a WhatsApp SIN confirmación, siempre
+> El flujo viejo (21/06/26) mandaba al cliente a WhatsApp a los **3,8 s** si
+> `navigator.sendBeacon()` devolvía `true`. Pero `true` sólo quiere decir **"el
+> navegador lo puso en la cola"**, no "llegó". Y como Apps Script tarda **como
+> mínimo ~5 s** en contestar, la confirmación real por `fetch` no llegaba
+> **nunca** dentro de los 3 s: **el 100% de los pedidos salía por el camino
+> optimista.** Medido en `Log Pedidos`: el primer registro de cada pedido llega
+> a los ~6 s del click.
+>
+> Si el beacon no salía —mala señal, o el navegador cerrado al saltar a
+> WhatsApp—, el pedido se perdía **sin un error en ningún lado**. Y el mensaje
+> le llegaba igual a Maleu: **WhatsApp guarda y reenvía aunque no haya señal**,
+> el navegador no.
+
+**Cuánto pasa, medido** cruzando cada mensaje *"Hola! Quiero hacer un pedido:"*
+que entró por WATI (284 desde el 15/5/2026) contra las 4 hojas y `Log Pedidos`:
+
+| | |
+|---|---|
+| Desde que existe `Log Pedidos` (31/8) | **21 pedidos de la tienda, 1 no llegó** — el del 10/9 |
+| Los otros 3 que "no aparecían" | **sí están**: el teléfono del formulario venía con **15 en vez de 11** |
+| Antes del 31/8 | no se puede separar un POST perdido de uno cargado a mano; hay 3 candidatos en 3 meses |
+
+### El flujo nuevo
+
+| cuándo | qué pasa |
+|---|---|
+| al tocar | **un solo POST por `fetch`** — "Registrando tu pedido…" |
+| ~7-9 s | el ERP contesta `{ok:true}` → **"¡Pedido registrado!"** → WhatsApp con el mensaje normal |
+| 8 s sin respuesta | *"La conexión está lenta. Seguimos intentando…"* |
+| 25 s sin respuesta | **"Todavía no se registró"** + botón *Mandar por WhatsApp* |
+| si confirma con ese cartel puesto | sigue solo por el camino normal |
+
+**El mensaje de WhatsApp ahora lleva siempre el día de entrega y una
+referencia** (`📅 Viernes 12/09 · 19 a 21 hs` y `_Pedido web · K3P9Q_`). La
+referencia son 5 caracteres del `clientOrderId`, así que **se busca en la col H
+de `Log Pedidos`** — sin depender del teléfono, que viene mal tipeado seguido.
+La primera línea no se tocó: si alguna regla de WATI la busca tal cual, se
+rompería sin avisar.
+
+> [!important] Si llega un WhatsApp con "⚠️ La web no llegó a confirmar este pedido"
+> Es el del botón de los 25 s. Trae **nombre, teléfono, dirección, día y pago**
+> para cargarlo a mano. **Primero buscalo en el ERP** (por nombre o por la
+> referencia): la tienda sigue reintentando, así que puede haber entrado solo
+> un rato después. Si no está, se carga desde la tab AUTOPEDIDO.
+
+**Reintentos, rehechos:** un solo POST en vuelo por pedido, tope de **30 s** por
+intento (el lock de `doPost` espera hasta 30 s: abortar a los 12, como antes, no
+cancela nada en el servidor, sólo fabrica otro reintento) y espera de 2, 4, 8,
+15 s… **El beacon quedó como último recurso**: sólo cuando la página se va con
+un pedido sin confirmar, y nunca cuenta como confirmación.
+
+> [!warning] Antes, un pedido llegaba hasta 18 veces al backend
+> Cada reintento disparaba un beacon **más** un fetch, y el intervalo de 30 s
+> arrancaba otra cadena encima de la que ya corría. Un pedido del 11/9 entró
+> **18 veces** a Apps Script en 17 minutos, y cada una toma el lock de `doPost`
+> que usa **todo el ERP**. Ahora es 1 por pedido (2 si la página se va antes de
+> confirmar).
+
+### La red: `node _tools/verificar-envio.js [ancho]`
+
+Seis escenarios con el backend **simulado** —confirma a los 6 s, tarda 12, no
+contesta nunca, dos `{ok:false}`, dos fallas de red, confirma a los 27 s con el
+cartel ya puesto—, **37 chequeos** verdes a 390 y 1440px. Corrido contra el
+código viejo da **16 mal**: con el backend colgado, a los 3,8 s mandaba al
+cliente a WhatsApp como si estuviera registrado.
+
+> [!danger] Ningún test puede meter un pedido en la planilla
+> El 11/9/2026 entró *"Prueba Escaneo"* a la hoja Home desde un script que
+> cortaba los POST **adentro de la página** (`Runtime.evaluate`): la página
+> recargó, la tienda reintentó el pedido que había quedado en `localStorage`, y
+> ese reintento salió de verdad. Por eso este test tiene **dos seguros**:
+>
+> · corta todo POST al backend **por CDP** (`Fetch`), fuera de la página y desde
+>   antes de la primera navegación;
+> · y sirve `app.js` con la URL del backend **cambiada por una que no existe**:
+>   si algo se escapara, Google contesta 404 y no escribe nada.
+>
+> `verificar-pedido.js` y `verificar-pixel.js` cortan adentro de la página pero
+> con `Page.addScriptToEvaluateOnNewDocument`, que se reinstala en cada recarga
+> antes de que arranque la tienda: esos son seguros.
+
+**Y `verificar-llamadas.js` aprendió los parámetros**: un callback que llega por
+parámetro (`function (alTocar) { alTocar(); }`) se marcaba como llamada a algo
+inexistente. Probado en la dirección contraria: sigue agarrando `updateCart()`.
+
+> [!note] Lo que falta es del lado del ERP
+> Dos cosas, pedidas a la sesión Backend el 11/9/2026:
+> · **El dedup marca el pedido como visto ANTES de guardarlo.** Si `_doPostHome`
+>   revienta, los reintentos reciben `{ok:true, dedup:true}` y la tienda lo da
+>   por confirmado. Hoy no pasó (no hay errores en septiembre), pero es la
+>   próxima forma de perder un pedido.
+> · **Una alarma que no dependa del navegador del cliente**: cada mensaje de la
+>   tienda que entra por WATI tiene que tener su fila en `Log Pedidos` (se cruza
+>   por la referencia). Si a los 15 minutos no la tiene, avisar. Es lo único
+>   que agarra un pedido perdido **por cualquier causa**, incluidas las que la
+>   tienda no puede ver.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

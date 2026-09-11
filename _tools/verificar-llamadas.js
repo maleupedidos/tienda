@@ -91,6 +91,17 @@ const existe = new Set();
 for (const m of src.matchAll(/(?:^|\n)\s*(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/g)) existe.add(m[1]);
 for (const m of src.matchAll(/(?:^|\n)\s*(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function\b|\([^)]*\)\s*=>|[A-Za-z_$][\w$]*\s*=>)/g)) existe.add(m[1]);
 for (const m of src.matchAll(/window\.([A-Za-z_$][\w$]*)\s*=/g)) existe.add(m[1]);
+/* Los PARAMETROS tambien existen (11/9/2026): un callback que llega por
+   parametro — `function (alTocar) { alTocar(); }` — se marcaba como llamada a
+   algo inexistente. Se toman los de `function x(a, b)`, `function (a)`,
+   `(a, b) =>` y `a =>`; los desestructurados y los default, por su nombre. */
+const agregarParams = (lista) => lista.split(',').forEach((p) => {
+  const n = p.replace(/=.*$/s, '').replace(/[{}\[\]\s.]/g, '');
+  if (/^[A-Za-z_$][\w$]*$/.test(n)) existe.add(n);
+});
+for (const m of src.matchAll(/function\s*[A-Za-z_$]?[\w$]*\s*\(([^)]*)\)/g)) agregarParams(m[1]);
+for (const m of src.matchAll(/\(([^()]*)\)\s*=>/g)) agregarParams(m[1]);
+for (const m of src.matchAll(/(?:^|[^\w$.])([A-Za-z_$][\w$]*)\s*=>/g)) existe.add(m[1]);
 for (const m of html.matchAll(/(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/g)) existe.add(m[1]);
 for (const m of html.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function\b|\()/g)) existe.add(m[1]);
 

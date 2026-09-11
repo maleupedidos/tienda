@@ -3373,17 +3373,21 @@ function filtrarSubBarrios(keepValue) {
 }
 
 /* ── LOADER OVERLAY DE ENVÍO ──
-   Modal con spinner + barra de progreso indeterminada que cubre la pantalla
-   mientras el POST al backend está en vuelo. Tiene 3 estados: default (enviando),
-   .success (✓ verde), .error (! rojo). Se cierra automáticamente. */
+   Cubre la pantalla mientras el pedido se registra. Estados:
+     · default   — registrando (el POST esta en vuelo)
+     · .success  — ✓, el backend CONFIRMO: recien ahi se va a WhatsApp
+     · .fallback — a los 25 s sin confirmacion: se ofrece mandarlo igual por
+                   WhatsApp, con un mensaje que dice que no quedo registrado */
 function showSendLoader() {
   var ov = $id('send-overlay');
   if (!ov) return;
   var card = ov.querySelector('.send-card');
-  if (card) card.classList.remove('success', 'error');
+  if (card) card.classList.remove('success', 'error', 'fallback');
   var t = $id('send-title'), s = $id('send-sub');
-  if (t) t.textContent = 'Enviando tu pedido…';
-  if (s) s.textContent = 'Estamos confirmando con Maleu. En unos segundos te llevamos a WhatsApp.';
+  if (t) t.textContent = 'Registrando tu pedido…';
+  if (s) s.textContent = 'Tarda unos segundos. No cierres esta pantalla.';
+  var fb = $id('send-wa-btn');
+  if (fb) fb.onclick = null;
   ov.classList.add('active');
   ov.setAttribute('aria-hidden', 'false');
   _fondoQuieto('envio', true);
@@ -3392,32 +3396,40 @@ function setSendLoaderSuccess() {
   var ov = $id('send-overlay');
   if (!ov) return;
   var card = ov.querySelector('.send-card');
-  if (card) card.classList.add('success');
+  if (card) { card.classList.remove('fallback'); card.classList.add('success'); }
   var t = $id('send-title'), s = $id('send-sub');
-  if (t) t.textContent = '¡Pedido enviado!';
-  if (s) s.textContent = 'Te abrimos WhatsApp para que confirmes con Maleu.';
+  if (t) t.textContent = '¡Pedido registrado!';
+  if (s) s.textContent = 'Te llevamos a WhatsApp para que se lo mandes a Maleu.';
 }
-function setSendLoaderError(beaconOK) {
+/* A los 8 s todavia sin confirmacion: casi siempre es la señal. Decirlo evita
+   que el cliente crea que se colgo y cierre la pantalla. */
+function setSendLoaderLento() {
+  var s = $id('send-sub');
+  if (s) s.textContent = 'La conexión está lenta. Seguimos intentando…';
+}
+/* A los 25 s el cliente no se queda trabado: lo puede mandar por WhatsApp,
+   que guarda y reenvia el mensaje aunque no haya señal. Ese mensaje dice que
+   el pedido NO quedo registrado y lleva los datos para cargarlo a mano. La
+   tienda sigue intentando mientras tanto: si confirma antes del toque, sigue
+   sola por el camino normal. */
+function setSendLoaderFallback(alTocar) {
   var ov = $id('send-overlay');
   if (!ov) return;
   var card = ov.querySelector('.send-card');
-  if (card) card.classList.add('error');
+  if (card) card.classList.add('fallback');
   var t = $id('send-title'), s = $id('send-sub');
-  if (beaconOK) {
-    // sendBeacon disparó OK — el pedido va a llegar aunque el fetch no confirmó.
-    if (card) { card.classList.add('warn'); card.classList.remove('error'); }
-    if (t) t.textContent = 'Tu pedido está en camino';
-    if (s) s.textContent = 'Te confirmamos por WhatsApp en unos minutos. Por favor no lo vuelvas a enviar.';
-  } else {
-    if (t) t.textContent = 'No pudimos enviar';
-    if (s) s.textContent = 'Reintentá en 30 segundos. No se va a duplicar si volvés a apretar.';
-  }
+  if (t) t.textContent = 'Todavía no se registró';
+  if (s) s.textContent = 'Podés mandarlo igual por WhatsApp: le llega a Maleu con todos tus datos.';
+  var fb = $id('send-wa-btn');
+  if (fb) fb.onclick = function () { fb.onclick = null; alTocar(); };
 }
 function hideSendLoader() {
   var ov = $id('send-overlay');
   if (!ov) return;
   ov.classList.remove('active');
   ov.setAttribute('aria-hidden', 'true');
+  var card = ov.querySelector('.send-card');
+  if (card) card.classList.remove('success', 'error', 'fallback');
   _fondoQuieto('envio', false);
 }
 
@@ -3627,8 +3639,10 @@ function enviarPedido() {
   }
 
   // Mensaje unificado: mínimo imprescindible para el cliente.
-  // Los datos del cliente (nombre, tel, dirección, entrega, pago) los ve Maleu
-  // en Panel/Búsqueda/Ruta/Red — no se repiten en el WhatsApp.
+  // Los datos del cliente (nombre, tel, dirección, pago) los ve Maleu en el ERP
+  // y no se repiten en el WhatsApp — SALVO cuando la web no llegó a confirmar
+  // el pedido (11/9/2026): ahí el WhatsApp es la única copia y va completo.
+  // El día de entrega sí va siempre: al cliente le sirve de confirmación.
   const cuponDescW = getCouponDiscount();
   const autoDescW  = getCashDiscount();
   var msgLines = ['Hola! Quiero hacer un pedido:', '', prodLines, ''];
@@ -3645,24 +3659,25 @@ function enviarPedido() {
   //   - Sin vendedor Red (Home / 'Otra zona' de Pilar): alias maleu (maleump).
   //   - Con vendedor Red y ALIAS cargado en Sheets: alias del vendedor.
   //   - Con vendedor Red sin alias: no ponemos alias — el vendedor lo pasa a mano.
+  /* El alias va aparte y AL FINAL del mensaje: es lo que el cliente copia.
+     Entre el total y el alias van el dia de entrega y la referencia del
+     pedido, que se arman mas abajo, cuando ya existe el clientOrderId. */
+  var aliasLines = [];
   if (pagoEl.value === 'Transferencia') {
     if (!vendedorMatch) {
       /* Las dos cuentas de Maleu: el cliente transfiere a la que le quede
          comoda. Van con el banco adelante porque el alias solo no dice a que
          app entrar. */
-      msgLines.push('');
-      msgLines.push(ALIAS_MALEU.length > 1 ? 'Para transferir, cualquiera de las dos:' : 'alias:');
+      aliasLines.push('');
+      aliasLines.push(ALIAS_MALEU.length > 1 ? 'Para transferir, cualquiera de las dos:' : 'alias:');
       ALIAS_MALEU.forEach(function (c) {
-        msgLines.push('\u2022 ' + c.banco + ': *' + c.alias + '*');
+        aliasLines.push('\u2022 ' + c.banco + ': *' + c.alias + '*');
       });
     } else if (vendedorMatch.alias) {
-      msgLines.push('');
-      msgLines.push('alias: *' + vendedorMatch.alias + '*');
+      aliasLines.push('');
+      aliasLines.push('alias: *' + vendedorMatch.alias + '*');
     }
   }
-  var msg = msgLines.join('\n');
-
-  const urlText = encodeURIComponent(msg);
 
   // Registrar en Google Sheets — los combos se EXPANDEN a sus productos reales
   // y se fusionan con los productos sueltos por id (qty sumada). Así el stock se
@@ -3768,6 +3783,25 @@ function enviarPedido() {
   // clientOrderId se REUSA → backend dedupea. Fix del 21/06/26 tras duplicados
   // Vie/Sáb 19-20/06 en Estancias que hubo que borrar a mano del Sheets.
   postData.clientOrderId = _clientOrderIdForOrder(postData);
+  /* El mensaje de WhatsApp se arma recien aca porque lleva la referencia del
+     pedido, que sale del clientOrderId. Son DOS versiones:
+       · msgNormal       — el backend confirmo: el pedido ya esta en el ERP.
+       · msgSinConfirmar — a los 25 s no hubo confirmacion y el cliente lo manda
+         igual. Lleva los datos para cargarlo a mano y DICE que la web no lo
+         confirmo: sin eso, en WhatsApp se ve igual que uno registrado, que es
+         exactamente como se perdio un pedido de $84.600 el 10/9/2026.
+     La primera linea ("Hola! Quiero hacer un pedido:") no se toca: si alguna
+     regla de WATI la busca tal cual, cambiarla la romperia sin avisar. */
+  var _refPedido = _refDePedido(postData.clientOrderId);
+  var _lineaDia = '📅 ' + diaMensaje + (horarioStr && !/coordinar/i.test(horarioStr) ? ' · ' + horarioStr : '');
+  var msgNormal = msgLines.concat(['', _lineaDia, '_Pedido web · ' + _refPedido + '_'], aliasLines).join('\n');
+  var msgSinConfirmar = msgLines.concat(['',
+    _lineaDia,
+    '👤 ' + nombre + ' · ' + telefono,
+    '📍 ' + direccionStr,
+    (pagoEl.value === 'Efectivo' ? '💵 Efectivo' : '💳 Transferencia'),
+    '⚠️ _La web no llegó a confirmar este pedido · ' + _refPedido + '_'
+  ], aliasLines).join('\n');
   // Cumpleaños del cliente (si lo cargó en el form) → backend lo guarda en Clientes Meta.
   var _cumple = getCumpleValue();
   if (_cumple) postData.cumple = _cumple;
@@ -3778,29 +3812,48 @@ function enviarPedido() {
   }
   _track('purchase', { value: total, orderId: postData.clientOrderId, zone: currentZone, items: cartCount(), discount: discount, payment: pagoEl.value, cupon: appliedCoupon ? appliedCoupon.codigo : '', vendedor: vendedorMatch ? vendedorMatch.nombre : '' });
 
-  // Estrategia de envío (21/06/26):
-  //  - sendBeacon dispara PRIMERO (garantizado por spec, sobrevive al redirect).
-  //  - fetch en paralelo intenta leer la respuesta {ok:true}.
-  //  - Si fetch responde en <3s: éxito confirmado real.
-  //  - Si fetch tarda o falla PERO sendBeacon disparó OK: tratamos como éxito
-  //    "optimista" (el server SÍ va a recibirlo). Redirigimos a WhatsApp igual.
-  //  - Si TODO falla (sendBeacon rejected + fetch falla): recién ahí mostramos
-  //    error, con mensaje bloqueante que dice "no vuelvas a apretar".
-  //
-  // Además: signature-based clientOrderId asegura que si el cliente re-envía
-  // el mismo pedido, backend deduplica automático. Previene duplicados por
-  // doble-tap del cliente ansioso viendo "Sin señal" (bug fin-de-semana 19-20/06).
+  /* ── EL PEDIDO SE DA POR REGISTRADO SOLO CUANDO EL BACKEND LO CONFIRMA (11/9/2026) ──
+     Hasta ese dia la tienda mandaba al cliente a WhatsApp a los 3,8 s si
+     `navigator.sendBeacon` devolvia true. Pero true solo quiere decir "el
+     navegador lo puso en la cola", no "llego". Y como Apps Script tarda como
+     minimo ~5 s en contestar, la confirmacion por fetch no llegaba NUNCA dentro
+     de los 3 s: el 100% de los pedidos salia por ese camino optimista.
+     Si el beacon no salia (mala señal, el navegador cerrado al saltar a
+     WhatsApp), el pedido se perdia sin un error en ningun lado, mientras el
+     mensaje le llegaba igual a Maleu: WhatsApp guarda y reenvia aunque no
+     haya señal. Asi se perdio un pedido de $84.600 el 10/9/2026.
+
+     Ahora: UN POST por fetch y se ESPERA el {ok:true} (~7-9 s). Recien ahi
+     WhatsApp. A los 25 s sin confirmacion, el cliente lo puede mandar igual,
+     pero con un mensaje que dice que la web no lo confirmo. */
   _enviando = true;
   const waTarget = vendedorMatch ? vendedorMatch.wa : WA_NUMBER;
   const waBtn = document.querySelector('.whatsapp-btn');
   const waBtnOrig = waBtn ? waBtn.innerHTML : '';
   if (waBtn) { waBtn.disabled = true; waBtn.innerHTML = 'Enviando…'; waBtn.style.background = '#2e7d32'; }
-  // Mostrar overlay loader (animado, branded)
   showSendLoader();
 
-  function _afterSuccess() {
-    if (waBtn) waBtn.innerHTML = '✓ Pedido registrado';
-    setSendLoaderSuccess();
+  var _terminado = false;
+  var tLento = setTimeout(function () { if (!_terminado) setSendLoaderLento(); }, SEND_LENTO_MS);
+  var tFallback = setTimeout(function () {
+    if (_terminado) return;
+    setSendLoaderFallback(function () {
+      /* Ultimo intento antes de irse: el beacon sobrevive a que la pagina
+         cambie. Si llega junto con el fetch que sigue en vuelo, el backend
+         descarta el repetido por clientOrderId. */
+      _beaconPendientes();
+      _irAWhatsApp(msgSinConfirmar, false);
+    });
+  }, SEND_FALLBACK_MS);
+
+  function _irAWhatsApp(texto, confirmado) {
+    if (_terminado) return;
+    _terminado = true;
+    clearTimeout(tLento); clearTimeout(tFallback);
+    if (confirmado) {
+      if (waBtn) waBtn.innerHTML = '✓ Pedido registrado';
+      setSendLoaderSuccess();
+    }
     // Best-effort: sumar uso al cupón. No bloqueamos el flujo si falla.
     if (appliedCoupon) {
       try {
@@ -3809,10 +3862,10 @@ function enviarPedido() {
         else fetch(APPS_SCRIPT_URL, { method:'POST', body: blob, mode:'no-cors', keepalive: true }).catch(function(){});
       } catch(_e) {}
     }
-    // Redirect a WhatsApp con un breve respiro para que se vea el check verde
-    setTimeout(function() {
-      window.location.href = 'https://wa.me/' + waTarget + '?text=' + urlText;
-    }, 800);
+    // Con confirmacion, un respiro para que se vea el check verde.
+    setTimeout(function () {
+      window.location.href = 'https://wa.me/' + waTarget + '?text=' + encodeURIComponent(texto);
+    }, confirmado ? 800 : 0);
     setTimeout(() => {
       cart = {}; comboCart = {}; piezaCart = {}; updateUI();
       getActiveProducts().forEach(p => renderCardFooter(p.id));
@@ -3830,79 +3883,26 @@ function enviarPedido() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 1800);
   }
-  function _afterFail() {
-    setSendLoaderError(beaconOK);
-    // El botón queda desactivado 60s para bloquear el doble-tap ansioso.
-    // El mensaje depende de si sendBeacon logró disparar el POST o no.
-    // Aunque el cliente reintente, el clientOrderId por signature garantiza que
-    // el backend no cree un duplicado. Pero el mensaje debe ser honesto igual.
-    var msg;
-    if (beaconOK) {
-      if (waBtn) { waBtn.disabled = true; waBtn.innerHTML = '⏳ Tu pedido está en camino'; waBtn.style.background = '#8d6e63'; }
-      msg = '⏳ Tu pedido se envió y en unos minutos te confirmamos por WhatsApp. NO lo vuelvas a enviar. Si no te llega en 5 min, escribinos.';
-    } else {
-      if (waBtn) { waBtn.disabled = true; waBtn.innerHTML = '⚠ No pudimos enviar — reintentá en un momento'; waBtn.style.background = '#c62828'; }
-      msg = '⚠ No pudimos enviar tu pedido — probá dentro de 30 segundos. No se va a duplicar si reintentas.';
-    }
-    toast(msg, 14000);
-    setTimeout(hideSendLoader, 3000);
-    setTimeout(function() {
-      if (waBtn) { waBtn.disabled = false; waBtn.innerHTML = waBtnOrig; waBtn.style.background = ''; }
-    }, 60000);
-    _enviando = false;
-  }
 
-  // Sábana de tiempos:
-  //  0s:     dispara sendBeacon + fetch. Loader visible.
-  //  0-3s:   si fetch responde ok → éxito confirmado (_afterSuccess).
-  //  3s:     si fetch no respondió pero sendBeacon disparó OK → éxito OPTIMISTA
-  //          (redirigimos igual, sendBeacon garantiza la entrega).
-  //  20s:    si fetch tampoco respondió tras 20s → _afterFail (mensaje bloqueante).
-  //          Este es el peor caso: sendBeacon no disponible o rechazado.
-  var FAST_CONFIRM_MS = 3000;   // ventana de confirmación real por fetch
-  var HARD_TIMEOUT_MS = 20000;  // ceiling absoluto antes de dar por perdido
-  var settled = false;
-  var beaconOK = _tryBeaconOnly(postData);
-  var sendPromise = _sendWithRetry(postData);
-
-  var optimisticTimer = setTimeout(function() {
-    if (settled) return;
-    if (beaconOK) {
-      settled = true;
-      _afterSuccess(); // sendBeacon fue OK → confiamos y redirigimos
-    }
-  }, FAST_CONFIRM_MS);
-
-  var hardTimer = setTimeout(function() {
-    if (settled) return;
-    settled = true;
-    clearTimeout(optimisticTimer);
-    _afterFail();
-  }, HARD_TIMEOUT_MS);
-
-  sendPromise.then(function() {
-    if (settled) return;
-    settled = true;
-    clearTimeout(optimisticTimer);
-    clearTimeout(hardTimer);
-    _afterSuccess();
-  }).catch(function() {
-    // Si sendBeacon fue OK, el pedido llegará igual — no mostrar error todavía;
-    // dejar que el optimistic timer decida. Si sendBeacon también falló, el hard
-    // timer va a saltar.
-    if (settled) return;
-    if (!beaconOK) {
-      // sendBeacon falló Y fetch también → error real, adelantar el fail
-      settled = true;
-      clearTimeout(optimisticTimer);
-      clearTimeout(hardTimer);
-      _afterFail();
-    }
-  });
+  /* La confirmacion puede venir del primer intento o de cualquier reintento:
+     por eso se escucha por clientOrderId y no la promesa del primer POST. */
+  _alConfirmar(postData.clientOrderId, function () { _irAWhatsApp(msgNormal, true); });
+  _sendWithRetry(postData).catch(function () { /* los reintentos siguen solos; a los 25 s decide el fallback */ });
 }
 
-/* Dispara sólo el sendBeacon con el postData. Devuelve true si el navegador
-   aceptó encolar el POST (garantiza entrega). Se llama ANTES del fetch. */
+/* Referencia corta del pedido para el mensaje de WhatsApp: 5 caracteres del
+   clientOrderId (co_<epoch>_<azar>). Con ella el mensaje se cruza con Log
+   Pedidos (col H) sin depender del telefono, que en el formulario viene mal
+   tipeado seguido: 3 de los 21 pedidos del 31/8 al 10/9 traian un 15 donde iba
+   un 11. */
+function _refDePedido(coid) {
+  var azar = String(coid || '').split('_').pop();
+  return azar.length >= 3 ? azar.slice(0, 5).toUpperCase() : '';
+}
+
+/* Dispara solo el sendBeacon con el postData. Devuelve true si el navegador
+   lo ACEPTO EN SU COLA — no quiere decir que haya llegado, y por eso nunca
+   cuenta como confirmacion (asi se perdieron pedidos hasta el 11/9/2026). */
 function _tryBeaconOnly(postData) {
   try {
     if (typeof navigator === 'undefined' || !navigator.sendBeacon) return false;
@@ -3911,21 +3911,26 @@ function _tryBeaconOnly(postData) {
   } catch (e) { return false; }
 }
 
-/* ── RETRY + BACKUP — robustecido 17/05/2026 ──
-   Diseñado para clientes con mala señal en Estancias del Pilar.
-   1. Persiste el pedido en localStorage ANTES de mandarlo (sobrevive a cerrar la tienda).
-   2. AbortController con timeout 12s por intento (no se queda colgado en fetch zombie).
-   3. Backoff exponencial: 5s, 15s, 45s, 2min, 5min, 15min.
-   4. Reintenta automático cuando el navegador recupera señal (evento 'online') o
-      cuando el cliente vuelve a la tienda (visibilitychange).
-   5. Backend dedupea por clientOrderId (CacheService 6h) — si un POST llegó pero
-      la respuesta se perdió, el reintento no crea duplicado.
-
-   Estructura en localStorage: { [clientOrderId]: { data, ts, tries } }
-   Se borra al recibir confirmación (resolve), o cuando se hayan agotado retries.
-*/
-var MALEU_RETRY_DELAYS = [5000, 15000, 45000, 120000, 300000, 900000]; // ms
-var MALEU_MAX_TRIES = MALEU_RETRY_DELAYS.length + 1; // 7 intentos totales
+/* ── REINTENTOS — rehechos el 11/9/2026 ──
+   El pedido sale por UN solo camino, fetch, y se espera su {ok:true}.
+   1. Se guarda en localStorage ANTES de mandarlo (sobrevive a cerrar la tienda).
+   2. Un solo POST en vuelo por pedido (`_enVuelo`). Antes cada reintento
+      disparaba un sendBeacon MAS un fetch, y el intervalo de 30 s arrancaba
+      otra cadena encima de la que ya corria: un pedido del 11/9 llego 18 veces
+      a Apps Script, y cada una toma el lock de doPost que usa todo el ERP.
+   3. Tope de 30 s por intento, no 12: doPost espera el lock hasta 30 s, y
+      abortar antes no cancela nada en el servidor — solo fabrica un reintento.
+   4. Backoff de 2 s, 4 s, 8 s, 15 s... hasta 15 min. Los primeros son cortos
+      porque el cliente esta mirando la pantalla.
+   5. sendBeacon queda como ULTIMO recurso, cuando la pagina se va con un
+      pedido sin confirmar (pagehide / hidden). Nunca cuenta como confirmacion.
+   6. El backend deduplica por clientOrderId (CacheService 6 h).
+   Estructura en localStorage: { [clientOrderId]: { data, ts, tries } } */
+var MALEU_RETRY_DELAYS = [2000, 4000, 8000, 15000, 30000, 60000, 120000, 300000, 900000]; // ms
+var MALEU_MAX_TRIES = MALEU_RETRY_DELAYS.length + 1;  // despues espera al proximo evento
+var MALEU_FETCH_TIMEOUT_MS = 30000;
+var SEND_LENTO_MS = 8000;       // "la conexion esta lenta"
+var SEND_FALLBACK_MS = 25000;   // se ofrece mandarlo por WhatsApp sin confirmar
 
 // ── SIGNATURE-BASED IDEMPOTENCY (21/06/26) ────────────────────────────
 // Si el cliente aprieta 'Pedir por WhatsApp' 2 veces con el MISMO pedido
@@ -3974,7 +3979,8 @@ function _persistPending(data) {
   if (!key) return;
   var map = _pendingMap();
   var prev = map[key];
-  map[key] = { data: data, ts: (prev && prev.ts) || Date.now(), tries: (prev && prev.tries || 0) };
+  map[key] = { data: data, ts: (prev && prev.ts) || Date.now(), tries: (prev && prev.tries || 0),
+               beacon: (prev && prev.beacon) || 0 };
   _pendingSave(map);
 }
 function _removePending(key) {
@@ -3983,110 +3989,132 @@ function _removePending(key) {
   if (map[key]) { delete map[key]; _pendingSave(map); }
 }
 
-function _sendWithRetry(data) {
-  // Persistir SIEMPRE antes de intentar. Si el navegador se cierra a la mitad,
-  // queda guardado para el próximo retry oportuno.
-  _persistPending(data);
-  var key = data.clientOrderId;
-  var body = JSON.stringify(data);
+var _enVuelo = {};        // clientOrderId -> promesa del POST que espera respuesta
+var _programado = {};     // clientOrderId -> setTimeout del proximo reintento
+var _alConfirmarCbs = {}; // clientOrderId -> quienes esperan la confirmacion
 
-  // ── DEFENSA #1: sendBeacon ──────────────────────────────────────────────
-  // sendBeacon GARANTIZA que el navegador entregue el POST aún si la página
-  // se cierra o navega (redirect a wa.me a los 800ms). No devuelve respuesta,
-  // pero asegura el delivery — clave en iOS Safari, que aborta fetch agresivo
-  // al cambiar de página. El server tiene idempotencia por clientOrderId.
-  try {
-    if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-      var blob = new Blob([body], { type: 'text/plain;charset=UTF-8' });
-      navigator.sendBeacon(APPS_SCRIPT_URL, blob);
-    }
-  } catch(e) {}
+function _alConfirmar(key, cb) {
+  if (!key) return;
+  (_alConfirmarCbs[key] = _alConfirmarCbs[key] || []).push(cb);
+}
+function _confirmado(key, resp) {
+  _removePending(key);
+  var cbs = _alConfirmarCbs[key] || [];
+  delete _alConfirmarCbs[key];
+  cbs.forEach(function (cb) { try { cb(resp); } catch (e) {} });
+}
 
-  // ── DEFENSA #2: fetch CORS ──────────────────────────────────────────────
-  // En paralelo, fetch normal (CORS) para LEER la respuesta del server. Si
-  // confirma {ok:true}, borramos el pendiente. Si falla o el server devuelve
-  // {ok:false}, queda en pendientes → retry (con dedup en el server).
-  // Antes era mode:'no-cors' (opaque) → no se podía detectar errores → pedidos
-  // perdidos silenciosamente. Bug que costó un pedido de un cliente real.
-  var ctrl;
-  var timeoutId;
-  try {
-    ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-    if (ctrl) timeoutId = setTimeout(function(){ try { ctrl.abort(); } catch(e){} }, 12000);
-  } catch(e) {}
-
-  var fetchOpts = {
+/* Un intento: POST por fetch con tope de 30 s. Resuelve SOLO con {ok:true} del
+   backend — un dedup tambien es ok: quiere decir que el pedido ya estaba. */
+function _postPedido(data) {
+  var ctrl = null, tid = null;
+  try { ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null; } catch (e) {}
+  if (ctrl) tid = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, MALEU_FETCH_TIMEOUT_MS);
+  var opts = {
     method: 'POST',
-    headers: { 'Content-Type': 'text/plain' }, // text/plain evita preflight CORS (request "simple")
-    body: body
+    headers: { 'Content-Type': 'text/plain' }, // request "simple": sin preflight CORS
+    body: JSON.stringify(data)
   };
-  if (ctrl) fetchOpts.signal = ctrl.signal;
-
-  // Devolvemos la Promise del intento actual para que enviarPedido() pueda
-  // esperar la confirmación antes de redirigir a WhatsApp. La cadena de retry
-  // en background sigue corriendo igual aunque el caller ignore la promesa.
-  return fetch(APPS_SCRIPT_URL, fetchOpts).then(function(r) {
-    if (timeoutId) clearTimeout(timeoutId);
+  if (ctrl) opts.signal = ctrl.signal;
+  return fetch(APPS_SCRIPT_URL, opts).then(function (r) {
     if (!r.ok) throw new Error('http ' + r.status);
     return r.text();
-  }).then(function(txt) {
+  }).then(function (txt) {
+    if (tid) clearTimeout(tid);
     var resp = null;
-    try { resp = JSON.parse(txt); } catch(e) {}
-    if (resp && resp.ok) {
-      _removePending(key);
-      return resp;
-    } else {
-      throw new Error('server-not-ok: ' + (resp && (resp.err || resp.error) || 'unknown'));
-    }
-  }).catch(function(err) {
-    if (timeoutId) clearTimeout(timeoutId);
+    try { resp = JSON.parse(txt); } catch (e) {}
+    if (resp && resp.ok) return resp;
+    throw new Error('server-not-ok: ' + ((resp && (resp.err || resp.error)) || String(txt || '').slice(0, 80)));
+  }, function (err) {
+    if (tid) clearTimeout(tid);
+    throw err;
+  });
+}
+
+function _sendWithRetry(data) {
+  var key = data && data.clientOrderId;
+  if (!key) return Promise.reject(new Error('pedido sin clientOrderId'));
+  _persistPending(data);
+  if (_enVuelo[key]) return _enVuelo[key];   // ya hay uno esperando respuesta: no se duplica
+  if (_programado[key]) { clearTimeout(_programado[key]); delete _programado[key]; }
+  var p = _postPedido(data).then(function (resp) {
+    delete _enVuelo[key];
+    _confirmado(key, resp);
+    return resp;
+  }, function (err) {
+    delete _enVuelo[key];
     var map = _pendingMap();
     if (map[key]) {
       map[key].tries = (map[key].tries || 0) + 1;
-      map[key].lastError = String(err && err.message || err);
+      map[key].lastError = String((err && err.message) || err);
       _pendingSave(map);
       if (map[key].tries < MALEU_MAX_TRIES) {
         var delay = MALEU_RETRY_DELAYS[Math.min(map[key].tries - 1, MALEU_RETRY_DELAYS.length - 1)];
-        setTimeout(function() { _sendWithRetry(data); }, delay);
+        _programado[key] = setTimeout(function () {
+          delete _programado[key];
+          _sendWithRetry(data).catch(function () {});
+        }, delay);
       }
-      // Si superó MAX_TRIES queda en cola; _retryPendingOrders lo agarra en el próximo
-      // ciclo (online / visible / interval).
+      // Agotados los intentos, queda en la cola: _retryPendingOrders lo agarra
+      // con el proximo evento (vuelve la señal, vuelve a la tienda, cada 30 s).
     }
-    throw err; // re-lanzar para que el caller (enviarPedido) sepa que falló
+    throw err;
   });
+  _enVuelo[key] = p;
+  return p;
 }
 
-function _retryPendingOrders() {
+/* ahora=true (volvio la señal / volvio a la tienda): se manda ya, aunque haya
+   un reintento programado. Sin eso (el intervalo de 30 s): solo los que no
+   tienen nada en marcha — antes el intervalo arrancaba una cadena nueva encima
+   de la que ya estaba corriendo. */
+function _retryPendingOrders(ahora) {
   var map = _pendingMap();
   var keys = Object.keys(map);
   if (keys.length === 0) return;
-  // Si el navegador está offline, no perder tiempo
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
-  // Descartar pedidos pendientes > 4 horas (probablemente tests viejos o intentos
-  // de sesiones anteriores que no queremos reprocesar de la nada).
-  var now = Date.now(), maxAge = 4*3600*1000, descartados = 0;
-  keys.forEach(function(k) {
+  // Descartar pendientes de mas de 4 horas (tests viejos, sesiones anteriores).
+  var now = Date.now(), maxAge = 4*3600*1000, cambio = false, aMandar = [];
+  keys.forEach(function (k) {
     var entry = map[k];
-    if (!entry || !entry.data) { delete map[k]; descartados++; return; }
+    if (!entry || !entry.data) { delete map[k]; cambio = true; return; }
     var ts = Number(entry.ts) || 0;
-    if (ts > 0 && (now - ts) > maxAge) {
-      delete map[k]; descartados++;
-      return;
-    }
-    entry.tries = 0;
-    _sendWithRetry(entry.data);
+    if (ts > 0 && (now - ts) > maxAge) { delete map[k]; cambio = true; return; }
+    if (_enVuelo[k]) return;
+    if (_programado[k] && ahora !== true) return;
+    entry.tries = 0; cambio = true;
+    aMandar.push(entry.data);
   });
-  if (descartados > 0) { _pendingSave(map); }
+  if (cambio) _pendingSave(map);
+  aMandar.forEach(function (d) { _sendWithRetry(d).catch(function () {}); });
 }
 
-// Reintentos oportunos: recuperar señal, volver a la tienda, o cada 30s mientras esté abierta.
-if (typeof window !== 'undefined') {
-  window.addEventListener('online', _retryPendingOrders);
-  document.addEventListener('visibilitychange', function() {
-    if (document.visibilityState === 'visible') _retryPendingOrders();
+/* Ultimo recurso cuando la pagina se va con un pedido sin confirmar: el beacon
+   sobrevive a que se cierre o pase a segundo plano. No trae respuesta, asi que
+   el pedido sigue en la cola hasta que un fetch lo confirme; el backend
+   descarta el repetido por clientOrderId. */
+function _beaconPendientes() {
+  var map = _pendingMap(), now = Date.now(), cambio = false;
+  Object.keys(map).forEach(function (k) {
+    var e = map[k];
+    if (!e || !e.data) return;
+    if (now - (Number(e.ts) || 0) > 4*3600*1000) return;
+    if (e.beacon && now - e.beacon < 20000) return;   // uno cada 20 s como mucho
+    if (_tryBeaconOnly(e.data)) { e.beacon = now; cambio = true; }
   });
+  if (cambio) _pendingSave(map);
 }
-setInterval(_retryPendingOrders, 30000);
+
+// Reintentos oportunos: vuelve la señal, vuelve a la tienda, o cada 30 s.
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', function () { _retryPendingOrders(true); });
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') _retryPendingOrders(true);
+    else _beaconPendientes();
+  });
+  window.addEventListener('pagehide', _beaconPendientes);
+}
+setInterval(function () { _retryPendingOrders(false); }, 30000);
 
 /* ── TOAST ── */
 let _tt;
