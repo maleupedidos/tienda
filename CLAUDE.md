@@ -985,6 +985,23 @@ cambiar de zona, que limpia los campos antes de que el cliente toque algo.
 > el modal de esta visita, que es la que corresponde — una fecha de entrega vieja
 > es justamente lo que no hay que ofrecer.
 
+> [!bug] Con la fecha guardada y vigente, el día quedaba vacío (12/9/2026)
+> Si la fecha que el cliente eligió sigue vigente, el modal **no se abre** — y el
+> modal era el único que marcaba el día en el formulario. El botón *"Completar
+> datos y pedir"* (`expandForm`) lo marcaba; **entrar desde el carrito
+> (`goToForm`), no**. Resultado: el chip de arriba decía la fecha y el
+> formulario pedía elegir el día otra vez.
+>
+> Ahora `goToForm` lo marca **sólo si el día está vacío**: elegir otro día en el
+> formulario no cambia la fecha del modal, así que marcarlo siempre le pisaría
+> lo que eligió al volver del carrito. `verificar-datos-cliente.js` prueba las
+> dos cosas (33 chequeos).
+>
+> Lo destapó un rojo que **dependía del día**: el viernes a la noche la fecha
+> guardada ya había pasado, el modal se abría y el test daba verde; el sábado a la
+> tarde seguía vigente y daba rojo. Un test que cambia de color según la hora no
+> está roto: está mirando algo que sólo pasa a esa hora.
+
 ### La red: `node _tools/verificar-datos-cliente.js [ancho]`
 
 **Nada de esto se probaba, y por una razón de método:** todos los tests abren un
@@ -1066,12 +1083,37 @@ que entró por WATI (284 desde el 15/5/2026) contra las 4 hojas y `Log Pedidos`:
 | 25 s sin respuesta | **"Todavía no se registró"** + botón *Mandar por WhatsApp* |
 | si confirma con ese cartel puesto | sigue solo por el camino normal |
 
-**El mensaje de WhatsApp ahora lleva siempre el día de entrega y una
-referencia** (`📅 Viernes 12/09 · 19 a 21 hs` y `_Pedido web · K3P9Q_`). La
-referencia son 5 caracteres del `clientOrderId`, así que **se busca en la col H
-de `Log Pedidos`** — sin depender del teléfono, que viene mal tipeado seguido.
-La primera línea no se tocó: si alguna regla de WATI la busca tal cual, se
-rompería sin avisar.
+**El mensaje de WhatsApp lleva siempre el día de entrega**
+(`Entrega: Viernes 12/09 · 19 a 21 hs`). La primera línea no se tocó: si alguna
+regla de WATI la busca tal cual, se rompería sin avisar.
+
+> [!important] La referencia va SOLO en el mensaje sin confirmar (12/9/2026)
+> Del 11 al 12/9 el mensaje normal cerraba con `_Pedido web · K3P9Q_`. Tadeo,
+> viéndolo llegar: *"eso queda feísimo, ¿por qué dice eso?"*. Tenía razón y
+> además **sobraba**: desde el 11/9 un mensaje normal sale **únicamente con el
+> pedido ya confirmado por el ERP**, así que no hay nada que cruzar.
+>
+> La referencia (5 caracteres del `clientOrderId`, se busca en la **col H de
+> `Log Pedidos`**) quedó sólo en el mensaje del botón de los 25 s:
+> *"⚠️ La web no llegó a confirmar este pedido (ref. K3P9Q)"*. Ahí sí sirve: para
+> ver si un reintento lo metió después, sin depender del teléfono, que en el
+> formulario viene mal tipeado seguido.
+
+> [!danger] El mensaje no lleva emoji de 4 bytes (📅 📍 🎁 🥩 👤 💵…)
+> Medido en WATI el 12/9/2026: de **8 pedidos confirmados** con el mismo código,
+> **2 llegaron con `� Sábado 12/09`** y 6 sanos (Laura Álvarez Costa y Clara
+> Gimenez). **Depende del celular del cliente, no del código**: el archivo tenía
+> el 📅 bien escrito y `encodeURIComponent` lo codifica bien. En esos mismos
+> mensajes rotos, los caracteres simples `·` `•` `—` sí llegaron.
+>
+> Por eso el mensaje usa texto (`Entrega:`, `Dirección:`, `Pago:`) y viñetas, la
+> carne va con la misma `•` que el resto, y el combo en negrita sin 🎁. El ⚠️ se
+> queda: es U+26A0, un carácter simple. Ya había pasado con las banderas de los
+> combos, y se arregló cambiándolas por 🎁 — que tiene el mismo problema.
+>
+> `verificar-envio.js` exige **cero caracteres por encima de U+FFFF** en los dos
+> mensajes. Si alguna vez se quiere un emoji ahí, el test lo va a frenar, y es
+> a propósito: en uno de cada cuatro celulares se ve roto.
 
 > [!important] Si llega un WhatsApp con "⚠️ La web no llegó a confirmar este pedido"
 > Es el del botón de los 25 s. Trae **nombre, teléfono, dirección, día y pago**
@@ -1132,6 +1174,9 @@ inexistente. Probado en la dirección contraria: sigue agarrando `updateCart()`.
 >   por la referencia). Si a los 15 minutos no la tiene, avisar. Es lo único
 >   que agarra un pedido perdido **por cualquier causa**, incluidas las que la
 >   tienda no puede ver.
+>   **Al 12/9/2026 la referencia sólo viaja en los mensajes con "⚠️ La web no
+>   llegó a confirmar"**, que son los únicos que la alarma tiene que mirar: un
+>   mensaje normal sale sólo con el pedido confirmado. Se le avisó a Backend.
 
 ## Lo que NO está acá
 

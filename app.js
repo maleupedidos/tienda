@@ -3281,6 +3281,15 @@ function goToForm() {
   _track('begin_checkout', { value: cartTotal(), zone: currentZone, items: cartCount() });
   const section = $id('form-section');
   if (section) section.classList.remove('collapsed');
+  /* El dia de la fecha elegida, marcado en el formulario (12/9/2026). Un
+     cliente que vuelve con la fecha guardada y vigente NO pasa por el modal,
+     que es el unico que la marcaba: entraba desde el carrito y el dia estaba
+     vacio, con el chip de arriba diciendo la fecha. expandForm() ya lo hacia;
+     este camino, que es el del carrito, no. Solo si el dia esta vacio:
+     elegir otro dia en el formulario no cambia la fecha del modal, y pisarlo
+     al volver del carrito le borraria lo que eligio. */
+  var _fdf = $id('f-dia-fecha');
+  if (!_fdf || !_fdf.value) _preselectDayPicker();
   // Delay 380ms deja terminar la animación de cierre del sidebar. Usamos scroll
   // INSTANT porque hay layout shifts en paralelo — smooth se cancelaría.
   setTimeout(function() {
@@ -3651,10 +3660,10 @@ function enviarPedido() {
 
   const comboLinesWA = Object.values(comboCart).map((inst) => {
     const c = COMBO_MAP[inst.comboId]; if (!c) return null;
-    // Emoji fijo 🎁 en WhatsApp: las banderas de país (regional-indicator) no
-    // renderizan confiable en texto plano según el dispositivo (salía "�"). El
-    // nombre del combo ya lleva la identidad ("Combo Argentina · 16avos").
-    const head = '🎁 *' + c.nombre + (inst.qty > 1 ? ' ×' + inst.qty : '') + '*  —  ' + ars(c.precio * inst.qty);
+    // Sin emoji: en algunos celulares el emoji llega a WhatsApp como "�" (ver
+    // _WA_SIN_EMOJI, mas abajo). El nombre del combo ya lleva la identidad
+    // ("Combo Argentina · 16avos") y va en negrita.
+    const head = '*' + c.nombre + (inst.qty > 1 ? ' ×' + inst.qty : '') + '*  —  ' + ars(c.precio * inst.qty);
     // Agrupar componentes repetidos: 3 slots de Franui → "Franui Leche ×3".
     // Se descarta el prefijo de categoría ("Pizzas:/Postre:") — es ruido; el
     // nombre del producto ya se entiende solo.
@@ -3689,9 +3698,11 @@ function enviarPedido() {
          repite el mismo numero y se lee como un error. Mismo criterio que el
          carrito. */
       var desglose = g.lista.length > 1
-        ? '\n   (' + g.lista.map(function (x) { return kgTexto(x.kg); }).join(' + ') + ')'
+        ? '\n     (' + g.lista.map(function (x) { return kgTexto(x.kg); }).join(' + ') + ')'
         : '';
-      return '\ud83e\udd69 ' + g.nombre + ' \u2014 ' + kgTexto(g.kg) + ' \u00b7 ' + ars(g.total) + desglose;
+      /* Con la misma vineta que el resto de los productos, sin el emoji de la
+         carne: ver _WA_SIN_EMOJI. */
+      return '  \u2022 ' + g.nombre + '  \u2014  ' + kgTexto(g.kg) + ' \u00b7 ' + ars(g.total) + desglose;
     }).join('\n');
   })();
   const prodLines = [comboLinesWA, _sepAdemas, prodLinesProductos, piezaLinesWA].filter(Boolean).join('\n');
@@ -3739,10 +3750,10 @@ function enviarPedido() {
   // Solo desglosar Subtotal cuando hay descuento, envío o saldo a favor.
   if (discount > 0 || shipping > 0 || saldoAFavor > 0) {
     msgLines.push('Subtotal: ' + ars(subtotal));
-    if (cuponDescW > 0 && appliedCoupon) msgLines.push('🎟️ ' + appliedCoupon.codigo + ': -' + ars(cuponDescW));
+    if (cuponDescW > 0 && appliedCoupon) msgLines.push('Cupón ' + appliedCoupon.codigo + ': -' + ars(cuponDescW));
     if (autoDescW > 0) msgLines.push(getDiscountLabel() + (combosInCart() ? ' (productos)' : '') + ': -' + ars(autoDescW));
     if (shipping > 0) msgLines.push('Envio: ' + ars(shipping));
-    if (saldoAFavor > 0) msgLines.push('🎁 Saldo a favor: -' + ars(saldoAFavor));
+    if (saldoAFavor > 0) msgLines.push('Saldo a favor: -' + ars(saldoAFavor));
   }
   msgLines.push('*Total: ' + ars(total) + '*');
   // Alias de Mercado Pago cuando el cliente elige Transferencia:
@@ -3750,8 +3761,7 @@ function enviarPedido() {
   //   - Con vendedor Red y ALIAS cargado en Sheets: alias del vendedor.
   //   - Con vendedor Red sin alias: no ponemos alias — el vendedor lo pasa a mano.
   /* El alias va aparte y AL FINAL del mensaje: es lo que el cliente copia.
-     Entre el total y el alias van el dia de entrega y la referencia del
-     pedido, que se arman mas abajo, cuando ya existe el clientOrderId. */
+     Entre el total y el alias va el dia de entrega, que se arma mas abajo. */
   var aliasLines = [];
   if (pagoEl.value === 'Transferencia') {
     if (!vendedorMatch) {
@@ -3867,24 +3877,40 @@ function enviarPedido() {
   // clientOrderId se REUSA → backend dedupea. Fix del 21/06/26 tras duplicados
   // Vie/Sáb 19-20/06 en Estancias que hubo que borrar a mano del Sheets.
   postData.clientOrderId = _clientOrderIdForOrder(postData);
-  /* El mensaje de WhatsApp se arma recien aca porque lleva la referencia del
-     pedido, que sale del clientOrderId. Son DOS versiones:
+  /* El mensaje de WhatsApp se arma recien aca, cuando ya existe el
+     clientOrderId. Son DOS versiones:
        · msgNormal       — el backend confirmo: el pedido ya esta en el ERP.
        · msgSinConfirmar — a los 25 s no hubo confirmacion y el cliente lo manda
          igual. Lleva los datos para cargarlo a mano y DICE que la web no lo
          confirmo: sin eso, en WhatsApp se ve igual que uno registrado, que es
          exactamente como se perdio un pedido de $84.600 el 10/9/2026.
      La primera linea ("Hola! Quiero hacer un pedido:") no se toca: si alguna
-     regla de WATI la busca tal cual, cambiarla la romperia sin avisar. */
+     regla de WATI la busca tal cual, cambiarla la romperia sin avisar.
+
+     LA REFERENCIA VA SOLO EN EL SIN CONFIRMAR (12/9/2026). Del 11 al 12/9 el
+     normal cerraba con "_Pedido web · G4ZDJ_", y Tadeo: "eso queda feisimo".
+     Tenia razon y ademas sobraba: desde el 11/9 un mensaje normal SOLO sale con
+     el pedido ya confirmado por el ERP, asi que no hay nada que cruzar. La
+     referencia sirve cuando la web no llego a confirmar, para buscar en Log
+     Pedidos (col H) si un reintento lo metio despues: el telefono del
+     formulario viene mal tipeado seguido.
+
+     _WA_SIN_EMOJI — el mensaje no lleva emoji de 4 bytes (📅 📍 🎁 🥩...).
+     Medido en WATI el 12/9/2026: de 8 pedidos confirmados con el mismo codigo,
+     2 llegaron con "� Sabado 12/09" y 6 sanos. Depende del celular del
+     cliente, no del codigo (el archivo tiene el 📅 bien escrito). Los
+     caracteres simples · • — × si llegan en esos mismos mensajes, asi que
+     se usan esos y texto. El ⚠️ se queda: es U+26A0, un caracter simple. */
   var _refPedido = _refDePedido(postData.clientOrderId);
-  var _lineaDia = '📅 ' + diaMensaje + (horarioStr && !/coordinar/i.test(horarioStr) ? ' · ' + horarioStr : '');
-  var msgNormal = msgLines.concat(['', _lineaDia, '_Pedido web · ' + _refPedido + '_'], aliasLines).join('\n');
+  var _lineaDia = 'Entrega: ' + diaMensaje + (horarioStr && !/coordinar/i.test(horarioStr) ? ' · ' + horarioStr : '');
+  var msgNormal = msgLines.concat(['', _lineaDia], aliasLines).join('\n');
   var msgSinConfirmar = msgLines.concat(['',
     _lineaDia,
-    '👤 ' + nombre + ' · ' + telefono,
-    '📍 ' + direccionStr,
-    (pagoEl.value === 'Efectivo' ? '💵 Efectivo' : '💳 Transferencia'),
-    '⚠️ _La web no llegó a confirmar este pedido · ' + _refPedido + '_'
+    'A nombre de: ' + nombre + ' · ' + telefono,
+    'Dirección: ' + direccionStr,
+    'Pago: ' + (pagoEl.value === 'Efectivo' ? 'Efectivo' : 'Transferencia'),
+    '',
+    '⚠️ _La web no llegó a confirmar este pedido (ref. ' + _refPedido + ')_'
   ], aliasLines).join('\n');
   // Cumpleaños del cliente (si lo cargó en el form) → backend lo guarda en Clientes Meta.
   var _cumple = getCumpleValue();
@@ -3974,7 +4000,8 @@ function enviarPedido() {
   _sendWithRetry(postData).catch(function () { /* los reintentos siguen solos; a los 25 s decide el fallback */ });
 }
 
-/* Referencia corta del pedido para el mensaje de WhatsApp: 5 caracteres del
+/* Referencia corta del pedido para el mensaje de WhatsApp que la web NO llego
+   a confirmar (el normal no la lleva desde el 12/9/2026): 5 caracteres del
    clientOrderId (co_<epoch>_<azar>). Con ella el mensaje se cruza con Log
    Pedidos (col H) sin depender del telefono, que en el formulario viene mal
    tipeado seguido: 3 de los 21 pedidos del 31/8 al 10/9 traian un 15 donde iba

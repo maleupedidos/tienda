@@ -277,6 +277,9 @@ async function main() {
     }
     /* searchParams ya decodifica: decodificar otra vez rompe con el '%' de "10% OFF". */
     const textoWA = (u) => { try { return new URL(u).searchParams.get('text') || ''; } catch (e) { return ''; } };
+    /* Los caracteres fuera del plano basico (codepoint > U+FFFF): son los emoji
+       que en algunos celulares llegan a WhatsApp como U+FFFD. */
+    const sinEmoji4 = (s) => Array.from(String(s)).filter((c) => c.codePointAt(0) > 0xFFFF).map((c) => 'U+' + c.codePointAt(0).toString(16).toUpperCase());
     const refDe = (coid) => { const m = String(coid).match(/_([a-z0-9]{3,})$/i); return m ? m[1].slice(0, 5).toUpperCase() : '??'; };
     async function pendientes() {
       await cli.enviar('Page.navigate', { url: base + '/__vacio' });
@@ -305,8 +308,11 @@ async function main() {
       const txt = nav ? textoWA(nav.url) : '';
       const coid = (fetches()[0] || {}).coid || '';
       chk(/^Hola! Quiero hacer un pedido:/.test(txt), 'la primera linea del mensaje no cambio');
-      chk(txt.indexOf('📅 ') >= 0 && /\d\d\/\d\d/.test(txt), 'el mensaje dice el dia de entrega: ' + ((txt.match(/📅[^\n]*/) || [''])[0]));
-      chk(txt.indexOf('_Pedido web · ' + refDe(coid) + '_') >= 0, 'y la referencia del pedido (' + refDe(coid) + '), la que cruza con Log Pedidos');
+      chk(/\nEntrega: [^\n]*\d\d\/\d\d/.test(txt), 'el mensaje dice el dia de entrega: ' + ((txt.match(/Entrega:[^\n]*/) || [''])[0]));
+      /* 12/9/2026: la referencia ("_Pedido web · G4ZDJ_") salio del mensaje
+         normal — un normal solo sale con el pedido confirmado, no hay que cruzar nada. */
+      chk(txt.indexOf(refDe(coid)) < 0 && txt.indexOf('Pedido web') < 0, 'sin la referencia del pedido: confirmado no hace falta cruzar nada');
+      chk(!sinEmoji4(txt).length, 'sin emoji de 4 bytes: en algunos celulares llegan como "�" (' + (sinEmoji4(txt).join(' ') || 'ninguno') + ')');
       chk(txt.indexOf('no llegó a confirmar') < 0 && txt.indexOf('Prueba Envio') < 0, 'confirmado: sin aviso y sin repetir los datos del cliente');
       const pend = await pendientes();
       chk(!pend[coid], 'confirmado, sale de la cola de pendientes');
@@ -352,9 +358,10 @@ async function main() {
       const txt = nav ? textoWA(nav.url) : '';
       const coid = (fetches()[0] || {}).coid || '';
       chk(txt.indexOf('⚠️') >= 0 && txt.indexOf('no llegó a confirmar') >= 0, 'y el mensaje DICE que la web no lo confirmo');
-      chk(txt.indexOf('Prueba Envio') >= 0 && txt.indexOf('1122334455') >= 0 && txt.indexOf('📍') >= 0 && txt.indexOf('Lote 123') >= 0 && txt.indexOf('💵 Efectivo') >= 0,
+      chk(txt.indexOf('Prueba Envio') >= 0 && txt.indexOf('1122334455') >= 0 && txt.indexOf('Dirección: ') >= 0 && txt.indexOf('Lote 123') >= 0 && txt.indexOf('Pago: Efectivo') >= 0,
           'con los datos para cargarlo a mano: nombre, telefono, direccion y pago');
-      chk(txt.indexOf(refDe(coid)) >= 0, 'y la referencia (' + refDe(coid) + ')');
+      chk(txt.indexOf('(ref. ' + refDe(coid) + ')') >= 0, 'y la referencia (' + refDe(coid) + '), la que cruza con Log Pedidos');
+      chk(!sinEmoji4(txt).length, 'tambien sin emoji de 4 bytes (' + (sinEmoji4(txt).join(' ') || 'ninguno') + ')');
       chk(beacons().some((b) => b.coid === coid && b.t >= clic), 'antes de irse dispara un ultimo beacon con ese pedido');
       chk(maxEnVuelo <= 1, 'nunca dos POST del pedido esperando a la vez (' + maxEnVuelo + ')');
       const pend = await pendientes();

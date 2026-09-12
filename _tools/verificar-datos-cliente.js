@@ -272,6 +272,26 @@ const LEER_FORM = `(function(){
     ch(!v2.pago, 'el metodo de pago NO vuelve, y es a proposito: se elige en cada pedido',
        JSON.stringify(v2.pago));
     ch(!!v2.dia, 'el dia viene de la fecha elegida en el modal, no de lo guardado', JSON.stringify(v2.dia));
+    /* 12/9/2026: si la fecha guardada sigue vigente el modal NO se abre, y el
+       dia lo marca goToForm. Con eso aparecio el riesgo contrario: que al
+       volver del carrito pise un dia que el cliente cambio en el formulario. */
+    const otroDia = JSON.parse(await ev(`(function(){
+      var actual = (document.getElementById('f-dia-fecha')||{}).value || '';
+      var b = [].slice.call(document.querySelectorAll('#day-picker button.available'))
+        .filter(function(x){ return !x.disabled && x.getAttribute('data-fecha') && x.getAttribute('data-fecha') !== actual; })[0];
+      if (!b) return JSON.stringify({ hay: false, actual: actual });
+      b.click();
+      var elegido = document.getElementById('f-dia-fecha').value;
+      goToForm();
+      return JSON.stringify({ hay: true, actual: actual, elegido: elegido,
+        despues: document.getElementById('f-dia-fecha').value });
+    })()`));
+    if (otroDia.hay) {
+      ch(otroDia.elegido !== otroDia.actual && otroDia.despues === otroDia.elegido,
+         'si cambia el dia en el formulario, volver del carrito no se lo pisa', JSON.stringify(otroDia));
+    } else {
+      console.log('  ' + DIM + '(sin un segundo dia disponible hoy: no se puede probar que no lo pise)' + RST);
+    }
     await cerrar();
 
     /* ───────── VISITA 3: el que vuelve a elegir su zona ─────────
