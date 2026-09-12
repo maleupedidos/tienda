@@ -937,6 +937,92 @@ total = subtotal) y Pilar fuera de los ex-Home. **17 chequeos**, verdes a 390 y
 1440px. Contra la tienda de antes da **10 rojos**. Corta todo POST dos veces,
 adentro de la página y por CDP.
 
+## Los datos del cliente quedan fijos, y ya no hacía falta pedir para eso (11/9/2026)
+
+Iñaki, el hermano de Tadeo: *"¿hay que completar cada vez que entra a la página
+los datos del cliente? La idea era que queden fijos"*. El mecanismo existía
+—`loadClientData()` desde el 2026— pero tenía **dos agujeros**, y los dos se
+midieron antes de tocar una línea.
+
+> [!danger] 1. Los datos se guardaban SOLO al mandar el pedido
+> El que completaba el formulario y no llegaba a enviarlo —porque se puso a
+> pensarlo, porque lo interrumpieron, porque el pedido quedó sin confirmar— no
+> dejaba nada guardado, y la vez siguiente escribía todo de nuevo. Y es el caso
+> más común de todos: alguien que entra a mirar, carga sus datos y cierra.
+>
+> Ahora se guarda **a medida que se completa cada campo**, en `change` y
+> `focusout`. **No en `input`**: guardando en cada tecla, un teléfono a medio
+> escribir pisaría el que ya estaba.
+
+> [!danger] 2. Al elegir la zona en el modal, la dirección no volvía
+> `loadClientData()` corría **una sola vez**, en el top-level del script. Ahí
+> `currentZone` todavía puede no existir —el cliente elige su zona en el modal,
+> que es *después*—, y la función tiene un fallback que en ese caso carga solo
+> nombre y teléfono (que se guardan aparte del barrio). Resultado medido: el
+> nombre y el teléfono volvían, y **barrio, sub-barrio y lote había que
+> escribirlos de nuevo teniéndolos guardados a mano**.
+>
+> Ahora la llama también `applyZone()`, que es el único lugar por el que pasan
+> las dos puertas —el arranque con zona guardada y `setZone()` desde el modal—,
+> así que una puerta nueva lo hereda sola.
+
+> [!important] `loadClientData()` no pisa NUNCA un campo con algo escrito
+> Es lo que la deja llamar más de una vez sin pensar en el orden: en el arranque
+> los campos están vacíos y se comporta igual que siempre, y al elegir la zona
+> completa lo que falta sin tocar lo que el cliente acaba de tipear. Sin eso,
+> llamarla de nuevo le borraría lo escrito al que cambia de zona a mitad de camino.
+
+**El guardado tiene una sola forma.** `guardarDatosCliente()` la usan el guardado
+incremental y `enviarPedido` (que le pasa el día y el pago). Dos formas de
+guardar el mismo dato es como se despegan — ya pasó cuatro veces en el ERP.
+
+Y **un formulario vacío no se guarda**: pisaría con nada lo que ya había. Pasa al
+cambiar de zona, que limpia los campos antes de que el cliente toque algo.
+
+> [!note] El día y el pago siguen sin precargarse, a propósito
+> El **pago** cambia en cada pedido y precargarlo sería decidir por el cliente.
+> El **día** no se precarga tampoco: el que se ve sale de la fecha que eligió en
+> el modal de esta visita, que es la que corresponde — una fecha de entrega vieja
+> es justamente lo que no hay que ofrecer.
+
+### La red: `node _tools/verificar-datos-cliente.js [ancho]`
+
+**Nada de esto se probaba, y por una razón de método:** todos los tests abren un
+perfil de Chrome **nuevo**, así que la segunda visita —que es exactamente lo que
+hay que medir— no existía en ninguna red. Este usa **un mismo perfil** para
+varias visitas, como un cliente de verdad. **32 chequeos**, verdes a 390 y
+1440px, tres corridas seguidas:
+
+1. cliente nuevo: el formulario arranca vacío, completa, manda, y queda guardado;
+2. vuelve: nombre, teléfono, barrio privado, sub-barrio y lote vuelven solos;
+3. vuelve a elegir la zona en el modal teniendo los datos guardados ← el agujero 2;
+4. toca "¿Dónde entregamos?" y reelige: no se pierde lo que ya estaba;
+5. **otro navegador: completa y NO manda el pedido** ← el agujero 1, y al volver están todos.
+
+Contra el `app.js` de antes del arreglo da **26 ok · 6 mal**, y los 6 rojos son
+los dos agujeros. Se corre con `APP_JS=<ruta>`, que sirve otro `app.js`.
+
+> [!danger] Cerrar Chrome a matarlo pierde el `localStorage`, y el test culpa a la tienda
+> El `localStorage` se escribe a disco de forma **asíncrona**: con `proc.kill()`
+> las últimas escrituras se pierden a veces, y entonces la visita siguiente lee
+> vacío. Pasó: una corrida dio la visita 2 en rojo y la siguiente en verde **con
+> el mismo código**, y el rojo parecía el bug que se venía a arreglar. Se cierra
+> con `Browser.close` y se espera a que el proceso muera de verdad.
+
+> [!warning] Y el primer rojo de todos fue un selector mío
+> `f-barrio-privado` es el **Barrio Privado** (hoy con un solo valor, "Estancias
+> del Pilar") y `f-barrio` el **Sub Barrio**, que se llena solo al elegir el
+> primero. Puse "Golf" en el primero, la validación frenó el envío, no se guardó
+> nada y **los 16 chequeos siguientes salieron en rojo** como si la tienda no
+> guardara nada. El sub-barrio ahora se toma del desplegable real, así que el
+> test no envejece cuando cambie la lista.
+
+> [!note] Hallazgo de paso, sin tocar: `verificar-paneles` falla 1 de 46 por 25px
+> *"al cerrar volvés donde estabas (1225, esperado 1200)"*, y **cambia de panel
+> entre corridas** (el carrito una vez, el menú la otra). Verificado contra el
+> `app.js` de HEAD: falla igual, o sea que es **preexistente e intermitente**, no
+> de este cambio. No se tocó: el pedido era otro.
+
 ## Un pedido se da por registrado SOLO cuando el ERP lo confirma (11/9/2026)
 
 Tadeo: *"nos hacen un pedido, nos llega el mensaje por WhatsApp, y en el ERP

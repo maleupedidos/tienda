@@ -2378,6 +2378,13 @@ function applyZone() {
   updateUI();
   updateStockDisplay();
   loadLastOrder();
+  /* Los datos del cliente, de nuevo. Antes `loadClientData()` corría UNA sola
+     vez al arrancar el script, y ahí `currentZone` todavía puede no existir:
+     el que elegía su zona en el modal recuperaba nombre y teléfono (que se
+     guardan aparte del barrio) y tenía que volver a escribir barrio, sub-barrio
+     y lote, teniéndolos guardados a mano. No pisa nada de lo que ya esté
+     escrito, así que llamarla de más no molesta. */
+  loadClientData();
 }
 
 /* HTML de UNA card de combo (reutilizable en grupos temporales y permanentes).
@@ -3622,14 +3629,10 @@ function enviarPedido() {
     return;
   }
 
-  // Guardar en localStorage
+  // Guardar en localStorage. Por la MISMA función que el guardado incremental:
+  // dos formas de guardar el mismo dato se despegan sola.
+  guardarDatosCliente({ dia: dia, pago: pagoEl.value });
   try {
-    const clientData = { nombre, telefono, dia, pago: pagoEl.value, zone: currentZone };
-    if (currentZone === 'estancias') { clientData.barrioPrivado = barrioPrivado; clientData.barrio = barrio; clientData.lote = lote; }
-    else if (currentZone === 'clubes') { clientData.club = club; clientData.deporte = deporte; clientData.grupo = grupo; }
-    else if (currentZone === 'pilar') { clientData.direccion = direccion; clientData.lote = lote; }
-    localStorage.setItem('maleu_cliente_pg', JSON.stringify(clientData));
-    localStorage.setItem('maleu_cliente_' + currentZone, JSON.stringify(clientData));
     localStorage.setItem('maleu_ultimo_pedido_pg', JSON.stringify(Object.entries(cart).map(([id,qty]) => ({id: isNaN(id) ? id : +id, qty}))));
     localStorage.setItem('maleu_last_order_zone', currentZone);
   } catch(e) {}
@@ -4575,7 +4578,58 @@ function updateStockDisplay() {
   getActiveCombos().forEach(c => renderComboFooter(c.id));
 }
 
+/* ── GUARDAR LO QUE EL CLIENTE ESCRIBE ──
+   Hasta el 11/9/2026 los datos se guardaban SOLO al mandar el pedido, así que
+   el que completaba el formulario y no llegaba a mandarlo lo tenía que escribir
+   todo de nuevo la próxima vez. Ahora se guarda a medida que se completa cada
+   campo, y `enviarPedido` usa esta misma función con el día y el pago — tener
+   dos formas de guardar el mismo dato es como se despegan.
+
+   Va en `change` y en `focusout`, NO en cada tecla: con `input`, un teléfono a
+   medio escribir pisaría el que ya estaba guardado. */
+function _datosClienteDelForm(extra) {
+  var v = function (id) { var e = $id(id); return e ? String(e.value || '').trim() : ''; };
+  var d = { nombre: v('f-nombre'), telefono: v('f-telefono'), zone: currentZone };
+  if (currentZone === 'estancias') {
+    d.barrioPrivado = v('f-barrio-privado');
+    d.barrio = d.barrioPrivado === 'Estancias del Pilar' ? v('f-barrio') : d.barrioPrivado;
+    d.lote = v('f-lote');
+  } else if (currentZone === 'clubes') {
+    d.club = v('f-club'); d.deporte = v('f-deporte'); d.grupo = v('f-grupo');
+  } else if (currentZone === 'pilar') {
+    // Mismo criterio que enviarPedido: el dropdown, salvo "Otro" que usa el
+    // campo libre. Si no eligió nada todavía, no se inventa una dirección.
+    var sel = v('f-pilar-barrio');
+    d.direccion = sel === '__otro__' ? v('f-direccion') : sel;
+    d.lote = v('f-lote-pilar');
+  }
+  if (extra) for (var k in extra) if (Object.prototype.hasOwnProperty.call(extra, k)) d[k] = extra[k];
+  return d;
+}
+function guardarDatosCliente(extra) {
+  try {
+    if (!currentZone || !ZONAS[currentZone]) return;
+    var d = _datosClienteDelForm(extra);
+    // Un formulario vacío no se guarda: pisaría lo que ya había con nada. Pasa
+    // al cambiar de zona, que limpia los campos antes de que el cliente toque.
+    if (!d.nombre && !d.telefono) return;
+    localStorage.setItem('maleu_cliente_pg', JSON.stringify(d));
+    localStorage.setItem('maleu_cliente_' + currentZone, JSON.stringify(d));
+  } catch (e) {}
+}
+
 /* ── PRECARGAR DATOS ── */
+/* NUNCA pisa un campo que ya tiene algo escrito. Eso es lo que la deja llamar
+   más de una vez: en el arranque los campos están vacíos y se comporta igual
+   que siempre, y al elegir la zona (donde antes no se llamaba) completa lo que
+   falta sin tocar lo que el cliente acaba de tipear. */
+function _ponerSiVacio(id, val) {
+  if (!val) return false;
+  var e = $id(id);
+  if (!e || String(e.value || '').trim()) return false;
+  e.value = val;
+  return true;
+}
 function loadClientData() {
   try {
     // Datos específicos de la zona actual (prioridad) o legacy global
@@ -4585,20 +4639,20 @@ function loadClientData() {
     if (!saved) {
       // Al menos cargar nombre y teléfono del global si existe
       if (global) {
-        if (global.nombre) $id('f-nombre').value = global.nombre;
-        if (global.telefono) $id('f-telefono').value = global.telefono;
+        _ponerSiVacio('f-nombre', global.nombre);
+        _ponerSiVacio('f-telefono', global.telefono);
       }
       return;
     }
-    if (saved.nombre) $id('f-nombre').value = saved.nombre;
-    if (saved.telefono) $id('f-telefono').value = saved.telefono;
+    _ponerSiVacio('f-nombre', saved.nombre);
+    _ponerSiVacio('f-telefono', saved.telefono);
     if (currentZone === 'estancias') {
-      if (saved.barrioPrivado) { $id('f-barrio-privado').value = saved.barrioPrivado; filtrarSubBarrios(true); }
-      if (saved.barrio) $id('f-barrio').value = saved.barrio;
-      if (saved.lote) $id('f-lote').value = saved.lote;
+      if (_ponerSiVacio('f-barrio-privado', saved.barrioPrivado)) filtrarSubBarrios(true);
+      _ponerSiVacio('f-barrio', saved.barrio);
+      _ponerSiVacio('f-lote', saved.lote);
     }
     if (currentZone === 'pilar') {
-      if (saved.direccion) {
+      if (saved.direccion && !$id('f-pilar-barrio').value) {
         var sel = $id('f-pilar-barrio');
         // Buscar si el barrio guardado está en el dropdown
         var found = false;
@@ -4613,12 +4667,12 @@ function loadClientData() {
         }
         onPilarBarrioChange();
       }
-      if (saved.lote) $id('f-lote-pilar').value = saved.lote;
+      _ponerSiVacio('f-lote-pilar', saved.lote);
     }
     if (currentZone === 'clubes') {
-      if (saved.club) $id('f-club').value = saved.club;
-      if (saved.deporte) $id('f-deporte').value = saved.deporte;
-      if (saved.grupo) $id('f-grupo').value = saved.grupo;
+      _ponerSiVacio('f-club', saved.club);
+      _ponerSiVacio('f-deporte', saved.deporte);
+      _ponerSiVacio('f-grupo', saved.grupo);
     }
     // Día y método de pago NO se precargan — el cliente los elige cada vez
   } catch(e) {}
@@ -4733,11 +4787,19 @@ fetchVendedores();
 _retryPendingOrders();
 initCumpleBlock();
 // Listener delegado: cualquier cambio en el form recalcula el CTA del botón WA
+// y guarda los datos, para que el que completa y se va no los pierda.
 (function(){
   var formSec = $id('form-section');
   if (!formSec) return;
   ['input','change'].forEach(function(ev){
     formSec.addEventListener(ev, updateWhatsappCta);
+  });
+  /* `change` y `focusout`, no `input`: guardar en cada tecla dejaría un
+     teléfono a medio escribir encima del que ya estaba. `focusout` porque
+     burbujea (blur no), y cubre al que escribe y toca otra cosa sin que el
+     campo dispare `change`. */
+  ['change','focusout'].forEach(function(ev){
+    formSec.addEventListener(ev, function(){ guardarDatosCliente(); });
   });
 })();
 let _stockTimer = setInterval(fetchStock, 60000);
