@@ -1267,6 +1267,78 @@ los seis momentos de la semana moviendo ese reloj.
 > · En la compu el buscador pegado va de punta a punta mientras el catálogo va a
 >   1100px. Se ve desparejo pero no traba nada.
 
+## Un pedido tiene UNA fecha: se pregunta antes de moverla (13/9/2026, tarde)
+
+Tadeo: *"soy de Estancias, pido para hoy domingo, pongo cosas que SÍ hay, y toco
+'Pedir para el vie 18' en un pack que hoy no hay. ¿Cómo sigue? ¿Separa dos ventas?"*.
+
+**No las separa.** El ERP guarda un pedido con un solo día de entrega, y el botón pasaba
+**todo el carrito** al viernes con un aviso de 4 segundos. El que había elegido "hoy" se
+enteraba —si se enteraba— mirando el chip de arriba.
+
+| el carrito | qué pasa al tocar "Pedir para el vie 18" |
+|---|---|
+| **vacío** | se sigue de un toque, como antes: el botón ya dice la fecha |
+| **con algo** | se abre una hoja que pregunta: *"Para hoy no hay. Lo tenemos para el viernes 18/9. Cada pedido se entrega todo junto, en un solo viaje. Si lo sumás, lo que ya tenés en el carrito también pasa al viernes 18/9."* |
+
+Los botones son **"Pasar todo al viernes 18/9"** y **"Seguir con mi pedido para hoy"**, y
+abajo dice cómo tener las dos cosas: mandar primero el pedido de hoy y armar otro para el
+viernes. Lo mismo con "Armar para el vie 18" de un combo.
+
+> [!important] Cerrar sin elegir nunca mueve la fecha
+> La ×, tocar afuera y Escape son "seguir con lo de hoy". Se mide `fecha_por_stock_no`
+> cuando alguien se queda con su fecha, además del `fecha_por_stock` de siempre.
+
+> [!note] Por qué no se parte en dos pedidos solo
+> Serían dos entregas, dos confirmaciones por WhatsApp, dos pagos y en Pilar dos envíos.
+> Para el cliente es más confuso que la pregunta, y el ERP no tiene cómo atarlos.
+
+Reusa el modal del combo (hoja desde abajo en el celular, centrada en la compu) con clases
+propias para los botones (`.fecha-modal-si` / `-no`, 48px). Lo prueba
+`_tools/verificar-sin-stock.js`: carrito vacío sin preguntas, la pregunta con lo que dice y
+sus tres salidas, el combo, y "Pasar todo".
+
+### El chip de la barra en los barrios con vendedor decía "Tiempo agotado" un domingo
+
+`_pilarRedCutoffChip` tenía el mismo error que `_cutoffNote` hasta esa mañana: sábado y
+domingo decía *"Tiempo agotado esta semana"* con el viernes abierto. Ahora dice las
+fechas (`_cutoffChipTexto`) y el test lo mira en los cuatro momentos de la semana.
+
+### La foto de Carnes y la grilla de categorías
+
+- La categoría Carnes usaba `carne-cortes.jpg`, una foto de stock que no es ningún corte
+  de los que se venden. Ahora es **la colita**. `carne-cortes.jpg` sigue viva: es la foto
+  de la picaña.
+- En la compu las categorías eran 4 columnas fijas, y con las 9 de Estancias **Tortas
+  quedaba sola en una tercera fila**. Ahora el ancho se elige por cantidad (`--cat-cols`):
+  9 de a 3, 8 de a 4, 10 de a 5. Mientras la carne no carga son 8 y se ven de a 4.
+
+### Los textos de las páginas, alineados con cómo funciona hoy
+
+Tres cosas estaban **mal de hecho**, no de estilo, en Preguntas, Contacto y Términos:
+
+| decía | es |
+|---|---|
+| *"Pagando en efectivo tenés 10% de descuento"*, sin zona | sólo **Estancias del Pilar, Los Alcanfores y Estancias del Río** (`cashDiscountActive`), y no en combos |
+| *"Envío $5.000"* para todo Pilar | **$3.000** en barrios con vendedor y **sin costo** en los dos ex-Home (`getShipping`) |
+| *"Todo llega congelado"* | la carne llega **fresca**, envasada al vacío |
+
+Y de paso: la carne no aparecía en ninguna página (ahora está en Preguntas, Tips, Sobre
+Nosotros y Términos), Clubes decía "en la cancha" y la tienda "en la puerta del club", el
+formulario decía *"vos confirmás antes de que salga"* cuando desde el 11/9 el pedido se
+registra al tocar el botón, y el título de la home era "Maleu Alimentos". Preguntas suma
+*"¿Qué pasa si algo no hay para el día que elegí?"* y *"¿Puedo recibir una parte antes y
+otra después?"*.
+
+> [!warning] En Términos NO se tocó nada legal
+> Sólo los datos que quedaron viejos (qué se vende, el 10%, el envío, la carne fresca en
+> conservación) y "alimentos congelados" → "que necesitan frío" en la condición de
+> devolución. El CUIT y la razón social siguen en pausa por decisión de Tadeo.
+
+> [!note] Lo de guardar la carne es práctica general, no un dato de Lucas
+> *"En la heladera hasta cocinarla, o en el freezer en su envase si la vas a usar más
+> adelante"*. Ningún documento de Maleu dice cuánto dura; por eso no se escribió un plazo.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

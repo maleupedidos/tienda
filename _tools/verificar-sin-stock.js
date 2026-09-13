@@ -23,6 +23,14 @@
  *   Y de paso: el subtitulo del formulario centrado por una regla de otra
  *   seccion, los +/- del carrito de 26px, y el catalogo a 900px en la compu.
  *
+ * Y lo que se sumo esa tarde, cuando Tadeo pregunto: "elegi para hoy, puse
+ * cosas que SI hay y toco 'Pedir para el vie 18' en un pack que hoy no hay:
+ * ¿como sigue? ¿separa dos ventas?". No las separa — un pedido tiene una sola
+ * fecha — y el boton pasaba TODO el carrito al viernes con un aviso de 4 s.
+ * Ahora, con algo en el carrito, pregunta antes; con el carrito vacio sigue
+ * de un toque. Y el chip de la barra de los barrios con vendedor, que decia
+ * "Tiempo agotado esta semana" un domingo.
+ *
  * El RELOJ va congelado (domingo 13/9/2026 05:00): sin eso el resultado
  * dependeria del dia en que se corre, y el caso del domingo no se podria
  * probar nunca un martes.
@@ -242,6 +250,23 @@ async function main() {
     chk(/cerraron/.test(juePm) && /viernes 25\/9/.test(juePm), 'jueves 17/9 13:00: el de manana cerro, sale el viernes 25');
     const vie = await nota(HORA(18, 10));
     chk(/Hoy estamos entregando/.test(vie) && /viernes 25\/9/.test(vie), 'viernes 18/9: hoy se entrega, el proximo es el 25');
+
+    /* El chip de la barra de promo en los barrios con vendedor tenia el mismo
+       error: "Tiempo agotado esta semana" un domingo con el viernes abierto. */
+    /* Contra la tienda de antes la funcion no existe: se lee el chip viejo
+       forzando un barrio con vendedor, asi el test marca rojo en vez de romperse. */
+    const chip = async (ms) => ev('(function () { window.__ahora = ' + ms + ';' +
+      ' if (typeof _cutoffChipTexto === "function") return _cutoffChipTexto();' +
+      ' var z = currentZone, r0 = window._pilarBarrioIsRed; currentZone = "pilar"; window._pilarBarrioIsRed = function () { return true; };' +
+      ' try { return _pilarRedCutoffChip(); } finally { currentZone = z; window._pilarBarrioIsRed = r0; } })()');
+    const cDom = await chip(DOMINGO);
+    chk(!/agotado|cerraron/.test(cDom) && /jueves 17\/9/.test(cDom) && /viernes 18\/9/.test(cDom), 'chip de vendedor, domingo: "' + cDom + '"');
+    const cJueAm = await chip(HORA(17, 11));
+    chk(/hoy a las 12/.test(cJueAm) && /18\/9/.test(cJueAm), 'chip, jueves 11:00: "' + cJueAm + '"');
+    const cJuePm = await chip(HORA(17, 13));
+    chk(/cerraron/.test(cJuePm) && /25\/9/.test(cJuePm), 'chip, jueves 13:00: "' + cJuePm + '"');
+    const cVie = await chip(HORA(18, 10));
+    chk(/Hoy estamos entregando/.test(cVie) && /25\/9/.test(cVie) && /jueves 24\/9/.test(cVie), 'chip, viernes: "' + cVie + '"');
     await ev('window.__ahora = ' + DOMINGO);
 
     /* ── 2. LA VOZ DE LA MARCA ───────────────────────────────────────── */
@@ -322,27 +347,101 @@ async function main() {
     chk(!/agregado/.test(antes.toast), 'y no dice "agregado": "' + antes.toast + '"');
     chk(antes.ga === 0 && antes.meta === 0, 'ni le manda un add_to_cart a Google ni un AddToCart a Meta (' + antes.ga + '/' + antes.meta + ')');
 
-    console.log('\n' + DIM + '== Tocar "Pedir para el vie 18" ==' + RST);
-    await ev('addToCart(' + JSON.stringify(idPMu) + ')');   // algo que ya estaba en el carrito
-    await dormir(300);
-    const sel = '#catalogo .product-card[data-id="' + idPMa + '"] .add-btn-otra-fecha';
-    const existe = await ev('!!document.querySelector(' + JSON.stringify(sel) + ') || !!document.querySelector(".cat-section .product-card[data-id=\'' + idPMa + '\'] .add-btn-otra-fecha")');
-    const selReal = (await ev('!!document.querySelector(' + JSON.stringify(sel) + ')')) ? sel
+    console.log('\n' + DIM + '== Tocar "Pedir para el vie 18" con el carrito VACIO: sin preguntas ==' + RST);
+    const sel0 = (await ev('!!document.querySelector(' + JSON.stringify('#catalogo .product-card[data-id="' + idPMa + '"] .add-btn-otra-fecha') + ')'))
+      ? '#catalogo .product-card[data-id="' + idPMa + '"] .add-btn-otra-fecha'
       : '.cat-section .product-card[data-id="' + idPMa + '"] .add-btn-otra-fecha';
-    chk(existe, 'el boton esta en la card de su categoria');
-    const pos = await tocar(selReal);
-    chk(pos && pos.libre, 'nada lo tapa: el toque le cae a el (' + (pos ? pos.texto : 'sin boton') + ')');
+    const evFecha = (n) => '(window.dataLayer || []).filter(function (x) { return x && x[0] === "event" && x[1] === "' + n + '"; }).length';
+    const evSi0 = await ev(evFecha('fecha_por_stock'));
+    await tocar(sel0);
+    await dormir(600);
+    const vacio = JSON.parse(await ev('JSON.stringify({ fecha: selectedDeliveryDate, pma: cart[' + JSON.stringify(idPMa) + '] || 0,' +
+      ' modal: !!(document.getElementById("fecha-modal") && document.getElementById("fecha-modal").style.display === "flex") })'));
+    chk(!vacio.modal && vacio.fecha === '2026-09-18' && vacio.pma === 1,
+        'con nada en el carrito no pregunta: pasa al viernes y lo agrega (' + vacio.fecha + ', ' + vacio.pma + ', modal ' + vacio.modal + ')');
+    /* Volver a "hoy" desde el calendario saca lo que hoy no hay, y lo dice. */
+    const vuelta = JSON.parse(await ev('(function () { setDeliveryDate("2026-09-13", "Domingo", { sinScroll: true });' +
+      ' return JSON.stringify({ pma: cart[' + JSON.stringify(idPMa) + '] || 0, toast: document.getElementById("toast").textContent }); })()'));
+    chk(vuelta.pma === 0 && /ajustado/.test(vuelta.toast), 'y volver a hoy lo saca del carrito avisando: "' + vuelta.toast + '"');
+    await dormir(400);
+
+    console.log('\n' + DIM + '== Con algo ya elegido para HOY, pregunta antes de mover todo ==' + RST);
+    await ev('addToCart(' + JSON.stringify(idPMu) + ')');   // lo que ya estaba en el carrito
+    await dormir(300);
+    const sel = sel0;
+    chk(await ev('!!document.querySelector(' + JSON.stringify(sel) + ')'), 'el boton volvio a la card de su categoria');
+    const modalAbierto = 'JSON.stringify((function () { var m = document.getElementById("fecha-modal"); var ab = !!(m && m.style.display === "flex");' +
+      ' var q = function (s) { var e = m && m.querySelector(s); return e ? { t: e.textContent, h: Math.round(e.getBoundingClientRect().height), top: Math.round(e.getBoundingClientRect().top), bot: Math.round(e.getBoundingClientRect().bottom) } : null; };' +
+      ' return { abierto: ab, texto: m ? m.innerText : "", si: q(".fecha-modal-si"), no: q(".fecha-modal-no"), foco: document.activeElement && document.activeElement.className,' +
+      '  quieto: document.body.classList.contains("modal-open"), fecha: selectedDeliveryDate, pma: cart[' + JSON.stringify(idPMa) + '] || 0, pmu: cart[' + JSON.stringify(idPMu) + '] || 0, vh: window.innerHeight }; })())';
+    let pos = await tocar(sel);
+    chk(pos && pos.libre, 'nada tapa el boton: el toque le cae a el (' + (pos ? pos.texto : 'sin boton') + ')');
     chk(pos && (ANCHO >= 700 || pos.alto >= 44), 'mide ' + (pos ? pos.alto : 0) + 'px de alto');
+    await dormir(400);
+    let mo = JSON.parse(await ev(modalAbierto));
+    if (process.env.CAPTURA) {
+      const img = await cli.enviar('Page.captureScreenshot', { format: 'png' });
+      fs.writeFileSync(path.join(process.env.CAPTURA, 'pregunta-' + ANCHO + '.png'), Buffer.from(img.data, 'base64'));
+    }
+    chk(mo.abierto, 'se abre la pregunta');
+    chk(mo.fecha === '2026-09-13' && mo.pma === 0 && mo.pmu === 1, 'y mientras pregunta no toca nada (fecha ' + mo.fecha + ', pizza ' + mo.pma + ', lo de antes ' + mo.pmu + ')');
+    chk(/Para hoy no hay/.test(mo.texto) && /viernes 18\/9/.test(mo.texto), 'dice que para hoy no hay y que hay para el viernes 18/9');
+    chk(/lo que ya tenés en el carrito también pasa al viernes 18\/9/.test(mo.texto), 'y dice que pasa con lo que ya eligio');
+    chk(mo.si && /Pasar todo al viernes 18\/9/.test(mo.si.t) && mo.no && /Seguir con mi pedido para hoy/.test(mo.no.t),
+        'las dos salidas dicen lo que hacen: "' + (mo.si ? mo.si.t : '') + '" / "' + (mo.no ? mo.no.t : '') + '"');
+    chk(mo.si && mo.no && mo.si.h >= 44 && mo.no.h >= 44, 'los dos botones miden ' + (mo.si ? mo.si.h : 0) + ' y ' + (mo.no ? mo.no.h : 0) + 'px');
+    chk(mo.no && mo.no.bot <= mo.vh && mo.si.top >= 0, 'y entran en la pantalla sin scrollear (' + (mo.si ? mo.si.top : 0) + ' a ' + (mo.no ? mo.no.bot : 0) + ' de ' + mo.vh + ')');
+    chk(/armá otro para el viernes 18\/9/.test(mo.texto), 'y dice como tener las dos cosas: dos pedidos');
+    chk(mo.quieto, 'el fondo queda quieto');
+    chk(/fecha-modal-si/.test(mo.foco || ''), 'el foco queda en el boton principal (' + mo.foco + ')');
+
+    const evNo0 = await ev(evFecha('fecha_por_stock_no'));
+    await tocar('#fecha-modal .fecha-modal-no');
+    await dormir(400);
+    mo = JSON.parse(await ev(modalAbierto));
+    chk(!mo.abierto && !mo.quieto, '"Seguir con mi pedido para hoy" cierra y devuelve el scroll');
+    chk(mo.fecha === '2026-09-13' && mo.pma === 0 && mo.pmu === 1, 'y deja todo como estaba (fecha ' + mo.fecha + ', pizza ' + mo.pma + ', lo de antes ' + mo.pmu + ')');
+    chk((await ev(evFecha('fecha_por_stock_no'))) - evNo0 === 1, 'se mide como fecha_por_stock_no');
+    chk(await ev('!!document.querySelector(' + JSON.stringify(sel) + ')'), 'y el boton sigue ofreciendo el viernes');
+
+    await tocar(sel); await dormir(400);
+    await cli.enviar('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+    await cli.enviar('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+    await dormir(300);
+    mo = JSON.parse(await ev(modalAbierto));
+    chk(!mo.abierto && mo.fecha === '2026-09-13' && mo.pma === 0, 'Escape tambien cierra sin mover la fecha');
+    await tocar(sel); await dormir(400);
+    await ev('(function () { var m = document.getElementById("fecha-modal"); if (m) m.dispatchEvent(new MouseEvent("click", { bubbles: true })); })()');
+    await dormir(300);
+    mo = JSON.parse(await ev(modalAbierto));
+    chk(!mo.abierto && mo.fecha === '2026-09-13' && mo.pma === 0, 'tocar afuera tambien cierra sin mover la fecha');
+
+    console.log('\n' + DIM + '== Un combo con el carrito lleno: la misma pregunta ==' + RST);
+    const combo = JSON.parse(await ev('(function () { var b = document.querySelector(".combo-card .add-btn-otra-fecha"); if (!b) return "null"; b.click();' +
+      ' var m = document.getElementById("fecha-modal"); var r = { abierto: !!(m && m.style.display === "flex"), texto: m ? m.innerText : "", fecha: selectedDeliveryDate,' +
+      '  combos: Object.keys(comboCart).length, config: !!(document.getElementById("combo-modal") && document.getElementById("combo-modal").style.display === "flex") };' +
+      ' if (typeof otraFechaNo === "function") otraFechaNo(); r.despues = selectedDeliveryDate; return JSON.stringify(r); })()'));
+    chk(combo && combo.abierto && /Combo|Noche|Mesa|Finde|Semana|Freezer/.test(combo.texto) && /armá otro/.test(combo.texto),
+        'el combo tambien pregunta antes (' + (combo ? combo.texto.split('\n')[1] : 'sin boton') + ')');
+    chk(combo && !combo.config && combo.combos === 0 && combo.fecha === '2026-09-13' && combo.despues === '2026-09-13',
+        'y sin contestar no abre el armado, no agrega nada ni mueve la fecha');
+
+    console.log('\n' + DIM + '== "Pasar todo al viernes 18/9" ==' + RST);
+    pos = await tocar(sel); await dormir(400);
     const yAntes = pos ? Math.round(pos.y) : 0;
+    const evSi1 = await ev(evFecha('fecha_por_stock'));
+    await tocar('#fecha-modal .fecha-modal-si');
     await dormir(700);
     const desp = JSON.parse(await ev('(function () {' +
       'return JSON.stringify({ fecha: selectedDeliveryDate, pma: cart[' + JSON.stringify(idPMa) + '] || 0, pmu: cart[' + JSON.stringify(idPMu) + '] || 0,' +
       '  toast: document.getElementById("toast").textContent, chip: (document.getElementById("date-chip") || {}).textContent,' +
       '  tl: Math.round(document.getElementById("toast").getBoundingClientRect().left), tr: Math.round(document.getElementById("toast").getBoundingClientRect().right), vw: document.documentElement.clientWidth,' +
       '  y: Math.round(window.pageYOffset), modo: getStockMode(), guardada: localStorage.getItem("maleu_delivery_date") || "",' +
+      '  modal: !!(document.getElementById("fecha-modal") && document.getElementById("fecha-modal").style.display === "flex"), quieto: document.body.classList.contains("modal-open"),' +
       '  otras: document.querySelectorAll(".add-btn-otra-fecha").length,' +
-      '  ev: (window.dataLayer || []).filter(function (x) { return x && x[0] === "event" && x[1] === "fecha_por_stock"; }).length });' +
+      '  ev: ' + evFecha('fecha_por_stock') + ' });' +
       '})()'));
+    chk(!desp.modal && !desp.quieto, 'la pregunta se cierra y el fondo se libera');
     chk(desp.fecha === '2026-09-18' && desp.modo === 'ilimitado', 'la entrega paso al viernes 18 (' + desp.fecha + ', ' + desp.modo + ')');
     chk(desp.pma === 1, 'la pizza entro al carrito (' + desp.pma + ')');
     chk(desp.pmu === 1, 'lo que ya estaba en el carrito sigue ahi (' + desp.pmu + ')');
@@ -352,7 +451,8 @@ async function main() {
     chk(/2026-09-18/.test(desp.guardada), 'y queda guardada para la proxima visita');
     chk(desp.y > 300, 'no te sube arriba de todo: seguis mirando el producto (scroll ' + desp.y + ')');
     chk(desp.otras === 0, 'con el viernes elegido ya no queda ningun boton "Pedir para…" (' + desp.otras + ')');
-    chk(desp.ev === 1, 'se mide en Analytics como fecha_por_stock (' + desp.ev + ')');
+    chk(evSi1 - evSi0 === 1 && desp.ev - evSi1 === 1, 'se mide en Analytics como fecha_por_stock, una vez por cada paso (' + (evSi1 - evSi0) + ' + ' + (desp.ev - evSi1) + ')');
+    void yAntes;
 
     /* ── 4. COPIAR EL ALIAS ──────────────────────────────────────────── */
     console.log('\n' + DIM + '== Copiar el alias ==' + RST);

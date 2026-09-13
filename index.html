@@ -9,12 +9,12 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>Maleu Alimentos</title>
-  <meta name="description" content="Resolvé tus comidas en minutos. Comida rica, artesanal, con delivery en zona Pilar." />
+  <title>Maleu · Comida lista para cocinar y carne fresca en Pilar</title>
+  <meta name="description" content="Pizzas, sorrentinos, empanadas, tartas y cortes frescos de carne, en la puerta de tu casa en Pilar. Pedís online y te lo llevamos." />
   <meta name="robots" content="index, follow" />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Maleu Alimentos" />
-  <meta property="og:description" content="Resolvé tus comidas en minutos. Comida rica, artesanal, con delivery en zona Pilar." />
+  <meta property="og:title" content="Maleu · Comida lista para cocinar y carne fresca en Pilar" />
+  <meta property="og:description" content="Pizzas, sorrentinos, empanadas, tartas y cortes frescos de carne, en la puerta de tu casa en Pilar. Pedís online y te lo llevamos." />
   <!-- Imagen de compartir DEDICADA, 1200x630. Antes apuntaba a la foto de la
        card (825x1024, vertical): WhatsApp y Facebook la recortaban al medio y
        se perdia la pizza. Esta no la baja ningun cliente — solo el robot que
@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=4d5f2145" />
+  <link rel="stylesheet" href="styles.css?v=60ca173f" />
   <script>
     // Forzar inicio arriba en cada carga (incluye refresh, back-forward cache de iOS).
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
@@ -141,24 +141,24 @@
       <p>Elegí tu zona para ver los días disponibles.</p>
       <button class="loc-btn" onclick="setZone('estancias')">
         Estancias del Pilar
-        <small>Delivery Lun, Mié, Vie, Sáb, Dom</small>
+        <small>Entregas lunes, miércoles, viernes, sábado y domingo</small>
       </button>
       <button class="loc-btn" onclick="setZone('pilar')">
         Pilar y Alrededores
-        <small>Delivery los viernes durante el día</small>
-        <small class="loc-note">⏰ Recibimos pedidos hasta el <strong>jueves 12 hs</strong> y repartimos el viernes durante el día.</small>
+        <small>Entregas los viernes, durante el día</small>
+        <small class="loc-note">⏰ Pedidos hasta el <strong>jueves a las 12 hs</strong></small>
       </button>
       <button class="loc-btn" onclick="setZone('clubes')">
         Clubes Deportivos
-        <small>Entrega los viernes en la puerta del club</small>
-        <small class="loc-note">⏰ Recibimos pedidos hasta el <strong>jueves 12 hs</strong> y entregamos el viernes en el club.</small>
+        <small>Entregas los viernes, en la puerta del club</small>
+        <small class="loc-note">⏰ Pedidos hasta el <strong>jueves a las 12 hs</strong></small>
       </button>
     </div>
     <!-- PASO 2: Zona de Pilar (solo Pilar) -->
     <div class="loc-step" id="loc-step-barrio" style="display:none">
       <img src="img/logo-icono.png?v=d8163724" alt="Maleu" />
       <h2>¿En qué zona de Pilar estás?</h2>
-      <p>Elegí tu zona.</p>
+      <p>Así te mostramos los días y el envío de tu barrio.</p>
       <div class="loc-barrios-grid" id="loc-barrios-grid"></div>
       <button class="loc-back-btn" onclick="welcomeBackToZone()">← Cambiar zona</button>
     </div>
@@ -556,7 +556,7 @@
       </div>
     </div>
 
-    <p class="form-note">Abrimos WhatsApp con tu pedido completo — vos confirmás antes de que salga.</p>
+    <p class="form-note">Al tocar el botón registramos tu pedido y te llevamos a WhatsApp con el detalle, listo para mandárnoslo.</p>
     <div class="whatsapp-cta-wrap" id="whatsapp-cta-wrap">
       <div class="whatsapp-ready-hint" id="whatsapp-ready-hint">
         <span class="wh-arrow">👇</span>
@@ -584,8 +584,8 @@
       <p><a href="https://wa.me/5491155038905">WhatsApp: +54 9 11 5503 8905</a></p>
     </div>
     <div class="footer-col">
-      <div class="footer-col-label">¿Por qué Maleu?</div>
-      <p>Maleu lo hace fácil.<br>Pedís, confirmamos y entregamos.</p>
+      <div class="footer-col-label">Cómo funciona</div>
+      <p>Elegís y pedís desde acá.<br>Te lo llevamos a tu casa.</p>
     </div>
   </div>
   <hr class="footer-hr" />
@@ -611,7 +611,7 @@
       <div class="send-icon-error">!</div>
     </div>
     <h3 id="send-title">Enviando tu pedido…</h3>
-    <p id="send-sub">Estamos confirmando con Maleu. En unos segundos te llevamos a WhatsApp.</p>
+    <p id="send-sub">Tarda unos segundos. No cierres esta pantalla.</p>
     <div class="send-fallback">
       <button type="button" class="send-wa-btn" id="send-wa-btn">Mandar por WhatsApp</button>
       <p class="send-fallback-nota">Mientras tanto seguimos intentando: si se registra, te llevamos solo.</p>
@@ -620,6 +620,6 @@
   </div>
 </div>
 
-<script src="app.js?v=9cefef39"></script>
+<script src="app.js?v=c1728cc9"></script>
 </body>
 </html>

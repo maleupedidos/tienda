@@ -943,7 +943,7 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
 @media (min-width:900px) {
   .cat-tiles-section { padding:2.4rem 1rem 1rem; max-width:1100px; margin:0 auto; }
   .section-title { font-size:2rem; }
-  .cat-tiles { display:grid; grid-template-columns:repeat(4, 1fr);
+  .cat-tiles { display:grid; grid-template-columns:repeat(var(--cat-cols, 4), 1fr);
                overflow:visible; margin:0; padding:0; gap:1rem; }
   .cat-tile { width:auto; height:220px; }
 }
@@ -1718,3 +1718,15 @@ body.busqueda-activa #repeat-block { display: none !important; }
    parte en dos. */
 .toast { white-space: normal; max-width: calc(100vw - 32px); width: max-content;
          text-align: center; line-height: 1.35; }
+
+/* ¿Pasar TODO el pedido a otra fecha? (13/9/2026). Reusa el modal del combo:
+   hoja que sube desde abajo en el celular, centrada en la compu. */
+.fecha-modal-txt { font-size:.9rem; color:#444; line-height:1.45; margin:.1rem 0 1rem; }
+.fecha-modal-txt strong { color:var(--brown); }
+.fecha-modal-si, .fecha-modal-no { display:block; width:100%; min-height:48px; border-radius:12px;
+  font-family:var(--font); font-size:.95rem; font-weight:700; line-height:1.25; cursor:pointer; padding:.7rem 1rem; }
+.fecha-modal-si { background:var(--orange); color:#fff; border:none; }
+.fecha-modal-si:hover { background:var(--hover-orange); }
+.fecha-modal-no { background:#fff; color:var(--brown); border:1.5px solid #ddd; margin-top:.6rem; }
+.fecha-modal-no:hover { border-color:var(--orange); }
+.fecha-modal-tip { font-size:.8rem; color:#666; line-height:1.4; margin-top:.9rem; text-align:center; }

@@ -80,8 +80,8 @@ const PRODUCTOS = [
   { id:3,  cat:"Pizzas Individuales",   nombre:"Pizza Cebolla Caramelizada",    desc:"Cebolla bien dulce con queso cremoso. Para los que saben.",                       precio:11500, img:"pizza-cebolla-cocida.jpg", emoji:"🍕", chips:["Para 1–2 personas","1 pizza grande","Al horno en 12 min"] },
   { id:4,  cat:"Pizzas Individuales",   nombre:"Pizza Jamón y Morrón",          desc:"Con jamón, morrón rojo y orégano. Completa y sabrosa.",                           precio:12000, img:"pizza-jamon-morron-cocida.jpg", emoji:"🍕", chips:["Para 1–2 personas","1 pizza grande","Al horno en 12 min"] },
   { id:19, cat:"Pizzas Individuales",   nombre:"Pizza Muzzarella",              desc:"Puro queso derretido sobre salsa de tomate. La clásica que nunca sobra.",          precio:11200, img:"pizza-muzarella-cocida.jpg", emoji:"🍕", chips:["Para 1–2 personas","1 pizza grande","Al horno en 12 min"] },
-  { id:5,  cat:"Pack Pizzas x2",  nombre:"Pack Muzarella x2",             desc:"Dos pizzas de muzzarella. Cena resuelta para toda la semana.",                   precio:17000, img:"pack-muzarella-cocida.jpg", emoji:"🍕", top:true, chips:["Para 3–4 personas","2 pizzas grandes","Al horno en 12 min"] },
-  { id:6,  cat:"Pack Pizzas x2",  nombre:"Pack Jamón y Queso x2",         desc:"Dos pizzas de jamón y queso. Una para hoy, una para cuando querás.",             precio:17000, img:"pack-jamon-queso-cocida.jpg", emoji:"🍕", chips:["Para 3–4 personas","2 pizzas grandes","Al horno en 12 min"] },
+  { id:5,  cat:"Pack Pizzas x2",  nombre:"Pack Muzzarella x2",            desc:"Dos pizzas de muzzarella para tener siempre una cena resuelta en el freezer.",   precio:17000, img:"pack-muzarella-cocida.jpg", emoji:"🍕", top:true, chips:["Para 3–4 personas","2 pizzas grandes","Al horno en 12 min"] },
+  { id:6,  cat:"Pack Pizzas x2",  nombre:"Pack Jamón y Queso x2",         desc:"Dos pizzas de jamón y queso. Una para hoy, otra para cuando quieras.",             precio:17000, img:"pack-jamon-queso-cocida.jpg", emoji:"🍕", chips:["Para 3–4 personas","2 pizzas grandes","Al horno en 12 min"] },
   { id:7,  cat:"Pack Pizzas x2",  nombre:"Pack Cebolla y Queso x2",       desc:"Dos pizzas con cebolla caramelizada. Guardá una para mañana.",                   precio:17000, img:"pack-cebolla-queso-cocida.jpg", emoji:"🍕", chips:["Para 3–4 personas","2 pizzas grandes","Al horno en 12 min"] },
   { id:8,  cat:"Sorrentinos",      nombre:"Sorrentinos Cordero al Malbec", desc:"Cordero, zanahoria, apio, cebolla y especias. Distinto y muy rico.",             precio:19800, img:"sorrentinos-cordero-v2.jpg", emoji:"🍝", chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
   { id:9,  cat:"Sorrentinos",      nombre:"Sorrentinos Jamón y Queso",     desc:"Relleno cremoso y generoso. El favorito de la familia.",                         precio:18300, img:"sorrentinos-jamon-v2.jpg", emoji:"🍝", top:true, chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
@@ -138,9 +138,11 @@ const CATEGORIAS = [
   { nombre:"Pack Pizzas x2",      icono:"🍕", nota:"Pack de 2 unidades · Perfectas para tener siempre a mano" },
   { nombre:"Pizzas Individuales", icono:"🍕", nota:"Pre-cocidas · Listas en minutos · Al horno directo desde el freezer" },
   /* La carne va TERCERA, pegada a las dos de pizzas, no al final: lo pidio
-     Tadeo el 10/9/2026. `img` es propia y no sale del producto destacado
-     como en el resto — las fotos de los cortes todavia son de stock. */
-  { nombre:"Carnes",              icono:"🥩", nota:"Cortes frescos de Maleu Carnes · Elegís vos la pieza que te llevás y sabés su peso exacto antes de pedirla", img:"carne-cortes.jpg" },
+     Tadeo el 10/9/2026. `img` es propia a proposito: sin ella la foto saldria
+     del primer corte de la zona, y cambiaria sola el dia que se reordene la
+     lista. Hasta el 13/9/2026 era carne-cortes.jpg, una foto de stock que no
+     es ninguno de los cortes que se venden; desde ese dia es la colita. */
+  { nombre:"Carnes",              icono:"🥩", nota:"Cortes frescos de Maleu Carnes · Elegís vos la pieza que te llevás y sabés su peso exacto antes de pedirla", img:"carne-colita.jpg" },
   { nombre:"Wraps",               icono:"🌯", nota:"Pre-cocidos · Listos al horno en pocos minutos" },
   { nombre:"Empanadas",           icono:"🥟", nota:"x8 unidades · Congeladas, listas para el horno · Cocinar hasta dorar" },
   { nombre:"Sorrentinos",         icono:"🍝", nota:"600g · 16 unidades · Rinde 3 porciones · Solo 4 minutos de cocción", tip:"Hervir agua · Agregar sorrentinos · 4 min con olla destapada · Retirar con espumadera y servir" },
@@ -156,7 +158,7 @@ const PRODUCTOS_CLUBES = [
   { id:'pcc', cat:"Pizzas Individuales",  nombre:"Pizza Cebolla Caramelizada", desc:"Cebolla bien dulce con queso cremoso. Para los que saben.",                 precio:8000,  img:"pizza-cebolla-cocida.jpg", emoji:"🍕", chips:["1 pizza grande","Al horno en 12 min"] },
   { id:'pma', cat:"Pizzas Individuales",  nombre:"Pizza Margarita",            desc:"Tomate fresco, mozzarella y albahaca. La que nunca falla.",                  precio:8000,  img:"pizza-margarita-cocida.jpg", emoji:"🍕", chips:["1 pizza grande","Al horno en 12 min"] },
   { id:'pjm', cat:"Pizzas Individuales",  nombre:"Pizza Jamón y Morrón",       desc:"Con jamón, morrón rojo y orégano. Completa y sabrosa.",                     precio:8000,  img:"pizza-jamon-morron-cocida.jpg", emoji:"🍕", chips:["1 pizza grande","Al horno en 12 min"] },
-  { id:'pp1', cat:"Pack Pizzas x2", nombre:"Pack Muzarella x2",          desc:"Dos pizzas de muzzarella. Cena resuelta para todo el equipo.",              precio:13000, img:"pack-muzarella-cocida.jpg", emoji:"🍕", top:true, chips:["2 pizzas grandes","Al horno en 12 min"] },
+  { id:'pp1', cat:"Pack Pizzas x2", nombre:"Pack Muzzarella x2",         desc:"Dos pizzas de muzzarella. Cena resuelta para todo el equipo.",              precio:13000, img:"pack-muzarella-cocida.jpg", emoji:"🍕", top:true, chips:["2 pizzas grandes","Al horno en 12 min"] },
   { id:'pp2', cat:"Pack Pizzas x2", nombre:"Pack Jamón y Queso x2",      desc:"Dos pizzas de jamón y queso. El clásico del tercer tiempo.",               precio:13000, img:"pack-jamon-queso-cocida.jpg", emoji:"🍕", chips:["2 pizzas grandes","Al horno en 12 min"] },
   { id:'pp3', cat:"Pack Pizzas x2", nombre:"Pack Cebolla y Queso x2",    desc:"Dos pizzas con cebolla caramelizada. Siempre piden más.",                  precio:13000, img:"pack-cebolla-queso-cocida.jpg", emoji:"🍕", chips:["2 pizzas grandes","Al horno en 12 min"] },
   { id:'ecac', cat:"Empanadas", nombre:"Empanadas Carne a Cuchillo x8", desc:"Carne cortada a cuchillo, jugosa y bien condimentada. Las que piden todos.", precio:18400, img:"empanadas-carne-v2.jpg", emoji:"🥟", chips:["8 empanadas","Al horno hasta dorar"] },
@@ -2816,10 +2818,15 @@ function _fechaParaCombo(c) {
   for (var i = 0; i < lista.length; i++) if (lista[i].modo === 'ilimitado') return lista[i].f;
   return null;
 }
-function armarComboOtraFecha(comboId) {
+function armarComboOtraFecha(comboId, yaPregunto) {
   var c = COMBO_MAP[comboId];
   var f = _fechaParaCombo(c);
   if (!c || !f) { toast('⚠️ No hay stock para la fecha que elegiste', 3000); return; }
+  if (!yaPregunto && cartCount() > 0) {
+    _preguntarOtraFecha({ nombre: c.nombre, img: c.img, f: f, id: 'combo-' + c.id,
+                          seguir: function () { armarComboOtraFecha(comboId, true); } });
+    return;
+  }
   var antes = selectedDeliveryDate;
   setDeliveryDate(f.iso, f.dayName, { sinScroll: true });
   var partes = f.iso.split('-');
@@ -2844,10 +2851,15 @@ function _fechaCorta(f) {
   var CORTOS = { Lunes: 'lun', Martes: 'mar', 'Miércoles': 'mié', Jueves: 'jue', Viernes: 'vie', 'Sábado': 'sáb', Domingo: 'dom' };
   return 'el ' + (CORTOS[f.dayName] || f.dayName.toLowerCase()) + ' ' + f.dayNum;
 }
-function pedirParaOtraFecha(id) {
+function pedirParaOtraFecha(id, yaPregunto) {
   var f = _fechaConStock(id);
   var p = PROD_MAP[id];
   if (!f || !p) { toast('⚠️ No hay stock para la fecha que elegiste', 3000); return; }
+  if (!yaPregunto && cartCount() > 0) {
+    _preguntarOtraFecha({ nombre: p.nombre, img: p.img, f: f, id: p.id,
+                          seguir: function () { pedirParaOtraFecha(id, true); } });
+    return;
+  }
   var antes = selectedDeliveryDate;
   setDeliveryDate(f.iso, f.dayName, { sinScroll: true });
   var partes = f.iso.split('-');
@@ -2856,6 +2868,92 @@ function pedirParaOtraFecha(id) {
   var entro = addToCart(id, '✓ ' + p.nombre + ' agregado · tu entrega ' + cuando);
   if (entro && typeof gtag === 'function') {
     gtag('event', 'fecha_por_stock', { id: p.id, item_name: p.nombre, desde: antes, hasta: f.iso, zone: currentZone });
+  }
+}
+
+/* ── ¿PASAR TODO EL PEDIDO A OTRA FECHA? (13/9/2026) ──
+   Tadeo: "elijo para hoy, pongo cosas que SI hay, y toco 'Pedir para el vie
+   18' en un pack que hoy no hay: ¿como sigue? ¿separa dos ventas?". No las
+   separa: un pedido tiene UNA fecha de entrega. El boton pasaba todo el
+   carrito al viernes con un aviso de 4 segundos, y el que habia elegido
+   "hoy" se enteraba —si se enteraba— mirando el chip de arriba.
+
+   Con el carrito vacio no hay nada que perder y se sigue de un toque: el
+   boton ya dice la fecha. Con algo adentro se pregunta antes, diciendo que
+   pasa con lo que ya eligio.
+
+   No se parte en dos pedidos solo, a proposito: serian dos entregas, dos
+   confirmaciones por WhatsApp, dos pagos y en Pilar dos envios. Al que quiere
+   las dos cosas se le dice como: mandar el de hoy y armar otro.
+
+   Cerrar sin elegir (la ×, tocar afuera, Escape) es "seguir con lo de hoy":
+   nunca se mueve la fecha sin un toque que lo diga. */
+var _otraFechaPend = null;
+/* "viernes 18/9", armado con los componentes del ISO: new Date(iso) se lee
+   UTC y en Argentina devuelve el dia anterior. */
+function _diaYFecha(iso) {
+  var p = String(iso || '').split('-');
+  if (p.length !== 3) return '';
+  var NOMBRES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  var d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
+  return NOMBRES[d.getUTCDay()] + ' ' + (+p[2]) + '/' + (+p[1]);
+}
+/* "hoy" · "mañana" · "el martes 15/9" */
+function _paraCuando(iso) {
+  var ms = _isoToUTCMidnightMs(iso), hoy = _todayARMidnightMs();
+  if (ms === hoy) return 'hoy';
+  if (ms === hoy + 86400000) return 'mañana';
+  return 'el ' + _diaYFecha(iso);
+}
+function _preguntarOtraFecha(o) {
+  _otraFechaPend = o;
+  var ov = $id('fecha-modal');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'fecha-modal';
+    ov.className = 'combo-modal-overlay';
+    ov.onclick = function (e) { if (e.target === ov) otraFechaNo(); };
+    ov.innerHTML = '<div class="combo-modal fecha-modal" role="dialog" aria-modal="true" aria-labelledby="fecha-modal-t">' +
+      '<button class="combo-modal-close" type="button" onclick="otraFechaNo()" aria-label="Cerrar">×</button>' +
+      '<div id="fecha-modal-content"></div></div>';
+    document.body.appendChild(ov);
+  }
+  var hoy = _paraCuando(selectedDeliveryDate);
+  var nueva = _paraCuando(o.f.iso);                          // "el viernes 18/9"
+  var aNueva = nueva === 'mañana' ? 'a mañana' : 'al ' + nueva.slice(3);
+  $id('fecha-modal-content').innerHTML =
+    '<div class="combo-modal-head">' +
+      (o.img ? '<img class="combo-modal-img" src="' + fotoUrl(o.img) + '" alt="">' : '') +
+      '<div><div class="combo-modal-title" id="fecha-modal-t">' + o.nombre + '</div>' +
+      '<div class="combo-modal-desc">Para ' + hoy + ' no hay. Lo tenemos para ' + nueva + '.</div></div>' +
+    '</div>' +
+    '<p class="fecha-modal-txt">Cada pedido se entrega todo junto, en un solo viaje. Si lo sumás, ' +
+      '<strong>lo que ya tenés en el carrito también pasa ' + aNueva + '</strong>.</p>' +
+    '<button class="fecha-modal-si" type="button" onclick="otraFechaSi()">Pasar todo ' + aNueva + '</button>' +
+    '<button class="fecha-modal-no" type="button" onclick="otraFechaNo()">Seguir con mi pedido para ' + hoy + '</button>' +
+    '<p class="fecha-modal-tip">¿Querés las dos cosas? Mandá primero tu pedido para ' + hoy +
+      ' y después armá otro para ' + nueva + '.</p>';
+  ov.style.display = 'flex';
+  _fondoQuieto('fecha', true);
+  var si = ov.querySelector('.fecha-modal-si');
+  if (si) { try { si.focus({ preventScroll: true }); } catch (e) { si.focus(); } }
+}
+function _cerrarOtraFecha() {
+  var ov = $id('fecha-modal');
+  if (ov) ov.style.display = 'none';
+  _fondoQuieto('fecha', false);
+  var o = _otraFechaPend;
+  _otraFechaPend = null;
+  return o;
+}
+function otraFechaSi() {
+  var o = _cerrarOtraFecha();
+  if (o) o.seguir();
+}
+function otraFechaNo() {
+  var o = _cerrarOtraFecha();
+  if (o && typeof gtag === 'function') {
+    gtag('event', 'fecha_por_stock_no', { id: o.id, item_name: o.nombre, desde: selectedDeliveryDate, hasta: o.f.iso, zone: currentZone });
   }
 }
 
@@ -3637,7 +3735,7 @@ function setSendLoaderSuccess() {
   if (card) { card.classList.remove('fallback'); card.classList.add('success'); }
   var t = $id('send-title'), s = $id('send-sub');
   if (t) t.textContent = '¡Pedido registrado!';
-  if (s) s.textContent = 'Te llevamos a WhatsApp para que se lo mandes a Maleu.';
+  if (s) s.textContent = 'Te llevamos a WhatsApp para que nos lo mandes.';
 }
 /* A los 8 s todavia sin confirmacion: casi siempre es la señal. Decirlo evita
    que el cliente crea que se colgo y cierre la pantalla. */
@@ -3657,7 +3755,7 @@ function setSendLoaderFallback(alTocar) {
   if (card) card.classList.add('fallback');
   var t = $id('send-title'), s = $id('send-sub');
   if (t) t.textContent = 'Todavía no se registró';
-  if (s) s.textContent = 'Podés mandarlo igual por WhatsApp: le llega a Maleu con todos tus datos.';
+  if (s) s.textContent = 'Podés mandarlo igual por WhatsApp: nos llega con todos tus datos.';
   var fb = $id('send-wa-btn');
   if (fb) fb.onclick = function () { fb.onclick = null; alTocar(); };
 }
@@ -4456,7 +4554,7 @@ function renderCatTiles() {
   if (!cont) return;
   const cats = getCategoriasVisibles();
   const prods = getActiveProducts();
-  const tiles = cats.map(cat => {
+  let tiles = cats.map(cat => {
     const suyos = prods.filter(p => p.cat === cat.nombre);
     if (!suyos.length) return '';          // categoria sin productos en esta zona
     // cat.img gana si esta: hay categorias cuya mejor foto no es la de
@@ -4474,8 +4572,17 @@ function renderCatTiles() {
              '<span class="cat-tile-name">' + cat.nombre + '</span>' +
              '<span class="cat-tile-count">' + cuenta + '</span>' +
            '</button>';
-  }).filter(Boolean).join('');
-  cont.innerHTML = tiles;
+  }).filter(Boolean);
+  cont.innerHTML = tiles.join('');
+  /* En la compu es una grilla, y con 4 columnas fijas las 9 categorias de
+     Estancias dejaban a Tortas SOLA en una tercera fila (13/9/2026). Se elige
+     el ancho que no deja una ficha huerfana: 9 va de a 3, 8 de a 4, 10 de a 5.
+     Pilar (sin carne) tiene 8 y sigue de a 4. En el celular no se usa: ahi es
+     una fila que se desliza. */
+  var n = tiles.length;
+  var cols = n <= 4 ? Math.max(n, 1) : (n % 4 === 0 ? 4 : n % 3 === 0 ? 3 : n % 5 === 0 ? 5 : 4);
+  cont.style.setProperty('--cat-cols', cols);
+  tiles = tiles.join('');
   // Sin categorias no queda el titulo "Categorias" solo, colgado de la nada.
   const sec = $id('cat-tiles-section');
   if (sec) sec.style.display = tiles ? '' : 'none';
@@ -5086,22 +5193,29 @@ function _cumpleSaveBackend(valor) {
 
 /* ── BARRA ENVÍO GRATIS ── */
 const FREE_SHIPPING_MIN = 25000; // envío gratis desde $25.000 (solo aplica para zona pilar)
-/* Cutoff de pedidos para vendedores Red: Jueves 12:00 AR.
-   ABIERTO (Lun-Mié y Jue antes de 12hs): entrega el próximo Viernes.
-   CERRADO (Jue 12hs → Dom 23:59): la entrega del próximo Vie ya cerró.
-   Devuelve el chip para incluir en el ticker o '' si no aplica. */
+/* Cutoff de pedidos para vendedores Red: jueves 12:00 AR, entrega el viernes.
+   Devuelve el chip para incluir en el ticker o '' si no aplica.
+
+   Hasta el 13/9/2026 el sabado y el domingo decia "Tiempo agotado esta
+   semana": el mismo error que tenia _cutoffNote hasta ese dia. Un domingo el
+   viernes que viene esta abierto hasta el jueves, y el cliente leia que habia
+   llegado tarde. Ahora dice las fechas, con la misma cuenta que _cutoffNote. */
 function _pilarRedCutoffChip() {
   if (currentZone !== 'pilar' || !_pilarBarrioIsRed()) return '';
-  // Hora Argentina (UTC-3)
+  return _cutoffChipTexto();
+}
+function _cutoffChipTexto() {
   var nowAR = new Date(Date.now() - 3 * 3600 * 1000);
-  var dow = nowAR.getUTCDay(); // 0=Dom, 4=Jue, 5=Vie
+  var dow = nowAR.getUTCDay();      // 0=Dom .. 6=Sáb
   var hour = nowAR.getUTCHours();
-  // ABIERTO: Lun(1), Mar(2), Mié(3), Jue(4) antes de 12hs.
-  var abierto = (dow >= 1 && dow <= 3) || (dow === 4 && hour < 12);
-  if (abierto) {
-    return '⏰ Hay tiempo para pedir hasta el Jueves a las 12hs · Entrega Viernes';
-  }
-  return '⏰ Tiempo agotado esta semana · Pedí ahora con entrega el Viernes que viene';
+  var hoyMs = Date.UTC(nowAR.getUTCFullYear(), nowAR.getUTCMonth(), nowAR.getUTCDate());
+  var dm = function (ms) { var d = new Date(ms); return d.getUTCDate() + '/' + (d.getUTCMonth() + 1); };
+  var proxVieMs = hoyMs + ((5 - dow + 7) % 7) * 86400000;   // si hoy es viernes, hoy
+  var sigVieMs = proxVieMs + 7 * 86400000;
+  if (dow === 4 && hour < 12) return '⏰ Último día: pedí hasta hoy a las 12 hs · Entrega mañana viernes ' + dm(proxVieMs);
+  if (dow === 5) return '📦 Hoy estamos entregando · El próximo viernes es el ' + dm(sigVieMs) + ', pedí hasta el jueves ' + dm(sigVieMs - 86400000) + ' a las 12 hs';
+  if (dow === 4) return '⏰ Los pedidos para mañana ya cerraron · Pedí ahora para el viernes ' + dm(sigVieMs);
+  return '⏰ Pedí hasta el jueves ' + dm(proxVieMs - 86400000) + ' a las 12 hs · Entrega el viernes ' + dm(proxVieMs);
 }
 
 function updatePromoBar() {
@@ -5326,6 +5440,8 @@ function toggleMenu() {
 // boton es una trampa en un celular.
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
+    var fm = $id('fecha-modal');
+    if (fm && fm.style.display === 'flex') { otraFechaNo(); return; }
     var panel = $id('menu-panel');
     if (panel && !panel.hidden) toggleMenu();
   }
