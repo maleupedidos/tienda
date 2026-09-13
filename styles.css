@@ -1773,3 +1773,18 @@ body.busqueda-activa #ultimo-section { display: none !important; }
 .sug-ver { display:block; margin:.2rem auto 0; min-height:44px; padding:.4rem .8rem; background:none;
                  border:none; color:var(--hover-orange); font-family:var(--font); font-weight:600;
                  font-size:.82rem; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+
+/* ── LA FRANJA DEL 10% SE ESCONDE AL BAJAR (13/9/2026) ──
+   Solo en el celular. La franja va SUPERPUESTA debajo de la barra (absolute,
+   top:100%) en vez de ocupar lugar adentro: asi esconderla no mueve la pagina
+   mientras el dedo scrollea (ver el comentario en app.js). El hueco de abajo
+   es para que, con la barra quieta en su lugar, la franja no tape el titulo de
+   la primera categoria. --promo-h lo pone updateCatNavTop (0 si no hay franja). */
+@media (max-width: 768px) {
+  .sticky-header .promo-bar { position:absolute; left:0; right:0; top:100%;
+                              box-shadow:0 2px 8px rgba(0,0,0,.08);
+                              transition:opacity .2s ease, transform .2s ease, visibility 0s linear 0s; }
+  .sticky-header.promo-oculta .promo-bar { opacity:0; transform:translateY(-8px); visibility:hidden; pointer-events:none;
+                                           transition:opacity .2s ease, transform .2s ease, visibility 0s linear .2s; }
+  .catalog::before { content:''; display:block; height:var(--promo-h, 0px); }
+}

@@ -216,6 +216,12 @@ const REVISION = `(async function () {
     var r = visibles[0].getBoundingClientRect();
     var sh = document.querySelector('.sticky-header');
     var tapa = sh ? sh.getBoundingClientRect().bottom : 0;
+    /* Desde el 13/9/2026 la franja del 10% va SUPERPUESTA debajo de la barra en
+       el celular y no suma a su alto: si esta a la vista, tambien tapa. */
+    var pr = document.getElementById('promo-bar');
+    if (pr && getComputedStyle(pr).position === 'absolute' && getComputedStyle(pr).visibility !== 'hidden' && pr.offsetHeight) {
+      tapa = Math.max(tapa, pr.getBoundingClientRect().bottom);
+    }
 
     /* Las DOS condiciones juntas, y no cada una por su lado: con el bug, el
        resultado queda 2188px ARRIBA de la pantalla y "top < innerHeight" da

@@ -1268,7 +1268,8 @@ los seis momentos de la semana moviendo ese reloj.
 >   el mismo caso. Si Tadeo decide lo contrario, se agrega a `FERIADOS_BLOQUEADOS`.
 > · **La barra pegada arriba ocupa 166px en el celular** (buscador + categorías +
 >   la franja del 10%): un cuarto de la pantalla de un iPhone con la barra de Safari.
->   Achicarla es una decisión de diseño con la promo del efectivo en el medio.
+>   **Resuelto esa misma tarde**: la franja se esconde al bajar. Ver «La franja del 10%
+>   se esconde al bajar».
 > · En la compu el buscador pegado va de punta a punta mientras el catálogo va a
 >   1100px. Se ve desparejo pero no traba nada.
 
@@ -1495,6 +1496,40 @@ hoy no se ofrece y para el viernes sí**, carne con un combo, "Ver todo lo que t
 los casos en que no va. De trece bugs reinyectados de a uno se agarran once. Los otros dos
 **no pueden pasar en la tienda**, y está dicho en el test: el inventario ya llega ordenado
 (`fetchPiezas`) y un carrito vacío no dibuja el lugar de la sugerencia.
+
+## La franja del 10% se esconde al bajar, en el celular (13/9/2026, noche)
+
+La barra pegada arriba medía **166px** a 390px —buscador 46, categorías 69, la franja del
+10% 35—: un cuarto de la pantalla de un iPhone. Tadeo no la veía mal, y se hizo igual: la
+franja **se esconde mientras el cliente baja y vuelve apenas sube**, o cuando la barra deja
+de estar pegada. Lo que dice (el 10% en efectivo) se repite en el carrito. Con la franja
+escondida la barra mide **131px**. **En la compu no cambia nada.**
+
+> [!danger] No se achica la barra: se esconde una pieza superpuesta
+> Achicar algo pegado arriba mueve todo lo de abajo mientras el dedo scrollea. Chrome lo
+> compensa con el *scroll anchoring*; **Safari no lo tiene y la página salta 35px**. Por eso,
+> desde 768px para abajo, la franja va `position:absolute; top:100%` debajo de la barra: la
+> barra ocupa siempre lo mismo y la franja solo se desvanece (opacidad y `visibility`). Medido:
+> una card se mueve exactamente lo que se scrolleó.
+
+Tres cosas que había que acomodar por eso:
+
+| | |
+|---|---|
+| **El hueco arriba del catálogo** | `.catalog::before` mide `--promo-h` (lo pone `updateCatNavTop`): con la barra quieta en su lugar, la franja taparía el título de la primera categoría |
+| **`_stickyOffsetPx()`** | suma la franja cuando va superpuesta. Lo usan los botones de categoría y el buscador: al subir la franja reaparece, y sin contarla tapaba el título al que se iba (141px contra 166) |
+| **El `top` que `updateCatNavTop` le ponía a la franja** | se sacó. No hacía nada con la franja sin posicionar; superpuesta la tiraba encima de las categorías |
+
+- Solo con un movimiento de **8px o más**: el temblor del dedo no la hace parpadear.
+- Una sola escucha de scroll, pasiva y de a un cuadro (`requestAnimationFrame`).
+- `verificar-movil.js` medía "el resultado de la búsqueda queda debajo de la barra" sin la
+  franja superpuesta: ahora la cuenta cuando está a la vista.
+
+**La red: `node _tools/verificar-franja.js [ancho]`**, 14 chequeos a 390px y 4 a 1440px:
+superpuesta, el título de la primera categoría, que se esconda al bajar sin que la página
+salte, el temblor, que vuelva al subir pegada a la barra, ir a una categoría bajando y
+subiendo, y que en la compu quede igual. Con seis bugs reinyectados (entre ellos achicar la
+barra en vez de superponer): **los seis se agarran**. Contra la tienda anterior da 4 rojos.
 
 ## Lo que NO está acá
 

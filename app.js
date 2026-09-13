@@ -4863,7 +4863,13 @@ function _stickyOffsetPx() {
   var sh = document.querySelector('.sticky-header');
   if (!sh) return 100;
   var r = sh.getBoundingClientRect();
-  return Math.max(60, r.height + 10);
+  /* En el celular la franja del 10% va superpuesta debajo de la barra y no
+     suma a su alto (ver LA FRANJA DEL 10% SE ESCONDE AL BAJAR). Se cuenta
+     siempre que exista, aunque este escondida: un scroll hacia arriba la hace
+     aparecer, y sin contarla taparia el titulo de la categoria a la que se va. */
+  var promo = $id('promo-bar');
+  var extra = (promo && promo.offsetHeight && getComputedStyle(promo).position === 'absolute') ? promo.offsetHeight : 0;
+  return Math.max(60, r.height + extra + 10);
 }
 function _smoothScrollToEl(el, opts) {
   if (!el) return false;
@@ -4929,11 +4935,49 @@ function updateCatNavTop() {
   if (nav) {
     // Header NO es sticky → cat-nav va al top:0 cuando scrolleás
     nav.style.top = '0px';
-    if (promo) promo.style.top = nav.offsetHeight + 'px';
-    const total = nav.offsetHeight + (promo ? promo.offsetHeight : 0);
+    /* Hasta el 13/9/2026 aca se le ponia `top` a la franja del 10%. No hacia
+       nada (la franja no estaba posicionada) y desde que en el celular va
+       `position:absolute` la habria tirado encima de las categorias. */
+    const promoH = promo ? promo.offsetHeight : 0;
+    document.documentElement.style.setProperty('--promo-h', promoH + 'px');
+    const total = nav.offsetHeight + promoH;
     document.querySelectorAll('.cat-section').forEach(s => { s.style.scrollMarginTop = total + 'px'; });
   }
 }
+
+/* ── LA FRANJA DEL 10% SE ESCONDE AL BAJAR (13/9/2026) ──
+   En el celular la barra pegada arriba medía 166px —buscador, categorías y la
+   franja—, un cuarto de la pantalla de un iPhone con la barra de Safari. La
+   franja (35px) se esconde mientras el cliente BAJA y vuelve apenas SUBE, o
+   cuando la barra deja de estar pegada. Lo que se dice ahí (el 10% en efectivo)
+   se repite en el carrito, que es donde importa.
+
+   No se achica la barra: se ESCONDE una pieza que va superpuesta debajo
+   (styles.css, `position:absolute` desde el celular). Achicar algo pegado
+   arriba mueve todo lo de abajo 35px mientras el dedo scrollea — en Chrome lo
+   compensa el "scroll anchoring", en Safari no existe y la página salta. Por
+   eso la barra ocupa siempre lo mismo y la franja solo se desvanece.
+
+   Solo con un movimiento de 8px o más: el temblor del dedo no la hace
+   parpadear. En la compu la clase se pone igual, pero el CSS no la usa. */
+(function () {
+  var ultimoY = window.pageYOffset || 0, pendiente = false, UMBRAL = 8;
+  function mirar() {
+    pendiente = false;
+    var sh = document.querySelector('.sticky-header');
+    if (!sh) return;
+    var y = window.pageYOffset || 0;
+    var pegada = y > 0 && sh.getBoundingClientRect().top <= 0.5;
+    if (!pegada) { sh.classList.remove('promo-oculta'); ultimoY = y; return; }
+    var d = y - ultimoY;
+    if (Math.abs(d) < UMBRAL) return;          // se acumula hasta llegar al umbral
+    sh.classList.toggle('promo-oculta', d > 0);
+    ultimoY = y;
+  }
+  window.addEventListener('scroll', function () {
+    if (!pendiente) { pendiente = true; requestAnimationFrame(mirar); }
+  }, { passive: true });
+})();
 
 /* ── STOCK ── */
 /* stockMap[id]            = stock físico (lo que hay en el depósito ahora)
