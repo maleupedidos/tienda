@@ -2795,15 +2795,30 @@ function _fechasPosteriores() {
   }
   return _fechasCache.fechas;
 }
+/* ¿Hay de este producto con el tope de ese modo? Una sola regla para las dos
+   que buscan fecha: la de una card y la de "Agregar lo mismo". */
+function _hayEnModo(id, m) {
+  if (m === 'ilimitado') return true;
+  if (m === 'proyectado') return (stockProyectadoMap[id] || 0) > 0;
+  return (stockMap[id] || 0) > 0;
+}
 function _fechaConStock(id) {
   var p = PROD_MAP[id];
   if (!p || esPorPeso(p)) return null;   // la carne va por pieza, no por fecha
   var lista = _fechasPosteriores();
   for (var i = 0; i < lista.length; i++) {
+    if (_hayEnModo(id, lista[i].modo)) return lista[i].f;
+  }
+  return null;
+}
+/* La primera fecha en la que hay de TODOS: "Agregar lo mismo" mueve la entrega
+   una sola vez, y a una fecha en la que despues falte la mitad no sirve. */
+function _fechaParaLoMismo(items) {
+  if (!items || !items.length) return null;
+  var lista = _fechasPosteriores();
+  for (var i = 0; i < lista.length; i++) {
     var m = lista[i].modo;
-    if (m === 'ilimitado') return lista[i].f;
-    if (m === 'proyectado' && (stockProyectadoMap[id] || 0) > 0) return lista[i].f;
-    if (m === 'real' && (stockMap[id] || 0) > 0) return lista[i].f;
+    if (items.every(function (x) { return _hayEnModo(x.p.id, m); })) return lista[i].f;
   }
   return null;
 }
@@ -5095,7 +5110,15 @@ function _pintarUltimoPie(u) {
       html += '<button type="button" class="ultimo-todo" onclick="agregarLoMismo()">' +
         'Agregar lo mismo · ' + disp + (disp === 1 ? ' producto' : ' productos') + ' · ' + ars(valor) + '</button>';
     } else if (sinStock === u.items.length) {
-      html += '<button type="button" class="ultimo-todo" disabled>Para esta fecha no hay stock de ese pedido</button>';
+      /* Nada de ese pedido hay para la fecha elegida (un domingo con el
+         freezer vacio). Un boton gris ahi es un callejon sin salida — lo mismo
+         que se arreglo en las cards con "Pedir para el vie 18" —, asi que si
+         hay una fecha en la que hay de todo, se ofrece esa. */
+      var fl = _fechaParaLoMismo(u.items);
+      html += fl
+        ? '<button type="button" class="ultimo-todo" onclick="agregarLoMismoOtraFecha()">' +
+            'Agregar lo mismo para ' + _fechaCorta(fl) + ' · ' + u.items.length + ' productos</button>'
+        : '<button type="button" class="ultimo-todo" disabled>Para esta fecha no hay stock de ese pedido</button>';
     } else {
       html += '<button type="button" class="ultimo-todo" disabled>✓ Ya está en tu carrito</button>';
     }
@@ -5120,7 +5143,31 @@ function _pintarUltimoPie(u) {
   pie.innerHTML = html;
 }
 
-function agregarLoMismo() {
+/* Pasa la entrega a la primera fecha en la que hay de todo y suma lo mismo. Por
+   la MISMA pregunta que "Pedir para el vie 18": nunca se mueve la fecha sin un
+   toque que lo diga. */
+function agregarLoMismoOtraFecha(yaPregunto) {
+  var u = _ultimoItems();
+  var f = u && _fechaParaLoMismo(u.items);
+  if (!f) { toast('⚠️ No hay stock para la fecha que elegiste', 3000); return; }
+  if (!yaPregunto) {
+    _preguntarOtraFecha({ nombre: 'Lo que pediste la última vez', img: u.items[0].p.img, f: f, id: 'repetir',
+                          seguir: function () { agregarLoMismoOtraFecha(true); } });
+    return;
+  }
+  var antes = selectedDeliveryDate;
+  setDeliveryDate(f.iso, f.dayName, { sinScroll: true });
+  var partes = f.iso.split('-');
+  var cuando = f.isTomorrow ? 'ahora es mañana'
+    : 'pasó al ' + f.dayName.toLowerCase() + ' ' + (+partes[2]) + '/' + (+partes[1]);
+  if (typeof gtag === 'function') {
+    gtag('event', 'fecha_por_stock', { id: 'repetir', item_name: 'Lo que pediste la última vez', desde: antes, hasta: f.iso, zone: currentZone });
+  }
+  agregarLoMismo(' · tu entrega ' + cuando);
+}
+
+function agregarLoMismo(sufijo) {
+  sufijo = typeof sufijo === 'string' ? sufijo : '';
   var u = _ultimoItems(); if (!u || !u.items.length) return;
   var sumados = 0, sinStock = 0, recortados = 0, valor = 0;
   u.items.forEach(function (x) {
@@ -5151,6 +5198,7 @@ function agregarLoMismo() {
     msg = '✓ Sumamos ' + sumados + (sumados === 1 ? ' producto' : ' productos') + ' de tu último pedido';
     if (sinStock) msg += ' · ' + sinStock + ' no hay para esta fecha';
     else if (recortados) msg += ' · algunos, hasta el stock que hay';
+    msg += sufijo;
   } else if (sinStock === u.items.length) {
     msg = '⚠️ Para esta fecha no hay stock de ese pedido';
   } else {

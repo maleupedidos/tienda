@@ -61,13 +61,14 @@ const STOCK = {};
 ABBRS.forEach((a) => { STOCK[a] = { f: 50, p: 50 }; });
 STOCK.PMa = { f: 0, p: 0 };   // agotado para hoy
 STOCK.TP = { f: 1, p: 1 };    // pidio 3 y hay 1
+STOCK.PJyQ = { f: 0, p: 0 };  // con la margarita: un pedido que hoy no hay entero
 const PIEZAS = { CVa: [{ id: 'P-0901', kg: 1.2 }, { id: 'P-0902', kg: 1.45 }] };
 
 /* Los ids salen del catalogo, no escritos a mano: si cambian, el test no
    envejece en silencio. */
 const APP = fs.readFileSync(path.join(RAIZ, 'app.js'), 'utf8');
 const IDS = {};
-[['PMa', 'Pizza Margarita'], ['PMu', 'Pizza Muzzarella'], ['SJyQ', 'Sorrentinos Jam'],
+[['PMa', 'Pizza Margarita'], ['PMu', 'Pizza Muzzarella'], ['SJyQ', 'Sorrentinos Jam'], ['PJyQ', 'Pizza Jamón y Queso'],
  ['ECaC', 'Empanadas Carne'], ['TP', 'Tarta Pollo'], ['RC', 'Wrap Carne'], ['PPM', 'Pack Muzzarella']].forEach(([ab, nom]) => {
   const re = new RegExp('\\{\\s*id:(\\d+),\\s*cat:"[^"]+",\\s*nombre:"' + nom.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   const m = APP.match(re);
@@ -81,6 +82,7 @@ const VIEJO = [{ id: IDS.PMu, qty: 2 }, { id: IDS.ECaC, qty: 1 }];
 const V2 = { t: PEDIDO_T, zona: 'estancias', carne: [IDS.CVa, IDS.CEn], items: [
   { id: IDS.PMa, qty: 1 }, { id: IDS.PMu, qty: 2 }, { id: IDS.TP, qty: 3 },
   { id: IDS.ECaC, qty: 1 }, { id: IDS.SJyQ, qty: 2 }, { id: IDS.RC, qty: 1 }] };
+const AGOTADO = { t: PEDIDO_T, zona: 'estancias', carne: [], items: [{ id: IDS.PMa, qty: 1 }, { id: IDS.PJyQ, qty: 2 }] };
 
 function servir() {
   return new Promise((listo, fallo) => {
@@ -141,6 +143,7 @@ const PREP = '(function () {' +
   'try {' +
   '  if (s === "viejo") localStorage.setItem("maleu_ultimo_pedido_pg", ' + JSON.stringify(JSON.stringify(VIEJO)) + ');' +
   '  if (s === "v2") localStorage.setItem("maleu_ultimo_pedido_v2", ' + JSON.stringify(JSON.stringify(V2)) + ');' +
+  '  if (s === "agotado") localStorage.setItem("maleu_ultimo_pedido_v2", ' + JSON.stringify(JSON.stringify(AGOTADO)) + ');' +
   '} catch (e) {}' +
   'var RD = Date; window.__ahora = ' + DOMINGO + ';' +
   'function FD() {' +
@@ -285,6 +288,34 @@ async function main() {
     chk(e.cards.length === 2 && e.cards[0] === IDS.PMu, 'con sus dos productos, el de mas cantidad primero (' + e.cards.join(',') + ')');
     chk(/^Tocá lo que quieras repetir/.test(e.sub), 'sin fecha, porque no se guardaba: "' + e.sub + '"');
     chk(/Agregar lo mismo · 2 productos · \$42\.400/.test(e.boton), 'el boton: "' + e.boton + '"');
+
+    /* ── 2b. NADA DE ESE PEDIDO HAY PARA HOY ────────────────────────── */
+    /* Lo que paso en maleu.com.ar el domingo 13/9: el freezer vacio y el
+       boton gris, sin salida. Tiene que ofrecer la fecha en la que hay todo, y
+       pasar por la misma pregunta que "Pedir para el vie 18". */
+    console.log('\n' + DIM + '== Nada de ese pedido hay para hoy ==' + RST);
+    await abrir('agotado', 'estancias');
+    e = await estado();
+    chk(/Agregar lo mismo para el vie 18 · 2 productos/.test(e.boton) && !e.botonOff,
+        'el boton ofrece la fecha en la que hay todo: "' + e.boton + '"');
+    const modal = async () => ev('(function () { var m = document.getElementById("fecha-modal"); return !!m && m.style.display === "flex"; })()');
+    await tocar('#ultimo-section .ultimo-todo');
+    chk(await modal(), 'pregunta antes de mover la fecha');
+    const txtModal = await ev('(document.getElementById("fecha-modal") || {}).innerText || ""');
+    chk(/Lo que pediste la última vez/.test(txtModal) && /Para hoy no hay/.test(txtModal), 'la pregunta dice de que habla ("' + txtModal.split('\n').slice(0, 3).join(' / ') + '")');
+    await tocar('.fecha-modal-no');
+    chk((await ev('selectedDeliveryDate')) === '2026-09-13' && Object.keys(await carrito()).length === 0,
+        '"Ver lo que hay para hoy" deja la fecha y no suma nada');
+    await tocar('#ultimo-section .ultimo-todo');
+    await tocar('.fecha-modal-si');
+    await dormir(300);
+    const cF = await carrito();
+    chk((await ev('selectedDeliveryDate')) === '2026-09-18', 'con "Pasar mi entrega" la fecha pasa al viernes 18');
+    chk(cF[IDS.PMa] === 1 && cF[IDS.PJyQ] === 2, 'y suma lo mismo (' + JSON.stringify(cF) + ')');
+    const avisoF = await ev('document.getElementById("toast").textContent');
+    chk(/Sumamos 2 productos de tu último pedido · tu entrega pasó al viernes 18\/9/.test(avisoF), 'el aviso dice las dos cosas: "' + avisoF + '"');
+    e = await estado();
+    chk(e.botonOff && /Ya está en tu carrito/.test(e.boton), 'y el boton queda en "Ya está en tu carrito"');
 
     /* ── 3. UN PEDIDO DE SEIS, CON CARNE Y UNO AGOTADO ─────────────── */
     console.log('\n' + DIM + '== Un pedido de seis productos y carne ==' + RST);

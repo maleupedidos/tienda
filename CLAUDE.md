@@ -1384,6 +1384,13 @@ O sea que "agregar todo" le servía a pocos. Ahora, **arriba de las categorías*
   *"Elegir las piezas de hoy →"*. Cada pieza es única y la de la vez pasada ya no existe.
 - **Dice de cuándo es**: *"Tu pedido del 11/9 · tocá lo que quieras repetir"*.
 - Se esconde con una búsqueda puesta, y **no aparece en Clubes** (otro catálogo).
+- **Si nada de ese pedido hay para la fecha elegida**, el botón ofrece la primera fecha
+  en la que hay de todo: *"Agregar lo mismo para el vie 18 · 2 productos"*, por la misma
+  pregunta que "Pedir para el vie 18" (`_preguntarOtraFecha`). Salió de verificar en
+  vivo: el domingo 13/9 a la tarde el freezer real estaba vacío y el botón quedaba gris
+  diciendo *"Para esta fecha no hay stock de ese pedido"* — el mismo callejón sin salida
+  que se arregló esa mañana en las cards. La regla de "¿hay en ese modo?" es una sola
+  (`_hayEnModo`) y la usan la card y el botón.
 - Se mide `repetir_pedido` en Analytics; cada producto sumado cuenta como `add_to_cart`.
 
 > [!important] Vive en el navegador y no en el ERP, a propósito
@@ -1406,13 +1413,14 @@ O sea que "agregar todo" le servía a pocos. Ahora, **arriba de las categorías*
 > su regla con `!important`. Sin eso, un último pedido de solo carne dejaba la grilla
 > vacía ocupando lugar.
 
-**La red: `node _tools/verificar-ultimo-pedido.js [ancho]`**, 44 chequeos a 390 y 1440px
-con el reloj congelado: cliente nuevo, el formato viejo, un pedido de seis con carne y un
-agotado, "Agregar lo mismo" con toques de verdad (dos veces, sacando algo y reponiéndolo),
-el buscador, el guardado y Clubes. `CAPTURA=<carpeta>` guarda la sección. Con siete bugs
-reinyectados de a uno (sumar encima, ignorar el stock, no ordenar, no guardar la carne, el
-buscador sin esconderla, ignorar el formato viejo, el botón sin repintarse con el
-carrito): **los siete se agarran**.
+**La red: `node _tools/verificar-ultimo-pedido.js [ancho]`**, 52 chequeos a 390 y 1440px
+con el reloj congelado: cliente nuevo, el formato viejo, un pedido que hoy no hay entero
+(la pregunta y sus dos salidas), un pedido de seis con carne y un agotado, "Agregar lo
+mismo" con toques de verdad (dos veces, sacando algo y reponiéndolo), el buscador, el
+guardado y Clubes. `CAPTURA=<carpeta>` guarda la sección. Con ocho bugs reinyectados de a
+uno (sumar encima, ignorar el stock, no ordenar, no guardar la carne, el buscador sin
+esconderla, ignorar el formato viejo, el botón sin repintarse con el carrito, y el botón
+gris sin salida): **los ocho se agarran**.
 
 ## Lo que NO está acá
 
