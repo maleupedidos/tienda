@@ -293,9 +293,12 @@ async function main() {
     chk(!!v.boton && v.boton.exp === 'false', 'aria-expanded="false"');
     chk(!!v.boton && v.boton.h >= 44, 'el boton mide 44px o mas (' + (v.boton ? v.boton.h : 0) + ')');
 
-    /* La grilla: dos columnas en el celular, tres en la compu. */
+    /* La grilla: dos columnas en el celular, tres en una compu chica y cuatro
+       desde 1024px. Hasta el 13/9/2026 eran tres en toda compu: el catalogo iba
+       a 900px. Desde ese dia va a 1100 (el mismo ancho que las categorias) y la
+       card de la carne es mas ancha, asi que `auto-fill` de 120px entra una mas. */
     const filaUno = vis.filter((f) => Math.abs(f.y - vis[0].y) < 3);
-    const colsEsperadas = ANCHO < 700 ? 2 : 3;
+    const colsEsperadas = ANCHO < 700 ? 2 : (ANCHO >= 1024 ? 4 : 3);
     chk(filaUno.length === colsEsperadas, colsEsperadas + ' piezas por fila (' + filaUno.length + ')');
     chk(vis.every((f) => f.h >= 48 && f.h <= 72), 'cada pieza mide entre 48 y 72px (' + Math.min(...vis.map((f) => f.h)) + '-' + Math.max(...vis.map((f) => f.h)) + ')');
     chk(vis.every((f) => !f.desborda), 'ninguna pieza se sale de su caja');

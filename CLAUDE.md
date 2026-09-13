@@ -733,7 +733,7 @@ item de carne del pedido.
 | | |
 |---|---|
 | cada pieza | un botón de 56px con el peso grande y el precio abajo, como los talles de una tienda de ropa |
-| columnas | `auto-fill` con mínimo 120px: 2 por fila en el celular, 3 en la compu, sin un media query por pantalla |
+| columnas | `auto-fill` con mínimo 120px: 2 por fila en el celular, 3 en la compu (4 desde 1024px desde el 13/9/2026, con el catálogo a 1100), sin un media query por pantalla |
 | con **9 o más** | se ven las primeras 6 y *"Ver las 14 piezas · de 0,950 a 2,140 kg"* despliega el resto |
 | con 8 o menos | se ven todas: esconder una o dos detrás de un botón es un toque de más |
 | el orden | de la más chica a la más grande. A igual peso decide el id, para que dos piezas iguales no se crucen en cada refresco |
@@ -1177,6 +1177,95 @@ inexistente. Probado en la dirección contraria: sigue agarrando `updateCart()`.
 >   **Al 12/9/2026 la referencia sólo viaja en los mensajes con "⚠️ La web no
 >   llegó a confirmar"**, que son los únicos que la alarma tiene que mirar: un
 >   mensaje normal sale sólo con el pedido confirmado. Se le avisó a Backend.
+
+## Escaneo del domingo 13/9/2026: lo que las 21 redes no veían
+
+Tadeo: *"escaneá la tienda online y ayudame a detectar bugs, fallas, mejoras.
+Acordate que el cliente puede comprar tanto por el celular como por la
+computadora"*. **Las 21 redes del repo dieron verde** antes de tocar nada. Todo lo
+de abajo lo encontró recorrer maleu.com.ar como un cliente, a 390 y 1440px, un
+domingo a las 5 de la mañana — que es justo el momento que ninguna red simulaba.
+
+| Qué | Antes | Ahora |
+|---|---|---|
+| **Stock negativo del ERP** | Empanadas J&Q vino en −1: la card decía **"Últimas -1 unidades"** con "+ Agregar" prendido | se lee como 0: "Sin stock" |
+| **"+ Agregar" sobre algo sin stock** | decía **"✓ agregado" sin agregar nada**, y mandaba un AddToCart a Meta y a GA | no lo agrega, avisa que no hay stock, y no mide nada |
+| **"Últimas 1 unidades"** | | "Última unidad" |
+| **El cartel del viernes** (Clubes en el hero, Pilar en el modal) | sábado y domingo: *"los pedidos de **este viernes ya cerraron**"* — con el viernes abierto hasta el jueves | dice las fechas: *"pedí hasta el jueves 17/9 a las 12 hs y entrás en el recorrido del viernes 18/9"* |
+| **"Tadeo" en la tienda** | la chapita de "Otra zona de Pilar" y *"El vendedor es Tadeo Ustariz"* | "Maleu" y *"Te lo entrega Maleu"* |
+| **Copiar el alias** | si el navegador no deja usar el portapapeles, el botón no hacía nada | prueba el método viejo, y si tampoco, lo dice con el alias escrito |
+| **El método de pago** | "📲 Mercado Pago", con dos bancos y el alias del vendedor de Pilar | "📲 Transferencia" (el valor que viaja al ERP sigue siendo `Transferencia`) |
+| **Los avisos largos** en el celular | `white-space:nowrap`: se salían por los dos costados | parten en dos renglones |
+| **El subtítulo del formulario** | centrado y pegado al título | alineado con su título |
+| **Los +/− del carrito** a 390px | 26px (la × de una pieza también) | 38px; los de la card, 40 |
+| **El catálogo en la compu** | 900px y 3 columnas, con las categorías y "Lo más pedido" a 1100 y 4 | todo a 1100 y 4 |
+
+### Sin stock para esa fecha, pero sí para otra
+
+Un domingo a la mañana, eligiendo **"hoy"**, los cuatro "Lo más pedido" estaban en
+gris: el freezer estaba vacío y el cartel decía la verdad. Pero para el viernes se
+podía pedir cualquier cosa — entra en la orden de compra del jueves — y la tienda no
+lo decía. **El botón gris era un callejón sin salida.**
+
+Ahora, si hay una fecha de entrega más adelante en la que ese producto sí se puede
+pedir, el botón la ofrece: **"Pedir para el vie 18"** (en un combo, "Armar para el
+vie 18"). Al tocarlo pasa la entrega a esa fecha, agrega el producto y lo dice:
+*"✓ Pizza Margarita agregado · tu entrega pasó al viernes 18/9"*.
+
+> [!important] Cambia la fecha de TODO el pedido, y por eso se dice
+> El botón nombra la fecha antes de tocarlo y el aviso la repite después, y el chip
+> de arriba cambia. Mover la entrega para adelante **nunca achica un tope**: lo que
+> ya estaba en el carrito sigue entrando. No te sube arriba de todo — seguís mirando
+> el producto. Se mide en Analytics como `fecha_por_stock`.
+
+> [!danger] La fecha sale de las MISMAS funciones que el calendario y el tope
+> `_getNextDeliveryDatesGrouped` (lo que ofrece el calendario) y `getStockMode(iso)`
+> (el tope para esa fecha). No puede ofrecer un día que el calendario no ofrece.
+>
+> **`getStockMode` aprendió a recibir una fecha, y llamada sin argumento hace
+> exactamente lo mismo que antes.** Importa porque el ERP la saca de este archivo
+> (`maleupedidos.github.io/_tools/probar-stock-modo.js`) y la compara con la de la
+> tab «+»: corrido después del cambio, **0 diferencias en 8512 combinaciones**. Si
+> la tocás, corré ese test.
+
+Un combo se ofrece **solo para una fecha sin tope** (`ilimitado`): calcular si el
+stock real o proyectado de cada gusto alcanza para otra fecha sería una segunda
+copia de `comboBestMax`.
+
+### El stock que manda el ERP es lo DISPONIBLE, y puede ser negativo
+
+`stock_full.f` es físico menos reservado, así que un pedido reservado sin mercadería
+en el freezer da **−1**. No es un dato roto: es una sobreventa. Para el cliente es 0,
+y `_stockLimpio()` lo deja así en la única puerta por la que entra el stock
+(`fetchStock`). Redondea los kilos al gramo de paso (`3.8900000000000006`).
+
+### La red: `node _tools/verificar-sin-stock.js [ancho]`
+
+**44 chequeos a 390px y 45 a 1440**, con el **reloj congelado** en el domingo
+13/9/2026 05:00 — sin eso el resultado dependería del día en que se corre, y el caso
+del domingo no se podría probar nunca un martes. El cartel del viernes se prueba en
+los seis momentos de la semana moviendo ese reloj.
+
+**Contra la tienda de antes da 34 rojos**, cada uno con el síntoma a la vista
+(`"Últimas -1 unidades"`, `"✓ Empanadas Jamón y Queso x8 agregado"`, un aviso que se salía 99px por cada costado,
+`"El vendedor es Tadeo Ustariz"`). Se corre con `RAIZ=<carpeta>`.
+
+> [!warning] El test bloquea Analytics y Meta, y no es un detalle
+> La primera corrida dio un POST "escapado" que era un hit de **Google Analytics**:
+> el test bajaba `gtag` de internet y le sumaba visitas falsas a las métricas reales.
+> Ahora `googletagmanager`, `google-analytics` y `facebook` se cortan por CDP; `gtag`
+> y `fbq` quedan como colas y los eventos igual se pueden contar. **Las redes viejas
+> (`verificar-descuento`, `verificar-envio`…) no lo hacen**: cada corrida suma
+> visitas desde 127.0.0.1.
+
+> [!note] Visto y NO tocado, a propósito
+> · **El lunes 12/10/2026 es feriado** y el calendario lo ofrece para entregar. La
+>   última vez que hubo uno (1/5) se bloqueó y se agregó un jueves. Es de Tadeo.
+> · **La barra pegada arriba ocupa 166px en el celular** (buscador + categorías +
+>   la franja del 10%): un cuarto de la pantalla de un iPhone con la barra de Safari.
+>   Achicarla es una decisión de diseño con la promo del efectivo en el medio.
+> · En la compu el buscador pegado va de punta a punta mientras el catálogo va a
+>   1100px. Se ve desparejo pero no traba nada.
 
 ## Lo que NO está acá
 

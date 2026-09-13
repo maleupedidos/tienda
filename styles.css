@@ -94,7 +94,7 @@ body.modal-open { overflow:hidden; height:100%; touch-action:none; }
 .loc-zona-head { display:flex; align-items:center; justify-content:space-between; gap:.6rem; flex-wrap:wrap; }
 .loc-zona-name { font-size:1rem; font-weight:700; color:var(--brown); line-height:1.2; }
 .loc-zona-vendedor { font-size:.72rem; color:#37474F; letter-spacing:.03em; background:#F5EFEA; padding:.22rem .6rem; border-radius:12px; white-space:nowrap; font-weight:700; }
-.loc-zona-vendedor.is-tadeo { background:#FFF3E0; color:#B25314; }
+.loc-zona-vendedor.is-maleu { background:#FFF3E0; color:#B25314; }
 .loc-zona-sub { font-size:.75rem; color:#8a7d75; line-height:1.35; padding-left:1.2rem; }
 .loc-zona-card.is-other { border-style:dashed; background:#FDFBF7; }
 
@@ -953,7 +953,7 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
    entra por la foto de la categoria, y el que quiere lo de siempre
    lo tiene a un scroll, sin recorrer las ocho secciones. */
 .top-section { padding:.6rem 1rem 1.4rem; }
-.section-sub { text-align:center; color:#8a7d76; font-size:.85rem;
+.top-section .section-sub { text-align:center; color:#8a7d76; font-size:.85rem;
                margin:-.7rem 0 1rem; }
 @media (min-width:900px) {
   .top-section { max-width:1100px; margin:0 auto; padding:1.2rem 1rem 2rem; }
@@ -1670,3 +1670,51 @@ body.busqueda-activa #repeat-block { display: none !important; }
      Por eso este selector repite la forma `a.zone-chip`. */
   a.zone-chip { min-height: 44px; }
 }
+
+/* ── EL SUBTITULO DEL FORMULARIO (13/9/2026) ──
+   "Los mas pedidos" y "Completa tu pedido" usan la misma clase `.section-sub`,
+   y la regla de "Los mas pedidos" venia DESPUES: le ganaba al formulario por
+   orden. Por eso "Revisa el resumen y completa tus datos" salia centrado debajo
+   de un titulo alineado a la izquierda, y pegado a el por el margen negativo.
+   Ahora esa regla va acotada a `.top-section`. */
+
+/* ── "PEDIR PARA EL VIE 18" (13/9/2026) ──
+   El boton de una card sin stock para la fecha elegida, cuando hay otra fecha
+   que si se puede pedir. Contorno y no relleno: no es lo mismo que "+ Agregar"
+   — cambia la fecha de todo el pedido — y tiene que leerse distinto. */
+.add-btn.add-btn-otra-fecha {
+  background: #fff; color: var(--hover-orange);
+  border: 1.5px solid var(--orange); line-height: 1.2;
+}
+.add-btn.add-btn-otra-fecha:hover { background: #FFF3E0; }
+
+/* ── EL CATALOGO EN LA COMPU (13/9/2026) ──
+   Las categorias y "Los mas pedidos" van a 1100px y 4 columnas, pero cada
+   seccion del catalogo iba a 900px y 3: al bajar, la pagina se angostaba y las
+   fotos quedaban mas grandes que las de arriba. En una pantalla de 1440 se veia
+   un producto y medio por pantalla. Ahora todo el ancho es el mismo. */
+@media (min-width: 1024px) {
+  .catalog { max-width: 1100px; }
+  .products-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ── LOS +/- DEL CARRITO EN EL CELULAR (13/9/2026) ──
+   Medidos a 390px: 26px los del carrito, 26 la X de una pieza de carne y 32 los
+   de la card. Son los botones que mas se tocan antes de pagar. En la compu se
+   quedan como estan: con el mouse se aciertan igual. */
+@media (max-width: 560px) {
+  .qty-btn { width: 38px; height: 38px; font-size: 1.05rem; }
+  .qty-controls { gap: .45rem; }
+  .pz-quitar { width: 38px; height: 38px; }
+  .card-qty-btn { width: 40px; height: 40px; }
+}
+
+/* ── LOS AVISOS LARGOS NO SE CORTAN (13/9/2026) ──
+   `.toast` va con `white-space:nowrap` y centrado con translateX(-50%): un
+   aviso mas ancho que la pantalla se salia por los DOS costados. A 390px
+   "✓ Pizza Margarita agregado · tu entrega pasó al viernes 18/9" perdia el ✓ y
+   la fecha, justo lo que importa. Le pasaba tambien a avisos que ya estaban,
+   como el de una pieza de carne que se vendio. Corto sigue en una linea; largo
+   parte en dos. */
+.toast { white-space: normal; max-width: calc(100vw - 32px); width: max-content;
+         text-align: center; line-height: 1.35; }

@@ -1086,7 +1086,7 @@ const BARRIOS_PILAR_MODAL = [
   {
     val: '__otro__',
     nombre: 'Otra zona de Pilar',
-    isRed: false, isOther: true, badge: 'Tadeo',
+    isRed: false, isOther: true, badge: 'Maleu',
     // 10/08/26: Los Alcanfores y Estancias del Río se mudaron acá desde la zona
     // Estancias. Entregan solo los viernes, en el recorrido de Tadeo.
     subBarrios: 'Los Alcanfores · Estancias del Río · Pilara · El Ocho · Otros',
@@ -1157,24 +1157,32 @@ function _barrioOculto(val) {
      - 'real': tope = stock físico actual.
    Regla operativa: Tadeo cierra OC con proveedor Jue 12hs AR. Lo que el
    cliente pida para entregas posteriores al próximo Vie depende de si
-   alcanzó esa OC (antes Jue 12hs → ilimitado) o ya no (después → proyectado). */
-function getStockMode() {
+   alcanzó esa OC (antes Jue 12hs → ilimitado) o ya no (después → proyectado).
+
+   Sin argumento mira la fecha elegida. Con una fecha ISO contesta "¿cómo sería
+   si eligiera ESTA?" — lo usa el botón "Pedir para el vie 18" de una card sin
+   stock (13/9/2026). Es la misma función y no una copia a propósito: el ERP la
+   saca de este archivo (`probar-stock-modo.js`) y la compara con la de la tab
+   «+». Llamada sin argumento se comporta exactamente igual que antes. */
+function getStockMode(isoFecha) {
+  var conFecha = isoFecha !== undefined;
+  var fecha = conFecha ? isoFecha : selectedDeliveryDate;
   // Clubes y Pilar Red siempre ilimitado (el calendario los bloquea por
   // cutoff si la fecha no aplica; el stock en sí no tiene tope).
   if (currentZone === 'clubes') return 'ilimitado';
   if (currentZone === 'pilar' && _pilarBarrioIsRed()) return 'ilimitado';
   // Restricción Pilar temporal (29/4 - 3/5/2026, ya vencida). Compat.
   if (isPilarRestricted()) {
-    if (selectedDateIsFlexible) return 'real';
-    if (!selectedDeliveryDate) return 'real';
-    var pms = _deliveryStartMs(selectedDeliveryDate);
+    if (!conFecha && selectedDateIsFlexible) return 'real';
+    if (!fecha) return 'real';
+    var pms = _deliveryStartMs(fecha);
     if (pms && pms < PILAR_RESTRICCION_HASTA_MS) return 'real';
     return 'ilimitado';
   }
   if (currentZone !== 'estancias' && currentZone !== 'pilar') return 'ilimitado';
-  if (selectedDateIsFlexible && !selectedDeliveryDate) return 'ilimitado';
-  if (!selectedDeliveryDate) return 'ilimitado';
-  var deliveryDay = _isoToUTCMidnightMs(selectedDeliveryDate);
+  if (!conFecha && selectedDateIsFlexible && !selectedDeliveryDate) return 'ilimitado';
+  if (!fecha) return 'ilimitado';
+  var deliveryDay = _isoToUTCMidnightMs(fecha);
   if (deliveryDay == null) return 'ilimitado';
   var todayDay = _todayARMidnightMs();
   if (deliveryDay < todayDay) return 'real';
@@ -1717,7 +1725,7 @@ function updatePilarVendedorLabel() {
   var text = '';
   if (val === '__otro__') {
     var otro = ($id('f-direccion') && $id('f-direccion').value || '').trim();
-    if (otro) text = 'El vendedor es Tadeo Ustariz';
+    if (otro) text = 'Te lo entrega Maleu';
   } else if (val) {
     var v = barrioToVendedor[val.toLowerCase()];
     if (v && v.nombre) text = 'El vendedor es ' + v.nombre;
@@ -1815,8 +1823,9 @@ function renderWelcomeBarrioGrid() {
     var classes = ['loc-zona-card'];
     if (b.isRed) classes.push('is-red');
     if (b.isOther) classes.push('is-other');
-    // Badge del vendedor: solo el nombre. La "Otra zona" (Tadeo) usa estilo naranja.
-    var badgeCls = 'loc-zona-vendedor' + (b.isOther ? ' is-tadeo' : '');
+    // Badge del vendedor: solo el nombre. La "Otra zona" la entrega Maleu y usa
+    // estilo naranja. En la tienda no se nombra a Tadeo (13/9/2026): es una marca.
+    var badgeCls = 'loc-zona-vendedor' + (b.isOther ? ' is-maleu' : '');
     var badge = '<span class="' + badgeCls + '">' + (b.badge || '') + '</span>';
     var subBarrios = b.subBarrios ? '<span class="loc-zona-sub">' + b.subBarrios + '</span>' : '';
     // Escapo comillas simples del nombre para el onclick
@@ -1998,20 +2007,28 @@ function _cutoffNote(zone) {
   var nowAR = new Date(Date.now() - 3 * 3600 * 1000);
   var dow = nowAR.getUTCDay();      // 0=Dom .. 6=Sáb
   var hour = nowAR.getUTCHours();
-  // Lun a Mié: hay tiempo de sobra, solo explicamos cómo viene la mano.
-  if (dow >= 1 && dow <= 3) {
-    return { tone: 'info', html: '🚚 Entregamos los <strong>viernes</strong> ' + donde + '. Tenés tiempo hasta el <strong>jueves 12 hs</strong> para entrar en el recorrido de esta semana.' };
-  }
+  /* Las fechas van escritas (13/9/2026). Hasta ese día el sábado y el domingo
+     decían "los pedidos de este viernes ya cerraron" — y un domingo "este
+     viernes" es el que viene, que cierra recién el jueves. El cliente leía que
+     había llegado tarde a un recorrido que estaba abierto. */
+  var hoyMs = Date.UTC(nowAR.getUTCFullYear(), nowAR.getUTCMonth(), nowAR.getUTCDate());
+  var dm = function (ms) { var d = new Date(ms); return d.getUTCDate() + '/' + (d.getUTCMonth() + 1); };
+  var proxVieMs = hoyMs + ((5 - dow + 7) % 7) * 86400000;   // si hoy es viernes, hoy
+  var cierraJue = dm(proxVieMs - 86400000);
   // Jueves antes del cierre: última chance para el viernes de mañana.
   if (dow === 4 && hour < 12) {
-    return { tone: 'urgente', html: '⏰ <strong>¡Estás a tiempo!</strong> Cerramos los pedidos <strong>hoy a las 12 hs</strong> y mañana viernes salimos a repartir. Dejanos el tuyo y entrás en el recorrido.' };
+    return { tone: 'urgente', html: '⏰ <strong>¡Estás a tiempo!</strong> Cerramos los pedidos <strong>hoy a las 12 hs</strong> y mañana viernes ' + dm(proxVieMs) + ' salimos a repartir. Dejanos el tuyo y entrás en el recorrido.' };
   }
   // Viernes: hoy es el día. Lo invitamos al recorrido de la semana que viene.
   if (dow === 5) {
-    return { tone: 'entregando', html: '📦 <strong>Hoy estamos entregando</strong> ' + donde + '. ¿Querés vivir la experiencia Maleu? El <strong>próximo viernes</strong> volvemos a pasar — dejanos tu pedido ahora y ya quedás en el recorrido.' };
+    return { tone: 'entregando', html: '📦 <strong>Hoy estamos entregando</strong> ' + donde + '. ¿Querés vivir la experiencia Maleu? El <strong>viernes ' + dm(proxVieMs + 7 * 86400000) + '</strong> volvemos a pasar — dejanos tu pedido ahora y ya quedás en el recorrido.' };
   }
-  // Jue después de las 12, Sáb y Dom: este viernes ya cerró.
-  return { tone: 'info', html: '📅 Los pedidos de <strong>este viernes ya cerraron</strong>. Dejanos el tuyo ahora y salís en el recorrido del <strong>viernes que viene</strong>.' };
+  // Jueves después de las 12: el de mañana ya cerró, entra en el siguiente.
+  if (dow === 4) {
+    return { tone: 'info', html: '📅 Los pedidos para <strong>mañana viernes ya cerraron</strong>. Dejanos el tuyo ahora y salís en el recorrido del <strong>viernes ' + dm(proxVieMs + 7 * 86400000) + '</strong>.' };
+  }
+  // Sábado a miércoles: el próximo viernes está abierto hasta el jueves 12 hs.
+  return { tone: 'info', html: '🚚 Entregamos los <strong>viernes</strong> ' + donde + '. Pedí hasta el <strong>jueves ' + cierraJue + ' a las 12 hs</strong> y entrás en el recorrido del <strong>viernes ' + dm(proxVieMs) + '</strong>.' };
 }
 /* Pinta el aviso en un contenedor. Comparten función el cartel del modal
    (Pilar) y el del hero (Clubes) para que nunca se desincronicen. */
@@ -2217,7 +2234,7 @@ function _getNextDeliveryOf(zone, targetDayName) {
   for (var i = 0; i < all.length; i++) if (all[i].dayName === targetDayName) return all[i];
   return all[0] || null;
 }
-function setDeliveryDate(iso, dayName) {
+function setDeliveryDate(iso, dayName, opts) {
   if (iso === 'any') {
     // "Cualquier día" → flexible. Para el day-picker del form usamos
     // por default el próximo Viernes (la fecha más común y disponible
@@ -2248,7 +2265,9 @@ function setDeliveryDate(iso, dayName) {
   updateStockDisplay();
   // Pre-rellenar el day-picker del form si corresponde
   _preselectDayPicker();
-  window.scrollTo(0, 0);
+  // Desde el modal se sube arriba de todo. Desde el boton "Pedir para el vie
+  // 18" de una card NO: el cliente esta mirando ese producto.
+  if (!(opts && opts.sinScroll)) window.scrollTo(0, 0);
 }
 function _loadSavedDate() {
   try {
@@ -2725,9 +2744,14 @@ function _pintarFooterDeCard(card, id) {
   const qty = cart[id] || 0;
   // Tope dinámico según modo: real (físico), proyectado (físico+OC), o null (ilimitado).
   const cap = getStockCap(id);
-  const sinStock = cap !== null && cap !== undefined && cap === 0;
+  const sinStock = cap !== null && cap !== undefined && cap <= 0;
   const atLimit = cap !== null && cap !== undefined && qty >= cap;
-  if (qty === 0) {
+  const otraFecha = (sinStock && qty === 0) ? _fechaConStock(id) : null;
+  if (qty === 0 && otraFecha) {
+    footer.innerHTML = '<span class="product-price">' + ars(p.precio) + '</span>' +
+      '<button class="add-btn add-btn-otra-fecha" onclick="pedirParaOtraFecha(\'' + p.id + '\')">' +
+      'Pedir para ' + _fechaCorta(otraFecha) + '</button>';
+  } else if (qty === 0) {
     footer.innerHTML = '<span class="product-price">' + ars(p.precio) + '</span>' +
       '<button class="add-btn" onclick="addToCart(\'' + p.id + '\')"' + (sinStock ? ' disabled' : '') + '>' +
       (sinStock ? 'Sin stock' : '+ Agregar') + '</button>';
@@ -2742,14 +2766,112 @@ function _pintarFooterDeCard(card, id) {
   }
 }
 
+/* ── SIN STOCK PARA ESA FECHA, PERO SÍ PARA OTRA (13/9/2026) ──
+   Un domingo a la mañana, el cliente que elegía "hoy" veía los cuatro "Lo más
+   pedido" en gris: el freezer estaba vacío y era cierto. Pero para el viernes
+   se podía pedir cualquier cosa — entra en la orden de compra del jueves — y
+   la tienda no lo decía: el botón gris era un callejón sin salida.
+
+   Ahora, si hay una fecha de entrega más adelante en la que ese producto SÍ se
+   puede pedir, el botón la ofrece ("Pedir para el vie 18") y al tocarlo pasa
+   la entrega a esa fecha y agrega el producto. El toast dice que la fecha
+   cambió: cambia para todo el pedido, y eso no puede pasar callado.
+
+   Mover la fecha para adelante nunca achica un tope: lo que ya estaba en el
+   carrito sigue entrando. La fecha sale de las MISMAS dos funciones que arman
+   el calendario y el tope (`_getNextDeliveryDatesGrouped` y `getStockMode`),
+   así que no puede ofrecer un día que el calendario no ofrece. */
+var _fechasCache = null;
+function _fechasPosteriores() {
+  if (!currentZone || !selectedDeliveryDate || selectedDateIsFlexible) return [];
+  var clave = currentZone + '|' + selectedDeliveryDate + '|' + (selectedPilarZona || '') + '|' +
+              (selectedPilarBarrio || '') + '|' + Math.floor(Date.now() / 60000);
+  if (!_fechasCache || _fechasCache.clave !== clave) {
+    var g = _getNextDeliveryDatesGrouped(currentZone);
+    var todas = g.thisWeek.concat(g.nextWeek, g.later)
+      .filter(function (f) { return f.iso > selectedDeliveryDate; })
+      .map(function (f) { return { f: f, modo: getStockMode(f.iso) }; });
+    _fechasCache = { clave: clave, fechas: todas };
+  }
+  return _fechasCache.fechas;
+}
+function _fechaConStock(id) {
+  var p = PROD_MAP[id];
+  if (!p || esPorPeso(p)) return null;   // la carne va por pieza, no por fecha
+  var lista = _fechasPosteriores();
+  for (var i = 0; i < lista.length; i++) {
+    var m = lista[i].modo;
+    if (m === 'ilimitado') return lista[i].f;
+    if (m === 'proyectado' && (stockProyectadoMap[id] || 0) > 0) return lista[i].f;
+    if (m === 'real' && (stockMap[id] || 0) > 0) return lista[i].f;
+  }
+  return null;
+}
+/* Un combo solo se ofrece para una fecha SIN tope: calcular si alcanza el
+   stock real o proyectado de cada gusto de cada slot para otra fecha seria una
+   segunda copia de `comboBestMax`, y es como se despegan dos cuentas. */
+function _fechaParaCombo(c) {
+  if (!c || c.terminado) return null;
+  var lista = _fechasPosteriores();
+  for (var i = 0; i < lista.length; i++) if (lista[i].modo === 'ilimitado') return lista[i].f;
+  return null;
+}
+function armarComboOtraFecha(comboId) {
+  var c = COMBO_MAP[comboId];
+  var f = _fechaParaCombo(c);
+  if (!c || !f) { toast('⚠️ No hay stock para la fecha que elegiste', 3000); return; }
+  var antes = selectedDeliveryDate;
+  setDeliveryDate(f.iso, f.dayName, { sinScroll: true });
+  var partes = f.iso.split('-');
+  var cuando = 'tu entrega ' + (f.isTomorrow ? 'ahora es mañana'
+    : 'pasó al ' + f.dayName.toLowerCase() + ' ' + (+partes[2]) + '/' + (+partes[1]));
+  if (typeof gtag === 'function') {
+    gtag('event', 'fecha_por_stock', { id: 'combo-' + c.id, item_name: c.nombre, desde: antes, hasta: f.iso, zone: currentZone });
+  }
+  /* El aviso va DESPUES: agregar el combo pisa el toast con su "✓ agregado",
+     y el cambio de fecha no puede quedar tapado. */
+  if (comboHasChoices(c)) {
+    openComboConfig(comboId);
+    toast('📅 ' + cuando.charAt(0).toUpperCase() + cuando.slice(1), 4500);
+  } else {
+    addComboDefault(comboId);
+    toast('✓ ' + c.nombre + ' agregado · ' + cuando, 4500);
+  }
+}
+/* "el vie 18" o "mañana": entra en el botón de una card de 170px. */
+function _fechaCorta(f) {
+  if (f.isTomorrow) return 'mañana';
+  var CORTOS = { Lunes: 'lun', Martes: 'mar', 'Miércoles': 'mié', Jueves: 'jue', Viernes: 'vie', 'Sábado': 'sáb', Domingo: 'dom' };
+  return 'el ' + (CORTOS[f.dayName] || f.dayName.toLowerCase()) + ' ' + f.dayNum;
+}
+function pedirParaOtraFecha(id) {
+  var f = _fechaConStock(id);
+  var p = PROD_MAP[id];
+  if (!f || !p) { toast('⚠️ No hay stock para la fecha que elegiste', 3000); return; }
+  var antes = selectedDeliveryDate;
+  setDeliveryDate(f.iso, f.dayName, { sinScroll: true });
+  var partes = f.iso.split('-');
+  var cuando = f.isTomorrow ? 'ahora es mañana'
+    : 'pasó al ' + f.dayName.toLowerCase() + ' ' + (+partes[2]) + '/' + (+partes[1]);
+  var entro = addToCart(id, '✓ ' + p.nombre + ' agregado · tu entrega ' + cuando);
+  if (entro && typeof gtag === 'function') {
+    gtag('event', 'fecha_por_stock', { id: p.id, item_name: p.nombre, desde: antes, hasta: f.iso, zone: currentZone });
+  }
+}
+
 /* ── CARRITO ── */
+/* Devuelve true si el carrito cambió. `addToCart` lo necesita: hasta el
+   13/9/2026 decía "✓ agregado" y le mandaba un AddToCart a Meta y a Google
+   aunque el tope de stock hubiera frenado el producto. */
 function modifyCart(id, delta) {
   const current = cart[id] || 0;
   if (delta > 0) {
     const cap = getStockCap(id);
     if (cap !== null && cap !== undefined && current >= cap) {
-      toast('⚠️ Stock limitado — solo hay ' + cap + ' disponible' + (cap !== 1 ? 's' : ''), 3000);
-      return;
+      toast(cap <= 0
+        ? '⚠️ No hay stock para la fecha que elegiste'
+        : '⚠️ Stock limitado — solo hay ' + cap + ' disponible' + (cap !== 1 ? 's' : ''), 3000);
+      return false;
     }
   }
   const newQty = current + delta;
@@ -2759,6 +2881,7 @@ function modifyCart(id, delta) {
   renderCardFooter(id);
   updateFormVisibility();
   updateShippingBar();
+  return true;
 }
 /* Un solo lugar manda los eventos a los dos lados. Colgar Meta de cada call
    site serian 6 lugares de los que acordarse, y ya sabemos como termina eso:
@@ -2851,15 +2974,16 @@ function _trackMeta(event, params) {
 function _metaForzarCarga() {
   try { if (typeof window.traerMeta === 'function') window.traerMeta(); } catch (e) {}
 }
-function addToCart(id) {
-  modifyCart(id, 1);
+function addToCart(id, mensaje) {
+  if (!modifyCart(id, 1)) return false;
   const p = PROD_MAP[id];
   _track('add_to_cart', { id: p.id, item_name: p.nombre, price: p.precio, zone: currentZone });
-  toast('✓ ' + p.nombre + ' agregado');
+  toast(mensaje || ('✓ ' + p.nombre + ' agregado'), mensaje ? 4500 : undefined);
   const badge = $id('cart-badge');
   badge.classList.remove('bounce');
   void badge.offsetWidth;
   badge.classList.add('bounce');
+  return true;
 }
 function changeQty(id, delta) { modifyCart(id, delta); }
 function cardChangeQty(id, delta) { modifyCart(id, delta); }
@@ -2928,6 +3052,12 @@ function renderComboFooter(comboId) {
   let btn;
   if (c.terminado) {
     btn = '<button class="add-btn combo-btn-terminado" disabled aria-disabled="true">Terminado</button>';
+  } else if (comboBestMax(c, null) <= 0 && _fechaParaCombo(c)) {
+    /* Sin stock para la fecha elegida, pero se puede armar para otra (13/9/2026).
+       Antes decia "Sin stock" arriba y "Armar combo" en naranja abajo, y el
+       boton llevaba a un configurador donde nada se podia elegir. */
+    btn = '<button class="add-btn add-btn-otra-fecha" onclick="armarComboOtraFecha(\'' + c.id + '\')">' +
+      (comboHasChoices(c) ? 'Armar para ' : 'Pedir para ') + _fechaCorta(_fechaParaCombo(c)) + '</button>';
   } else if (comboHasChoices(c)) {
     btn = '<button class="add-btn" onclick="openComboConfig(\'' + c.id + '\')">Armar combo</button>';
   } else {
@@ -2955,7 +3085,7 @@ function updateStockBadgesCombos() {
     const max = comboBestMax(c, null);
     if (mode === 'ilimitado' || max === Infinity) el.innerHTML = '';
     else if (max <= 0) el.innerHTML = '<span class="stock-badge stock-out">Sin stock</span>';
-    else if (max <= 3) el.innerHTML = '<span class="stock-badge stock-low">Últimas ' + max + ' unidades</span>';
+    else if (max <= 3) el.innerHTML = '<span class="stock-badge stock-low">' + _ultimasTexto(max) + '</span>';
     else el.innerHTML = '';
   });
 }
@@ -4511,8 +4641,8 @@ async function fetchStock() {
     PRODUCTOS.forEach(p => {
       const abbr = PROD_ABBR[p.id];
       if (!abbr || !full[abbr]) return;
-      stockMap[p.id] = full[abbr].f;
-      stockProyectadoMap[p.id] = full[abbr].p;
+      stockMap[p.id] = _stockLimpio(full[abbr].f);
+      stockProyectadoMap[p.id] = _stockLimpio(full[abbr].p);
     });
     // Ajustar carrito si excede el tope vigente según el modo actual
     const mode = getStockMode();
@@ -4556,6 +4686,21 @@ async function _refrescarPiezas() {
   }
   catch (e) { console.warn('fetchPiezas:', e); }
 }
+/* El stock que manda el ERP, listo para usar (13/9/2026).
+   El ERP puede mandar un NEGATIVO: ese domingo Empanadas Jamón y Queso vino en
+   -1, y como la tienda solo trataba el 0 como agotado, la card decía
+   "Últimas -1 unidades" con el botón "+ Agregar" prendido. Tocarlo decía
+   "✓ agregado" sin agregar nada. Para el cliente no hay stock negativo: es 0.
+   Y los kilos traen ruido de punto flotante (3.8900000000000006). */
+function _stockLimpio(v) {
+  var n = Number(v);
+  if (!isFinite(n) || n <= 0) return 0;
+  return Math.round(n * 1000) / 1000;
+}
+/* "Últimas 1 unidades" no se dice. */
+function _ultimasTexto(n) {
+  return n === 1 ? 'Última unidad' : 'Últimas ' + n + ' unidades';
+}
 /* Devuelve el tope a usar para un producto según el modo de stock actual.
    Si es 'ilimitado', devuelve null (sin tope). */
 function getStockCap(id) {
@@ -4579,14 +4724,14 @@ function updateStockDisplay() {
     if (!showStock || fis === undefined) { el.innerHTML = ''; renderCardFooter(p.id); return; }
     if (mode === 'real') {
       if (fis === 0) el.innerHTML = '<span class="stock-badge stock-out">Sin stock</span>';
-      else if (fis <= 3) el.innerHTML = '<span class="stock-badge stock-low">Últimas ' + fis + ' unidades</span>';
+      else if (fis <= 3) el.innerHTML = '<span class="stock-badge stock-low">' + _ultimasTexto(fis) + '</span>';
       else el.innerHTML = '';
     } else if (mode === 'proyectado') {
       // Mismo tratamiento visual que modo real: el cliente no ve "lo que
       // viene en camino" explícito; solo ve "Sin stock" o "Últimas N" si
       // queda poco. Cuando intente superar el tope verá "Máximo disponible: N".
       if (proy === 0) el.innerHTML = '<span class="stock-badge stock-out">Sin stock</span>';
-      else if (proy <= 3) el.innerHTML = '<span class="stock-badge stock-low">Últimas ' + proy + ' unidades</span>';
+      else if (proy <= 3) el.innerHTML = '<span class="stock-badge stock-low">' + _ultimasTexto(proy) + '</span>';
       else el.innerHTML = '';
     } else {
       // Modo ilimitado: el cliente puede pedir cualquier cantidad. NO mostrar
@@ -5098,14 +5243,42 @@ function _pintarAliasMaleu() {
     '</div>';
   }).join('');
 }
+/* Copiar un alias sin quedarse callado si el navegador no deja (13/9/2026).
+   `navigator.clipboard` no existe o rechaza en varios navegadores embebidos —
+   el de Instagram y el de Facebook, que es justo donde cae un cliente que viene
+   de la pauta— y el botón no hacía nada: ni copiaba ni avisaba. El alias es lo
+   que el cliente necesita para pagar. Primero el portapapeles moderno, después
+   el método viejo, y si ninguno anda se lo decimos con el alias escrito. */
+function _copiarTexto(texto, alCopiar) {
+  var fallo = function () {
+    var ok = false;
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = texto;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.left = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select(); ta.setSelectionRange(0, texto.length);
+      ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch (e) { ok = false; }
+    if (ok) alCopiar();
+    else toast('No pudimos copiarlo: el alias es ' + texto + ' — mantené apretado para copiarlo', 6000);
+  };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(alCopiar, fallo);
+      return;
+    }
+  } catch (e) { /* abajo */ }
+  fallo();
+}
 function copyAlias(a) {
   var alias = a || ALIAS_MALEU[0].alias;
-  navigator.clipboard.writeText(alias).then(function() { toast('\u2713 Alias copiado: ' + alias); });
+  _copiarTexto(alias, function () { toast('✓ Alias copiado: ' + alias, 2000); });
 }
 function copyVendedorAlias(alias, nombreCorto) {
-  navigator.clipboard.writeText(alias).then(function() {
-    toast('✓ Alias de ' + nombreCorto + ' copiado: ' + alias);
-  });
+  _copiarTexto(alias, function () { toast('✓ Alias de ' + nombreCorto + ' copiado: ' + alias, 2000); });
 }
 
 updateShippingBar();
