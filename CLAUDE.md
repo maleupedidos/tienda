@@ -1422,7 +1422,7 @@ uno (sumar encima, ignorar el stock, no ordenar, no guardar la carne, el buscado
 esconderla, ignorar el formato viejo, el botón sin repintarse con el carrito, y el botón
 gris sin salida): **los ocho se agarran**.
 
-## La sugerencia de carne en el carrito, con una pieza que existe (13/9/2026, tarde)
+## Las sugerencias del carrito: carne, y al revés (13/9/2026, tarde)
 
 Tadeo, sobre la segunda mejora: *"que la sugerencia sea con algo que realmente tengamos,
 ¿entendés? Por ejemplo, ¿le sumás una pieza de colita de x peso?"*. Al 11/9/2026, **229 de
@@ -1455,13 +1455,46 @@ Fresca, envasada al vacío, y va en la misma entrega.
 - **Se mide**: `sugerencia_carne_vista` una vez por visita (el denominador) y
   `sugerencia_carne` al sumar. La pieza cuenta además como `add_to_cart`.
 
-**La red: `node _tools/verificar-sugerencia-carne.js [ancho]`**, 27 chequeos a 390 y 1440px:
-el carrito vacío, el orden y la pieza más chica con su precio, "+ Sumar" con un toque de
+### Y al revés: el que solo lleva carne
+
+Tadeo, el mismo día: *"si la experiencia del cliente solo va por la carne y ve el carrito,
+estaría bueno poner: ¿querés sumar algo más? Tenemos pizzas, sorrentinos, empanadas,
+tartas, wraps"*. Misma caja y mismo lugar, con la regla dada vuelta:
+
+```
+¿Le sumás algo más?
+También tenemos pizzas, sorrentinos, empanadas, tartas, wraps y postres.
+Va todo en la misma entrega.
+[foto] Pack Muzzarella x2     Para 3–4 personas · $17.000   [+ Sumar]
+[foto] Empanadas Carne…       Para 2–4 personas · $20.000   [+ Sumar]
+[foto] Sorrentinos Cordero…   Para 2–3 personas · $19.800   [+ Sumar]
+                     Ver todo lo que tenemos →
+```
+
+- **Sale solo si el carrito tiene carne y nada más**: ni productos ni combos.
+- **Tres productos de categorías distintas**, porque lo que se quiere decir es "tenemos de
+  todo", no tres pizzas. Las categorías se agrupan para decirlas en una frase (`SUG_GRUPO`:
+  pack e individuales son "pizzas", Franui y tortas son "postres"); una nueva entra con su
+  nombre en minúscula.
+- **Primero "Lo más pedido"** (`top:true`, que cura Tadeo), después el orden del catálogo.
+- **Solo lo que se puede pedir para la fecha elegida**, con `getStockCap`: el mismo tope que
+  "+ Agregar". Si la margarita no hay para hoy, ofrece otra pizza; y **cambia sola al cambiar
+  la fecha** (cuelga también de `updateStockDisplay`).
+- "+ Sumar" va por `addToCart`. En el celular el renglón es nombre y precio: el *"Para 3–4
+  personas"* partía la línea en tres (`.sug-porc`, visible desde 481px).
+- Se mide `sugerencia_maleu_vista` y `sugerencia_maleu`.
+
+**Nunca salen las dos juntas**: una pide que no haya carne y la otra que haya solo carne.
+Una sola función las pinta (`_pintarSugerencia`) y `data-tipo` dice cuál es.
+
+**La red: `node _tools/verificar-sugerencias.js [ancho]`**, 44 chequeos a 390 y 1440px:
+el carrito vacío; la de carne (orden, pieza más chica y su precio, "+ Sumar" con un toque de
 verdad, sacarla y que vuelva, **la pieza que se vende y el inventario que llega**, "Ver todas
-las piezas", y los tres casos en que no va. Reinyectando siete bugs de a uno se agarran
-cinco. Los otros dos **no pueden pasar en la tienda**, y está dicho en el test: el
-inventario ya llega ordenado (`fetchPiezas`) y un carrito vacío no dibuja el lugar de la
-sugerencia.
+las piezas"); la de al revés (tres categorías, lo más pedido primero, **lo que no hay para
+hoy no se ofrece y para el viernes sí**, carne con un combo, "Ver todo lo que tenemos"); y
+los casos en que no va. De trece bugs reinyectados de a uno se agarran once. Los otros dos
+**no pueden pasar en la tienda**, y está dicho en el test: el inventario ya llega ordenado
+(`fetchPiezas`) y un carrito vacío no dibuja el lugar de la sugerencia.
 
 ## Lo que NO está acá
 

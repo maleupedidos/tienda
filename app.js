@@ -588,7 +588,6 @@ function piezasDe(abbr) {
    el repo es publico. Un corte nuevo que no este en la lista entra al final. */
 var SUG_CARNE_ORDEN = ['CPi', 'CVa', 'CCo', 'CLo', 'CEn'];
 var SUG_CARNE_MAX = 2;
-var _sugCarneVista = false;
 
 function _sugerenciaCarne() {
   if (cartCount() === 0 || piezasAgrupadas().length || !hayPiezas()) return [];
@@ -605,45 +604,132 @@ function _sugerenciaCarne() {
   return out;
 }
 
-function _pintarSugerenciaCarne() {
+/* ── Y AL REVES: EL QUE SOLO LLEVA CARNE (13/9/2026) ──
+   Tadeo, el mismo dia: "si la experiencia del cliente solo va por la carne y
+   ve el carrito, estaria bueno poner: ¿queres sumar algo mas? Tenemos pizzas,
+   sorrentinos, empanadas, tartas, wraps". Misma caja, mismo lugar, la regla
+   dada vuelta:
+   · sale solo si el carrito tiene carne y NADA mas (ni productos ni combos);
+   · ofrece hasta TRES productos de categorias distintas, porque lo que se
+     quiere decir es "tenemos de todo": una pizza, unos sorrentinos, unas
+     empanadas — no tres pizzas;
+   · primero los "Lo mas pedido" (top:true, que cura Tadeo), despues el resto
+     en el orden del catalogo;
+   · solo lo que se puede pedir PARA LA FECHA ELEGIDA, con getStockCap: el
+     mismo tope que el boton "+ Agregar". Si la margarita no hay para hoy, la
+     pizza que se ofrece es otra. Nunca ofrece algo que no hay. */
+var SUG_MALEU_MAX = 3;
+var _sugVistas = {};
+/* Como se nombra una categoria adentro de una frase. Una categoria nueva que no
+   este aca entra con su nombre en minuscula: se lee raro, pero no se pierde. */
+var SUG_GRUPO = { 'Pizzas Individuales': 'pizzas', 'Pack Pizzas x2': 'pizzas', 'Sorrentinos': 'sorrentinos',
+  'Empanadas': 'empanadas', 'Tartas': 'tartas', 'Wraps': 'wraps', 'Franuis': 'postres', 'Tortas': 'postres' };
+function _sugGrupo(cat) { return SUG_GRUPO[cat] || String(cat || '').toLowerCase(); }
+function _hayParaLaFecha(p) {
+  var cap = getStockCap(p.id);
+  return cap === null || cap === undefined || cap > 0;
+}
+
+function _sugerenciaMaleu() {
+  var nada = { prods: [], grupos: [] };
+  if (!piezasAgrupadas().length) return nada;
+  if (Object.keys(cart).some(function (id) { return cart[id] > 0; }) || Object.keys(comboCart).length) return nada;
+  var hay = getActiveProducts().filter(function (p) { return !esPorPeso(p) && _hayParaLaFecha(p); });
+  var grupos = [];
+  hay.forEach(function (p) { var g = _sugGrupo(p.cat); if (grupos.indexOf(g) === -1) grupos.push(g); });
+  var usados = {}, prods = [];
+  hay.filter(function (p) { return p.top; }).concat(hay.filter(function (p) { return !p.top; })).forEach(function (p) {
+    var g = _sugGrupo(p.cat);
+    if (prods.length >= SUG_MALEU_MAX || usados[g]) return;
+    usados[g] = true;
+    prods.push(p);
+  });
+  return { prods: prods, grupos: grupos };
+}
+
+/* "pizzas, sorrentinos y empanadas" */
+function _sugLista(arr) {
+  return arr.length > 1 ? arr.slice(0, -1).join(', ') + ' y ' + arr[arr.length - 1] : (arr[0] || '');
+}
+function _sugFila(img, nombre, det, onclick) {
+  return '<div class="sug-fila">' +
+    '<img class="sug-img" src="' + fotoUrl(img) + '" alt="" loading="lazy" width="48" height="48" onerror="this.style.visibility=\'hidden\'">' +
+    '<div class="sug-info"><div class="sug-nom">' + nombre + '</div><div class="sug-det">' + det + '</div></div>' +
+    '<button type="button" class="sug-btn" onclick="' + onclick + '">+ Sumar</button>' +
+  '</div>';
+}
+
+/* Una sola caja para las dos sugerencias: nunca salen juntas (una pide que
+   haya carne y la otra que no), y dos carteles de "sumá algo" seguidos serian
+   mucho. data-tipo dice cual es, para medirla. */
+function _pintarSugerencia() {
   var el = $id('cart-sug');
   if (!el) return;
-  var sug = _sugerenciaCarne();
-  if (!sug.length) { el.innerHTML = ''; el.hidden = true; return; }
+  var tipo = '', html = '';
+  var carne = _sugerenciaCarne();
+  if (carne.length) {
+    tipo = 'carne';
+    html = '<div class="sug-t">¿Le sumás carne?</div>' +
+      '<div class="sug-s">Fresca, envasada al vacío, y va en la misma entrega.</div>' +
+      carne.map(function (x) {
+        return _sugFila(x.p.img, x.p.nombre,
+          'Pieza de ' + kgTexto(x.pz.kg) + ' · <strong>' + ars(piezaPrecio(x.p, x.pz.kg)) + '</strong>',
+          'sumarPiezaSugerida(\'' + x.p.abbr + '\',\'' + x.pz.id + '\')');
+      }).join('') +
+      '<button type="button" class="sug-ver" onclick="verDesdeCarrito(\'carne\')">Ver todas las piezas →</button>';
+  } else {
+    var m = _sugerenciaMaleu();
+    if (m.prods.length) {
+      tipo = 'maleu';
+      var lista = _sugLista(m.grupos);
+      html = '<div class="sug-t">¿Le sumás algo más?</div>' +
+        '<div class="sug-s">También tenemos ' + lista + '. Va todo en la misma entrega.</div>' +
+        m.prods.map(function (p) {
+          var porc = (p.chips || []).filter(function (c) { return /^Para /.test(c); })[0];
+          /* "Para 3-4 personas" solo en la compu: en el celular el carrito deja
+             ~110px para el nombre y el renglon se partia en tres. */
+          return _sugFila(p.img, p.nombre, (porc ? '<span class="sug-porc">' + porc + ' · </span>' : '') + '<strong>' + ars(p.precio) + '</strong>',
+            'sumarProductoSugerido(\'' + p.id + '\')');
+        }).join('') +
+        '<button type="button" class="sug-ver" onclick="verDesdeCarrito(\'todo\')">Ver todo lo que tenemos →</button>';
+    }
+  }
+  if (!tipo) { el.innerHTML = ''; el.hidden = true; el.removeAttribute('data-tipo'); return; }
   el.hidden = false;
-  el.innerHTML = '<div class="sug-carne">' +
-    '<div class="sug-carne-t">¿Le sumás carne?</div>' +
-    '<div class="sug-carne-s">Fresca, envasada al vacío, y va en la misma entrega.</div>' +
-    sug.map(function (x) {
-      return '<div class="sug-carne-fila">' +
-        '<img class="sug-carne-img" src="' + fotoUrl(x.p.img) + '" alt="" loading="lazy" width="48" height="48" onerror="this.style.visibility=\'hidden\'">' +
-        '<div class="sug-carne-info">' +
-          '<div class="sug-carne-nom">' + x.p.nombre + '</div>' +
-          '<div class="sug-carne-det">Pieza de ' + kgTexto(x.pz.kg) + ' · <strong>' + ars(piezaPrecio(x.p, x.pz.kg)) + '</strong></div>' +
-        '</div>' +
-        '<button type="button" class="sug-carne-btn" onclick="sumarPiezaSugerida(\'' + x.p.abbr + '\',\'' + x.pz.id + '\')">+ Sumar</button>' +
-      '</div>';
-    }).join('') +
-    '<button type="button" class="sug-carne-ver" onclick="verCarneDesdeCarrito()">Ver todas las piezas →</button>' +
-  '</div>';
+  el.setAttribute('data-tipo', tipo);
+  el.innerHTML = '<div class="sug">' + html + '</div>';
 }
 
 /* Por togglePieza, el mismo camino que la grilla: si la pieza ya se vendio,
    lo dice ahi y no se agrega nada. */
 function sumarPiezaSugerida(abbr, id) {
-  if (piezaCart[id]) { _pintarSugerenciaCarne(); return; }
+  if (piezaCart[id]) { _pintarSugerencia(); return; }
   togglePieza(abbr, id);
   if (piezaCart[id]) {
     _track('sugerencia_carne', { id: abbr, kg: piezaCart[id].kg, value: piezaCart[id].precio, zone: currentZone });
   } else {
-    _pintarSugerenciaCarne();
+    _pintarSugerencia();
   }
 }
 
-function verCarneDesdeCarrito() {
+/* Por addToCart, el mismo camino que "+ Agregar": respeta el tope de la fecha
+   y dice si no entro. */
+function sumarProductoSugerido(id) {
+  var p = PROD_MAP[id];
+  if (p && addToCart(String(id))) {
+    _track('sugerencia_maleu', { id: p.id, item_name: p.nombre, value: p.precio, zone: currentZone });
+  } else {
+    _pintarSugerencia();
+  }
+}
+
+function verDesdeCarrito(que) {
   if ($id('cart-sidebar').classList.contains('open')) toggleCart();
   // Lo mismo que goToForm: dejar terminar la animacion de cierre.
-  setTimeout(function () { scrollToCat(slugify('Carnes')); }, 380);
+  setTimeout(function () {
+    if (que === 'carne') scrollToCat(slugify('Carnes'));
+    else scrollToProductos();
+  }, 380);
 }
 
 /* ¿Este producto se vende por peso? Sale del catalogo, que a su vez lo saca de
@@ -2783,7 +2869,7 @@ function renderCatalog() {
   renderUltimoPedido();
   // El inventario de carne cambio (o llego): la sugerencia del carrito tiene
   // que ofrecer lo que hay AHORA, no lo que habia al abrirlo.
-  _pintarSugerenciaCarne();
+  _pintarSugerencia();
   /* El nav y los tiles se repintan aca por el mismo motivo que los
      destacados: si aparece o desaparece una categoria, los chips de arriba
      tienen que decir lo mismo que el catalogo. Colgarlo de los call sites es
@@ -3488,7 +3574,7 @@ function updateUI() {
       '</div>';
     }).join('');
     bodyEl.innerHTML = comboLines + prodLinesHtml + piezaLinesHtml + '<div id="cart-sug" hidden></div>';
-    _pintarSugerenciaCarne();
+    _pintarSugerencia();
     $id('cart-subtotal').textContent = ars(subtotal);
     const discRow = $id('cart-discount-row');
     if (discount > 0) {
@@ -3617,12 +3703,12 @@ function toggleCart() {
   const open = s.classList.toggle('open');
   o.classList.toggle('open', open);
   _fondoQuieto('carrito', open);
-  /* Cuantas veces se VIO la sugerencia de carne, una por visita: sin el
-     denominador, "3 la sumaron" no dice si es mucho o poco. */
-  var sug = $id('cart-sug');
-  if (open && sug && !sug.hidden && !_sugCarneVista) {
-    _sugCarneVista = true;
-    _track('sugerencia_carne_vista', { zone: currentZone, cortes: sug.querySelectorAll('.sug-carne-fila').length });
+  /* Cuantas veces se VIO cada sugerencia, una por visita: sin el denominador,
+     "3 la sumaron" no dice si es mucho o poco. */
+  var sug = $id('cart-sug'), tipo = sug && sug.getAttribute('data-tipo');
+  if (open && sug && !sug.hidden && tipo && !_sugVistas[tipo]) {
+    _sugVistas[tipo] = true;
+    _track('sugerencia_' + tipo + '_vista', { zone: currentZone, filas: sug.querySelectorAll('.sug-fila').length });
   }
 }
 function goToForm() {
@@ -4974,8 +5060,10 @@ function updateStockDisplay() {
   getActiveCombos().forEach(c => renderComboFooter(c.id));
   /* El tope cambio (llego el stock, o se eligio otra fecha): "Agregar lo
      mismo" puede quedar sin nada que sumar, o volver a tener. Va aca y no en
-     cada call site por lo mismo que los carteles: son varios. */
+     cada call site por lo mismo que los carteles: son varios. Lo mismo la
+     sugerencia del carrito: lo que ofrece de Maleu depende del tope. */
   _pintarUltimoPie();
+  _pintarSugerencia();
 }
 
 /* ── GUARDAR LO QUE EL CLIENTE ESCRIBE ──
