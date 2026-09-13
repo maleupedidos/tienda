@@ -2386,10 +2386,8 @@ function applyZone() {
   updatePromoBar();
   // Limpiar carrito al cambiar zona (productos/precios cambian)
   cart = {}; comboCart = {}; piezaCart = {};
-  // Ocultar último pedido (se re-evalúa con loadLastOrder)
-  var repeatBlock = $id('repeat-block');
-  if (repeatBlock) repeatBlock.style.display = 'none';
-  // Re-render catálogo y nav con productos de la zona
+  // Re-render catálogo y nav con productos de la zona (y "Lo que pediste la
+  // última vez", que cuelga de renderCatalog)
   renderCatalog();
   renderCatNav();
   updateCatNavTop();
@@ -2398,7 +2396,6 @@ function applyZone() {
   if (combosCta) combosCta.style.display = getActiveCombos().length ? '' : 'none';
   updateUI();
   updateStockDisplay();
-  loadLastOrder();
   /* Los datos del cliente, de nuevo. Antes `loadClientData()` corría UNA sola
      vez al arrancar el script, y ahí `currentZone` todavía puede no existir:
      el que elegía su zona en el modal recuperaba nombre y teléfono (que se
@@ -2700,6 +2697,7 @@ function renderCatalog() {
   // lugares que llaman a renderCatalog y colgarse de uno solo es como se
   // despegan las dos listas.
   renderTopProductos();
+  renderUltimoPedido();
   /* El nav y los tiles se repintan aca por el mismo motivo que los
      destacados: si aparece o desaparece una categoria, los chips de arriba
      tienen que decir lo mismo que el catalogo. Colgarlo de los call sites es
@@ -3448,6 +3446,8 @@ function updateUI() {
   // Si hay cupón aplicado, refresco el card para que pase de pending → activo
   // (o viceversa) cuando el cliente agrega o saca productos del scope.
   if (appliedCoupon) _renderCouponApplied();
+  // "Agregar lo mismo" dice si todavia falta algo: depende del carrito.
+  _pintarUltimoPie();
 }
 
 function updateFormSummary() {
@@ -3881,10 +3881,7 @@ function enviarPedido() {
   // Guardar en localStorage. Por la MISMA función que el guardado incremental:
   // dos formas de guardar el mismo dato se despegan sola.
   guardarDatosCliente({ dia: dia, pago: pagoEl.value });
-  try {
-    localStorage.setItem('maleu_ultimo_pedido_pg', JSON.stringify(Object.entries(cart).map(([id,qty]) => ({id: isNaN(id) ? id : +id, qty}))));
-    localStorage.setItem('maleu_last_order_zone', currentZone);
-  } catch(e) {}
+  guardarUltimoPedido();
 
   // Construir mensaje WhatsApp
   const subtotal = cartTotal(), discount = getTotalDiscount(), shipping = getShipping(), saldoAFavor = getSaldoAFavor(), total = subtotal - discount + shipping - saldoAFavor;
@@ -4780,7 +4777,6 @@ async function fetchStock() {
       if (ajustado) { updateUI(); toast('⚠️ Tu carrito fue ajustado al stock disponible'); }
     }
     updateStockDisplay();
-    loadLastOrder();
   } catch (e) { console.warn('fetchStock:', e); }
   await piezasListas;
 }
@@ -4867,6 +4863,10 @@ function updateStockDisplay() {
   // Combos: badge de stock (mismo criterio que productos) + footer.
   updateStockBadgesCombos();
   getActiveCombos().forEach(c => renderComboFooter(c.id));
+  /* El tope cambio (llego el stock, o se eligio otra fecha): "Agregar lo
+     mismo" puede quedar sin nada que sumar, o volver a tener. Va aca y no en
+     cada call site por lo mismo que los carteles: son varios. */
+  _pintarUltimoPie();
 }
 
 /* ── GUARDAR LO QUE EL CLIENTE ESCRIBE ──
@@ -4968,41 +4968,195 @@ function loadClientData() {
     // Día y método de pago NO se precargan — el cliente los elige cada vez
   } catch(e) {}
 }
-function loadLastOrder() {
+/* ── LO QUE PEDISTE LA ÚLTIMA VEZ (13/9/2026) ──
+   Existia desde antes del 25/8/2026 como "Tu último pedido": una lista de
+   nombres con UN boton, "Agregar todo de nuevo", metida arriba del catalogo y
+   solo si la zona coincidia exacto.
+
+   Medido el 13/9/2026 sobre los 994 pedidos de Home y Pilar, comparando cada
+   pedido con el anterior del mismo cliente (sin la carne, que va por pieza):
+   solo el 13,5% repite los mismos productos, pero el 65% repite al menos uno.
+   Y de los 67 pedidos de la tienda desde el 31/8, 38 son de gente que ya habia
+   comprado. O sea: "agregar todo" le sirve a pocos; tener a mano lo que ya
+   pidio, cada cosa con su boton, le sirve a la mayoria de los que vuelven.
+
+   Por eso son las cards de siempre (productCardHTML), igual que "Los mas
+   pedidos": el stock, el tope, "Pedir para el vie 18" y el +/- salen de las
+   mismas funciones que en el catalogo, y renderCardFooter ya pinta un producto
+   que esta mas de una vez en la pagina. "Agregar lo mismo" queda para el que
+   repite todo, y solo con dos productos o mas.
+
+   Vive en el navegador y no en el ERP, a proposito: un endpoint que devuelva
+   los pedidos de un telefono seria una puerta a los pedidos de cualquiera. La
+   contracara es que en otro celular no aparece. */
+var ULTIMO_KEY = 'maleu_ultimo_pedido_v2';
+var ULTIMO_A_LA_VISTA = 4;
+
+function _ultimoGuardado() {
   try {
-    const items = JSON.parse(localStorage.getItem('maleu_ultimo_pedido_pg') || 'null');
-    if (!items || !items.length) return;
-    // Solo mostrar si la zona coincide exactamente
-    var savedZoneOrder = localStorage.getItem('maleu_last_order_zone') || '';
-    if (savedZoneOrder !== currentZone) return;
-    const block=$id('repeat-block'), list=$id('repeat-items'); if(!block||!list) return;
-    const lines = items.map(({id,qty}) => {
-      const p=PROD_MAP[id]; if(!p) return '';
-      return '<div class="repeat-item"><span>'+p.nombre+'</span><span>×'+qty+'</span></div>';
-    }).filter(Boolean).join('');
-    if(!lines) return;
-    list.innerHTML = lines;
-    const btn = block.querySelector('.repeat-btn'); if(btn) btn.disabled = false;
-    block.style.display = 'block';
-  } catch(e) {}
+    var v2 = JSON.parse(localStorage.getItem(ULTIMO_KEY) || 'null');
+    if (v2 && Array.isArray(v2.items)) return v2;
+    /* El formato de antes del 13/9/2026: una lista de {id, qty}, sin fecha ni
+       carne. Los que ya pidieron lo tienen guardado asi, y tiene que servirles
+       desde la primera visita. */
+    var viejo = JSON.parse(localStorage.getItem('maleu_ultimo_pedido_pg') || 'null');
+    if (Array.isArray(viejo) && viejo.length) return { t: 0, items: viejo, carne: [] };
+  } catch (e) {}
+  return null;
 }
-function repeatLastOrder() {
+
+/* Se llama al validar el formulario, igual que guardarDatosCliente: lo que el
+   cliente quiso pedir, aunque el ERP tarde en confirmarlo. Un pedido de solo
+   combos NO pisa el anterior: los combos no se muestran aca (tienen su propio
+   armado de gustos) y quedaria la seccion vacia. */
+function guardarUltimoPedido() {
   try {
-    const items = JSON.parse(localStorage.getItem('maleu_ultimo_pedido_pg') || 'null');
-    if (!items || !items.length) return;
-    let agregados = 0;
-    var limited = isStockLimited();
-    items.forEach(({id,qty}) => {
-      const p=PROD_MAP[id]; if(!p) return;
-      if (limited) { const avail=stockMap[id]; if(avail!==undefined&&avail===0) return; qty = avail!==undefined ? Math.min(qty, avail-(cart[id]||0)) : qty; if(qty<=0) return; }
-      cart[id] = (cart[id]||0) + qty;
-      agregados++; renderCardFooter(id);
+    var items = Object.keys(cart).map(function (id) {
+      return { id: isNaN(id) ? id : +id, qty: Number(cart[id]) || 0 };
+    }).filter(function (x) { return x.qty > 0; });
+    var carne = [];
+    Object.keys(piezaCart || {}).forEach(function (pid) {
+      var pz = piezaCart[pid];
+      var p = pz && PRODUCTOS.find(function (x) { return x.abbr === pz.abbr; });
+      if (p && carne.indexOf(p.id) === -1) carne.push(p.id);
     });
+    if (!items.length && !carne.length) return;
+    localStorage.setItem(ULTIMO_KEY, JSON.stringify({ t: Date.now(), zona: currentZone, items: items, carne: carne }));
+  } catch (e) {}
+}
+
+/* Lo guardado que se puede mostrar HOY: solo lo que la zona vende
+   (getActiveProducts, la misma lista que el catalogo), de mayor a menor
+   cantidad. Ya no se exige que la zona sea la misma: un producto que la zona
+   no vende directamente no aparece. */
+function _ultimoItems() {
+  var g = _ultimoGuardado(); if (!g) return null;
+  var activos = {};
+  getActiveProducts().forEach(function (p) { activos[p.id] = p; });
+  var items = g.items.map(function (x, i) { return { p: activos[x.id], qty: Number(x.qty) || 0, i: i }; })
+    .filter(function (x) { return x.p && !esPorPeso(x.p) && x.qty > 0; })
+    .sort(function (a, b) { return (b.qty - a.qty) || (a.i - b.i); });
+  var carne = (g.carne || []).map(function (id) { return activos[id]; }).filter(Boolean);
+  return { t: g.t || 0, items: items, carne: carne };
+}
+
+function _ultimoFecha(t) {
+  var d = new Date(t - 3 * 3600 * 1000);   // hora argentina
+  return d.getUTCDate() + '/' + (d.getUTCMonth() + 1);
+}
+
+function renderUltimoPedido() {
+  var sec = $id('ultimo-section'), cont = $id('ultimo-productos');
+  if (!sec || !cont) return;
+  var u = _ultimoItems();
+  if (!u || (!u.items.length && !u.carne.length)) {
+    sec.hidden = true; cont.innerHTML = ''; $id('ultimo-pie').innerHTML = '';
+    return;
+  }
+  var vista = u.items.slice(0, ULTIMO_A_LA_VISTA);
+  cont.innerHTML = vista.map(function (x) { return productCardHTML(x.p); }).join('');
+  cont.hidden = !vista.length;
+  $id('ultimo-sub').textContent = u.t
+    ? 'Tu pedido del ' + _ultimoFecha(u.t) + ' · tocá lo que quieras repetir'
+    : 'Tocá lo que quieras repetir';
+  sec.hidden = false;
+  // Los footers se pintan aparte, igual que en "Los mas pedidos".
+  vista.forEach(function (x) { renderCardFooter(x.p.id); });
+  _pintarUltimoPie(u);
+}
+
+/* Cuanto de cada producto se puede sumar hoy: lo que pidio, topeado por el
+   stock de la fecha elegida. Es la misma cuenta que modifyCart (getStockCap es
+   el total permitido, no lo que falta). */
+function _ultimoQuiero(x) {
+  var cap = getStockCap(x.p.id);
+  return (cap === null || cap === undefined) ? x.qty : Math.max(0, Math.min(x.qty, cap));
+}
+
+function _pintarUltimoPie(u) {
+  var pie = $id('ultimo-pie'), sec = $id('ultimo-section');
+  if (!pie || !sec || sec.hidden) return;
+  u = u || _ultimoItems();
+  if (!u) { pie.innerHTML = ''; return; }
+  var html = '';
+  if (u.items.length >= 2) {
+    /* El boton dice lo que VA a quedar en el carrito: sin lo que no hay para
+       esta fecha y topeado por el stock. Contar los seis del pedido guardado
+       con uno agotado adentro prometeria algo que el toque no hace. */
+    var falta = 0, sinStock = 0, valor = 0, disp = 0;
+    u.items.forEach(function (x) {
+      var q = _ultimoQuiero(x);
+      if (q <= 0) { sinStock++; return; }
+      disp++;
+      if ((cart[x.p.id] || 0) < q) falta++;
+      valor += x.p.precio * q;
+    });
+    if (falta) {
+      html += '<button type="button" class="ultimo-todo" onclick="agregarLoMismo()">' +
+        'Agregar lo mismo · ' + disp + (disp === 1 ? ' producto' : ' productos') + ' · ' + ars(valor) + '</button>';
+    } else if (sinStock === u.items.length) {
+      html += '<button type="button" class="ultimo-todo" disabled>Para esta fecha no hay stock de ese pedido</button>';
+    } else {
+      html += '<button type="button" class="ultimo-todo" disabled>✓ Ya está en tu carrito</button>';
+    }
+  }
+  /* Los que no entran en las cuatro cards se nombran: "Agregar lo mismo" los
+     suma igual, y sumar algo que no se ve seria una sorpresa en el carrito. */
+  var ocultos = u.items.slice(ULTIMO_A_LA_VISTA);
+  if (ocultos.length) {
+    html += '<p class="ultimo-mas">Y también: ' + ocultos.map(function (x) {
+      return x.p.nombre + ' ×' + x.qty;
+    }).join(' · ') + '</p>';
+  }
+  /* La carne no se repite: cada pieza es unica y la de la vez pasada ya no
+     existe. Se dice que la llevo y se lleva a elegir la de hoy. */
+  if (u.carne.length) {
+    var nombres = u.carne.map(function (p) { return p.nombre; });
+    var lista = nombres.length > 1 ? nombres.slice(0, -1).join(', ') + ' y ' + nombres[nombres.length - 1] : nombres[0];
+    html += '<p class="ultimo-carne">También llevaste carne: ' + lista + '.</p>' +
+      '<button type="button" class="ultimo-carne-btn" onclick="scrollToCat(\'' + slugify('Carnes') + '\')">' +
+      'Elegir las piezas de hoy →</button>';
+  }
+  pie.innerHTML = html;
+}
+
+function agregarLoMismo() {
+  var u = _ultimoItems(); if (!u || !u.items.length) return;
+  var sumados = 0, sinStock = 0, recortados = 0, valor = 0;
+  u.items.forEach(function (x) {
+    var q = _ultimoQuiero(x);
+    if (q <= 0) { sinStock++; return; }
+    if (q < x.qty) recortados++;
+    var actual = cart[x.p.id] || 0;
+    /* Hasta lo que pidio, no ENCIMA de lo que ya hay: si ya sumo una
+       margarita tocando su card, "lo mismo" son dos y no tres. Asi el boton
+       se puede tocar dos veces sin duplicar el pedido. */
+    if (actual >= q) return;
+    cart[x.p.id] = q;
+    sumados++;
+    valor += x.p.precio * (q - actual);
+    renderCardFooter(x.p.id);
+    _track('add_to_cart', { id: x.p.id, item_name: x.p.nombre, price: x.p.precio * (q - actual), zone: currentZone });
+  });
+  if (sumados) {
     updateUI();
     updateFormVisibility();
-    if(agregados>0) { toast('✓ Productos agregados'); $id('repeat-block').style.display='none'; }
-    else toast('⚠️ No hay stock');
-  } catch(e) {}
+    updateShippingBar();
+    _track('repetir_pedido', { items: sumados, value: valor, zone: currentZone });
+    var badge = $id('cart-badge');
+    if (badge) { badge.classList.remove('bounce'); void badge.offsetWidth; badge.classList.add('bounce'); }
+  }
+  var msg;
+  if (sumados) {
+    msg = '✓ Sumamos ' + sumados + (sumados === 1 ? ' producto' : ' productos') + ' de tu último pedido';
+    if (sinStock) msg += ' · ' + sinStock + ' no hay para esta fecha';
+    else if (recortados) msg += ' · algunos, hasta el stock que hay';
+  } else if (sinStock === u.items.length) {
+    msg = '⚠️ Para esta fecha no hay stock de ese pedido';
+  } else {
+    msg = '✓ Ya está todo en tu carrito';
+  }
+  toast(msg, 4500);
 }
 
 /* ── INIT ── */

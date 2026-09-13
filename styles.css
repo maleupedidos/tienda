@@ -7,7 +7,7 @@
   --font: 'Montserrat', system-ui, sans-serif;
 }
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-button, .qty-btn, .add-btn, .loc-btn, .hero-cta, .go-form-btn, .repeat-btn, .whatsapp-btn { touch-action:manipulation; }
+button, .qty-btn, .add-btn, .loc-btn, .hero-cta, .go-form-btn, .ultimo-todo, .ultimo-carne-btn, .whatsapp-btn { touch-action:manipulation; }
 .hero-schedule { font-size:.82rem; color:#7a4a4a; margin-top:.5rem; line-height:1.6; text-align:center; }
 html { scroll-behavior:smooth; }
 body { font-family:var(--font); background:#fff; color:var(--brown); line-height:1.55; -webkit-font-smoothing:antialiased; }
@@ -365,11 +365,6 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .float-cart-btn { display:none; position:fixed; bottom:1.2rem; left:50%; transform:translateX(-50%); background:var(--orange); color:#fff; border:none; border-radius:50px; padding:.75rem 1.5rem; font-family:var(--font); font-weight:700; font-size:.85rem; cursor:pointer; z-index:50; box-shadow:0 4px 16px rgba(240,125,71,.4); white-space:nowrap; }
 
 /* ── REPEAT BLOCK ── */
-.repeat-block { background:#FFFDF5; border:1px solid #f0e8d0; border-radius:12px; padding:1rem; margin-bottom:1.5rem; }
-.repeat-block-title { font-weight:700; font-size:.9rem; }
-.repeat-item { display:flex; justify-content:space-between; font-size:.8rem; padding:.2rem 0; }
-.repeat-item-nostock { opacity:.4; text-decoration:line-through; }
-.repeat-btn { background:var(--orange); color:#fff; border:none; border-radius:8px; padding:.5rem 1rem; font-family:var(--font); font-weight:600; font-size:.8rem; cursor:pointer; margin-top:.5rem; }
 
 /* ── FORM ── */
 .form-section { max-width:600px; margin:0 auto 3rem; padding:0 1rem; scroll-margin-top:120px; }
@@ -1274,11 +1269,11 @@ body.tienda .copiable, body.tienda .copiable * {
 /* Con una busqueda puesta, las puertas de entrada al catalogo estorban: uno
    ya sabe lo que vino a buscar. Se ocultan por clase en el body y no
    tocando el style de cada uno, para no pisarle el display a nadie —
-   #repeat-block lo maneja su propio JS. */
+   #ultimo-section lo maneja su propio JS (hidden). */
 body.busqueda-activa #cat-tiles-section,
 body.busqueda-activa #top-section,
 body.busqueda-activa .cat-nav-hint,
-body.busqueda-activa #repeat-block { display: none !important; }
+body.busqueda-activa #ultimo-section { display: none !important; }
 
 @media (max-width: 600px) {
   .buscador { margin: .45rem .75rem .35rem; }
@@ -1602,16 +1597,21 @@ body.busqueda-activa #repeat-block { display: none !important; }
    Lo que se toca es la FOTO, que es el 70% del alto, y el ancho de columna en
    escritorio. El catalogo NO se toca: ahi la foto grande esta bien.
    ══════════════════════════════════════════════════════════ */
-#top-productos .product-thumb { aspect-ratio: 4 / 3; }
-#top-productos .product-body  { padding: .55rem .6rem; }
-#top-productos .product-name  { font-size: .8rem; }
-#top-productos .product-desc  { -webkit-line-clamp: 2; font-size: .68rem; margin-bottom: .3rem; }
-#top-productos .product-chips { margin-bottom: .3rem; }
+#top-productos .product-thumb,
+#ultimo-productos .product-thumb { aspect-ratio: 4 / 3; }
+#top-productos .product-body,
+#ultimo-productos .product-body  { padding: .55rem .6rem; }
+#top-productos .product-name,
+#ultimo-productos .product-name  { font-size: .8rem; }
+#top-productos .product-desc,
+#ultimo-productos .product-desc  { -webkit-line-clamp: 2; font-size: .68rem; margin-bottom: .3rem; }
+#top-productos .product-chips,
+#ultimo-productos .product-chips { margin-bottom: .3rem; }
 
 /* En escritorio, cuatro en fila en vez de tres: la card se angosta y con eso
    la foto baja sola, sin achicar la letra. */
 @media (min-width: 900px) {
-  #top-productos { grid-template-columns: repeat(4, 1fr); }
+  #top-productos, #ultimo-productos { grid-template-columns: repeat(4, 1fr); }
 }
 
 /* Las dos cuentas para transferir. */
@@ -1730,3 +1730,24 @@ body.busqueda-activa #repeat-block { display: none !important; }
 .fecha-modal-no { background:#fff; color:var(--brown); border:1.5px solid #ddd; margin-top:.6rem; }
 .fecha-modal-no:hover { border-color:var(--orange); }
 .fecha-modal-tip { font-size:.8rem; color:#666; line-height:1.4; margin-top:.9rem; text-align:center; }
+
+/* ── LO QUE PEDISTE LA ULTIMA VEZ (13/9/2026) ──
+   Usa las cards compactas de "Los mas pedidos" (las reglas de arriba estan
+   escritas para los dos). El pie va centrado como el subtitulo: son las dos
+   cosas de la seccion que no son una card. */
+.ultimo-pie { display:flex; flex-direction:column; align-items:center; gap:.55rem;
+              margin-top:1rem; text-align:center; }
+.ultimo-pie:empty { display:none; }
+/* [hidden] no alcanza contra el display:grid de .products-grid: sin esto, un
+   ultimo pedido de solo carne dejaria la grilla vacia ocupando lugar. */
+.ultimo-section[hidden], #ultimo-productos[hidden] { display:none !important; }
+.ultimo-todo { min-height:44px; padding:.55rem 1.2rem; border-radius:999px;
+               border:1.5px solid var(--orange); background:#fff; color:var(--hover-orange);
+               font-family:var(--font); font-weight:700; font-size:.88rem; line-height:1.25;
+               cursor:pointer; max-width:100%; }
+.ultimo-todo:hover { background:#FFF3E0; }
+.ultimo-todo:disabled { border-color:#ddd4ca; color:#6f6660; background:#faf7f2; cursor:default; }
+.ultimo-mas, .ultimo-carne { margin:0; font-size:.82rem; color:#5f5751; line-height:1.4; max-width:36rem; }
+.ultimo-carne-btn { min-height:44px; padding:.5rem 1rem; border:none; background:none;
+                    color:var(--hover-orange); font-family:var(--font); font-weight:700; font-size:.88rem;
+                    cursor:pointer; text-decoration:underline; text-underline-offset:3px; }

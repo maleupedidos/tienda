@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=60ca173f" />
+  <link rel="stylesheet" href="styles.css?v=98d04dca" />
   <script>
     // Forzar inicio arriba en cada carga (incluye refresh, back-forward cache de iOS).
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
@@ -250,6 +250,17 @@
   <a href="#combos-ancla" class="hero-cta hero-cta-combos" id="hero-combos-cta" style="display:none" onclick="scrollToCombos();return false;">🎁 Ver los combos →</a>
 </section>
 
+<!-- LO QUE PEDISTE LA ÚLTIMA VEZ: los productos del último pedido que se mandó
+     desde este navegador, con sus cards de siempre. Lo llena
+     renderUltimoPedido(), que cuelga de renderCatalog() igual que "Los más
+     pedidos". Va primero porque el que vuelve casi siempre repite algo. -->
+<section class="top-section ultimo-section" id="ultimo-section" hidden>
+  <h2 class="section-title">Lo que pediste la última vez</h2>
+  <p class="section-sub" id="ultimo-sub"></p>
+  <div class="products-grid" id="ultimo-productos"></div>
+  <div class="ultimo-pie" id="ultimo-pie"></div>
+</section>
+
 <!-- CATEGORÍAS: una foto por categoría, como puerta de entrada al catálogo.
      La llena renderCatTiles() desde CATEGORIAS + PRODUCTOS, así una
      categoría nueva aparece sola sin tocar este archivo. -->
@@ -300,11 +311,6 @@
 
 <!-- CATÁLOGO -->
 <div class="catalog" id="catalogo">
-  <div id="repeat-block" style="display:none" class="repeat-block">
-    <div class="repeat-block-head"><span class="repeat-block-title">Tu último pedido</span></div>
-    <div class="repeat-block-items" id="repeat-items"></div>
-    <button class="repeat-btn" onclick="repeatLastOrder()">Agregar todo de nuevo →</button>
-  </div>
   <div id="catalog-root"></div>
 </div>
 
@@ -620,6 +626,6 @@
   </div>
 </div>
 
-<script src="app.js?v=e8326b3e"></script>
+<script src="app.js?v=124615a0"></script>
 </body>
 </html>

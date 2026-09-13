@@ -1259,8 +1259,13 @@ los seis momentos de la semana moviendo ese reloj.
 > visitas desde 127.0.0.1.
 
 > [!note] Visto y NO tocado, a propósito
-> · **El lunes 12/10/2026 es feriado** y el calendario lo ofrece para entregar. La
->   última vez que hubo uno (1/5) se bloqueó y se agregó un jueves. Es de Tadeo.
+> · **El lunes 12/10/2026 es feriado** y el calendario lo ofrece para entregar.
+>   **Se deja abierto, a propósito.** Hasta la tarde del 13/9 acá decía que el 1/5
+>   "se bloqueó", y era falso: el comentario de `FERIADOS_BLOQUEADOS` en `app.js`
+>   dice que ese viernes feriado **se entregó normal** ("es feriado pero buen
+>   momento de ventas") y además se sumó una entrega extra el jueves 30/4. El 12/10
+>   es el lunes de un fin de semana largo, con la gente en las casas de Estancias:
+>   el mismo caso. Si Tadeo decide lo contrario, se agrega a `FERIADOS_BLOQUEADOS`.
 > · **La barra pegada arriba ocupa 166px en el celular** (buscador + categorías +
 >   la franja del 10%): un cuarto de la pantalla de un iPhone con la barra de Safari.
 >   Achicarla es una decisión de diseño con la promo del efectivo en el medio.
@@ -1345,6 +1350,69 @@ otra después?"*.
 > [!note] Lo de guardar la carne es práctica general, no un dato de Lucas
 > *"En la heladera hasta cocinarla, o en el freezer en su envase si la vas a usar más
 > adelante"*. Ningún documento de Maleu dice cuánto dura; por eso no se escribió un plazo.
+
+## "Lo que pediste la última vez" (13/9/2026, tarde)
+
+Tadeo pidió las tres mejoras que más valían y la primera fue la recompra: el negocio vive
+de que la casa vuelva, y la retención viene bajando (64 → 60 → 59 → 58%, medido en el
+ERP). **Ya existía algo**: desde antes del 25/8 había un bloque "Tu último pedido" con
+una lista de nombres y **un** botón, "Agregar todo de nuevo", metido arriba del catálogo.
+
+**Antes de rehacerlo se midió si la gente repite**, sobre los 994 pedidos de Home y
+Pilar, comparando cada uno con el anterior del mismo cliente (sin la carne):
+
+| | |
+|---|---|
+| repite **los mismos productos** | **13,5%** (8,3% además con las mismas cantidades) |
+| repite **la mitad o más** | 39% |
+| repite **al menos uno** | **65%** |
+| pedidos de la tienda (31/8 → 13/9) de gente que ya había comprado | **38 de 67** |
+
+O sea que "agregar todo" le servía a pocos. Ahora, **arriba de las categorías**:
+
+- **Las cards de siempre** (`productCardHTML`) con los productos del último pedido, de
+  mayor a menor cantidad, hasta **4**. Stock, tope, "Pedir para el vie 18" y +/− salen
+  de las mismas funciones que el catálogo; `renderCardFooter` ya pinta un producto que
+  está más de una vez en la página.
+- **"Agregar lo mismo · 5 productos · $104.000"**, sólo con dos productos o más. Suma
+  **hasta** lo que pidió y no encima (si ya sumó una muzza tocando la card, "lo mismo"
+  son dos), topea por el stock de la fecha, no suma lo agotado, y el botón cuenta lo
+  que **va a** quedar. Con todo adentro dice *"✓ Ya está en tu carrito"*.
+- **Los que no entran en las cards se nombran** ("Y también: …"): "Agregar lo mismo"
+  los suma, y sumar algo que no se ve sería una sorpresa en el carrito.
+- **La carne se dice y no se repite**: *"También llevaste carne: Vacío y Entraña"* +
+  *"Elegir las piezas de hoy →"*. Cada pieza es única y la de la vez pasada ya no existe.
+- **Dice de cuándo es**: *"Tu pedido del 11/9 · tocá lo que quieras repetir"*.
+- Se esconde con una búsqueda puesta, y **no aparece en Clubes** (otro catálogo).
+- Se mide `repetir_pedido` en Analytics; cada producto sumado cuenta como `add_to_cart`.
+
+> [!important] Vive en el navegador y no en el ERP, a propósito
+> Un endpoint que devuelva los pedidos de un teléfono sería una puerta a los pedidos de
+> cualquiera: la tienda es pública y no tiene login. La contracara, aceptada: **en otro
+> celular no aparece**. Se guarda al validar el formulario (`guardarUltimoPedido`, la
+> misma costura que `guardarDatosCliente`) en `maleu_ultimo_pedido_v2`:
+> `{t, zona, items:[{id,qty}], carne:[ids]}`.
+>
+> **El formato viejo sigue sirviendo** (`maleu_ultimo_pedido_pg`, una lista de
+> `{id, qty}` sin fecha): los que ya compraron lo tienen guardado y la sección les
+> aparece desde la primera visita, sin fecha. Ya no se exige la misma zona: lo que la
+> zona no vende no se muestra, y listo.
+>
+> Un pedido de **solo combos no pisa** el anterior: los combos no se muestran acá (tienen
+> su propio armado de gustos) y la sección quedaría vacía.
+
+> [!warning] `[hidden]` no alcanza contra `display:grid`
+> `.products-grid` declara `display:grid`, así que `#ultimo-productos[hidden]` necesita
+> su regla con `!important`. Sin eso, un último pedido de solo carne dejaba la grilla
+> vacía ocupando lugar.
+
+**La red: `node _tools/verificar-ultimo-pedido.js [ancho]`**, 44 chequeos a 390 y 1440px
+con el reloj congelado: cliente nuevo, el formato viejo, un pedido de seis con carne y un
+agotado, "Agregar lo mismo" con toques de verdad (dos veces, sacando algo y reponiéndolo),
+el buscador, el guardado y Clubes. `CAPTURA=<carpeta>` guarda la sección. Con siete bugs
+reinyectados de a uno (sumar encima, ignorar el stock, no ordenar, no guardar la carne, el
+buscador sin esconderla, ignorar el formato viejo, el botón sin repintarse con el
+carrito): **los siete se agarran**.
 
 ## Lo que NO está acá
 
