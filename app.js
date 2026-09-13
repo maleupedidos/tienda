@@ -563,6 +563,89 @@ function piezasDe(abbr) {
   return lista.filter(function (pz) { return !piezaCart[pz.id]; });
 }
 
+/* ── LA SUGERENCIA DE CARNE EN EL CARRITO (13/9/2026) ──
+   Tadeo: "que la sugerencia sea con algo que realmente tengamos: le sumás una
+   pieza de colita de x peso". 229 de las 262 casas de Estancias nunca
+   compraron carne (medido en el ERP el 11/9/2026), y la carne va en la misma
+   entrega: no agrega un viaje.
+
+   Sale del MISMO inventario que la grilla de Carnes (piezasDe, que ya saca
+   las piezas del carrito), asi que no puede ofrecer una pieza que no existe.
+   Si se vende mientras el carrito esta abierto, togglePieza la rechaza y la
+   conciliacion la saca; y la sugerencia se repinta con cada refresco del
+   inventario (cuelga de renderCatalog) y con cada cambio del carrito (updateUI).
+
+   Sale solo si:
+   · hay algo en el carrito — a un carrito vacio no se le sugiere nada;
+   · no hay carne adentro — el que ya eligio su pieza no necesita otra oferta;
+   · la zona vende carne y hay piezas (hayPiezas: sin inventario conocido no
+     se afirma nada).
+
+   Ofrece hasta DOS cortes, una pieza de cada uno: la mas chica, que es el
+   paso mas facil de dar, y un link a ver todas. El orden de los cortes es de
+   mayor a menor margen, medido en el ERP: sugerir primero lo que menos deja
+   seria empujar justo la venta que menos conviene. Los numeros no van aca:
+   el repo es publico. Un corte nuevo que no este en la lista entra al final. */
+var SUG_CARNE_ORDEN = ['CPi', 'CVa', 'CCo', 'CLo', 'CEn'];
+var SUG_CARNE_MAX = 2;
+var _sugCarneVista = false;
+
+function _sugerenciaCarne() {
+  if (cartCount() === 0 || piezasAgrupadas().length || !hayPiezas()) return [];
+  var activos = {};
+  getActiveProducts().forEach(function (p) { if (esPorPeso(p)) activos[p.abbr] = p; });
+  var out = [];
+  SUG_CARNE_ORDEN.concat(Object.keys(activos)).forEach(function (abbr) {
+    if (out.length >= SUG_CARNE_MAX || !activos[abbr]) return;
+    if (out.some(function (x) { return x.p.abbr === abbr; })) return;
+    var libres = piezasDe(abbr);
+    if (!libres.length) return;
+    out.push({ p: activos[abbr], pz: libres.slice().sort(_piezaOrden)[0], n: libres.length });
+  });
+  return out;
+}
+
+function _pintarSugerenciaCarne() {
+  var el = $id('cart-sug');
+  if (!el) return;
+  var sug = _sugerenciaCarne();
+  if (!sug.length) { el.innerHTML = ''; el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = '<div class="sug-carne">' +
+    '<div class="sug-carne-t">¿Le sumás carne?</div>' +
+    '<div class="sug-carne-s">Fresca, envasada al vacío, y va en la misma entrega.</div>' +
+    sug.map(function (x) {
+      return '<div class="sug-carne-fila">' +
+        '<img class="sug-carne-img" src="' + fotoUrl(x.p.img) + '" alt="" loading="lazy" width="48" height="48" onerror="this.style.visibility=\'hidden\'">' +
+        '<div class="sug-carne-info">' +
+          '<div class="sug-carne-nom">' + x.p.nombre + '</div>' +
+          '<div class="sug-carne-det">Pieza de ' + kgTexto(x.pz.kg) + ' · <strong>' + ars(piezaPrecio(x.p, x.pz.kg)) + '</strong></div>' +
+        '</div>' +
+        '<button type="button" class="sug-carne-btn" onclick="sumarPiezaSugerida(\'' + x.p.abbr + '\',\'' + x.pz.id + '\')">+ Sumar</button>' +
+      '</div>';
+    }).join('') +
+    '<button type="button" class="sug-carne-ver" onclick="verCarneDesdeCarrito()">Ver todas las piezas →</button>' +
+  '</div>';
+}
+
+/* Por togglePieza, el mismo camino que la grilla: si la pieza ya se vendio,
+   lo dice ahi y no se agrega nada. */
+function sumarPiezaSugerida(abbr, id) {
+  if (piezaCart[id]) { _pintarSugerenciaCarne(); return; }
+  togglePieza(abbr, id);
+  if (piezaCart[id]) {
+    _track('sugerencia_carne', { id: abbr, kg: piezaCart[id].kg, value: piezaCart[id].precio, zone: currentZone });
+  } else {
+    _pintarSugerenciaCarne();
+  }
+}
+
+function verCarneDesdeCarrito() {
+  if ($id('cart-sidebar').classList.contains('open')) toggleCart();
+  // Lo mismo que goToForm: dejar terminar la animacion de cierre.
+  setTimeout(function () { scrollToCat(slugify('Carnes')); }, 380);
+}
+
 /* ¿Este producto se vende por peso? Sale del catalogo, que a su vez lo saca de
    la hoja Productos (col Q). No hay ninguna lista de cortes escrita a mano
    aca: si manana un producto de Maleu pasa a venderse por kilo, entra solo. */
@@ -2698,6 +2781,9 @@ function renderCatalog() {
   // despegan las dos listas.
   renderTopProductos();
   renderUltimoPedido();
+  // El inventario de carne cambio (o llego): la sugerencia del carrito tiene
+  // que ofrecer lo que hay AHORA, no lo que habia al abrirlo.
+  _pintarSugerenciaCarne();
   /* El nav y los tiles se repintan aca por el mismo motivo que los
      destacados: si aparece o desaparece una categoria, los chips de arriba
      tienen que decir lo mismo que el catalogo. Colgarlo de los call sites es
@@ -3401,7 +3487,8 @@ function updateUI() {
           : '') +
       '</div>';
     }).join('');
-    bodyEl.innerHTML = comboLines + prodLinesHtml + piezaLinesHtml;
+    bodyEl.innerHTML = comboLines + prodLinesHtml + piezaLinesHtml + '<div id="cart-sug" hidden></div>';
+    _pintarSugerenciaCarne();
     $id('cart-subtotal').textContent = ars(subtotal);
     const discRow = $id('cart-discount-row');
     if (discount > 0) {
@@ -3530,6 +3617,13 @@ function toggleCart() {
   const open = s.classList.toggle('open');
   o.classList.toggle('open', open);
   _fondoQuieto('carrito', open);
+  /* Cuantas veces se VIO la sugerencia de carne, una por visita: sin el
+     denominador, "3 la sumaron" no dice si es mucho o poco. */
+  var sug = $id('cart-sug');
+  if (open && sug && !sug.hidden && !_sugCarneVista) {
+    _sugCarneVista = true;
+    _track('sugerencia_carne_vista', { zone: currentZone, cortes: sug.querySelectorAll('.sug-carne-fila').length });
+  }
 }
 function goToForm() {
   toggleCart();

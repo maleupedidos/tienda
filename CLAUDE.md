@@ -1422,6 +1422,47 @@ uno (sumar encima, ignorar el stock, no ordenar, no guardar la carne, el buscado
 esconderla, ignorar el formato viejo, el botón sin repintarse con el carrito, y el botón
 gris sin salida): **los ocho se agarran**.
 
+## La sugerencia de carne en el carrito, con una pieza que existe (13/9/2026, tarde)
+
+Tadeo, sobre la segunda mejora: *"que la sugerencia sea con algo que realmente tengamos,
+¿entendés? Por ejemplo, ¿le sumás una pieza de colita de x peso?"*. Al 11/9/2026, **229 de
+las 262 casas de Estancias nunca compraron carne** (medido en el ERP), y la carne va en la
+misma entrega: no agrega un viaje.
+
+Al final de la lista del carrito:
+
+```
+¿Le sumás carne?
+Fresca, envasada al vacío, y va en la misma entrega.
+[foto] Picaña   Pieza de 0,900 kg · $23.400    [+ Sumar]
+[foto] Vacío    Pieza de 1,064 kg · $27.664    [+ Sumar]
+               Ver todas las piezas →
+```
+
+- **Una pieza concreta del inventario**, del mismo `piezasDe()` que usa la grilla de Carnes,
+  así que no puede ofrecer una que no existe ni una que ya está en el carrito. "+ Sumar" va
+  por `togglePieza`, el mismo camino que la grilla.
+- **La más chica de cada corte**: es el paso más fácil de dar. Y "Ver todas las piezas"
+  cierra el carrito y lleva a Carnes para elegir otra.
+- **Hasta dos cortes, de mayor a menor margen** (`SUG_CARNE_ORDEN`): sugerir primero lo que
+  menos deja sería empujar justo la venta que menos conviene. **Los márgenes no están
+  escritos en el código, a propósito: el repo es público.** Un corte nuevo entra al final.
+- **Se repinta sola**: cuelga de `updateUI` (el carrito cambió) y de `renderCatalog` (llegó
+  el inventario nuevo). Si la pieza sugerida se vende, al refresco siguiente ofrece otra.
+- **Sale solo si** hay algo en el carrito, **no hay carne adentro** (el que ya eligió su
+  pieza no necesita otra oferta) y la zona vende carne con piezas conocidas. En Pilar y en
+  Clubes no aparece.
+- **Se mide**: `sugerencia_carne_vista` una vez por visita (el denominador) y
+  `sugerencia_carne` al sumar. La pieza cuenta además como `add_to_cart`.
+
+**La red: `node _tools/verificar-sugerencia-carne.js [ancho]`**, 27 chequeos a 390 y 1440px:
+el carrito vacío, el orden y la pieza más chica con su precio, "+ Sumar" con un toque de
+verdad, sacarla y que vuelva, **la pieza que se vende y el inventario que llega**, "Ver todas
+las piezas", y los tres casos en que no va. Reinyectando siete bugs de a uno se agarran
+cinco. Los otros dos **no pueden pasar en la tienda**, y está dicho en el test: el
+inventario ya llega ordenado (`fetchPiezas`) y un carrito vacío no dibuja el lugar de la
+sugerencia.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en
