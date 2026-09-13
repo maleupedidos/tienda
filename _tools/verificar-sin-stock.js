@@ -27,9 +27,11 @@
  * cosas que SI hay y toco 'Pedir para el vie 18' en un pack que hoy no hay:
  * ¿como sigue? ¿separa dos ventas?". No las separa — un pedido tiene una sola
  * fecha — y el boton pasaba TODO el carrito al viernes con un aviso de 4 s.
- * Ahora, con algo en el carrito, pregunta antes; con el carrito vacio sigue
- * de un toque. Y el chip de la barra de los barrios con vendedor, que decia
- * "Tiempo agotado esta semana" un domingo.
+ * Ahora pregunta antes. Primero fue solo con algo en el carrito; un rato despues
+ * Tadeo: "si quiero para hoy pero ARRANCO por un producto que no hay, se me
+ * cambia la fecha solo" — y pregunta siempre, con un texto propio cuando el
+ * carrito esta vacio. Y el chip de la barra de los barrios con vendedor, que
+ * decia "Tiempo agotado esta semana" un domingo.
  *
  * El RELOJ va congelado (domingo 13/9/2026 05:00): sin eso el resultado
  * dependeria del dia en que se corre, y el caso del domingo no se podria
@@ -347,18 +349,54 @@ async function main() {
     chk(!/agregado/.test(antes.toast), 'y no dice "agregado": "' + antes.toast + '"');
     chk(antes.ga === 0 && antes.meta === 0, 'ni le manda un add_to_cart a Google ni un AddToCart a Meta (' + antes.ga + '/' + antes.meta + ')');
 
-    console.log('\n' + DIM + '== Tocar "Pedir para el vie 18" con el carrito VACIO: sin preguntas ==' + RST);
+    /* Hasta la tarde del 13/9 el carrito vacio seguia de un toque. Tadeo: "si
+       quiero para hoy pero ARRANCO agregando un producto que no hay, se me
+       cambia la fecha solo". Ahora pregunta tambien, hablando de la entrega. */
+    console.log('\n' + DIM + '== Tocar "Pedir para el vie 18" con el carrito VACIO: tambien pregunta ==' + RST);
     const sel0 = (await ev('!!document.querySelector(' + JSON.stringify('#catalogo .product-card[data-id="' + idPMa + '"] .add-btn-otra-fecha') + ')'))
       ? '#catalogo .product-card[data-id="' + idPMa + '"] .add-btn-otra-fecha'
       : '.cat-section .product-card[data-id="' + idPMa + '"] .add-btn-otra-fecha';
     const evFecha = (n) => '(window.dataLayer || []).filter(function (x) { return x && x[0] === "event" && x[1] === "' + n + '"; }).length';
     const evSi0 = await ev(evFecha('fecha_por_stock'));
+    const leerVacio = 'JSON.stringify((function () { var m = document.getElementById("fecha-modal"); var q = function (s) { var e = m && m.querySelector(s); return e ? e.textContent : ""; };' +
+      ' return { modal: !!(m && m.style.display === "flex"), texto: m ? m.innerText : "", si: q(".fecha-modal-si"), no: q(".fecha-modal-no"),' +
+      '  fecha: selectedDeliveryDate, pma: cart[' + JSON.stringify(idPMa) + '] || 0, items: cartCount(), combos: Object.keys(comboCart).length }; })())';
+    chk((await ev('cartCount()')) === 0, 'el carrito arranca vacio (sin esto lo de abajo no prueba el caso)');
     await tocar(sel0);
+    await dormir(500);
+    let vacio = JSON.parse(await ev(leerVacio));
+    if (process.env.CAPTURA) {
+      const img = await cli.enviar('Page.captureScreenshot', { format: 'png' });
+      fs.writeFileSync(path.join(process.env.CAPTURA, 'pregunta-vacio-' + ANCHO + '.png'), Buffer.from(img.data, 'base64'));
+    }
+    chk(vacio.modal, 'con el carrito vacio TAMBIEN pregunta antes de mover la fecha');
+    chk(vacio.fecha === '2026-09-13' && vacio.pma === 0, 'y mientras pregunta no mueve la fecha ni agrega nada (' + vacio.fecha + ', ' + vacio.pma + ')');
+    chk(/Para hoy no hay/.test(vacio.texto) && /tu entrega pasa al viernes 18\/9/.test(vacio.texto) && /lo que sumes después también/.test(vacio.texto),
+        'dice que la ENTREGA pasa al viernes y que lo que sume despues tambien');
+    chk(!/ya tenés en el carrito/.test(vacio.texto), 'y no habla de un carrito que esta vacio');
+    chk(/Pasar mi entrega al viernes 18\/9/.test(vacio.si) && /Ver lo que hay para hoy/.test(vacio.no),
+        'las dos salidas: "' + vacio.si + '" / "' + vacio.no + '"');
+    chk(/mandá primero el de hoy/.test(vacio.texto), 'y dice como tener las dos cosas');
+    const evNoV = await ev(evFecha('fecha_por_stock_no'));
+    await tocar('#fecha-modal .fecha-modal-no');
+    await dormir(400);
+    vacio = JSON.parse(await ev(leerVacio));
+    chk(!vacio.modal && vacio.fecha === '2026-09-13' && vacio.items === 0, '"Ver lo que hay para hoy" deja la fecha en hoy y el carrito vacio (' + vacio.fecha + ')');
+    chk((await ev(evFecha('fecha_por_stock_no'))) - evNoV === 1, 'y se mide como fecha_por_stock_no');
+    /* El combo con el carrito vacio: la misma pregunta, y sin contestar no abre el armado. */
+    const comboV = JSON.parse(await ev('(function () { var b = document.querySelector(".combo-card .add-btn-otra-fecha"); if (!b) return "null"; b.click();' +
+      ' var m = document.getElementById("fecha-modal"); var r = { abierto: !!(m && m.style.display === "flex"), si: m && m.querySelector(".fecha-modal-si") ? m.querySelector(".fecha-modal-si").textContent : "",' +
+      '  fecha: selectedDeliveryDate, combos: Object.keys(comboCart).length, config: !!(document.getElementById("combo-modal") && document.getElementById("combo-modal").style.display === "flex") };' +
+      ' if (typeof otraFechaNo === "function") otraFechaNo(); r.despues = selectedDeliveryDate; return JSON.stringify(r); })()'));
+    chk(comboV && comboV.abierto && /Pasar mi entrega/.test(comboV.si) && !comboV.config && comboV.combos === 0 && comboV.despues === '2026-09-13',
+        'un combo con el carrito vacio tambien pregunta, y sin contestar no arma nada ni mueve la fecha');
+    await tocar(sel0);
+    await dormir(400);
+    await tocar('#fecha-modal .fecha-modal-si');
     await dormir(600);
-    const vacio = JSON.parse(await ev('JSON.stringify({ fecha: selectedDeliveryDate, pma: cart[' + JSON.stringify(idPMa) + '] || 0,' +
-      ' modal: !!(document.getElementById("fecha-modal") && document.getElementById("fecha-modal").style.display === "flex") })'));
+    vacio = JSON.parse(await ev(leerVacio));
     chk(!vacio.modal && vacio.fecha === '2026-09-18' && vacio.pma === 1,
-        'con nada en el carrito no pregunta: pasa al viernes y lo agrega (' + vacio.fecha + ', ' + vacio.pma + ', modal ' + vacio.modal + ')');
+        '"Pasar mi entrega al viernes 18/9" mueve la fecha y agrega la pizza (' + vacio.fecha + ', ' + vacio.pma + ')');
     /* Volver a "hoy" desde el calendario saca lo que hoy no hay, y lo dice. */
     const vuelta = JSON.parse(await ev('(function () { setDeliveryDate("2026-09-13", "Domingo", { sinScroll: true });' +
       ' return JSON.stringify({ pma: cart[' + JSON.stringify(idPMa) + '] || 0, toast: document.getElementById("toast").textContent }); })()'));

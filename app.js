@@ -2822,7 +2822,7 @@ function armarComboOtraFecha(comboId, yaPregunto) {
   var c = COMBO_MAP[comboId];
   var f = _fechaParaCombo(c);
   if (!c || !f) { toast('⚠️ No hay stock para la fecha que elegiste', 3000); return; }
-  if (!yaPregunto && cartCount() > 0) {
+  if (!yaPregunto) {
     _preguntarOtraFecha({ nombre: c.nombre, img: c.img, f: f, id: 'combo-' + c.id,
                           seguir: function () { armarComboOtraFecha(comboId, true); } });
     return;
@@ -2855,7 +2855,7 @@ function pedirParaOtraFecha(id, yaPregunto) {
   var f = _fechaConStock(id);
   var p = PROD_MAP[id];
   if (!f || !p) { toast('⚠️ No hay stock para la fecha que elegiste', 3000); return; }
-  if (!yaPregunto && cartCount() > 0) {
+  if (!yaPregunto) {
     _preguntarOtraFecha({ nombre: p.nombre, img: p.img, f: f, id: p.id,
                           seguir: function () { pedirParaOtraFecha(id, true); } });
     return;
@@ -2878,9 +2878,13 @@ function pedirParaOtraFecha(id, yaPregunto) {
    carrito al viernes con un aviso de 4 segundos, y el que habia elegido
    "hoy" se enteraba —si se enteraba— mirando el chip de arriba.
 
-   Con el carrito vacio no hay nada que perder y se sigue de un toque: el
-   boton ya dice la fecha. Con algo adentro se pregunta antes, diciendo que
-   pasa con lo que ya eligio.
+   Se pregunta SIEMPRE antes de mover la fecha, tambien con el carrito vacio.
+   Hasta la tarde del 13/9 el carrito vacio seguia de un toque ("no hay nada
+   que perder") y Tadeo lo dio vuelta: el que eligio "hoy" y arranca por un
+   producto que hoy no hay queda con la entrega en el viernes, y todo lo que
+   sume despues —pensando que es para hoy— tambien. Lo que se pierde no es
+   el carrito: es la fecha que eligio. Con el carrito vacio el texto no habla
+   del carrito, habla de la entrega.
 
    No se parte en dos pedidos solo, a proposito: serian dos entregas, dos
    confirmaciones por WhatsApp, dos pagos y en Pilar dos envios. Al que quiere
@@ -2921,18 +2925,26 @@ function _preguntarOtraFecha(o) {
   var hoy = _paraCuando(selectedDeliveryDate);
   var nueva = _paraCuando(o.f.iso);                          // "el viernes 18/9"
   var aNueva = nueva === 'mañana' ? 'a mañana' : 'al ' + nueva.slice(3);
+  var lleno = cartCount() > 0;
   $id('fecha-modal-content').innerHTML =
     '<div class="combo-modal-head">' +
       (o.img ? '<img class="combo-modal-img" src="' + fotoUrl(o.img) + '" alt="">' : '') +
       '<div><div class="combo-modal-title" id="fecha-modal-t">' + o.nombre + '</div>' +
       '<div class="combo-modal-desc">Para ' + hoy + ' no hay. Lo tenemos para ' + nueva + '.</div></div>' +
     '</div>' +
-    '<p class="fecha-modal-txt">Cada pedido se entrega todo junto, en un solo viaje. Si lo sumás, ' +
-      '<strong>lo que ya tenés en el carrito también pasa ' + aNueva + '</strong>.</p>' +
-    '<button class="fecha-modal-si" type="button" onclick="otraFechaSi()">Pasar todo ' + aNueva + '</button>' +
-    '<button class="fecha-modal-no" type="button" onclick="otraFechaNo()">Seguir con mi pedido para ' + hoy + '</button>' +
-    '<p class="fecha-modal-tip">¿Querés las dos cosas? Mandá primero tu pedido para ' + hoy +
-      ' y después armá otro para ' + nueva + '.</p>';
+    (lleno
+      ? '<p class="fecha-modal-txt">Cada pedido se entrega todo junto, en un solo viaje. Si lo sumás, ' +
+          '<strong>lo que ya tenés en el carrito también pasa ' + aNueva + '</strong>.</p>' +
+        '<button class="fecha-modal-si" type="button" onclick="otraFechaSi()">Pasar todo ' + aNueva + '</button>' +
+        '<button class="fecha-modal-no" type="button" onclick="otraFechaNo()">Seguir con mi pedido para ' + hoy + '</button>' +
+        '<p class="fecha-modal-tip">¿Querés las dos cosas? Mandá primero tu pedido para ' + hoy +
+          ' y después armá otro para ' + nueva + '.</p>'
+      : '<p class="fecha-modal-txt">Cada pedido se entrega todo junto, en un solo viaje. Si lo pedís, ' +
+          '<strong>tu entrega pasa ' + aNueva + '</strong>, y lo que sumes después también va para ese día.</p>' +
+        '<button class="fecha-modal-si" type="button" onclick="otraFechaSi()">Pasar mi entrega ' + aNueva + '</button>' +
+        '<button class="fecha-modal-no" type="button" onclick="otraFechaNo()">Ver lo que hay para ' + hoy + '</button>' +
+        '<p class="fecha-modal-tip">¿Querés algo para ' + hoy + ' y esto para ' + nueva +
+          '? Son dos pedidos: mandá primero ' + (/^el /.test(hoy) ? 'el del ' + hoy.slice(3) : 'el de ' + hoy) + '.</p>');
   ov.style.display = 'flex';
   _fondoQuieto('fecha', true);
   var si = ov.querySelector('.fecha-modal-si');

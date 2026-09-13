@@ -1278,12 +1278,18 @@ enteraba —si se enteraba— mirando el chip de arriba.
 
 | el carrito | qué pasa al tocar "Pedir para el vie 18" |
 |---|---|
-| **vacío** | se sigue de un toque, como antes: el botón ya dice la fecha |
-| **con algo** | se abre una hoja que pregunta: *"Para hoy no hay. Lo tenemos para el viernes 18/9. Cada pedido se entrega todo junto, en un solo viaje. Si lo sumás, lo que ya tenés en el carrito también pasa al viernes 18/9."* |
+| **con algo** | se abre una hoja que pregunta: *"Para hoy no hay. Lo tenemos para el viernes 18/9. Cada pedido se entrega todo junto, en un solo viaje. Si lo sumás, lo que ya tenés en el carrito también pasa al viernes 18/9."* Botones **"Pasar todo al viernes 18/9"** / **"Seguir con mi pedido para hoy"** |
+| **vacío** | **también pregunta**, hablando de la entrega: *"…Si lo pedís, tu entrega pasa al viernes 18/9, y lo que sumes después también va para ese día."* Botones **"Pasar mi entrega al viernes 18/9"** / **"Ver lo que hay para hoy"** |
 
-Los botones son **"Pasar todo al viernes 18/9"** y **"Seguir con mi pedido para hoy"**, y
-abajo dice cómo tener las dos cosas: mandar primero el pedido de hoy y armar otro para el
-viernes. Lo mismo con "Armar para el vie 18" de un combo.
+Abajo dice cómo tener las dos cosas: dos pedidos, primero el de hoy. Lo mismo con "Armar
+para el vie 18" de un combo.
+
+> [!important] Con el carrito vacío también se pregunta, y no es exceso de celo
+> La primera versión (mediodía del 13/9) seguía de un toque con el carrito vacío: *"no hay
+> nada que perder"*. Tadeo lo dio vuelta esa misma tarde: *"quiero para hoy, pero ARRANCO
+> agregando un producto que no tengo en stock, y automáticamente se me cambia de fecha"*.
+> Lo que se pierde no es el carrito, es **la fecha que eligió**: todo lo que sume después,
+> pensando que es para hoy, queda para el viernes, y el único rastro es el chip de arriba.
 
 > [!important] Cerrar sin elegir nunca mueve la fecha
 > La ×, tocar afuera y Escape son "seguir con lo de hoy". Se mide `fecha_por_stock_no`
@@ -1295,8 +1301,9 @@ viernes. Lo mismo con "Armar para el vie 18" de un combo.
 
 Reusa el modal del combo (hoja desde abajo en el celular, centrada en la compu) con clases
 propias para los botones (`.fecha-modal-si` / `-no`, 48px). Lo prueba
-`_tools/verificar-sin-stock.js`: carrito vacío sin preguntas, la pregunta con lo que dice y
-sus tres salidas, el combo, y "Pasar todo".
+`_tools/verificar-sin-stock.js`: la pregunta con el carrito vacío (su texto, sus dos salidas
+y el combo), la pregunta con el carrito lleno y sus tres salidas, el combo, y "Pasar todo".
+Contra la versión que seguía de un toque con el carrito vacío da **8 rojos**.
 
 ### El chip de la barra en los barrios con vendedor decía "Tiempo agotado" un domingo
 
