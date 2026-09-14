@@ -127,9 +127,10 @@ async function esperarPagina(puerto) {
 /* El POST se guarda y NO SALE. sendBeacon devuelve false y el fetch queda
    colgado a proposito: asi la tienda no toma el camino de exito y no navega a
    wa.me en el medio de la medicion. */
-function prep(piezas, zona) {
+function prep(piezas, zona, extra) {
   return `(function () {
   try { localStorage.setItem('maleu_zone', '${zona || 'estancias'}'); } catch (e) {}
+  try { var EXTRA = ${JSON.stringify(extra || {})}; Object.keys(EXTRA).forEach(function (k) { localStorage.setItem(k, JSON.stringify(EXTRA[k])); }); } catch (e) {}
   var PIEZAS = ${JSON.stringify(piezas)};
   window.__post = null;
   navigator.sendBeacon = function () { return false; };
@@ -269,8 +270,10 @@ function revisar(p, esp, mapas, conCarne) {
 }
 
 /* Un producto no puede ofrecerse en una zona cuyo canal no tenga donde guardarlo.
-   Pilar deriva a la hoja Red cuando el barrio tiene vendedor, y eso lo decide
-   el backend, no el cliente: por eso Pilar se mira contra Red tambien. */
+   Un pedido de Pilar va a la hoja Red cuando el barrio tiene vendedor: por eso
+   Pilar se mira contra Red tambien. Salvo lo marcado `sinVendedor` (la carne,
+   desde el 14/9/2026): la tienda no lo ofrece en esos barrios, y eso se prueba
+   EN LA PANTALLA mas abajo, no se da por hecho. */
 function revisarZonas(prods, mapas) {
   const problemas = [];
   if (!mapas) return problemas;
@@ -286,6 +289,7 @@ function revisarZonas(prods, mapas) {
     const zonas = c.zonas || ['estancias', 'pilar'];
     zonas.forEach((z) => {
       (destino[z] || []).forEach(([hoja, mapa]) => {
+        if (hoja === 'Red' && c.sinVendedor) return;
         if (mapa && !mapa[c.id]) {
           problemas.push(c.nombre + ' se ofrece en "' + z + '", y un pedido de ahi puede caer en la hoja ' +
             hoja + ', que no tiene columna para el id ' + c.id + ': se cobraria sin guardarse');
@@ -375,7 +379,7 @@ async function main() {
        premium a Estancias y este chequeo, acotado a `cat==='Carnes'`, no los
        habria mirado. */
     const rc = await cli.enviar('Runtime.evaluate', {
-      expression: "JSON.stringify(PRODUCTOS.map(function(p){return {id:p.id,nombre:p.nombre,zonas:p.zonas||null};}))",
+      expression: "JSON.stringify(PRODUCTOS.map(function(p){return {id:p.id,nombre:p.nombre,zonas:p.zonas||null,sinVendedor:!!p.sinVendedor};}))",
       returnByValue: true });
     const problemas = revisarZonas(JSON.parse(rc.result.value || '[]'), mapas);
     if (problemas.length) {
@@ -391,9 +395,22 @@ async function main() {
     /* Y que el filtro se cumpla EN LA PANTALLA, con el inventario cargado: el
        catalogo declara las zonas, pero quien las respeta es `_zonaPermite`.
        Que el dato este bien no prueba que la tienda lo use. */
-    for (const zona of ['pilar', 'clubes']) {
+    /* Desde el 14/9/2026 la carne SI se ofrece en lo que entrega Maleu en Pilar
+       ("Otra zona de Pilar"), y NO en un barrio con vendedor: sus pedidos van a
+       la hoja Red, que no tiene columnas de carne. Se miran los tres casos. */
+    const ZONAS_A_MIRAR = [
+      { nombre: 'pilar, barrio con vendedor', zona: 'pilar', carne: false, extra: {
+        maleu_pilar_zona: { val: 'Tortugas y alrededores', nombre: 'Tortugas y alrededores', ts: 1 },
+        maleu_pilar_barrio: { val: 'El Lucero', nombre: 'El Lucero', ts: 1 } } },
+      { nombre: 'pilar, lo entrega Maleu', zona: 'pilar', carne: true, extra: {
+        maleu_pilar_zona: { val: '__otro__', nombre: 'Otra zona de Pilar', ts: 1 },
+        maleu_pilar_barrio: { val: 'Pilara', nombre: 'Pilara', ts: 1 } } },
+      { nombre: 'clubes', zona: 'clubes', carne: false },
+    ];
+    for (const caso of ZONAS_A_MIRAR) {
+      const zona = caso.nombre;
       if (guionPrevio) await cli.enviar('Page.removeScriptToEvaluateOnNewDocument', { identifier: guionPrevio });
-      const rz = await cli.enviar('Page.addScriptToEvaluateOnNewDocument', { source: prep(ESCENARIOS[1].piezas, zona) });
+      const rz = await cli.enviar('Page.addScriptToEvaluateOnNewDocument', { source: prep(ESCENARIOS[1].piezas, caso.zona, caso.extra) });
       guionPrevio = rz.identifier;
       await cli.enviar('Page.navigate', { url: 'http://127.0.0.1:' + PUERTO + '/index.html' });
       /* 40 s y no 15: `fetchPiezas` corre DESPUES de `fetchStock`, que le pega al
@@ -424,12 +441,13 @@ async function main() {
         " sec: !!document.getElementById('cat-carnes')," +
         " piezas: (typeof piezasMap!=='undefined') ? Object.keys(piezasMap).length : -1})" });
       const z = JSON.parse(r.result.value);
-      if (z.cards || z.chip || z.sec) {
+      const seVe = !!(z.cards || z.chip || z.sec);
+      if (seVe !== caso.carne) {
         malas++;
-        console.log(RED + '  MAL  en la zona ' + zona + ' la carne SIGUE a la vista' + RST +
+        console.log(RED + '  MAL  en la zona ' + zona + (caso.carne ? ' la carne NO se ofrece' : ' la carne SIGUE a la vista') + RST +
           DIM + '  (cards ' + z.cards + ', chip ' + z.chip + ', seccion ' + z.sec + ')' + RST);
       } else {
-        console.log(VER + '  ok   ' + RST + 'zona ' + zona + ': la carne no se ofrece' +
+        console.log(VER + '  ok   ' + RST + 'zona ' + zona + ': la carne ' + (caso.carne ? 'se ofrece (' + z.cards + ' cortes)' : 'no se ofrece') +
           DIM + '  (el inventario llego igual: ' + z.piezas + ' cortes)' + RST);
       }
     }

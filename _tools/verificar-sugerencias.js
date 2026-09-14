@@ -17,7 +17,8 @@
  *      grilla de Carnes la marca, la sugerencia se va, y se mide;
  *   4. al sacarla vuelve, y si esa pieza se vende y llega el inventario nuevo,
  *      ofrece la siguiente;
- *   5. todo agotado y Pilar: no sugiere carne;
+ *   5. todo agotado, o un barrio de Pilar con vendedor: no sugiere carne. En lo
+ *      que entrega Maleu en Pilar ("Otra zona") SI, desde el 14/9/2026;
  *   6. "Ver todas las piezas" cierra el carrito y lleva a Carnes;
  *   7. AL REVES — Tadeo: "si el cliente solo va por la carne, poner ¿queres
  *      sumar algo mas? tenemos pizzas, sorrentinos...". Con solo carne en el
@@ -227,7 +228,7 @@ async function main() {
       await dormir(300);
       return pos;
     };
-    const abrir = async (zona, extra) => {
+    const abrir = async (zona, extra, pilarZona) => {
       await cli.enviar('Page.navigate', { url: 'http://127.0.0.1:' + PUERTO + '/index.html?t=' + Date.now() + (extra || '') });
       if (!(await esperar("typeof PRODUCTOS !== 'undefined' && !!document.getElementById('loc-step-zone')", 15000))) {
         throw new Error('la tienda no arranco');
@@ -236,7 +237,7 @@ async function main() {
         'var dormir = function (ms) { return new Promise(function (s) { setTimeout(s, ms); }); };' +
         'var z = [].slice.call(document.querySelectorAll("#loc-step-zone .loc-btn")).filter(function (b) { return (b.getAttribute("onclick") || "").indexOf(' + JSON.stringify(zona) + ') >= 0; })[0];' +
         'z.click(); await dormir(500);' +
-        'if (' + JSON.stringify(zona) + ' === "pilar") { var o = document.querySelector("#loc-overlay .loc-btn[onclick*=otro], #loc-overlay button[onclick*=__otro__]"); if (o) { o.click(); await dormir(400); } }' +
+        'if (' + JSON.stringify(zona) + ' === "pilar") { var o = document.querySelector(' + JSON.stringify(pilarZona || '#loc-overlay button[onclick*=__otro__]') + '); if (o) { o.click(); await dormir(400); } }' +
         'var f = document.querySelector("#loc-dates-grid button[onclick*=\'2026-09-\']"); if (f) f.click();' +
         '})()');
       await esperar('Object.keys(stockMap).length > 5', 10000);
@@ -396,12 +397,22 @@ async function main() {
     chk(await ev('piezasEstado === "vacio" && cartCount() > 0') && !s.vis, 'con toda la carne agotada (y una pizza en el carrito) no sugiere');
     await cerrarCarrito();
 
-    await abrir('pilar');
+    /* Pilar tiene dos casos desde el 14/9/2026: lo que entrega Maleu vende carne,
+       un barrio con vendedor no (sus pedidos van a la hoja Red, sin columnas de
+       carne). */
+    await cerrarCarrito();
+    await abrir('pilar', '', '#loc-overlay button[onclick*=Tortugas]');
     const zona = await ev('currentZone');
     await ev('(function () { var p = getActiveProducts().filter(function (x) { return !esPorPeso(x); })[0]; addToCart(String(p.id)); })()');
     await abrirCarrito();
     s = await sug();
-    chk(zona === 'pilar' && !s.vis && (await ev('cartCount()')) > 0 && (await ev('hayPiezas()')), 'en Pilar, que no vende carne, no sugiere aunque haya piezas y algo en el carrito (zona ' + zona + ')');
+    chk(zona === 'pilar' && !s.vis && (await ev('cartCount()')) > 0 && (await ev('hayPiezas()')), 'en un barrio de Pilar con vendedor, que no vende carne, no sugiere aunque haya piezas y algo en el carrito (zona ' + zona + ')');
+    await cerrarCarrito();
+    await abrir('pilar');
+    await ev('(function () { var p = getActiveProducts().filter(function (x) { return !esPorPeso(x); })[0]; addToCart(String(p.id)); })()');
+    await abrirCarrito();
+    s = await sug();
+    chk(s.vis && s.tipo === 'carne', 'en lo que entrega Maleu en Pilar SI sugiere carne (' + (s.vis ? s.tipo : 'no se ve') + ')');
 
     const posts = await ev('window.__post');
     chk(posts === 0 && escapados.length === 0, 'no salio ningun POST ni salto a WhatsApp (' + posts + '/' + escapados.length + ')');

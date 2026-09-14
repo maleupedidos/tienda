@@ -139,14 +139,17 @@
       <img src="img/logo-icono.png?v=d8163724" alt="Maleu" />
       <h2>¿Dónde entregamos?</h2>
       <p>Elegí tu zona para ver los días disponibles.</p>
+      <!-- 14/9/2026: Estancias del Río volvió con Estancias del Pilar (desde el
+           10/8 estaba adentro de Pilar), y Pilar suma el miércoles para lo que
+           entrega Maleu. Los barrios con vendedor siguen solo el viernes. -->
       <button class="loc-btn" onclick="setZone('estancias')">
-        Estancias del Pilar
-        <small>Entregas lunes, miércoles, viernes, sábado y domingo</small>
+        Estancias del Pilar y Estancias del Río
+        <small>Envío gratis · Entregas lunes, miércoles, viernes, sábado y domingo</small>
       </button>
       <button class="loc-btn" onclick="setZone('pilar')">
         Pilar y Alrededores
-        <small>Entregas los viernes, durante el día</small>
-        <small class="loc-note">⏰ Pedidos hasta el <strong>jueves a las 12 hs</strong></small>
+        <small>Entregas los miércoles y los viernes</small>
+        <small class="loc-note">⏰ Para el viernes, pedidos hasta el <strong>jueves a las 12 hs</strong></small>
       </button>
       <button class="loc-btn" onclick="setZone('clubes')">
         Clubes Deportivos
@@ -397,8 +400,10 @@
             <select id="f-barrio-privado" onchange="filtrarSubBarrios()" onblur="validateOnBlur('barrioPrivado')">
               <option value="">Elegí tu barrio privado</option>
               <!-- 10/08/26: Los Alcanfores y Estancias del Río salieron de esta
-                   zona y ahora se eligen dentro de "Otra zona de Pilar". -->
+                   zona. 14/9/2026: Estancias del Río volvió; Los Alcanfores
+                   sigue en "Otra zona de Pilar". -->
               <option value="Estancias del Pilar">Estancias del Pilar</option>
+              <option value="Estancias del Río">Estancias del Río</option>
             </select>
           </div>
           <span class="field-error" id="err-barrio-privado">⚠ Elegí tu barrio privado</span>
@@ -626,6 +631,6 @@
   </div>
 </div>
 
-<script src="app.js?v=801dd1ef"></script>
+<script src="app.js?v=12f56088"></script>
 </body>
 </html>

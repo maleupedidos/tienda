@@ -1531,6 +1531,83 @@ salte, el temblor, que vuelva al subir pegada a la barra, ir a una categoría ba
 subiendo, y que en la compu quede igual. Con seis bugs reinyectados (entre ellos achicar la
 barra en vez de superponer): **los seis se agarran**. Contra la tienda anterior da 4 rojos.
 
+## Las zonas del 14/9/2026: Estancias del Río con Estancias, y el miércoles en Pilar
+
+Tadeo: *"En la primera opción que diga Estancias del Pilar y Estancias del Río. Son los 2
+barrios a atacar, son muy parecidos y deberían ir juntos. Envío gratis. Lo mismo de
+siempre. En la segunda, Pilar y Alrededores, sin Estancias del Río. Para esta opción
+hacemos entregas los miércoles y los viernes. Y en otra zona de Pilar, para las entregas
+que haga yo que no sean de mis vendedores, debería estar la carne con su stock"*.
+
+| | antes | desde el 14/9/2026 |
+|---|---|---|
+| **Paso 1 del modal** | "Estancias del Pilar" | **"Estancias del Pilar y Estancias del Río"** · envío gratis · los cinco días |
+| **Estancias del Río** | adentro de "Otra zona de Pilar", solo viernes, hoja Pilar | **zona Estancias**, cinco días, **hoja Home** con barrio "Estancias del Río" y sin sub barrio |
+| **Los Alcanfores** | "Otra zona de Pilar", envío gratis y 10% | igual (queda solo en `BARRIOS_EX_HOME`) |
+| **Lo que entrega Maleu en Pilar** ("Otra zona") | solo viernes | **miércoles y viernes** |
+| **Barrios con vendedor** (Marcos, Fini, Rufo) | solo viernes | solo viernes |
+| **La carne** | solo Estancias | Estancias **y "Otra zona de Pilar"**; nunca en un barrio con vendedor |
+| **La foto de la categoría Carnes** | la colita cruda | carne a la parrilla, cortada (`categoria-carnes.jpg`, la pasó Tadeo) |
+
+**No es un invento: es el diseño del 12/5/2026 que se había recortado.** El documento maestro
+(`Cerebro Maleu\02-Operaciones\Tienda - Reglas de stock y horarios.md`, actualizado ese día)
+ya decía "Pilar no-Red: Mié y Vie, mismas reglas que Home; Red: solo Vie", y el código
+todavía tenía el filtro "barrio Red: solo viernes, no los miércoles". El 6/7/2026 se había
+sacado el miércoles para todos. `getStockMode` **no se tocó**: un miércoles de Pilar se
+arma con el freezer (stock real), igual que uno de Estancias. Por eso el test del ERP que
+compara `getStockMode` con `npStockMode` de la tab «+» no se entera.
+
+> [!important] Quién entrega lo decide `_pilarEntregaMaleu()`, y mira la ZONA
+> Decide dos cosas que van juntas: el miércoles y la carne. Es `true` solo con la zona
+> "Otra zona de Pilar" elegida en el modal y un barrio que no es de vendedor.
+>
+> No alcanza con `_pilarBarrioIsRed()`: reconoce un barrio de vendedor recién cuando llega
+> `action=vendedores` de la planilla, y mientras tanto le diría "no es de vendedor" a un
+> cliente de Fini — le ofrecería carne y miércoles. La zona está guardada desde el modal,
+> así que no depende de ninguna respuesta. Sin zona elegida, `false`.
+
+> [!danger] La carne en un barrio con vendedor se cobraría sin guardarse
+> Un pedido de un barrio con vendedor va a la hoja **Red**, que no tiene columnas de carne:
+> el pedido entraría, el total saldría bien y los kilos no caerían en ningún lado. Por eso:
+> · los cortes llevan `sinVendedor:true` y `_productoBloqueadoPorBarrio` los saca del
+>   catálogo, de las categorías, de las sugerencias y de los combos;
+> · si el cliente cambia a un barrio con vendedor teniendo piezas en el carrito,
+>   `_purgeCartBloqueados` las saca y lo dice (*"La carne la entregamos nosotros: en los
+>   barrios con vendedor no está"*);
+> · con carne, un barrio escrito a mano en "Otra zona" que coincide con uno de vendedor
+>   **no** se manda al vendedor: lo entrega Maleu, que es lo que la pantalla le dijo.
+>
+> `verificar-pedido.js` cruza cada zona contra su hoja y ya no mira Red para lo marcado
+> `sinVendedor`: eso lo prueba en la pantalla (vendedor sin carne, "Otra zona" con carne).
+
+**Dos bugs que ya existían y aparecieron al probar esto:**
+
+| | qué pasaba | cómo quedó |
+|---|---|---|
+| **El que volvía a Pilar encontraba el formulario sin su barrio** | `applyZone()` dibujaba el desplegable antes de cargar la zona guardada ("Elegí tu zona primero"), y el barrio guardado no tenía opción donde caer | el arranque llama a `renderPilarBarrios()` apenas carga la zona |
+| **Una fecha guardada que ese barrio ya no ofrece se respetaba** | eligió un miércoles en "Otra zona", cambió a un barrio con vendedor, y el chip seguía diciendo "Mié 16/9" | `_loadSavedDate` exige que la fecha esté entre las que `_getNextDeliveryDatesGrouped` ofrece hoy (sirve también para un feriado que se bloquea después), y `_olvidarFecha()` limpia la de memoria antes del paso de fecha |
+
+**La migración**: el que tenía "Estancias del Río" guardado en Pilar entra a Estancias con
+barrio, lote, nombre y teléfono ya cargados, y se le borran la zona y el barrio de Pilar.
+
+**El cartel del cierre** (`_cutoffNote`) para lo que entrega Maleu habla del miércoles: *"Entregamos
+los miércoles y los viernes en Pilar y Alrededores. Para el viernes 18/9, pedí hasta el jueves
+17/9 a las 12 hs"*; el jueves después de las 12, *"Pedí para el miércoles 23/9 o el viernes
+25/9"*. Para un barrio con vendedor y para Clubes quedó igual.
+
+Las páginas (Preguntas, Contacto, Términos, Sobre Nosotros) dicen lo mismo: Estancias del Pilar
+y Estancias del Río juntas, Pilar miércoles y viernes (con vendedor, viernes), Los Alcanfores
+sin envío, y la carne también en los barrios de Pilar que reparte Maleu.
+
+**La red: `node _tools/verificar-zonas.js [ancho]`**, 64 chequeos a 390 y 1440px con el reloj
+congelado en el lunes 14/9/2026 10:00: el paso 1; un pedido de Estancias del Río (hoja Home,
+sin envío, 10%, con carne); "Otra zona" sin Estancias del Río; Pilar de Maleu con miércoles y
+viernes en los dos calendarios, el hero, la carne y el pedido a la hoja Pilar con sus kilos y
+piezas; el cartel del cierre en cuatro momentos; el cambio a un barrio con vendedor con carne
+en el carrito; Los Alcanfores; la migración; el que vuelve a Pilar; Clubes. Contra la tienda de
+antes da **28 rojos**. Actualizados: `verificar-pedido.js` (las tres zonas en pantalla) y
+`verificar-sugerencias.js` (Pilar con vendedor sin carne, "Otra zona" con carne).
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

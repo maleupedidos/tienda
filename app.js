@@ -27,6 +27,7 @@ var IMG_V = {
   "carne-entrana.jpg": "c9bbf036",
   "carne-lomo.jpg": "7f188d99",
   "carne-vacio.jpg": "c1827fc5",
+  "categoria-carnes.jpg": "7b69d315",
   "combo-finde.jpg": "4e0022fd",
   "combo-freezer.jpg": "2d59c6e7",
   "combo-mesa.jpg": "c99aab14",
@@ -115,23 +116,28 @@ const PRODUCTOS = [
      `abbr` es la llave con la que se cruzan las piezas y la que entiende el
      backend. `porPeso` lo confirma `action=precios` (u:"kg") al cargar.
 
-     SOLO ESTANCIAS, y no es una decision comercial: es donde la planilla
-     tiene DONDE guardarlos. La hoja Clubes no tiene columna para la carne, y
-     un pedido de Pilar cuyo barrio tiene vendedor lo deriva el BACKEND a la
-     hoja Red — que tampoco la tiene. En las dos, el pedido entra, el total
+     DONDE SE VENDE: Estancias, y desde el 14/9/2026 tambien lo que Maleu
+     entrega en "Otra zona de Pilar". Tadeo: "para las entregas que haga yo que
+     no sean de mis vendedores, deberia estar involucrada la carne". Lo decide
+     `_pilarEntregaMaleu`.
+
+     NO en los barrios con vendedor (`sinVendedor`) ni en Clubes, y no es una
+     decision comercial: es donde la planilla tiene DONDE guardarlos. La hoja
+     Pilar tiene columnas para la carne (70-74); la de Clubes no, y un pedido de
+     un barrio con vendedor la tienda lo manda a la hoja Red — que tampoco la tiene. En las dos, el pedido entra, el total
      sale bien, y los kilos no caen en ningun lado: sin error y sin log. Es la
      misma forma de fallar que el `editarPedido` que cobraba 16 productos sin
      guardarlos.
-     Se abren las otras zonas el dia que RED_PRODUCT_COLS y CLUBES_PRODUCT_COLS
+     Se abren esos canales el dia que RED_PRODUCT_COLS y CLUBES_PRODUCT_COLS
      conozcan los ids 30-34. Lo vigila `node _tools/verificar-pedido.js`. */
-  { id:30, abbr:"CCo", cat:"Carnes", porPeso:true, nuevo:true, zonas:["estancias"], nombre:"Colita de Cuadril", desc:"Jugosa al horno y perfecta a la parrilla. Un corte que nunca falla.", precio:25000, img:"carne-colita.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
+  { id:30, abbr:"CCo", cat:"Carnes", porPeso:true, sinVendedor:true, nuevo:true, zonas:["estancias","pilar"], nombre:"Colita de Cuadril", desc:"Jugosa al horno y perfecta a la parrilla. Un corte que nunca falla.", precio:25000, img:"carne-colita.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
   /* La entrana viene de a DOS tiras por paquete (dato de Lucas, 10/9/2026), y
      el peso que se ve es el del paquete entero. Sin decirlo, el que elige una
      de 1,163 kg no sabe si le llega una tira grande o dos. */
-  { id:31, abbr:"CEn", cat:"Carnes", porPeso:true, nuevo:true, zonas:["estancias"], nombre:"Entra\u00f1a",           desc:"Fina, sabrosa y r\u00e1pida. La que sale primero de la parrilla.",          precio:34000, img:"carne-entrana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo","2 tiras por paquete"] },
-  { id:32, abbr:"CLo", cat:"Carnes", porPeso:true, nuevo:true, zonas:["estancias"], nombre:"Lomo",              desc:"El corte m\u00e1s tierno. Para la ocasi\u00f3n que se merece el mejor.",       precio:33000, img:"carne-lomo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
-  { id:33, abbr:"CPi", cat:"Carnes", porPeso:true, nuevo:true, zonas:["estancias"], nombre:"Pica\u00f1a",            desc:"El corte brasilero que se volvi\u00f3 infaltable. Con su tapa de grasa.",  precio:26000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
-  { id:34, abbr:"CVa", cat:"Carnes", porPeso:true, nuevo:true, zonas:["estancias"], nombre:"Vac\u00edo",             desc:"El cl\u00e1sico del asado argentino. Paciencia y fuego bajo.",            precio:26000, img:"carne-vacio.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
+  { id:31, abbr:"CEn", cat:"Carnes", porPeso:true, sinVendedor:true, nuevo:true, zonas:["estancias","pilar"], nombre:"Entra\u00f1a",           desc:"Fina, sabrosa y r\u00e1pida. La que sale primero de la parrilla.",          precio:34000, img:"carne-entrana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo","2 tiras por paquete"] },
+  { id:32, abbr:"CLo", cat:"Carnes", porPeso:true, sinVendedor:true, nuevo:true, zonas:["estancias","pilar"], nombre:"Lomo",              desc:"El corte m\u00e1s tierno. Para la ocasi\u00f3n que se merece el mejor.",       precio:33000, img:"carne-lomo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
+  { id:33, abbr:"CPi", cat:"Carnes", porPeso:true, sinVendedor:true, nuevo:true, zonas:["estancias","pilar"], nombre:"Pica\u00f1a",            desc:"El corte brasilero que se volvi\u00f3 infaltable. Con su tapa de grasa.",  precio:26000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
+  { id:34, abbr:"CVa", cat:"Carnes", porPeso:true, sinVendedor:true, nuevo:true, zonas:["estancias","pilar"], nombre:"Vac\u00edo",             desc:"El cl\u00e1sico del asado argentino. Paciencia y fuego bajo.",            precio:26000, img:"carne-vacio.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
 ];
 
 const CATEGORIAS = [
@@ -141,8 +147,10 @@ const CATEGORIAS = [
      Tadeo el 10/9/2026. `img` es propia a proposito: sin ella la foto saldria
      del primer corte de la zona, y cambiaria sola el dia que se reordene la
      lista. Hasta el 13/9/2026 era carne-cortes.jpg, una foto de stock que no
-     es ninguno de los cortes que se venden; desde ese dia es la colita. */
-  { nombre:"Carnes",              icono:"🥩", nota:"Cortes frescos de Maleu Carnes · Elegís vos la pieza que te llevás y sabés su peso exacto antes de pedirla", img:"carne-colita.jpg" },
+     es ninguno de los cortes que se venden; del 13 al 14/9, la colita cruda.
+     Desde el 14/9 es carne a la parrilla, cortada (la paso Tadeo): las demas
+     categorias muestran el producto cocinado, y la carne cruda desentonaba. */
+  { nombre:"Carnes",              icono:"🥩", nota:"Cortes frescos de Maleu Carnes · Elegís vos la pieza que te llevás y sabés su peso exacto antes de pedirla", img:"categoria-carnes.jpg" },
   { nombre:"Wraps",               icono:"🌯", nota:"Pre-cocidos · Listos al horno en pocos minutos" },
   { nombre:"Empanadas",           icono:"🥟", nota:"x8 unidades · Congeladas, listas para el horno · Cocinar hasta dorar" },
   { nombre:"Sorrentinos",         icono:"🍝", nota:"600g · 16 unidades · Rinde 3 porciones · Solo 4 minutos de cocción", tip:"Hervir agua · Agregar sorrentinos · 4 min con olla destapada · Retirar con espumadera y servir" },
@@ -183,15 +191,27 @@ function _catBloqueadaPorBarrio(cat) {
       && cat === 'Sorrentinos'
       && (selectedPilarBarrio === 'Ayres del Pilar' || selectedPilarBarrioName === 'Ayres del Pilar');
 }
-/* Saca del carrito los productos bloqueados por el barrio actual. Devuelve true
-   si sacó algo. (cart y PROD_MAP se inicializan más abajo; se usa en runtime.) */
+/* Lo mismo, por producto: lo que no tiene donde guardarse en la hoja Red
+   (`sinVendedor`, la carne) no se ofrece en un barrio con vendedor. */
+function _productoBloqueadoPorBarrio(p) {
+  if (!p) return false;
+  if (_catBloqueadaPorBarrio(p.cat)) return true;
+  return !!(p.sinVendedor && currentZone === 'pilar' && !_pilarEntregaMaleu());
+}
+/* Saca del carrito los productos bloqueados por el barrio actual. Devuelve
+   cuantas piezas de carne saco (0 si ninguna) o true si solo saco productos:
+   la carne se avisa aparte, porque el cliente la eligio pieza por pieza.
+   (cart y PROD_MAP se inicializan más abajo; se usa en runtime.) */
 function _purgeCartBloqueados() {
-  var changed = false;
+  var changed = false, piezas = 0;
   Object.keys(cart).forEach(function(id) {
     var p = PROD_MAP[id];
-    if (p && _catBloqueadaPorBarrio(p.cat)) { delete cart[id]; changed = true; }
+    if (p && _productoBloqueadoPorBarrio(p)) { delete cart[id]; changed = true; }
   });
-  return changed;
+  Object.keys(piezaCart).forEach(function (pid) {
+    if (_productoBloqueadoPorBarrio(PROD_MAP[piezaCart[pid].id])) { delete piezaCart[pid]; piezas++; }
+  });
+  return piezas || changed;
 }
 
 /* El modo `?autopedido=1` se ELIMINO el 8/9/2026.
@@ -238,7 +258,7 @@ function getActiveProducts() {
   if (currentZone === 'clubes') return PRODUCTOS_CLUBES;
   return PRODUCTOS.filter(function(p) {
     if (!_zonaPermite(p.zonas)) return false;
-    if (_catBloqueadaPorBarrio(p.cat)) return false;
+    if (_productoBloqueadoPorBarrio(p)) return false;
     /* La carne se muestra solo cuando SABEMOS que hay: mientras el inventario
        viaja, o si no se pudo traer, no se dibuja ningun corte. Decir "sin
        stock" sin haber mirado seria mentir: no saber no es lo mismo que no hay.
@@ -381,7 +401,7 @@ function slotOptions(slot) {
   } else if (slot.options && slot.options.cat) {
     prods = getActiveProducts().filter(p => p.cat === slot.options.cat);
   } else { prods = []; }
-  return prods.filter(p => _zonaPermite(p.zonas) && !_catBloqueadaPorBarrio(p.cat));
+  return prods.filter(p => _zonaPermite(p.zonas) && !_productoBloqueadoPorBarrio(p));
 }
 /* ¿El combo tiene al menos un slot con opción a elegir (más de 1)? */
 function comboHasChoices(c) { return (c.slots || []).some(s => slotOptions(s).length > 1); }
@@ -1072,8 +1092,12 @@ function descontableSubtotal() { return productsSubtotal() + piezasSubtotal(); }
 
 /* ── ZONAS ── */
 const ZONAS = {
+  /* 14/9/2026: Estancias del Río volvió a esta zona (desde el 10/8 estaba en
+     "Otra zona de Pilar"). Tadeo: "son los 2 barrios a atacar, son muy
+     parecidos y deberían ir juntos". Mismos días, envío gratis y el 10% en
+     efectivo; el pedido va a la hoja Home con el barrio "Estancias del Río". */
   estancias: {
-    nombre: "Estancias del Pilar",
+    nombre: "Estancias del Pilar y Estancias del Río",
     envio: 0,
     canal: "Home",
     horarios: { "Lunes":"18 a 19 hs", "Miércoles":"19 a 21 hs", "Viernes":"19 a 21 hs", "Sábado":"19 a 21 hs", "Domingo":"11 a 13 hs" },
@@ -1085,10 +1109,14 @@ const ZONAS = {
     nombre: "Pilar y Alrededores",
     envio: 5000,
     canal: "Pilar",
-    // 06/07/26: eliminado delivery de miércoles en Pilar. Solo viernes
-    // (Tadeo hace el recorrido combinado M2+M3 solo ese día).
-    horarios: { "Viernes":"A coordinar" },
-    deliveryText: "📅 Entregas: viernes durante el día · Pedidos hasta el jueves 12 hs",
+    // 06/07/26: se había sacado el miércoles (solo viernes). 14/9/2026: vuelve
+    // el miércoles para lo que entrega Maleu ("Otra zona de Pilar"). Los
+    // barrios con vendedor siguen solo el viernes: el vendedor reparte ese día,
+    // y un pedido suyo es "a pedido" (entra en la orden del jueves), así que un
+    // miércoles no habría con qué armarlo. Lo decide _pilarEntregaMaleu.
+    horarios: { "Miércoles":"A coordinar", "Viernes":"A coordinar" },
+    deliveryText: "📅 Entregas: miércoles y viernes · Para el viernes, pedidos hasta el jueves 12 hs",
+    deliveryTextVendedor: "📅 Entregas: viernes durante el día · Pedidos hasta el jueves 12 hs",
     showStock: false
   },
   clubes: {
@@ -1259,9 +1287,10 @@ const BARRIOS_PILAR_MODAL = [
     nombre: 'Otra zona de Pilar',
     isRed: false, isOther: true, badge: 'Maleu',
     // 10/08/26: Los Alcanfores y Estancias del Río se mudaron acá desde la zona
-    // Estancias. Entregan solo los viernes, en el recorrido de Tadeo.
-    subBarrios: 'Los Alcanfores · Estancias del Río · Pilara · El Ocho · Otros',
-    subBarriosList: ['Los Alcanfores', 'Estancias del Río', 'Pilara', 'El Ocho']  // '__otro__' se agrega dinámico para el input libre
+    // Estancias. 14/9/2026: Estancias del Río volvió a Estancias; Los
+    // Alcanfores se queda. Esta zona la entrega Maleu: miércoles y viernes.
+    subBarrios: 'Los Alcanfores · Pilara · El Ocho · Otros',
+    subBarriosList: ['Los Alcanfores', 'Pilara', 'El Ocho']  // '__otro__' se agrega dinámico para el input libre
   }
 ];
 
@@ -1269,8 +1298,9 @@ const BARRIOS_PILAR_MODAL = [
    a "Otra zona de Pilar". Cambian los días de entrega (ahora solo viernes),
    pero por decisión comercial NO pierden los dos beneficios que tenían como
    Home: envío gratis y 10% OFF en efectivo. Por eso getShipping() y
-   cashDiscountActive() los tratan como excepción dentro de la zona Pilar. */
-const BARRIOS_EX_HOME = ['Los Alcanfores', 'Estancias del Río'];
+   cashDiscountActive() los tratan como excepción dentro de la zona Pilar.
+   14/9/2026: Estancias del Río volvió a la zona Estancias, así que queda uno. */
+const BARRIOS_EX_HOME = ['Los Alcanfores'];
 function _pilarBarrioEsExHome() {
   if (currentZone !== 'pilar') return false;
   // Mismo criterio que _pilarBarrioIsRed(): el dropdown puede estar vacío si
@@ -1299,6 +1329,23 @@ function _getPilarZonaActual() {
     }
   }
   return null;
+}
+
+/* ¿Este pedido de Pilar lo entrega MALEU, y no un vendedor? (14/9/2026)
+   Decide dos cosas que van juntas: el miércoles (los vendedores reparten solo
+   el viernes) y la carne (sus pedidos van a la hoja Red, que no tiene columnas
+   para ella).
+
+   Mira la ZONA elegida en el modal y no solo el barrio: `_pilarBarrioIsRed`
+   reconoce un barrio de vendedor recién cuando llega la lista de vendedores de
+   la planilla, y mientras tanto diria "no es de vendedor" y ofreceria carne y
+   miércoles a un cliente de Fini. Sin zona elegida, no: ante la duda, lo que
+   no se le puede prometer a nadie. */
+function _pilarEntregaMaleu() {
+  if (currentZone !== 'pilar') return false;
+  var z = _getPilarZonaActual();
+  if (!z || !z.isOther) return false;
+  return !_pilarBarrioIsRed();
 }
 
 /* Hook para ocultar una zona/barrio temporalmente (feriados, arranque de un
@@ -1872,10 +1919,16 @@ function onPilarBarrioChange() {
   updatePilarDiasEntrega();
   updatePromoBar();
   _updateZoneChip();
-  // Sorrentinos bloqueados en Ayres del Pilar: sacarlos del carrito y re-renderizar
-  // catálogo + nav (oculta/reaparece la categoría y sus chips según el barrio).
+  _pintarHeroEntregas();
+  // Sorrentinos bloqueados en Ayres del Pilar, y la carne en los barrios con
+  // vendedor: sacarlos del carrito y re-renderizar catálogo + nav (oculta o
+  // reaparece la categoría y sus chips según el barrio).
   // renderCatalog() ya repinta el nav y los tiles: no hace falta pedirlo.
-  _purgeCartBloqueados();
+  var _sacadas = _purgeCartBloqueados();
+  if (typeof _sacadas === 'number' && _sacadas > 0) {
+    toast('⚠️ La carne la entregamos nosotros: en los barrios con vendedor no está. ' +
+      (_sacadas === 1 ? 'La pieza salió' : 'Las ' + _sacadas + ' piezas salieron') + ' de tu carrito', 5000);
+  }
   if (typeof renderCatalog === 'function') renderCatalog();
   // Si cambió Red ↔ no-Red, el cap de stock puede cambiar — refrescar
   _ensureCartFitsDate();
@@ -1969,6 +2022,7 @@ function setZone(zone) {
   // Si ya tenía fecha guardada y aún es vigente, no volver a preguntar.
   // Si no, avanzar al paso de fecha.
   if (!_loadSavedDate()) {
+    _olvidarFecha();
     welcomeShowDateStep();
   } else {
     _setOverlay(false);
@@ -2047,6 +2101,7 @@ function setPilarSubBarrio(val, nombre) {
   }
   _updateZoneChip();
   if (!_loadSavedDate()) {
+    _olvidarFecha();
     welcomeShowDateStep();
   } else {
     _setOverlay(false);
@@ -2186,6 +2241,25 @@ function _cutoffNote(zone) {
   var dm = function (ms) { var d = new Date(ms); return d.getUTCDate() + '/' + (d.getUTCMonth() + 1); };
   var proxVieMs = hoyMs + ((5 - dow + 7) % 7) * 86400000;   // si hoy es viernes, hoy
   var cierraJue = dm(proxVieMs - 86400000);
+  /* Lo que entrega Maleu en Pilar tiene también el miércoles (14/9/2026). El
+     miércoles no depende del cierre del jueves: se arma con lo que hay en el
+     freezer, igual que un miércoles de Estancias. El cierre es solo del viernes. */
+  if (zone === 'pilar' && _pilarEntregaMaleu()) {
+    // El próximo viernes que todavía acepta pedidos: el de esta semana, salvo
+    // que ya cerró (jueves desde las 12) o que es hoy.
+    var sigVieMs = ((dow === 4 && hour >= 12) || dow === 5) ? proxVieMs + 7 * 86400000 : proxVieMs;
+    var mieTras = function (ms) { return dm(ms - 2 * 86400000); };   // el miércoles de esa misma semana
+    if (dow === 4 && hour < 12) {
+      return { tone: 'urgente', html: '⏰ <strong>¡Estás a tiempo!</strong> Para mañana viernes ' + dm(proxVieMs) + ' cerramos los pedidos <strong>hoy a las 12 hs</strong>. También entregamos el <strong>miércoles ' + mieTras(proxVieMs + 7 * 86400000) + '</strong>.' };
+    }
+    if (dow === 5) {
+      return { tone: 'entregando', html: '📦 <strong>Hoy estamos entregando</strong> ' + donde + '. Volvemos el <strong>miércoles ' + mieTras(sigVieMs) + '</strong> y el <strong>viernes ' + dm(sigVieMs) + '</strong>: dejanos tu pedido y ya quedás en el recorrido.' };
+    }
+    if (dow === 4) {
+      return { tone: 'info', html: '📅 Los pedidos para <strong>mañana viernes ya cerraron</strong>. Pedí para el <strong>miércoles ' + mieTras(sigVieMs) + '</strong> o el <strong>viernes ' + dm(sigVieMs) + '</strong>.' };
+    }
+    return { tone: 'info', html: '🚚 Entregamos los <strong>miércoles y los viernes</strong> ' + donde + '. Para el viernes ' + dm(sigVieMs) + ', pedí hasta el <strong>jueves ' + dm(sigVieMs - 86400000) + ' a las 12 hs</strong>.' };
+  }
   // Jueves antes del cierre: última chance para el viernes de mañana.
   if (dow === 4 && hour < 12) {
     return { tone: 'urgente', html: '⏰ <strong>¡Estás a tiempo!</strong> Cerramos los pedidos <strong>hoy a las 12 hs</strong> y mañana viernes ' + dm(proxVieMs) + ' salimos a repartir. Dejanos el tuyo y entrás en el recorrido.' };
@@ -2335,9 +2409,10 @@ function _getNextDeliveryDatesGrouped(zone) {
   // acepta Viernes (Marcos entrega los Vie). El resto de la semana queda
   // fuera. La semana siguiente en adelante NO se filtra.
   var pilarRestricted = (zone === 'pilar' && isPilarRestricted());
-  // Si el cliente eligió barrio Red (Marcos): solo Vie en TODAS las semanas
-  // (Marcos reparte solamente los Viernes, no los Miércoles).
-  var pilarRedOnly = (zone === 'pilar' && _pilarBarrioIsRed());
+  // Barrio con vendedor: solo Vie en TODAS las semanas (los vendedores reparten
+  // solamente los viernes). El miércoles es de lo que entrega Maleu, y sin
+  // zona elegida tampoco se ofrece: ver _pilarEntregaMaleu.
+  var pilarRedOnly = (zone === 'pilar' && !_pilarEntregaMaleu());
   var feriados = FERIADOS_BLOQUEADOS[zone] || [];
   var extras = ENTREGAS_EXTRA[zone] || [];
   // Cutoff del Vie de esta semana: si ya pasó, bloquear el Vie en thisWeek.
@@ -2440,6 +2515,15 @@ function setDeliveryDate(iso, dayName, opts) {
   // 18" de una card NO: el cliente esta mirando ese producto.
   if (!(opts && opts.sinScroll)) window.scrollTo(0, 0);
 }
+/* La fecha que quedo en memoria cuando la guardada ya no vale para esta zona o
+   este barrio: sin olvidarla, el chip de arriba seguia diciendo el dia viejo
+   detras del paso de fecha, y el tope de stock se calculaba con el. */
+function _olvidarFecha() {
+  selectedDeliveryDate = null;
+  selectedDeliveryDayName = null;
+  selectedDateIsFlexible = false;
+  _updateDateChip();
+}
 function _loadSavedDate() {
   try {
     var raw = JSON.parse(localStorage.getItem('maleu_delivery_date') || 'null');
@@ -2451,6 +2535,17 @@ function _loadSavedDate() {
     // 12hs DESPUÉS de que el cliente lo eligiera. Sin esto, un club que entró
     // el miércoles vuelve el viernes a la tarde y se le respeta la fecha vieja.
     if (_fechaBloqueadaPorCutoff(currentZone, raw.iso)) return false;
+    /* Y tiene que ser un dia que esta zona y este barrio ofrecen HOY (14/9/2026).
+       Con el miercoles de Pilar pasa de verdad: elige un miercoles en "Otra
+       zona", cambia a un barrio con vendedor, y sin esto se le respetaba un dia
+       en que ese vendedor no reparte — el chip decia "Mie 16/9" y el pedido no
+       tenia con que armarse. Vale igual para un feriado que se bloquea despues.
+       "Cualquier dia" no se mira: su fecha es una sugerencia, no una eleccion. */
+    if (!raw.flexible) {
+      var _of = _getNextDeliveryDatesGrouped(currentZone);
+      var _ofrecida = _of.thisWeek.concat(_of.nextWeek, _of.later).some(function (d) { return d.iso === raw.iso; });
+      if (!_ofrecida) return false;
+    }
     selectedDeliveryDate = raw.iso;
     selectedDeliveryDayName = raw.dayName || '';
     selectedDateIsFlexible = !!raw.flexible;
@@ -2507,6 +2602,13 @@ function _updateZoneChip() {
   var chip = $id('zone-chip'); if (!chip) return;
   var z = ZONAS[currentZone];
   var label = z ? z.nombre : '';
+  if (currentZone === 'estancias') {
+    // El barrio privado del formulario si ya lo eligió; si no, el nombre corto
+    // de la zona: "Estancias del Pilar y Estancias del Río" no entra en el chip
+    // de un celular.
+    var bp = $id('f-barrio-privado');
+    label = (bp && bp.value) || 'Estancias del Pilar y del Río';
+  }
   if (currentZone === 'pilar') {
     // Si el sub-barrio del form está seleccionado, usarlo
     var sel = $id('f-pilar-barrio');
@@ -2519,19 +2621,28 @@ function _updateZoneChip() {
   }
   chip.textContent = '📍 ' + label;
 }
-function applyZone() {
+/* Los días de entrega del hero. En Pilar dependen de quién entrega: lo de
+   Maleu, miércoles y viernes; un barrio con vendedor, solo viernes. Por eso se
+   repinta también al cambiar de barrio (onPilarBarrioChange). */
+function _pintarHeroEntregas() {
   const z = ZONAS[currentZone];
-  _updateZoneChip();
-  // Hero delivery text — si hay schedule detallado, mostrar solo eso
+  if (!z) return;
   const schedEl = $id('hero-schedule');
+  // Hero delivery text — si hay schedule detallado, mostrar solo eso
   if (z.schedule) {
     $id('hero-delivery').style.display = 'none';
     if (schedEl) { schedEl.innerHTML = '📅 ' + z.schedule; schedEl.style.display = ''; }
   } else {
-    $id('hero-delivery').textContent = z.deliveryText;
+    var txt = (currentZone === 'pilar' && !_pilarEntregaMaleu() && z.deliveryTextVendedor) ? z.deliveryTextVendedor : z.deliveryText;
+    $id('hero-delivery').textContent = txt;
     $id('hero-delivery').style.display = '';
     if (schedEl) schedEl.style.display = 'none';
   }
+}
+function applyZone() {
+  const z = ZONAS[currentZone];
+  _updateZoneChip();
+  _pintarHeroEntregas();
   // Aviso del cutoff en el hero: solo Clubes, que no pasa por el paso de fecha
   // del modal y por lo tanto no lo vería en ningún otro lado.
   _renderCutoffNote($id('hero-cutoff-note'),
@@ -3771,10 +3882,10 @@ function _zoneHorariosForDayPicker() {
   if (!currentZone) return {};
   var z = ZONAS[currentZone];
   if (!z) return {};
-  // Pilar (todos los barrios, Red y no-Red): SOLO viernes desde 06/07/26.
-  // Antes NO-Red tenía Miércoles y Viernes, pero Tadeo decidió consolidar
-  // el reparto en un único día.
-  if (currentZone === 'pilar') return { 'Viernes': 'A coordinar' };
+  // Pilar: del 06/07/26 al 14/9/2026 fue solo viernes para todos. Desde el
+  // 14/9 lo que entrega Maleu vuelve a tener miércoles y viernes; los barrios
+  // con vendedor, solo viernes. Mismo criterio que el calendario del modal.
+  if (currentZone === 'pilar') return _pilarEntregaMaleu() ? z.horarios : { 'Viernes': 'A coordinar' };
   return z.horarios || {};
 }
 
@@ -3911,8 +4022,10 @@ function filtrarSubBarrios(keepValue) {
     Array.from(subSel.options).forEach(opt => { if (!opt.value) return; opt.hidden = opt.dataset.privado !== 'Estancias del Pilar'; });
     subField.style.display = '';
   } else {
+    // Estancias del Río no tiene sub-barrios: se entrega por lote.
     subField.style.display = 'none';
   }
+  _updateZoneChip();
 }
 
 /* ── LOADER OVERLAY DE ENVÍO ──
@@ -4169,6 +4282,12 @@ function enviarPedido() {
   let vendedorMatch = null;
   if (currentZone === 'pilar' && direccion) {
     vendedorMatch = barrioToVendedor[direccion.toLowerCase()] || null;
+    /* Con carne, un barrio escrito a mano en "Otra zona" no se manda al
+       vendedor aunque coincida con uno suyo: el pedido iria a la hoja Red, que
+       no tiene columnas de carne, y los kilos no se guardarian. Lo entrega
+       Maleu, que es lo que la pantalla le dijo al cliente ("Te lo entrega
+       Maleu"). Sin carne sigue como siempre. */
+    if (vendedorMatch && Object.keys(piezaCart).length && _pilarEntregaMaleu()) vendedorMatch = null;
   }
 
   // Mensaje unificado: mínimo imprescindible para el cliente.
@@ -5460,6 +5579,30 @@ if (savedZone === 'estancias') {
     }
   } catch(e) {}
 }
+/* Migración 14/9/2026, la de arriba al revés para Estancias del Río: volvió a
+   la zona Estancias. El que lo tenía elegido en Pilar entraría a una zona donde
+   su barrio ya no está en la lista. Se lo pasa a Estancias con el barrio y el
+   lote que ya había escrito, así no tiene que cargar nada de nuevo. */
+if (savedZone === 'pilar') {
+  try {
+    var _pbRio = JSON.parse(localStorage.getItem('maleu_pilar_barrio') || 'null');
+    if (_pbRio && _pbRio.val === 'Estancias del Río') {
+      var _cliPil = JSON.parse(localStorage.getItem('maleu_cliente_pilar') || 'null') || {};
+      var _cliEst = JSON.parse(localStorage.getItem('maleu_cliente_estancias') || 'null') || {};
+      _cliEst.nombre = _cliEst.nombre || _cliPil.nombre || '';
+      _cliEst.telefono = _cliEst.telefono || _cliPil.telefono || '';
+      _cliEst.barrioPrivado = 'Estancias del Río';
+      _cliEst.barrio = 'Estancias del Río';
+      _cliEst.lote = _cliPil.lote || _cliEst.lote || '';
+      _cliEst.zone = 'estancias';
+      localStorage.setItem('maleu_cliente_estancias', JSON.stringify(_cliEst));
+      localStorage.removeItem('maleu_pilar_barrio');
+      localStorage.removeItem('maleu_pilar_zona');
+      localStorage.setItem('maleu_zone', 'estancias');
+      savedZone = 'estancias';
+    }
+  } catch(e) {}
+}
 if (savedZone && ZONAS[savedZone]) {
   // Cliente recurrente: tiene zona. NO mostrar paso 1 (zona).
   currentZone = savedZone;
@@ -5472,6 +5615,11 @@ if (savedZone && ZONAS[savedZone]) {
     // Pilar: cargar zona + barrio guardados si existen. Si falta alguno,
     // arrancar por el paso más cercano.
     var tieneZona = _loadSavedPilarZona();
+    /* El desplegable del formulario se arma con la zona: applyZone() lo dibujo
+       cuando la zona todavia no estaba cargada ("Elegí tu zona primero"), asi
+       que el barrio guardado no tenia opcion donde caer y el que volvia
+       encontraba el formulario sin su barrio (visto el 14/9/2026). */
+    if (tieneZona) renderPilarBarrios();
     var tieneBarrio = _loadSavedPilarBarrio();
     if (!tieneZona) {
       welcomeShowBarrioStep();       // Paso 2: elegir zona
