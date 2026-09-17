@@ -1789,6 +1789,26 @@ body.busqueda-activa #ultimo-section { display: none !important; }
   .catalog::before { content:''; display:block; height:var(--promo-h, 0px); }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   LA CARNE QUE SE RESERVA                                  (17/9/2026)
+   ═══════════════════════════════════════════════════════════════
+   Un corte sin piezas pero con carne en camino (ver LA RESERVA DE CARNE POR
+   KILO en app.js). Va a tamaño completo y con la foto en color, a diferencia
+   del "Sin stock": se puede comprar. La caja crema separa "esto llega despues"
+   de la grilla de piezas, que es lo que se lleva hoy. */
+.chapa-reserva { background: #FFF3E0; color: #E65100; }
+.res-caja { margin-top: .2rem; padding: .7rem .75rem; border-radius: 10px; background: var(--cream); }
+.res-t {
+  font-size: .72rem; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--brown);
+}
+.res-s { font-size: .82rem; line-height: 1.4; color: #6b5a52; margin: .3rem 0 .6rem; }
+.res-pie { display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap; }
+.res-kg { min-width: 4.2rem; font-variant-numeric: tabular-nums; }
+.res-aprox { font-size: .9rem; color: var(--brown); font-variant-numeric: tabular-nums; }
+.res-tope { font-size: .76rem; color: #8d7a72; margin: .45rem 0 0; }
+.cart-res-nota { font-size: .74rem; color: #8d7a72; margin-top: .15rem; line-height: 1.35; }
+.summary-res-nota { font-size: .8rem; color: #6b5a52; margin: .5rem 0 0; line-height: 1.4; }
 
 /* ═══════════════════════════════════════════════════════════════════
    LA TIENDA ABRE EN EL CATALOGO (23/9/2026)

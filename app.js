@@ -763,7 +763,7 @@ function piezasEnCarrito(abbr) {
   var n = 0, kg = 0, total = 0;
   Object.keys(piezaCart).forEach(function (pid) {
     var it = piezaCart[pid];
-    if (it.abbr === abbr) { n++; kg += it.kg; total += it.precio; }
+    if (it.abbr === abbr && !it.reserva) { n++; kg += it.kg; total += it.precio; }
   });
   return { n: n, kg: kg, total: total };
 }
@@ -894,7 +894,7 @@ function piezasAgrupadas() {
   var porCorte = {};
   Object.keys(piezaCart).forEach(function (pid) {
     var it = piezaCart[pid];
-    (porCorte[it.abbr] = porCorte[it.abbr] || []).push({ pid: pid, kg: it.kg, precio: it.precio, nombre: it.nombre });
+    (porCorte[it.abbr] = porCorte[it.abbr] || []).push({ pid: pid, kg: it.kg, precio: it.precio, nombre: it.nombre, reserva: !!it.reserva });
   });
   return Object.keys(porCorte).map(function (abbr) {
     var lista = porCorte[abbr].sort(function (a, b) { return a.kg - b.kg; });
@@ -902,6 +902,9 @@ function piezasAgrupadas() {
       abbr: abbr,
       nombre: lista[0].nombre,
       lista: lista,
+      /* Un corte va con piezas O con reserva, nunca las dos (ver LA RESERVA DE
+         CARNE POR KILO): con una reserva, el grupo es esa reserva. */
+      reserva: lista.some(function (x) { return x.reserva; }),
       kg: lista.reduce(function (t, x) { return t + x.kg; }, 0),
       total: lista.reduce(function (t, x) { return t + x.precio; }, 0)
     };
@@ -922,11 +925,13 @@ function fetchPiezas() {
       if (!d || typeof d !== 'object' || d.ok === false) { _piezasFallo(); return false; }
       var r = _piezasLimpiar(d);
       piezasMap = r.mapa;
+      /* `_reserva` es un objeto y no un array: _piezasLimpiar ya lo salta. */
+      reservaInfo = _reservaLimpiar(d._reserva);
       /* 'vacio' y no 'sin-datos': el backend CONTESTO y dijo que no queda
          ninguna pieza. Es un dato, y la tienda lo muestra ("Sin stock"). Un
          fallo de red es otra cosa y queda en 'sin-datos' (_piezasFallo). */
       piezasEstado = r.hubo ? 'ok' : 'vacio';
-      _piezasGuardarCopia(r.mapa, r.hubo);
+      _piezasGuardarCopia(r.mapa, r.hubo, reservaInfo);
       return true;
     })
     .catch(function () { _piezasFallo(); return false; });
@@ -962,9 +967,9 @@ function _piezasLimpiar(d) {
    mostrarlas aunque sea unos segundos es prometer carne que no hay. */
 var PIEZAS_COPIA = 'maleu_piezas_v1';
 var PIEZAS_COPIA_MS = 12 * 3600 * 1000;
-function _piezasGuardarCopia(mapa, hubo) {
+function _piezasGuardarCopia(mapa, hubo, reserva) {
   try {
-    if (hubo) localStorage.setItem(PIEZAS_COPIA, JSON.stringify({ t: Date.now(), m: mapa }));
+    if (hubo || reserva) localStorage.setItem(PIEZAS_COPIA, JSON.stringify({ t: Date.now(), m: mapa, r: reserva || null }));
     else localStorage.removeItem(PIEZAS_COPIA);
   } catch (e) { /* sin lugar o bloqueado: se pide igual, solo tarda mas */ }
 }
@@ -972,10 +977,11 @@ function _piezasLeerCopia() {
   try {
     var c = JSON.parse(localStorage.getItem(PIEZAS_COPIA) || 'null');
     if (!c || typeof c.m !== 'object' || !(Date.now() - Number(c.t) < PIEZAS_COPIA_MS)) return;
-    var r = _piezasLimpiar(c.m);
-    if (!r.hubo) return;
+    var r = _piezasLimpiar(c.m), res = _reservaLimpiar(c.r);
+    if (!r.hubo && !res) return;
     piezasMap = r.mapa;
-    piezasEstado = 'ok';
+    reservaInfo = res;
+    piezasEstado = r.hubo ? 'ok' : 'vacio';
   } catch (e) { /* una copia rota se ignora: se espera la de ahora */ }
 }
 
@@ -993,6 +999,7 @@ function _piezasConciliarCarrito() {
   });
   var fuera = [];
   Object.keys(piezaCart).forEach(function (pid) {
+    if (esReservaPid(pid)) return;   // no es una pieza: _reservasConciliarCarrito
     if (!hay[pid]) { fuera.push(piezaCart[pid]); delete piezaCart[pid]; }
   });
   return fuera;
@@ -1025,9 +1032,11 @@ function _piezaOrden(a, b) {
    pantalla cambia — aparecen los cortes con "Sin stock". Sin esa marca, la
    firma no cambiaba y el catalogo no se repintaba nunca. */
 function _piezasFirma() {
+  /* Con la reserva adentro: si cambian los kilos que quedan, los cortes que
+     se reservan tienen que repintarse aunque las piezas sean las mismas. */
   return (_carneConocida() ? 'k' : 'u') + '#' + Object.keys(piezasMap).sort().map(function (a) {
     return a + ':' + piezasMap[a].map(function (pz) { return pz.id + '@' + pz.kg; }).join(',');
-  }).join('|');
+  }).join('|') + '#R' + (reservaInfo ? JSON.stringify(reservaInfo) : '');
 }
 
 /* Un refresco que falla NO borra lo que ya sabemos.
@@ -1041,6 +1050,224 @@ function _piezasFirma() {
 function _piezasFallo() {
   if (Object.keys(piezasMap).length || piezasEstado === 'vacio') return;   // ya sabemos: se queda
   piezasEstado = 'sin-datos';
+}
+
+/* ── LA RESERVA DE CARNE POR KILO (17/9/2026) ──
+   Lucas, en la reunion del 17/9: "la carne me entra los viernes, y en la
+   pagina solo figura el stock que tenemos. Me gustaria que el cliente pueda
+   reservar: no un peso exacto, cierta cantidad de kilos". Y el porque: "la
+   gente hace el super para el asado con tiempo; si no, van a ver que hay solo
+   entraña y se van a ir".
+
+   Un corte SIN piezas y con carne en camino ofrece "Reservar": el cliente
+   elige kilos y el pedido entra A CONFIRMAR. Cuando llega la carne, Lucas le
+   asigna las piezas que mas se acercan, las pesa ("Pesar la carne" en el ERP)
+   y le confirma el peso y el precio.
+
+   El dato es `piezas_full._reserva` = { llega:'aaaa-mm-dd', cortes:{abbr:kg} }:
+   los kilos que quedan para reservar de la compra que Lucas cargo como
+   "Pedida". El tope (un % de lo pedido) y lo ya reservado los calcula el ERP.
+   Sin esa clave no se ofrece nada, que es el estado de siempre.
+
+   Lo que garantiza la tienda (contrato con Backend, 17/9/2026):
+   · un corte va con piezas O con reserva, nunca los dos: la hoja tiene UNA
+     columna de kilos por corte, y Lucas no sabria que parte pesar;
+   · solo se ofrece para cortes sin piezas: el que tiene piezas se elige pieza
+     por pieza, como siempre;
+   · la entrega es el dia que llega o uno posterior;
+   · desde 1 kg y de a medio kilo: una pieza envasada pesa de 1 a 2 kg y no se
+     corta.
+
+   En el carrito vive adentro de `piezaCart`, con la clave "R:<abbr>" y
+   `reserva:true`. Asi el total, el 10% en efectivo, los cupones, el pixel y el
+   ultimo pedido la cuentan sin tocarlos: es carne con precio estimado. Lo que
+   cambia es como se DICE (reserva, aprox.) y lo que viaja al ERP (sin piezas,
+   con reserva:true). */
+var RES_MIN = 1, RES_PASO = 0.5;
+function _resClave(abbr) { return 'R:' + abbr; }
+function esReservaPid(pid) { return String(pid).indexOf('R:') === 0; }
+function reservaEnCarrito(abbr) { return piezaCart[_resClave(abbr)] || null; }
+function hayReservaEnCarrito() { return Object.keys(piezaCart).some(esReservaPid); }
+function _corteDe(abbr) { return PRODUCTOS.filter(function (x) { return x.abbr === abbr; })[0]; }
+/* "1,5 kg" y "2 kg": en una reserva los gramos no existen. */
+function _kgCorto(kg) { return String(Math.round((Number(kg) || 0) * 1000) / 1000).replace('.', ',') + ' kg'; }
+
+/* Del crudo del backend (o de la copia) a algo usable: fecha valida, kilos de a
+   medio y solo cortes que la tienda vende por peso. Cualquier otra cosa es null
+   y no se ofrece nada: mejor sin reserva que con una inventada. */
+function _reservaLimpiar(r) {
+  if (!r || typeof r !== 'object' || !/^\d{4}-\d{2}-\d{2}$/.test(String(r.llega || ''))) return null;
+  var cortes = {}, hay = false;
+  Object.keys(r.cortes || {}).forEach(function (abbr) {
+    var kg = Math.floor((Number(r.cortes[abbr]) || 0) / RES_PASO) * RES_PASO;
+    if (esPorPeso(_corteDe(abbr)) && kg >= RES_MIN) { cortes[abbr] = kg; hay = true; }
+  });
+  return hay ? { llega: String(r.llega), cortes: cortes } : null;
+}
+
+/* Desde que dia se puede entregar: el que dice el ERP, u hoy si la compra
+   viene atrasada (el viernes paso y todavia no se cargaron las piezas). */
+function reservaLlega() {
+  if (!reservaInfo) return '';
+  var hoy = new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
+  return reservaInfo.llega > hoy ? reservaInfo.llega : hoy;
+}
+/* Cuantos kilos se pueden reservar de este corte: 0 si tiene piezas (esas se
+   eligen una por una) o si no viene en la compra. */
+function reservaMaxKg(p) {
+  if (!esPorPeso(p) || !reservaInfo || !carneAgotada(p)) return 0;
+  return reservaInfo.cortes[p.abbr] || 0;
+}
+/* La primera fecha que el calendario ofrece desde que llega la carne. Sale de
+   la MISMA funcion que arma el calendario: no puede ofrecer un dia que no
+   existe. null = no hay dia para entregarla, y entonces no se reserva. */
+function _reservaPrimeraFecha() {
+  var llega = reservaLlega();
+  if (!llega || !currentZone) return null;
+  var g = _getNextDeliveryDatesGrouped(currentZone);
+  var todas = g.thisWeek.concat(g.nextWeek, g.later);
+  for (var i = 0; i < todas.length; i++) if (todas[i].iso >= llega) return todas[i];
+  return null;
+}
+function reservable(p) { return reservaMaxKg(p) >= RES_MIN && !!_reservaPrimeraFecha(); }
+/* ¿La fecha elegida sirve? Sin fecha, o con "Cualquier dia", si: la del
+   formulario se controla al mandar el pedido. */
+function _fechaSirveReserva(iso) { return !iso || iso === 'any' || iso >= reservaLlega(); }
+function _fechaElegidaParaReserva() { return selectedDateIsFlexible ? null : selectedDeliveryDate; }
+
+/* Sumar o sacar medio kilo. Desde cero, el primer toque pone el minimo. */
+function cambiarReserva(abbr, delta) {
+  /* LA OCTAVA PUERTA (23/9/2026). El dia que la tienda paso a preguntar la zona
+     en el primer "+ Agregar" se cerraron siete puertas al carrito; esta rama
+     venia de antes y traia una octava que ese dia no existia. Sin la puerta,
+     alguien reserva kilos sin haber dicho de donde es y el pedido se va a la
+     hoja equivocada — o peor, a una zona que ni vende carne.
+
+     Al retomar se chequea que el corte exista EN LA ZONA elegida: `_corteDe`
+     mira PRODUCTOS, que en Clubes no es el catalogo, asi que sin este chequeo
+     se podia reservar carne en una zona que no la vende. */
+  if (_pedirZonaAntes(function () {
+        if (!getActiveProducts().some(function (x) { return x.abbr === abbr; })) {
+          _noEstaEnEstaZona('La carne'); return;
+        }
+        cambiarReserva(abbr, delta);
+      }, 'reserva')) return;
+  var p = _corteDe(abbr);
+  if (!p) return;
+  var it = reservaEnCarrito(abbr), max = reservaMaxKg(p);
+  if (delta > 0 && !it) {
+    if (max < RES_MIN) { toast('⚠️ Ya no quedan kilos de ' + p.nombre + ' para reservar', 3500); _repintarCarne(abbr); return; }
+    if (!_fechaSirveReserva(_fechaElegidaParaReserva())) { reservarParaOtraFecha(abbr); return; }
+  }
+  var kg = it ? Math.round((it.kg + delta) / RES_PASO) * RES_PASO : (delta > 0 ? RES_MIN : 0);
+  if (kg < RES_MIN) kg = 0;
+  if (kg > max) {
+    kg = max;
+    if (max >= RES_MIN) toast('Es todo lo que queda para reservar de ' + p.nombre + ': ' + _kgCorto(max), 3500);
+  }
+  if (kg <= 0) {
+    delete piezaCart[_resClave(abbr)];
+    if (it) toast('Sacaste la reserva de ' + p.nombre);
+  } else {
+    piezaCart[_resClave(abbr)] = { abbr: abbr, id: p.id, kg: kg, precio: piezaPrecio(p, kg), nombre: p.nombre, reserva: true };
+    if (!it) {
+      toast('✓ Reservaste ' + _kgCorto(kg) + ' de ' + p.nombre + ' · te confirmamos el peso cuando llegue', 4000);
+      _track('add_to_cart', { id: p.abbr, item_name: p.nombre + ' reserva ' + _kgCorto(kg),
+                              price: piezaCart[_resClave(abbr)].precio, zone: currentZone });
+      if (typeof gtag === 'function') gtag('event', 'reserva_carne', { id: p.abbr, kg: kg, llega: reservaInfo ? reservaInfo.llega : '', zone: currentZone });
+    }
+  }
+  updateUI();
+  updateFormVisibility();
+  _repintarCarne(abbr);
+}
+
+/* La fecha elegida es antes de que llegue: se pregunta con la MISMA hoja que
+   "Pedir para el vie 18", porque tambien mueve la entrega de todo el pedido. */
+function reservarParaOtraFecha(abbr, yaPregunto) {
+  var p = _corteDe(abbr), f = _reservaPrimeraFecha();
+  if (!p || !f) { toast('⚠️ Ya no se puede reservar ' + (p ? p.nombre : 'ese corte'), 3000); return; }
+  if (!yaPregunto) {
+    _preguntarOtraFecha({ nombre: p.nombre, img: p.img, f: f, id: p.id,
+                          seguir: function () { reservarParaOtraFecha(abbr, true); } });
+    return;
+  }
+  var antes = selectedDeliveryDate;
+  setDeliveryDate(f.iso, f.dayName, { sinScroll: true });
+  cambiarReserva(abbr, RES_PASO);
+  if (reservaEnCarrito(abbr)) {
+    /* El aviso va DESPUES: el de "Reservaste" pisaria el cambio de fecha. */
+    toast('✓ Reservaste ' + _kgCorto(RES_MIN) + ' de ' + p.nombre + ' · tu entrega ' +
+          (f.isTomorrow ? 'ahora es mañana' : 'pasó al ' + _diaYFecha(f.iso)), 4500);
+    if (typeof gtag === 'function') gtag('event', 'fecha_por_stock', { id: p.id, item_name: p.nombre, desde: antes, hasta: f.iso, zone: currentZone, reserva: 1 });
+  }
+}
+
+/* Si la fecha pasa a un dia en que la carne todavia no llego, la reserva sale
+   y se dice. Y los cortes se repintan: su boton depende de la fecha. */
+function _reservasSegunFecha() {
+  var sel = _fechaElegidaParaReserva(), fuera = 0;
+  if (sel && !_fechaSirveReserva(sel)) {
+    Object.keys(piezaCart).forEach(function (pid) { if (esReservaPid(pid)) { delete piezaCart[pid]; fuera++; } });
+  }
+  if (reservaInfo) Object.keys(reservaInfo.cortes).forEach(_repintarCarne);
+  if (fuera) {
+    updateUI();
+    updateFormVisibility();
+    toast('⚠️ La carne reservada llega ' + _paraCuando(reservaLlega()) + ': para ' + _paraCuando(sel) +
+          ' no la podemos llevar, así que salió de tu carrito', 5000);
+  }
+}
+
+/* Llego el inventario de ahora: una reserva que ya no entra se saca o se
+   achica, y se dice. Pasa en tres casos — llego la carne (ahora hay piezas y
+   se elige pieza por pieza), otros reservaron lo que quedaba, o el proveedor
+   no trajo ese corte y Lucas lo saco de la compra. Con un pedido en camino no
+   se toca, igual que las piezas. Devuelve los avisos. */
+function _reservasConciliarCarrito() {
+  if (_enviando) return [];
+  var avisos = [];
+  Object.keys(piezaCart).forEach(function (pid) {
+    if (!esReservaPid(pid)) return;
+    var it = piezaCart[pid], p = _corteDe(it.abbr), max = reservaMaxKg(p);
+    if (!p || max < RES_MIN || !_reservaPrimeraFecha()) {
+      delete piezaCart[pid];
+      avisos.push(p && !carneAgotada(p)
+        ? 'Llegó la carne: tu reserva de ' + it.nombre + ' salió del carrito y ahora podés elegir tu pieza'
+        : 'Ya no se puede reservar ' + it.nombre + ' y salió de tu carrito');
+    } else if (it.kg > max) {
+      it.kg = max;
+      it.precio = piezaPrecio(p, max);
+      avisos.push('De ' + it.nombre + ' quedan ' + _kgCorto(max) + ' para reservar: ajustamos tu reserva');
+    }
+  });
+  return avisos;
+}
+
+/* El cuerpo de la card de un corte que se reserva. */
+function _reservaCuerpoHTML(p) {
+  var it = reservaEnCarrito(p.abbr), max = reservaMaxKg(p);
+  var h = '<div class="res-caja">' +
+    '<div class="res-t">Llega ' + _paraCuando(reservaLlega()) + '</div>' +
+    '<p class="res-s">Reservá los kilos que quieras. Cuando llegue te armamos las piezas que más se acerquen y te confirmamos el peso y el precio.</p>';
+  if (it) {
+    h += '<div class="res-pie">' +
+        '<div class="card-qty-controls">' +
+          '<button class="card-qty-btn remove" type="button" aria-label="Medio kilo menos" onclick="cambiarReserva(\'' + p.abbr + '\',-' + RES_PASO + ')">−</button>' +
+          '<span class="card-qty-val res-kg">' + _kgCorto(it.kg) + '</span>' +
+          '<button class="card-qty-btn" type="button" aria-label="Medio kilo más" onclick="cambiarReserva(\'' + p.abbr + '\',' + RES_PASO + ')"' + (it.kg >= max ? ' disabled' : '') + '>+</button>' +
+        '</div>' +
+        '<span class="res-aprox">aprox. <strong>' + ars(it.precio) + '</strong></span>' +
+      '</div>' +
+      (it.kg >= max ? '<p class="res-tope">Es todo lo que queda para reservar.</p>' : '');
+  } else if (!_fechaSirveReserva(_fechaElegidaParaReserva())) {
+    h += '<button class="add-btn add-btn-otra-fecha res-btn" type="button" onclick="reservarParaOtraFecha(\'' + p.abbr + '\')">' +
+      'Reservar para ' + _fechaCorta(_reservaPrimeraFecha()) + '</button>';
+  } else {
+    h += '<button class="add-btn res-btn" type="button" onclick="cambiarReserva(\'' + p.abbr + '\',' + RES_PASO + ')">' +
+      'Reservar ' + _kgCorto(RES_MIN) + ' · aprox. ' + ars(piezaPrecio(p, RES_MIN)) + '</button>';
+  }
+  return h + '</div>';
 }
 
 /* ¿Hay algo de carne para comprar? */
@@ -1238,6 +1465,10 @@ let piezasMap = {};
    cuando en realidad todavia no lo sabemos — no saber no es lo mismo que no
    hay, y decirlo al reves es la forma mas facil de perder una venta. */
 let piezasEstado = 'cargando';
+/* Lo que se puede RESERVAR de la carne que esta en camino: { llega, cortes:
+   {abbr: kg} } o null. Ver LA RESERVA DE CARNE POR KILO. Va antes de leer la
+   copia porque la copia tambien la trae. */
+let reservaInfo = null;
 _piezasLeerCopia();
 /* El observer que resalta el chip de la categoria que estas mirando. Vive
    afuera para poder desconectar el anterior en cada repintado. */
@@ -1944,7 +2175,7 @@ function onPilarBarrioChange() {
   var _sacadas = _purgeCartBloqueados();
   if (typeof _sacadas === 'number' && _sacadas > 0) {
     toast('⚠️ La carne la entregamos nosotros: en los barrios con vendedor no está. ' +
-      (_sacadas === 1 ? 'La pieza salió' : 'Las ' + _sacadas + ' piezas salieron') + ' de tu carrito', 5000);
+      'Lo que tenías de carne salió de tu carrito', 5000);
   }
   if (typeof renderCatalog === 'function') renderCatalog();
   // Si cambió Red ↔ no-Red, el cap de stock puede cambiar — refrescar
@@ -2609,6 +2840,7 @@ function setDeliveryDate(iso, dayName, opts) {
   _setOverlay(false);
   _updateDateChip();
   _ensureCartFitsDate();
+  _reservasSegunFecha();
   updateStockDisplay();
   // Pre-rellenar el day-picker del form si corresponde
   _preselectDayPicker();
@@ -2962,10 +3194,13 @@ function carneCardHTML(p) {
   var libres = piezasDe(p.abbr);
   var mias = piezasEnCarrito(p.abbr);
   var agotada = _carneConocida() && carneAgotada(p);
+  /* Sin piezas pero con carne en camino: se reserva por kilo (17/9/2026). */
+  var aReservar = agotada && reservable(p);
   var chapas = '';
   /* Agotada, la unica chapita es "Sin stock": un "Nuevo" sobre algo que no se
      puede comprar gasta la chapita que hace que el cliente vuelva a mirar. */
-  if (agotada) chapas += '<span class="chapa-prod chapa-agotado">Sin stock</span>';
+  if (aReservar) chapas += '<span class="chapa-prod chapa-reserva">Para reservar</span>';
+  else if (agotada) chapas += '<span class="chapa-prod chapa-agotado">Sin stock</span>';
   else if (_esNuevo(p)) chapas += '<span class="chapa-prod chapa-nuevo">Nuevo</span>';
 
   var cuerpo;
@@ -2974,6 +3209,8 @@ function carneCardHTML(p) {
        mismo que no hay. (Hoy getActiveProducts ni siquiera dibuja la card en
        este estado; queda por si alguien la pide igual.) */
     cuerpo = '<p class="pz-vacio">Cargando las piezas de esta semana…</p>';
+  } else if (aReservar) {
+    cuerpo = _reservaCuerpoHTML(p);
   } else if (agotada) {
     /* "Reponemos todas las semanas" y no un dia: la carne se pide los martes
        y llega los jueves, pero no se repone cada corte cada semana, y
@@ -3026,10 +3263,11 @@ function carneCardHTML(p) {
         : '');
   }
 
-  return '<article class="product-card carne-card' + (agotada ? ' agotada' : '') + '" data-id="' + p.id + '">' +
+  var gris = agotada && !aReservar;
+  return '<article class="product-card carne-card' + (gris ? ' agotada' : '') + (aReservar ? ' reserva-card' : '') + '" data-id="' + p.id + '">' +
     '<div class="product-thumb">' +
       (chapas ? '<div class="chapas-prod">' + chapas + '</div>' : '') +
-      '<img class="product-thumb-img" src="' + fotoUrl(p.img) + '" alt="' + p.nombre + (agotada ? ' (sin stock)' : '') + '" loading="lazy" width="400" height="400" onerror="this.style.display=\'none\'">' +
+      '<img class="product-thumb-img" src="' + fotoUrl(p.img) + '" alt="' + p.nombre + (gris ? ' (sin stock)' : '') + '" loading="lazy" width="400" height="400" onerror="this.style.display=\'none\'">' +
     '</div>' +
     '<div class="product-body">' +
       '<h3 class="product-name">' + p.nombre + '</h3>' +
@@ -3094,7 +3332,7 @@ function renderCatalog() {
        Carnes tiene que ver primero lo que puede comprar. El sort es estable,
        asi que adentro de cada grupo queda el orden de PRODUCTOS. */
     const prods = prods_all.filter(p => p.cat === cat.nombre)
-      .sort((a,b) => ((b.top?1:0) - (a.top?1:0)) || ((carneAgotada(a)?1:0) - (carneAgotada(b)?1:0)));
+      .sort((a,b) => ((b.top?1:0) - (a.top?1:0)) || (_carneOrden(a) - _carneOrden(b)));
     if (!prods.length) return '';
     /* El id va EN EL MARKUP y no lo asigna nadie despues: es lo que busca
        scrollToCat, y una seccion sin id es un boton que no hace nada. */
@@ -3139,6 +3377,13 @@ function renderCatalog() {
      sobre 34 productos y es idempotente. Se dejan igual a proposito — sacar
      una llamada de mas es mas riesgo que valor. */
   updateStockDisplay();
+}
+
+/* Adentro de Carnes: primero los cortes con piezas, despues los que se
+   reservan y al final los que no hay. En el resto de las categorias es 0. */
+function _carneOrden(p) {
+  if (!carneAgotada(p)) return 0;
+  return reservable(p) ? 1 : 2;
 }
 
 /* ── RENDER CARD FOOTER ── */
@@ -3811,6 +4056,24 @@ function updateUI() {
     }).join('');
     var piezaLinesHtml = piezasAgrupadas().map(function (g) {
       var abbr = g.abbr, lista = g.lista, kg = g.kg, tot = g.total;
+      /* La reserva se cambia de a medio kilo, como un producto con +/-, y dice
+         que el precio es aproximado: la carne todavia no se peso. */
+      if (g.reserva) {
+        return '<div class="cart-item cart-item-carne cart-item-reserva">' +
+          '<span class="cart-item-emoji">\ud83e\udd69</span>' +
+          '<div class="cart-item-info">' +
+            '<div class="cart-item-name">' + g.nombre + '</div>' +
+            '<div class="cart-item-sub">Reserva de ' + _kgCorto(kg) + ' \u00b7 <strong>aprox. ' + ars(tot) + '</strong></div>' +
+            '<div class="cart-res-nota">' + (reservaInfo ? 'Llega ' + _paraCuando(reservaLlega()) + '. ' : '') +
+              'Te confirmamos el peso y el precio.</div>' +
+          '</div>' +
+          '<div class="qty-controls">' +
+            '<button class="qty-btn" type="button" aria-label="Medio kilo menos" onclick="cambiarReserva(\'' + abbr + '\',-' + RES_PASO + ')">\u2212</button>' +
+            '<span class="qty-val">' + String(kg).replace('.', ',') + '</span>' +
+            '<button class="qty-btn" type="button" aria-label="Medio kilo m\u00e1s" onclick="cambiarReserva(\'' + abbr + '\',' + RES_PASO + ')">+</button>' +
+          '</div>' +
+        '</div>';
+      }
       var filas = lista.map(function (x) {
         return '<li>' + kgTexto(x.kg) + ' \u00b7 ' + ars(x.precio) +
           '<button class="pz-quitar" type="button" aria-label="Sacar esta pieza" ' +
@@ -3856,6 +4119,9 @@ function updateUI() {
       else { saldoRow.style.display = 'none'; }
     }
     $id('cart-total').textContent = ars(total);
+    /* Con carne reservada el total todavia no es el final: falta pesarla. */
+    var totLbl = $id('cart-total').previousElementSibling;
+    if (totLbl) totLbl.textContent = hayReservaEnCarrito() ? 'Total aprox.' : 'Total';
 
     // Incentivo — el 10% en efectivo aplica a productos y carne, no a los
     // combos: si el carrito es solo combos (pSub=0), no hay nada que
@@ -3931,6 +4197,10 @@ function updateFormSummary() {
      totales sin una sola linea de que estabas llevando. Se dice el PESO,
      porque es lo que se compro: "1,240 kg" dice mas que "1 pieza". */
   html += piezasAgrupadas().map(function (g) {
+    if (g.reserva) {
+      return '<div class="summary-line"><span>\ud83e\udd69 ' + g.nombre + ' <strong>reserva de ' + _kgCorto(g.kg) + '</strong>' +
+        ' <span class="summary-pz-detalle">a confirmar cuando llegue</span></span><span>aprox. ' + ars(g.total) + '</span></div>';
+    }
     var detalle = g.lista.length > 1
       ? ' <span class="summary-pz-detalle">(' + g.lista.map(function (x) { return kgTexto(x.kg); }).join(' + ') + ')</span>'
       : '';
@@ -3961,7 +4231,12 @@ function updateFormSummary() {
   if (saldoAFavor > 0) {
     html += '<div class="summary-line discount-line" style="color:#2e7d32"><span>🎁 Saldo a favor</span><span>-' + ars(saldoAFavor) + '</span></div>';
   }
-  html += '<div class="summary-line total-line"><span>Total</span><span>' + ars(total) + '</span></div>';
+  var conReserva = hayReservaEnCarrito();
+  html += '<div class="summary-line total-line"><span>Total' + (conReserva ? ' aprox.' : '') + '</span><span>' + ars(total) + '</span></div>';
+  if (conReserva) {
+    html += '<p class="summary-res-nota">La carne reservada llega ' + _paraCuando(reservaLlega()) +
+      '. Cuando llegue la pesamos y te confirmamos el total.</p>';
+  }
   el.innerHTML = html;
 }
 
@@ -4359,6 +4634,16 @@ function enviarPedido() {
     return;
   }
 
+  /* Con carne reservada, la entrega es el dia que llega o despues. El chip de
+     arriba ya lo cuida (_reservasSegunFecha), pero el dia del formulario se
+     elige aparte. */
+  if (hayReservaEnCarrito() && fechaISOEarly && !_fechaSirveReserva(fechaISOEarly)) {
+    var _dpRes = $id('day-picker');
+    if (_dpRes) { _dpRes.classList.add('error'); _dpRes.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    toast('⚠️ La carne reservada llega ' + _paraCuando(reservaLlega()) + ': elegí ese día o uno posterior', 5000);
+    return;
+  }
+
   // Guardar en localStorage. Por la MISMA función que el guardado incremental:
   // dos formas de guardar el mismo dato se despegan sola.
   guardarDatosCliente({ dia: dia, pago: pagoEl.value });
@@ -4412,6 +4697,7 @@ function enviarPedido() {
      cuando le llega el pedido. */
   const piezaLinesWA = (function () {
     return piezasAgrupadas().map(function (g) {
+      if (g.reserva) return '  \u2022 ' + g.nombre + '  \u2014  reserva de ' + _kgCorto(g.kg) + ' \u00b7 aprox. ' + ars(g.total);
       /* El desglose solo desde DOS piezas: con una sola, "1,163 kg (1,163 kg)"
          repite el mismo numero y se lee como un error. Mismo criterio que el
          carrito. */
@@ -4480,7 +4766,11 @@ function enviarPedido() {
     if (shipping > 0) msgLines.push('Envio: ' + ars(shipping));
     if (saldoAFavor > 0) msgLines.push('Saldo a favor: -' + ars(saldoAFavor));
   }
-  msgLines.push('*Total: ' + ars(total) + '*');
+  var _hayRes = hayReservaEnCarrito();
+  msgLines.push('*Total: ' + ars(total) + '*' + (_hayRes ? ' (aprox.)' : ''));
+  /* Sin emoji (ver _WA_SIN_EMOJI) y con la voz del cliente: el mensaje lo
+     manda el. */
+  if (_hayRes) msgLines.push('La carne reservada me la confirman cuando llegue (' + _diaYFecha(reservaLlega()) + ').');
   // Alias de Mercado Pago cuando el cliente elige Transferencia:
   //   - Sin vendedor Red (Home / 'Otra zona' de Pilar): alias maleu (maleump).
   //   - Con vendedor Red y ALIAS cargado en Sheets: alias del vendedor.
@@ -4494,7 +4784,8 @@ function enviarPedido() {
          comoda. Van con el banco adelante porque el alias solo no dice a que
          app entrar. */
       aliasLines.push('');
-      aliasLines.push(ALIAS_MALEU.length > 1 ? 'Para transferir, cualquiera de las dos:' : 'alias:');
+      aliasLines.push(_hayRes ? 'Para transferir cuando me confirmen el total:'
+        : ALIAS_MALEU.length > 1 ? 'Para transferir, cualquiera de las dos:' : 'alias:');
       ALIAS_MALEU.forEach(function (c) {
         aliasLines.push('\u2022 ' + c.banco + ': *' + c.alias + '*');
       });
@@ -4520,10 +4811,20 @@ function enviarPedido() {
      margen y el sugeridor de compra. Los ids de las piezas viajan aparte: con
      ellos el backend marca cada pieza Asignada a este pedido, y ARMADO y RUTA
      dicen que pieza buscar en el freezer. */
+  var reservaCortes = {};
   (function () {
     var porCorte = {};
     Object.keys(piezaCart).forEach(function (pid) {
       var it = piezaCart[pid];
+      /* La reserva va sola: sin piezas y con reserva:true. El ERP guarda los
+         kilos como un pesaje pendiente y la marca "Reserva a confirmar"
+         (contrato con Backend, 17/9/2026). */
+      if (it.reserva) {
+        items.push({ id: it.id, nombre: it.nombre, qty: it.kg, precio: (PROD_MAP[it.id] || {}).precio || 0,
+                     unidad: 'kg', abbr: it.abbr, importe: it.precio, piezas: [], reserva: true });
+        reservaCortes[it.abbr] = it.kg;
+        return;
+      }
       var g = porCorte[it.abbr] = porCorte[it.abbr] || { id: it.id, nombre: it.nombre, kg: 0, precio: 0, piezas: [] };
       g.kg += it.kg; g.precio += it.precio; g.piezas.push(pid);
     });
@@ -4581,6 +4882,11 @@ function enviarPedido() {
       subtotalSinDescuento: naturalSubtotal, descuento: descuentoSheet,
       saldoAplicado: saldoAFavor  // backend lo escribe negativo en col BI/BL del pedido
     };
+  }
+  /* De que compra es la reserva y cuantos kilos de cada corte: con esto el ERP
+     suma lo reservado sin releer los pedidos en cada consulta de la tienda. */
+  if (Object.keys(reservaCortes).length && reservaInfo) {
+    postData.reservaCarne = { llega: reservaInfo.llega, cortes: reservaCortes };
   }
   // Metadata de combos (trazabilidad). El backend ignora campos que no conoce;
   // queda listo para cuando el Panel desglose el combo desde la receta.
@@ -5065,7 +5371,7 @@ function renderCatTiles() {
     /* El contador dice lo que se puede ELEGIR: con dos cortes sin stock,
        "5 opciones" promete de mas. Solo cambia algo en Carnes — en el resto
        carneAgotada es siempre false. */
-    const elegibles = suyos.filter(p => !carneAgotada(p)).length;
+    const elegibles = suyos.filter(p => !carneAgotada(p) || reservable(p)).length;
     const cuenta = elegibles ? elegibles + (elegibles === 1 ? ' opción' : ' opciones') : 'Sin stock';
     return '<button class="cat-tile" type="button" onclick="scrollToCat(\'' + slug + '\')" ' +
              'aria-label="Ver ' + cat.nombre + '">' +
@@ -5326,13 +5632,16 @@ async function _refrescarPiezas() {
     var antes = _piezasFirma();
     var llego = await fetchPiezas();
     var fuera = llego ? _piezasConciliarCarrito() : [];
-    if (_piezasFirma() !== antes && typeof renderCatalog === 'function') renderCatalog();
-    if (fuera.length) {
+    var resAvisos = llego ? _reservasConciliarCarrito() : [];
+    if ((_piezasFirma() !== antes || resAvisos.length) && typeof renderCatalog === 'function') renderCatalog();
+    if (fuera.length || resAvisos.length) {
       updateUI();
       updateFormVisibility();
-      toast(fuera.length === 1
-        ? '⚠️ La pieza de ' + kgTexto(fuera[0].kg) + ' de ' + fuera[0].nombre + ' ya se vendió y salió de tu carrito'
-        : '⚠️ ' + fuera.length + ' piezas de tu carrito ya se vendieron y salieron del carrito', 5000);
+      var avisos = [];
+      if (fuera.length) avisos.push(fuera.length === 1
+        ? 'La pieza de ' + kgTexto(fuera[0].kg) + ' de ' + fuera[0].nombre + ' ya se vendió y salió de tu carrito'
+        : fuera.length + ' piezas de tu carrito ya se vendieron y salieron del carrito');
+      toast('⚠️ ' + avisos.concat(resAvisos).join(' · '), 6000);
     }
   }
   catch (e) { console.warn('fetchPiezas:', e); }
@@ -6032,6 +6341,14 @@ function updatePagoHint() {
   // el efectivo vuelve a ser la unica forma de tenerlo.
   var pSub = descontableSubtotal();
   hint.style.display = (cashDiscountActive() && !isCash && pSub > 0) ? '' : 'none';
+  /* Con carne reservada no se transfiere todavia: el total cambia al pesarla. */
+  var aliasHint = document.querySelector('#mp-alias .mp-alias-hint');
+  if (aliasHint) {
+    if (!aliasHint.getAttribute('data-texto')) aliasHint.setAttribute('data-texto', aliasHint.textContent);
+    aliasHint.textContent = hayReservaEnCarrito()
+      ? 'Mandá el pedido con el botón verde. Como llevás carne reservada, transferí cuando te confirmemos el total.'
+      : aliasHint.getAttribute('data-texto');
+  }
 }
 function updateShippingBar() {
   const bar = $id('shipping-bar');

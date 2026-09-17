@@ -1648,6 +1648,100 @@ en el carrito; Los Alcanfores; la migración; el que vuelve a Pilar; Clubes. Con
 antes da **28 rojos**. Actualizados: `verificar-pedido.js` (las tres zonas en pantalla) y
 `verificar-sugerencias.js` (Pilar con vendedor sin carne, "Otra zona" con carne).
 
+## La reserva de carne por kilo (17/9/2026)
+
+Reunión de Tadeo con Lucas, 17/9/2026. Lucas: *"la carne me entra los viernes, y en la página
+solo figura el stock que tenemos. Me gustaría que el cliente pueda reservar: no un peso exacto,
+cierta cantidad de kilos"*. Y el porqué: la gente compra para el asado con tiempo, *"si no, van a
+ver que hay solo entraña y se van a ir"*.
+
+| el corte | qué ve el cliente |
+|---|---|
+| **con piezas** | la grilla de siempre, pieza por pieza |
+| **sin piezas y con carne en camino** | **"Para reservar"**: *"Llega el viernes 18/9"*, el botón *"Reservar 1 kg · aprox. $26.000"* y después +/− de a medio kilo, hasta lo que queda |
+| **sin piezas y sin nada en camino** (o con menos de 1 kg para reservar) | "Sin stock", como antes |
+
+El pedido entra **a confirmar**. Cuando llega la carne, Lucas le asigna las piezas que más se
+acercan, las pesa con "⚖️ Pesar la carne" del ERP y le confirma al cliente el peso y el precio.
+El carrito, el resumen y el WhatsApp dicen **"Total aprox."**, y por transferencia se le pide
+transferir cuando se confirme el total.
+
+**El contrato con Backend** (acordado el 17/9/2026 con la sesión maleu-d7):
+
+| | |
+|---|---|
+| `piezas_full._reserva` | `{ llega:'aaaa-mm-dd', cortes:{ abbr: kg } }`: los kilos que quedan para reservar de la compra cargada como **"Pedida"** en Compras Carne. El tope (`Config_Maleu > CARNE_RESERVA_PCT`, 80% de lo pedido **como supuesto**) y lo ya reservado los calcula el ERP. Sin compra en camino, la clave no va |
+| cada reserva | un item `{ unidad:'kg', qty, precio, importe, piezas:[], reserva:true }` |
+| el pedido | `reservaCarne: { llega, cortes:{ abbr: kg } }` |
+
+**Lo que garantiza la tienda:**
+- un corte va con piezas **o** con reserva, nunca las dos, porque la hoja tiene una sola columna de kilos por corte;
+- la reserva se ofrece solo para cortes sin piezas;
+- la entrega es el día que llega o uno posterior;
+- desde 1 kg y de a medio kilo, porque una pieza envasada pesa de 1 a 2 kg.
+
+> [!important] Sin `_reserva` la tienda queda exactamente como antes
+> Por eso la tienda puede publicarse antes o después que el backend sin romper nada. Pero **no
+> se publica hasta que Backend confirme `_reserva` vivo**: lo pidió así, y no tiene sentido sacar
+> código que nadie puede usar. Las tiendas abiertas desde antes ignoran la clave solas
+> (`_piezasLimpiar` salta todo lo que no sea un array).
+
+> [!danger] Backend puso dos condiciones para prenderla, y tiene razón
+> · **Retener las piezas de las reservas cuando se carga la tanda.** Si no, la tienda las
+>   muestra todas y un cliente nuevo se lleva la que era de una reserva.
+> · **El estado "Pedida" en Compras Carne.** El 16/9 Lucas cargó el pedido a Caco (CC-0007) y
+>   quedó "Recibida", o sea como deuda, con picaña y entraña que Caco avisó el 17/9 que no traía.
+>   Sin "Pedida" se reservarían kilos de cortes que no vienen.
+
+**En el carrito vive adentro de `piezaCart`**, con la clave `R:<abbr>` y `reserva:true`. Así el
+total, el 10% en efectivo, los cupones, el píxel y "Lo que pediste la última vez" la cuentan sin
+tocarlos. Lo que cambia es cómo se **dice** y qué viaja al ERP. Las funciones que la miran
+aparte: `piezasEnCarrito` (no es una pieza), `_piezasConciliarCarrito` (no está en el
+inventario), `piezasAgrupadas` (marca `reserva`) y el armado de `items` en `enviarPedido`.
+
+**Cuando cambia algo, la tienda lo dice:**
+- **Llegó la carne** (ahora hay piezas): la reserva sale y se avisa *"ahora podés elegir tu pieza"*.
+- **Otros reservaron** lo que quedaba: la reserva se achica y se avisa.
+- **Ya no hay `_reserva`**: la reserva sale y se avisa.
+- **El cliente pasa a una fecha anterior a la llegada**: sale y se dice por qué.
+- **Con un pedido en camino** no se toca nada.
+- **El día del formulario**, que se elige aparte del chip, se controla al mandar.
+
+**Cómo se nombra:** al cliente, **"reserva"**. No "orden de compra": en el ERP eso ya es lo que
+se le manda al proveedor, y la misma palabra en las dos direcciones confunde. "Orden de venta" es
+el término formal para hablarlo adentro.
+
+**La red: `node _tools/verificar-reserva.js [ancho]`**, **75 chequeos** a 390 y 1440px, con el
+reloj congelado en el martes 15/9/2026:
+- sin `_reserva`, nada nuevo;
+- la card, el tope, el carrito, el resumen, el pedido y su WhatsApp;
+- una fecha antes de la llegada (pregunta, vuelve para atrás, el formulario);
+- el inventario de ahora (menos kilos, llegó la carne, sin reserva, pedido en camino);
+- la copia de la última visita;
+- Pilar de Maleu.
+
+Contra la tienda de antes, el test corta en el primer chequeo. Con siete errores reinyectados
+de a uno (sin control de fecha al mandar, la reserva que queda cuando llega la carne, sin
+`reserva:true`, sin tope, reservar un corte con piezas, la fecha anterior que no la saca, la
+copia que no la guarda) **agarra los siete**. Los dos últimos no los veía la primera versión:
+le faltaba un corte con piezas que además viniera en la compra, y un inventario sin piezas.
+
+### La octava puerta (23/9/2026)
+
+Esta rama se escribió el 17/9 y se rebasó el 23/9, el día que la tienda pasó a preguntar
+la zona en el primer "+ Agregar". Ese cambio cerró **siete** puertas al carrito
+(`_pedirZonaAntes`). La rama traía una **octava que ese día no existía**: `cambiarReserva`,
+el +/- de medio kilo.
+
+> [!danger] Sin la puerta, se reservan kilos sin haber dicho de dónde es
+> El pedido se iría a la hoja equivocada, con el envío y el descuento de una zona que el
+> cliente nunca eligió. Y peor: al retomar hay que chequear que el corte exista **en la
+> zona elegida**, porque `_corteDe()` mira `PRODUCTOS` —el catálogo entero— y no el de la
+> zona. Sin ese chequeo se podía reservar carne en **Clubes**, que no la vende.
+
+Es la clase de agujero que sólo aparece al rebasar: una rama vieja no sabe de una regla que
+nació después, y nada la avisa. Si aparece otra puerta al carrito, la cuenta es **ocho**.
+
 ## La tienda abre en el catálogo (23/9/2026)
 
 Tadeo, mirando entrar a un cliente nuevo: *"es bastante difícil el flujo para alguien
