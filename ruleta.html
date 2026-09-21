@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Girá la ruleta · Maleu</title>
+<meta name="description" content="Dejá tus datos, girá la ruleta y ganate un regalo para tu primer pedido de Maleu." />
+<!-- La ruleta se abre desde un QR (folleto, colegio, evento, Meta): no tiene que
+     aparecer en Google. (22/9/2026) -->
+<meta name="robots" content="noindex, nofollow" />
+<meta name="theme-color" content="#331C1C" />
+<meta property="og:title" content="Girá la ruleta de Maleu" />
+<meta property="og:description" content="Ganate un regalo para tu primer pedido." />
+<meta property="og:image" content="https://maleu.com.ar/img/og-maleu.jpg" />
+<link rel="icon" href="img/logo-icono.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date()); gtag('config', 'G-H3W8C74PQP');
+</script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-H3W8C74PQP"></script>
+<script>
+  !function (f, b, e, v, n, t, s) {
+    if (f.fbq) return; n = f.fbq = function () { n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments); };
+    if (!f._fbq) f._fbq = n; n.push = n; n.loaded = !0; n.version = '2.0'; n.queue = [];
+    t = b.createElement(e); t.async = !0; t.src = v; s = b.getElementsByTagName(e)[0]; s.parentNode.insertBefore(t, s);
+  }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '856053897491524'); fbq('track', 'PageView');
+</script>
+<style>
+  :root { --brown:#331C1C; --orange:#F07D47; --cream:#F2E8C7; --green:#2e7d32; --font:'Montserrat', system-ui, -apple-system, sans-serif; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { background:var(--cream); }
+  body { font-family:var(--font); color:var(--brown); min-height:100vh; min-height:100dvh; -webkit-font-smoothing:antialiased;
+         padding:calc(env(safe-area-inset-top, 0px) + 18px) 16px calc(env(safe-area-inset-bottom, 0px) + 28px); }
+  .wrap { max-width:440px; margin:0 auto; }
+  .logo { display:block; height:34px; margin:0 auto 14px; }
+  h1 { font-size:1.45rem; line-height:1.2; text-align:center; font-weight:800; letter-spacing:-.02em; }
+  h1 em { font-style:normal; color:var(--orange); }
+  .sub { text-align:center; font-size:.93rem; margin:.45rem auto 0; max-width:34ch; color:#5c4444; }
+  .rueda { position:relative; width:min(78vw, 300px); aspect-ratio:1; margin:18px auto 14px; }
+  .rueda svg { width:100%; height:100%; display:block; filter:drop-shadow(0 6px 14px rgba(51,28,28,.22)); }
+  .rueda .gira { transform-origin:50% 50%; }
+  .aguja { position:absolute; left:50%; top:-8px; transform:translateX(-50%); width:0; height:0;
+           border-left:15px solid transparent; border-right:15px solid transparent; border-top:28px solid var(--brown); z-index:2;
+           filter:drop-shadow(0 2px 2px rgba(0,0,0,.25)); }
+  .centro { position:absolute; left:50%; top:50%; width:22%; aspect-ratio:1; transform:translate(-50%,-50%); background:#fff; border-radius:50%;
+            border:4px solid var(--brown); display:flex; align-items:center; justify-content:center; }
+  .centro img { width:70%; }
+  .card { background:#fff; border-radius:18px; padding:18px 16px; box-shadow:0 4px 18px rgba(51,28,28,.08); }
+  label { display:block; font-size:.8rem; font-weight:700; margin:12px 0 5px; letter-spacing:.02em; }
+  label:first-child { margin-top:0; }
+  input { width:100%; font-family:var(--font); font-size:16px; padding:.8rem .9rem; border:2px solid #eadfd0; border-radius:12px; background:#fffdf9; color:var(--brown); }
+  input:focus { outline:none; border-color:var(--orange); background:#fff; }
+  input.mal { border-color:#c62828; }
+  .err { color:#c62828; font-size:.82rem; font-weight:600; margin-top:6px; min-height:1em; }
+  .trampa { position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
+  .btn { display:block; width:100%; margin-top:16px; padding:1rem; border:0; border-radius:14px; font-family:var(--font); font-size:1.05rem; font-weight:800;
+         background:var(--orange); color:#fff; cursor:pointer; letter-spacing:.01em; box-shadow:0 4px 0 #c9602f; min-height:52px; text-decoration:none; text-align:center; }
+  .btn:active { transform:translateY(2px); box-shadow:0 2px 0 #c9602f; }
+  .btn[disabled] { opacity:.75; cursor:default; }
+  .btn.sec { background:#fff; color:var(--brown); border:2px solid var(--brown); box-shadow:none; }
+  .legal { font-size:.72rem; color:#7a6666; text-align:center; margin-top:12px; line-height:1.45; }
+  .legal a { color:inherit; }
+  .res { text-align:center; }
+  .res .emoji { font-size:2.6rem; line-height:1; }
+  .res h2 { font-size:1.3rem; font-weight:800; margin:.4rem 0 .3rem; line-height:1.25; }
+  .res p { font-size:.95rem; color:#5c4444; line-height:1.45; margin-top:.35rem; }
+  .codigo { display:inline-block; margin:.7rem 0 .2rem; padding:.55rem 1.1rem; border:2px dashed var(--orange); border-radius:12px;
+            font-size:1.5rem; font-weight:800; letter-spacing:.12em; background:#FFF8F4; user-select:all; -webkit-user-select:all; }
+  .hint { font-size:.8rem; color:#7a6666; margin-top:.8rem; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <img class="logo" src="img/logo-maleu.png" alt="Maleu" />
+  <h1>Girá la ruleta y ganate <em>un regalo</em> para tu primer pedido</h1>
+  <p class="sub" id="sub">Comida lista para cocinar, en la puerta de tu casa.</p>
+
+  <div class="rueda" aria-hidden="true">
+    <div class="aguja"></div>
+    <svg viewBox="0 0 300 300"><g class="gira" id="gira"></g></svg>
+    <div class="centro"><img src="img/logo-icono.png" alt="" /></div>
+  </div>
+
+  <form class="card" id="form" novalidate>
+    <label for="nombre">Tu nombre</label>
+    <input id="nombre" name="nombre" autocomplete="name" placeholder="Nombre y apellido" maxlength="60" />
+    <label for="tel">Tu celular</label>
+    <input id="tel" name="tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="11 2345 6789" maxlength="30" />
+    <label for="barrio">Tu barrio</label>
+    <input id="barrio" name="barrio" list="barrios" autocomplete="off" placeholder="Por ejemplo, La Pionera" maxlength="60" />
+    <datalist id="barrios">
+      <option value="Estancias del Pilar"></option><option value="Estancias del Río"></option><option value="La Pionera"></option>
+      <option value="Los Alcanfores"></option><option value="Pilará"></option><option value="Fátima"></option><option value="Pilar Centro"></option>
+    </datalist>
+    <!-- Un campo que la persona no ve: si viene lleno, lo lleno un bot. -->
+    <div class="trampa" aria-hidden="true"><label for="web">No completar</label><input id="web" name="web" tabindex="-1" autocomplete="off" /></div>
+    <div class="err" id="err" role="alert"></div>
+    <button class="btn" id="girar" type="submit">Girar la ruleta</button>
+    <p class="legal">Usamos tus datos solo para darte tu premio y contarte novedades de Maleu. <a href="privacidad.html">Privacidad</a>.</p>
+  </form>
+
+  <div class="card res" id="res" hidden></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  /* La ruleta de premios del QR (22/9/2026). Idea de Fede en la reunión del 21/9:
+     que escaneen el QR EN EL MOMENTO, dejen el dato y giren. El premio lo elige el
+     servidor (Apps Script, `ruletaGirar`): esta página solo lo dibuja. Nada de
+     datos de clientes en este repo, que es público: todo va y viene del backend.
+
+     El QR de cada lugar lleva su origen:  maleu.com.ar/ruleta?o=colegio&d=Los%20Robles&r=lucas
+       o = folleto | colegio | evento | meta   (de dónde salió el lead)
+       d = el lugar, texto libre                (queda en las notas del lead)
+       r = lucas | tadeo | joaco                (quién lo consiguió) */
+  var API = 'https://script.google.com/macros/s/AKfycbxmrG5YVSshcYezk8lXFx_uxb7NFGcb9EfTXc7dsIN4rZyj73CET4mk_aKPFPDY2wNi/exec';
+  var TIENDA = 'https://maleu.com.ar/';
+  var P = {}; try { new URLSearchParams(location.search).forEach(function (v, k) { P[k] = v; }); } catch (e) {}
+  var $ = function (id) { return document.getElementById(id); };
+  var gira = $('gira'), premios = [], rot = 0, girando = false, raf = 0;
+  var COLORES = [['#F07D47', '#fff'], ['#F2E8C7', '#331C1C'], ['#331C1C', '#F2E8C7'], ['#FFD2B8', '#331C1C']];
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function corto(t) { t = String(t || ''); if (/^nada\b/i.test(t)) return 'Nada'; return t.replace(/\s+de regalo$/i, ''); }
+
+  /* La rueda, con los premios que manda el servidor. Sin respuesta, una rueda
+     genérica: la página no se queda en blanco. */
+  function dibujar() {
+    var n = premios.length || 6, A = 360 / n, h = '';
+    for (var i = 0; i < n; i++) {
+      var a0 = (i * A) * Math.PI / 180, a1 = ((i + 1) * A) * Math.PI / 180, c = COLORES[i % COLORES.length];
+      if (n % 2 === 1 && i === n - 1 && i % COLORES.length === 0) c = COLORES[1];   // que no se toquen dos iguales
+      var x0 = 150 + 146 * Math.sin(a0), y0 = 150 - 146 * Math.cos(a0), x1 = 150 + 146 * Math.sin(a1), y1 = 150 - 146 * Math.cos(a1);
+      h += '<path d="M150 150 L' + x0.toFixed(2) + ' ' + y0.toFixed(2) + ' A146 146 0 ' + (A > 180 ? 1 : 0) + ' 1 ' + x1.toFixed(2) + ' ' + y1.toFixed(2) + ' Z" fill="' + c[0] + '" stroke="#fff" stroke-width="2"/>';
+      var txt = premios.length ? corto(premios[i].txt) : '🎁', partes = txt.length > 10 && txt.indexOf(' ') > 0 ? [txt.slice(0, txt.indexOf(' ')), txt.slice(txt.indexOf(' ') + 1)] : [txt];
+      var mid = i * A + A / 2;
+      h += '<g transform="rotate(' + mid.toFixed(2) + ' 150 150)"><text x="150" y="' + (partes.length > 1 ? 52 : 60) + '" text-anchor="middle" fill="' + c[1] + '" font-family="Montserrat, sans-serif" font-weight="800" font-size="' + (txt.length > 12 ? 12 : 14) + '">'
+        + partes.map(function (p, k) { return '<tspan x="150" dy="' + (k ? 16 : 0) + '">' + esc(p) + '</tspan>'; }).join('') + '</text></g>';
+    }
+    h += '<circle cx="150" cy="150" r="146" fill="none" stroke="#331C1C" stroke-width="6"/>';
+    gira.innerHTML = h;
+    poner();
+  }
+  function poner() { gira.setAttribute('transform', 'rotate(' + (rot % 360).toFixed(2) + ' 150 150)'); }
+
+  /* Gira parejo mientras el servidor contesta; al llegar el premio, frena sobre él. */
+  var VEL = 540;   // grados por segundo
+  function arrancar() {
+    girando = true; var t0 = performance.now();
+    (function paso(t) { if (!girando) return; rot += VEL * (t - t0) / 1000; t0 = t; poner(); raf = requestAnimationFrame(paso); })(t0);
+  }
+  function frenarEn(i, listo) {
+    girando = false; cancelAnimationFrame(raf);
+    var n = premios.length, A = 360 / n;
+    var jit = (Math.random() - 0.5) * A * 0.6;
+    var destino = ((360 - (i * A + A / 2) + jit) % 360 + 360) % 360;
+    var desde = rot, base = rot + 720, fin = base + (((destino - base % 360) % 360) + 360) % 360;
+    var D = 3 * (fin - desde) / VEL * 1000, t0 = performance.now();   // arranca a la misma velocidad que venia
+    (function paso(t) {
+      var x = Math.min(1, (t - t0) / D), e = 1 - Math.pow(1 - x, 3);
+      rot = desde + (fin - desde) * e; poner();
+      if (x < 1) requestAnimationFrame(paso); else listo();
+    })(t0);
+  }
+  function parar() { girando = false; cancelAnimationFrame(raf); }
+
+  function cargar() {
+    fetch(API + '?action=ruleta&t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d && d.ok && Array.isArray(d.premios) && d.premios.length) premios = d.premios;
+      if (d && d.ok && d.activa === false) { $('girar').disabled = true; mostrarError('La ruleta está en pausa. ¡Volvé más tarde!'); }
+      dibujar();
+    }).catch(function () { dibujar(); });
+  }
+
+  function mostrarError(t, campo) {
+    $('err').textContent = t || '';
+    ['nombre', 'tel', 'barrio'].forEach(function (k) { $(k).classList.toggle('mal', campo === k); });
+    if (campo) try { $(campo).focus(); } catch (e) {}
+  }
+
+  function resultado(d) {
+    var box = $('res'), h = '', nombre = esc(d.nombre || '');
+    var link = function (txt, url, sec) { return '<a class="btn' + (sec ? ' sec' : '') + '" href="' + esc(url) + '">' + txt + '</a>'; };
+    if (d.yaCliente) {
+      h = '<div class="emoji">🧡</div><h2>¡' + (nombre ? nombre + ', y' : 'Y') + 'a sos cliente de Maleu!</h2><p>La ruleta es para quien todavía no nos probó. Gracias por elegirnos.</p>' + link('Hacer un pedido', TIENDA);
+    } else if (d.premio && d.premio.nada) {
+      h = '<div class="emoji">🙃</div><h2>' + (d.repetido ? 'Ya giraste la ruleta' : 'Esta vez no hubo premio') + '</h2><p>Igual te esperamos: pizzas, empanadas, sorrentinos y carne fresca, en la puerta de tu casa.</p>' + link('Ver la tienda', TIENDA);
+    } else if (d.premio) {
+      var min = Number(d.premio.min) || 0;
+      h = '<div class="emoji">🎉</div><h2>' + (d.repetido ? 'Ya giraste la ruleta: tu premio es' : '¡' + nombre + ', ganaste') + ' <span style="color:#F07D47">' + esc(d.premio.txt) + '</span>' + (d.repetido ? '' : '!') + '</h2>';
+      if (d.usado) h += '<p>Ese premio ya lo usaste en un pedido. ¡Gracias!</p>' + link('Ver la tienda', TIENDA);
+      else {
+        h += '<div class="codigo">' + esc(d.cupon) + '</div>'
+          + '<p>Para tu primer pedido' + (min ? ', con un pedido de más de $' + min.toLocaleString('es-AR') : '') + (d.vence ? '. Vale hasta el ' + esc(d.vence) : '') + '.</p>'
+          + link('Hacer mi pedido', TIENDA + '?cupon=' + encodeURIComponent(d.cupon))
+          + '<p class="hint">Sacale una captura a esta pantalla. Si pedís por WhatsApp, pasanos el código.</p>';
+      }
+    }
+    box.innerHTML = h; box.hidden = false; $('form').hidden = true;
+    try { box.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+    try { localStorage.setItem('maleu_ruleta', JSON.stringify({ t: Date.now(), d: d })); } catch (e) {}
+  }
+
+  $('form').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    if (girando) return;
+    var nombre = $('nombre').value.trim(), tel = $('tel').value.trim(), barrio = $('barrio').value.trim();
+    if (nombre.length < 2) return mostrarError('Contanos tu nombre', 'nombre');
+    if (tel.replace(/\D/g, '').length < 10) return mostrarError('Tu celular con código de área, por ejemplo 11 2345 6789', 'tel');
+    if (barrio.length < 2) return mostrarError('¿En qué barrio vivís?', 'barrio');
+    mostrarError('');
+    var btn = $('girar'); btn.disabled = true; btn.textContent = 'Girando…';
+    if (!premios.length) dibujar();
+    arrancar();
+    var t0 = Date.now(), cortado = false;
+    var reloj = setTimeout(function () { cortado = true; parar(); btn.disabled = false; btn.textContent = 'Girar la ruleta'; mostrarError('No pudimos girar: revisá la conexión y probá de nuevo.'); }, 30000);
+    fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'ruletaGirar', nombre: nombre, tel: tel, barrio: barrio, web: $('web').value, o: P.o || '', d: P.d || '', r: P.r || '' }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (cortado) return; clearTimeout(reloj);
+        var espera = Math.max(0, 1200 - (Date.now() - t0));   // que gire un poco aunque el servidor conteste rápido
+        setTimeout(function () {
+          if (!d || (!d.ok && !d.yaCliente)) { parar(); btn.disabled = false; btn.textContent = 'Girar la ruleta'; return mostrarError((d && d.error) || 'No pudimos girar. Probá de nuevo.', d && d.campo); }
+          var i = d.premio && d.premio.i;
+          if (!d.ok || d.repetido || !(i >= 0) || i >= premios.length) { parar(); return resultado(d); }
+          frenarEn(i, function () {
+            setTimeout(function () { resultado(d); }, 450);
+            try { gtag('event', 'generate_lead', { origen: P.o || 'qr', premio: d.premio.txt }); } catch (e) {}
+            try { fbq('track', 'Lead', { content_name: 'Ruleta ' + (P.o || 'qr') }); } catch (e) {}
+          });
+        }, espera);
+      })
+      .catch(function () { if (cortado) return; clearTimeout(reloj); parar(); btn.disabled = false; btn.textContent = 'Girar la ruleta'; mostrarError('No pudimos girar: revisá la conexión y probá de nuevo.'); });
+  });
+
+  if (P.o === 'evento') $('sub').textContent = 'Si querés Maleu en tu casa, empezá con un regalo.';
+  cargar();
+})();
+</script>
+</body>
+</html>

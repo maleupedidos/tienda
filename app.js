@@ -3796,6 +3796,13 @@ function updateFormSummary() {
   if (cuponDesc > 0 && appliedCoupon) {
     html += '<div class="summary-line discount-line" style="color:#2e7d32"><span>🎟️ ' + appliedCoupon.codigo + ' · ' + (appliedCoupon.mensaje || '') + '</span><span>-' + ars(cuponDesc) + '</span></div>';
   }
+  /* El premio de la ruleta (22/9/2026): no descuenta plata, se suma al pedido.
+     Si tiene minimo y no llega, dice cuanto falta. */
+  if (appliedCoupon && appliedCoupon.tipo === 'REGALO') {
+    var faltaPremio = Math.max(0, (appliedCoupon.minimo || 0) - subtotal);
+    html += '<div class="summary-line discount-line" style="color:#2e7d32"><span>🎁 ' + (appliedCoupon.mensaje || 'Tu premio') + ' · ' + appliedCoupon.codigo + '</span><span>' +
+      (faltaPremio > 0 ? 'sumá ' + ars(faltaPremio) : 'de regalo') + '</span></div>';
+  }
   // Auto-descuento (el 10% en efectivo)
   if (autoDesc > 0) {
     html += '<div class="summary-line discount-line"><span>' + getDiscountLabel() + '</span><span>-' + ars(autoDesc) + '</span></div>';
@@ -4298,6 +4305,7 @@ function enviarPedido() {
   const cuponDescW = getCouponDiscount();
   const autoDescW  = getCashDiscount();
   var msgLines = ['Hola! Quiero hacer un pedido:', '', prodLines, ''];
+  if (_premioActivo()) msgLines.push('🎁 Premio de la ruleta (' + appliedCoupon.codigo + '): ' + (appliedCoupon.mensaje || ''), '');
   // Solo desglosar Subtotal cuando hay descuento, envío o saldo a favor.
   if (discount > 0 || shipping > 0 || saldoAFavor > 0) {
     msgLines.push('Subtotal: ' + ars(subtotal));
@@ -4467,7 +4475,10 @@ function enviarPedido() {
   var _cumple = getCumpleValue();
   if (_cumple) postData.cumple = _cumple;
   // Cupón aplicado: lo mando al backend para tracking futuro y best-effort sumo uso al cerrar.
-  if (appliedCoupon) {
+  /* Un premio de la ruleta que no llega a su minimo NO viaja: no se usa y queda
+     guardado en el celular para el proximo pedido. */
+  var _cuponVa = !!(appliedCoupon && (appliedCoupon.tipo !== 'REGALO' || _premioActivo()));
+  if (_cuponVa) {
     postData.cupon = appliedCoupon.codigo;
     postData.cuponDescuento = cuponDescW;
   }
@@ -4516,7 +4527,8 @@ function enviarPedido() {
       setSendLoaderSuccess();
     }
     // Best-effort: sumar uso al cupón. No bloqueamos el flujo si falla.
-    if (appliedCoupon) {
+    if (_cuponVa && appliedCoupon && appliedCoupon.tipo === 'REGALO') { try { localStorage.removeItem(CUPON_GUARDADO); } catch (_e) {} }
+    if (_cuponVa && appliedCoupon) {
       try {
         var blob = new Blob([JSON.stringify({ action: 'usarCupon', codigo: appliedCoupon.codigo })], { type: 'text/plain;charset=utf-8' });
         if (navigator.sendBeacon) navigator.sendBeacon(APPS_SCRIPT_URL, blob);
@@ -6275,3 +6287,40 @@ function limpiarBusqueda() {
   if (inp) inp.value = '';
   buscarEnCatalogo();
 }
+
+/* ── EL PREMIO DE LA RULETA (22/9/2026) ──────────────────────────────────────
+   maleu.com.ar/ruleta da un codigo RUL-XXXX y manda aca con ?cupon=RUL-XXXX.
+   Es un cupon REGALO ("3 empanadas de regalo"): no descuenta plata, se suma al
+   pedido, sirve UNA vez y es para el primer pedido. Se guarda en el celular
+   hasta que se use o venza: el que escaneo el QR en la puerta del colegio y
+   pide a la noche lo tiene cargado igual. Viaja en el pedido (`postData.cupon`)
+   y el backend lo marca usado al guardar el pedido. */
+var CUPON_GUARDADO = 'maleu_cupon_premio';
+function _premioActivo() {
+  return !!(appliedCoupon && appliedCoupon.tipo === 'REGALO' && cartTotal() >= (appliedCoupon.minimo || 0));
+}
+(function () {
+  var q = '';
+  try { q = (new URLSearchParams(location.search).get('cupon') || '').trim().toUpperCase(); } catch (e) {}
+  if (q) {
+    try { localStorage.setItem(CUPON_GUARDADO, q); } catch (e) {}
+    try { var u = new URL(location.href); u.searchParams.delete('cupon'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (e) {}
+  }
+  var cod = q;
+  if (!cod) { try { cod = localStorage.getItem(CUPON_GUARDADO) || ''; } catch (e) {} }
+  if (!/^RUL-[A-Z0-9]{4,}$/.test(cod)) return;
+  fetch(APPS_SCRIPT_URL + '?action=validarCupon&codigo=' + encodeURIComponent(cod) + '&t=' + Date.now(), { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (!d || !d.ok) {
+        try { localStorage.removeItem(CUPON_GUARDADO); } catch (e) {}
+        if (q && d && d.error) toast(d.error, 3500);
+        return;
+      }
+      if (appliedCoupon && appliedCoupon.tipo !== 'REGALO') return;   // no pisa otro cupon
+      appliedCoupon = { codigo: d.codigo, tipo: d.tipo, valor: d.valor, scope: d.scope, mensaje: d.mensaje, stack: !!d.stack, minimo: Number(d.minimo) || 0 };
+      try { updateUI(); } catch (e) {}
+      if (q) toast('🎁 Tu premio quedó cargado: ' + (d.mensaje || d.codigo), 3500);
+    })
+    .catch(function () {});
+})();
