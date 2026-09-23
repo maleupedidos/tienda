@@ -6,19 +6,25 @@
 Este repo es **la tienda online y nada más**. Es lo único que ve un cliente.
 Publica en **https://maleu.com.ar** (GitHub Pages + dominio propio).
 
-> [!danger] Lo que publica es `main`, y la rama local `main` está MUY atrás (23/9/2026)
+> [!warning] Lo que publica es `main`, y la rama local `main` está MUY atrás (23/9/2026)
 > Medido ese día: la rama local era **`tienda-v2`** y **`main` local estaba 40 commits
-> atrás de `origin/main`**, que es la que sirve GitHub Pages. O sea que
-> `git checkout main && git push` desde acá **publica una tienda de hace semanas en
-> maleu.com.ar**, sin que nada avise: para git es un push normal.
+> atrás de `origin/main`**, que es la que sirve GitHub Pages. Hay seis ramas locales
+> vivas (`carne`, `carne-rangos`, `reserva-carne`, `respaldo-autopedido`,
+> `tienda-v2`, `main`): no asumas en cuál estás parado.
+>
+> **Git NO deja publicar la vieja por accidente** — comprobado con
+> `git push --dry-run origin main:main` ese mismo día: sale
+> `! [rejected] main -> main (non-fast-forward)`. Lo que hay que cuidar es lo que
+> viene DESPUÉS del rechazo: resolverlo con `--force` sí publica la tienda vieja.
+> Si un push rebota así, **nunca forzar**: `git fetch` y mirar qué te falta.
+>
+> Lo que sí pasa en silencio es trabajar sobre una rama atrasada creyendo que es lo
+> que está publicado: probás contra un catálogo de hace semanas y todo "anda bien".
 >
 > **Pushear siempre con `git push origin HEAD:main`**, que manda lo que tenés
 > trabajado a la rama que publica, sin depender de en qué rama estés parado. Y antes,
 > `git fetch` + `git log --oneline HEAD..origin/main`: si eso devuelve algo, te falta
 > lo publicado y todavía no estás para pushear.
->
-> Hay seis ramas locales vivas (`carne`, `carne-rangos`, `reserva-carne`,
-> `respaldo-autopedido`, `tienda-v2`, `main`). No asumas en cuál estás parado.
 
 > [!warning] Este repo suele tener trabajo de OTRA sesión sin commitear
 > El 23/9/2026, al publicar la página de Catering, el árbol tenía sin commitear el
