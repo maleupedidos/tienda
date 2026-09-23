@@ -1788,3 +1788,60 @@ body.busqueda-activa #ultimo-section { display: none !important; }
                                            transition:opacity .2s ease, transform .2s ease, visibility 0s linear .2s; }
   .catalog::before { content:''; display:block; height:var(--promo-h, 0px); }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   LA TIENDA ABRE EN EL CATALOGO (23/9/2026)
+   El cartel que pide la zona y los dos chips cuando todavia esta sin elegir.
+   ═══════════════════════════════════════════════════════════════════ */
+.zona-cta { display:flex; align-items:center; gap:.9rem; width:calc(100% - 2rem);
+  max-width:1100px; margin:0 auto 1.1rem; padding:.85rem 1rem; text-align:left;
+  background:#FFF3E0; border:1px solid rgba(230,81,0,.22); border-radius:14px;
+  cursor:pointer; font-family:var(--font); box-shadow:0 1px 3px rgba(51,28,28,.06); }
+.zona-cta[hidden] { display:none; }
+.zona-cta:hover { background:#FFECD6; border-color:rgba(230,81,0,.35); }
+.zona-cta-txt { display:flex; flex-direction:column; gap:.15rem; flex:1; min-width:0; }
+.zona-cta-txt strong { font-size:.95rem; color:#8a3b00; font-weight:700; }
+.zona-cta-txt small { font-size:.78rem; color:#7a5c48; line-height:1.35; }
+.zona-cta-btn { flex:none; background:var(--orange); color:#fff; font-weight:700;
+  font-size:.82rem; padding:.6rem .95rem; border-radius:999px; white-space:nowrap;
+  min-height:44px; display:inline-flex; align-items:center; }
+/* Los dos chips del header mientras falta elegir: piden, no informan. */
+.zone-chip.is-pendiente { background:#FFF3E0; color:#8a3b00; border-color:rgba(230,81,0,.3); font-weight:700; }
+@media (max-width:480px) {
+  .zona-cta { gap:.6rem; padding:.75rem .85rem; }
+  .zona-cta-btn { font-size:.78rem; padding:.55rem .8rem; }
+}
+
+/* ── CATERING (23/9/2026) ──────────────────────────────────────────────
+   El precio por persona NO se publica nunca: la pagina existe para que la
+   persona escriba y el numero se pase a medida. Por eso el CTA aparece dos
+   veces (arriba y en el bloque del presupuesto) y el formulario no guarda ni
+   manda nada: arma el texto de un WhatsApp que manda ella. */
+.cat-cta-top { display:inline-flex; align-items:center; justify-content:center;
+  background:var(--orange); color:#fff; font-weight:600; text-decoration:none;
+  padding:.75rem 1.4rem; border-radius:999px; margin:.4rem 0 1.6rem; }
+.cat-cta-top:hover { background:var(--hover-orange); }
+.cat-h2 { font-family:var(--font); font-size:1.3rem; margin:2.2rem 0 .8rem; }
+.cat-pasos { list-style:none; counter-reset:paso; display:grid; gap:.7rem; }
+.cat-pasos li { counter-increment:paso; position:relative; padding:.85rem 1rem .85rem 3rem;
+  border:1px solid #eee9e4; border-radius:14px; line-height:1.55; }
+.cat-pasos li::before { content:counter(paso); position:absolute; left:1rem; top:.85rem;
+  width:1.5rem; height:1.5rem; border-radius:50%; background:var(--orange); color:#fff;
+  font-size:.85rem; font-weight:700; display:flex; align-items:center; justify-content:center; }
+.cat-ppto { background:#FFF8ED; border:1px solid #FFE0B2; border-radius:16px;
+  padding:1.3rem; margin:2.2rem 0 1rem; }
+.cat-ppto h2 { margin:0 0 .4rem; font-size:1.3rem; }
+.cat-ppto-intro { color:#6b5a50; line-height:1.6; margin-bottom:1.1rem; }
+.cat-campos { display:grid; gap:.9rem; margin-bottom:.9rem; }
+@media (min-width:600px) { .cat-campos { grid-template-columns:1fr 1fr; } }
+/* 48px de alto: el minimo tactil del proyecto es 44 y con el padding solo de
+   `.field-group` quedaban en 42 — lo caza `verificar-layout.js`. Y 1rem de
+   fuente, porque abajo de 16px iOS hace zoom solo al tocar el campo. */
+.cat-campos .field-group input, .cat-campos .field-group select { min-height:48px; }
+
+.cat-wa { width:100%; min-height:52px; border:none; border-radius:999px;
+  background:#25D366; color:#fff; font-family:var(--font); font-size:1.02rem;
+  font-weight:700; cursor:pointer; margin-top:.3rem; }
+.cat-wa:hover { background:#1FB855; }
+.cat-ppto-pie { font-size:.78rem; color:#8a7d76; line-height:1.5; margin-top:.7rem; }

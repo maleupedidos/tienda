@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Catering de pizzas · Maleu</title>
+  <meta name="description" content="Llevamos el horno a tu casa y hacemos las pizzas ahí, en el momento. Cumpleaños, juntadas y eventos en Pilar. Pedí tu presupuesto por WhatsApp." />
+  <!-- Como se ve el link cuando alguien lo comparte por WhatsApp.
+       Titulo y descripcion son los de arriba: una sola fuente. -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Catering de pizzas · Maleu" />
+  <meta property="og:description" content="Llevamos el horno a tu casa y hacemos las pizzas ahí, en el momento. Cumpleaños, juntadas y eventos en Pilar. Pedí tu presupuesto por WhatsApp." />
+  <meta property="og:image" content="https://maleu.com.ar/img/og-maleu.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:url" content="https://maleu.com.ar/catering.html" />
+  <meta property="og:locale" content="es_AR" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://maleu.com.ar/img/og-maleu.jpg" />
+  <link rel="canonical" href="https://maleu.com.ar/catering.html" />
+  <link rel="icon" href="img/logo-icono.png?v=d8163724" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=8c493bb9" />
+</head>
+<body>
+
+<header>
+  <button class="menu-btn" id="menu-btn" type="button" aria-label="Abrir el menú"
+          aria-expanded="false" aria-controls="menu-panel" onclick="togglePageMenu()">
+    <span class="menu-bars" aria-hidden="true"><span></span><span></span><span></span></span>
+  </button>
+  <a href="/" class="logo-wrap">
+    <img class="logo-full" src="img/logo-maleu.png?v=80e04e45" alt="Maleu" width="620" height="120" />
+  </a>
+  <nav class="site-nav" aria-label="Secciones">
+    <a href="/" class="site-nav-link">Tienda</a>
+    <a href="/catering.html" class="site-nav-link is-active">Catering</a>
+    <a href="/tips.html" class="site-nav-link">Tips Maleu</a>
+    <a href="/nosotros.html" class="site-nav-link">Sobre Nosotros</a>
+    <a href="/preguntas.html" class="site-nav-link">Preguntas Frecuentes</a>
+    <a href="/contacto.html" class="site-nav-link">Contacto</a>
+    <a href="/ser-parte.html" class="site-nav-link">Ser parte de Maleu</a>
+  </nav>
+  <div class="header-chips">
+    <a class="zone-chip" href="/">Ir a la tienda →</a>
+  </div>
+</header>
+
+<div class="menu-overlay" id="menu-overlay" hidden onclick="togglePageMenu()"></div>
+<nav class="menu-panel" id="menu-panel" hidden aria-label="Menú">
+    <a href="/" class="menu-panel-link">Tienda</a>
+    <a href="/catering.html" class="menu-panel-link is-active">Catering</a>
+    <a href="/tips.html" class="menu-panel-link">Tips Maleu</a>
+    <a href="/nosotros.html" class="menu-panel-link">Sobre Nosotros</a>
+    <a href="/preguntas.html" class="menu-panel-link">Preguntas Frecuentes</a>
+    <a href="/contacto.html" class="menu-panel-link">Contacto</a>
+    <a href="/ser-parte.html" class="menu-panel-link">Ser parte de Maleu</a>
+</nav>
+
+<main class="pagina">
+  <h1 class="pagina-titulo">Llevamos el horno a tu casa</h1>
+  <p class="pagina-intro">Vamos con todo armado y hacemos las pizzas ahí, una atrás de
+  la otra, mientras tus invitados están. Salen calientes a la mesa y vos no cocinás
+  nada ni lavás nada.</p>
+
+  <a class="cat-cta-top" href="#presupuesto">Pedir mi presupuesto →</a>
+
+  <h2 class="cat-h2">Cómo funciona</h2>
+  <ol class="cat-pasos">
+    <li><b>Nos contás.</b> Cuándo es, cuántos son y dónde. Abajo se arma el mensaje solo.</li>
+    <li><b>Te pasamos el número.</b> Cerrado, por WhatsApp, antes de que confirmes nada.</li>
+    <li><b>Vamos y cocinamos.</b> Llegamos con tiempo, armamos, hacemos las pizzas y levantamos todo.</li>
+  </ol>
+
+  <h2 class="cat-h2">Los dos menús</h2>
+  <div class="tips-grid">
+    <article class="tip-card">
+      <h2>Clásico</h2>
+      <p class="tip-tiempo">Pizza tras pizza, toda la noche</p>
+      <p>Masa nuestra, quesos y los toppings de la casa. Las hacemos en el momento y
+      van saliendo de a poco, así siempre hay una caliente en la mesa.</p>
+    </article>
+    <article class="tip-card">
+      <h2>Premium</h2>
+      <p class="tip-tiempo">Lo mismo, con jamón crudo</p>
+      <p>Todo lo del clásico más jamón crudo. Es el que se pide cuando el cumpleaños
+      es de los grandes.</p>
+    </article>
+  </div>
+
+  <div class="tip-nota">
+    <h2>Si querés sumar</h2>
+    <p><b>Picada</b> para cuando van llegando · <b>bebidas sin alcohol</b> ·
+    <b>postre</b> para el final. Se agregan al presupuesto y los decidís ahí mismo.</p>
+  </div>
+
+  <!-- EL PEDIDO DE PRESUPUESTO.
+       No se guarda nada ni se manda nada a ningun lado: los campos arman el texto
+       de un mensaje de WhatsApp que se abre en el telefono de la persona, y lo
+       manda ella. Es click-to-chat ENTRANTE, que es el que WhatsApp Business
+       promueve; lo que Maleu no hace nunca es escribir primero. -->
+  <section class="cat-ppto" id="presupuesto">
+    <h2>¿Cuánto sale?</h2>
+    <p class="cat-ppto-intro">Depende de cuántos sean y qué menú elijas, así que lo
+    pasamos a medida. Completá lo que sepas y tocá el botón: <b>el mensaje se escribe
+    solo</b> y lo mandás vos.</p>
+
+    <div class="cat-campos">
+      <div class="field-group">
+        <label for="cat-fecha">¿Qué día?</label>
+        <input id="cat-fecha" type="text" inputmode="numeric" maxlength="10"
+               autocomplete="off" placeholder="dd/mm/aaaa" oninput="catMascaraFecha(this)" />
+      </div>
+      <div class="field-group">
+        <label for="cat-personas">¿Cuántos son?</label>
+        <input id="cat-personas" type="text" inputmode="numeric" maxlength="4"
+               autocomplete="off" placeholder="30" oninput="catSoloNumeros(this)" />
+      </div>
+    </div>
+    <div class="cat-campos">
+      <div class="field-group">
+        <label for="cat-donde">¿Dónde?</label>
+        <input id="cat-donde" type="text" maxlength="60" autocomplete="off"
+               placeholder="Estancias del Pilar" />
+      </div>
+      <div class="field-group">
+        <label for="cat-plan">¿Qué menú?</label>
+        <select id="cat-plan">
+          <option value="">Todavía no sé</option>
+          <option value="Clásico">Clásico</option>
+          <option value="Premium">Premium</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="cat-wa" type="button" onclick="catPedirPresupuesto()">
+      Pedir presupuesto por WhatsApp
+    </button>
+    <p class="cat-ppto-pie">No hace falta que completes todo — cuanto más pongas, más
+    rápido te llega el número. Nada de esto se guarda acá.</p>
+  </section>
+
+  <h2 class="cat-h2">Lo que siempre nos preguntan</h2>
+  <div class="tips-grid">
+    <article class="tip-card">
+      <h2>¿Qué llevan ustedes?</h2>
+      <p>Todo lo de la pizza: el horno, el carbón, la masa, los quesos, los toppings y
+      la verdulería. Vamos dos personas.</p>
+    </article>
+    <article class="tip-card">
+      <h2>¿Cuánto se quedan?</h2>
+      <p>Calculá unas seis horas entre que llegamos, armamos, cocinamos y levantamos.
+      Si tu juntada es más larga, se habla.</p>
+    </article>
+    <article class="tip-card">
+      <h2>¿Con cuánta anticipación?</h2>
+      <p>Cuanto antes, mejor: los fines de semana se llenan primero. Escribinos con la
+      fecha y te decimos enseguida si está libre.</p>
+    </article>
+    <article class="tip-card">
+      <h2>¿Y si no sé cuántos van a ser?</h2>
+      <p>Pasanos un número aproximado. El presupuesto se ajusta después, cuando
+      tengas la lista más cerrada.</p>
+    </article>
+  </div>
+
+  <div class="pagina-cierre">
+    <p>¿Tenés una fecha en la cabeza?</p>
+    <a class="pagina-cta" href="#presupuesto">Pedir mi presupuesto</a>
+    <a class="pagina-cta pagina-cta-2" href="/">Ver la tienda</a>
+  </div>
+</main>
+
+<footer class="pagina-footer">
+  <p>Maleu · Comida lista para cocinar · Pilar, Buenos Aires</p>
+  <a class="arr-link" href="/arrepentimiento.html">Botón de arrepentimiento</a>
+  <a class="legal-link" href="/terminos.html">Términos y Condiciones</a>
+  <a class="legal-link" href="/privacidad.html">Política de Privacidad</a>
+</footer>
+
+<script>
+/* El menu de estas paginas no puede usar el toggleMenu() de app.js: app.js
+   son 4000 lineas que arrancan el catalogo, el carrito y los modales de
+   zona y fecha. Cargarlo aca solo por el menu traeria todo eso a una
+   pagina que no tiene donde pintarlo. */
+function togglePageMenu() {
+  var p = document.getElementById('menu-panel');
+  var o = document.getElementById('menu-overlay');
+  var b = document.getElementById('menu-btn');
+  var abriendo = p.hidden;
+  p.hidden = !abriendo;
+  o.hidden = !abriendo;
+  b.setAttribute('aria-expanded', abriendo ? 'true' : 'false');
+  b.classList.toggle('is-open', abriendo);
+  document.body.style.overflow = abriendo ? 'hidden' : '';
+}
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && !document.getElementById('menu-panel').hidden) togglePageMenu();
+});
+
+/* La fecha se tipea, no se elige con el selector del navegador: `type="date"` lo
+   dibuja el sistema operativo segun su idioma y en varios iPhone sale mm/dd/aaaa.
+   Acá las fechas son dd/mm/aaaa siempre. Las barras las pone la mascara. */
+function catMascaraFecha(el) {
+  var d = el.value.replace(/\D/g, '').slice(0, 8), s = d.slice(0, 2);
+  if (d.length > 2) s += '/' + d.slice(2, 4);
+  if (d.length > 4) s += '/' + d.slice(4, 8);
+  el.value = s;
+}
+function catSoloNumeros(el) { el.value = el.value.replace(/\D/g, ''); }
+
+function catPedirPresupuesto() {
+  var v = function (id) { var e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; };
+  var fecha = v('cat-fecha'), personas = v('cat-personas'), donde = v('cat-donde'), plan = v('cat-plan');
+  var t = '¡Hola Maleu! Quiero un presupuesto de catering de pizzas.';
+  if (fecha) t += '\n📅 Fecha: ' + fecha;
+  if (personas) t += '\n👥 Somos ' + personas + (personas === '1' ? ' persona' : ' personas');
+  if (donde) t += '\n📍 Dónde: ' + donde;
+  if (plan) t += '\n🍕 Menú: ' + plan;
+  /* Se abre el chat con el texto listo y lo manda la persona: el mensaje sale de
+     SU telefono. Maleu no escribe primero, nunca. */
+  window.open('https://wa.me/5491155038905?text=' + encodeURIComponent(t), '_blank', 'noopener');
+}
+</script>
+
+</body>
+</html>
