@@ -1983,6 +1983,29 @@ Estancias no se entera; y cero POST.
 
 Probada con **diez bugs reinyectados de a uno**, y **los diez se agarran**.
 
+### La rueda cuando cambia la lista de premios (24/9/2026)
+
+Backend, al cargar los premios de Los Robles: *"cuando cargue los seis, la rueda va a pasar
+de 5 a 6 casilleros sola, porque el servidor manda la lista"*. Es el día en que se nota si
+algo quedó atado a la cantidad vieja.
+
+**Está cubierto en el código** —`dibujar()`, `frenarEn()` y `casillero()` leen
+`premios.length` en el momento— **y ahora también en la red**: el celular arranca con 5
+guardados en `maleu_ruleta_premios`, el servidor manda 6 con una demora de 1,8 s, y se mide
+que la rueda dibuje la copia primero, se repinte sola a 6 y frene donde corresponde.
+
+> [!danger] El primer chequeo del ángulo no distinguía 5 casilleros de 6
+> Con el premio del casillero 1, el centro cae en **108°** con 5 y en **90°** con 6: los dos
+> caen en el mismo sexto, así que el test daba verde con la cuenta vieja adentro. Se cambió
+> al **casillero 5, que con la lista vieja no existe** (330° contra 36°). De tres bugs
+> reinyectados agarraba **uno**; ahora agarra **los tres**.
+
+> [!important] El índice del premio puede venir de la lista vieja
+> El backend arma `premio.i` cuando sortea, y entre eso y el frenado la lista puede haber
+> cambiado. `casillero()` compara el **texto** antes de creerle al índice — si no, la rueda
+> frenaría en un premio y el cartel diría otro. Hay un chequeo que manda `i:0` con el texto
+> de empanadas y exige que frene en un casillero de empanadas.
+
 > [!note] Dos rojos que no eran míos, heredados del commit de la ruleta de ese día
 > `a6d2d98` cambió la ruleta para que se gire con el dedo (+142/−30 líneas) y **no tocó su
 > red**, que siguió clickeando el botón viejo: 7 rojos sobre una ruleta que andaba. Ahora

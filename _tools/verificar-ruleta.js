@@ -90,6 +90,17 @@ const dormir = (ms) => new Promise((s) => setTimeout(s, ms));
 const PREMIOS = [{ i: 0, txt: '3 empanadas de regalo', min: 0, nada: false }, { i: 1, txt: '6 empanadas de regalo', min: 0, nada: false },
   { i: 2, txt: 'Una pizza de regalo', min: 0, nada: false }, { i: 3, txt: 'Un Franui de regalo', min: 50000, nada: false }, { i: 4, txt: 'Nada esta vez', min: 0, nada: true }];
 
+/* Los seis de Los Robles, con repetidos —asi es la lista de verdad: el peso se
+   reparte entre casilleros iguales para que parezca una ruleta—. Sirven para
+   probar el cambio de 5 a 6, que es lo que va a pasar cuando se carguen. */
+const PREMIOS_6 = [
+  { i: 0, txt: '15% en tu primera compra', min: 0, nada: false },
+  { i: 1, txt: 'Un paquete de empanadas', min: 0, nada: false },
+  { i: 2, txt: '15% en tu primera compra', min: 0, nada: false },
+  { i: 3, txt: 'Nada esta vez', min: 0, nada: true },
+  { i: 4, txt: '15% en tu primera compra', min: 0, nada: false },
+  { i: 5, txt: 'Un paquete de empanadas', min: 0, nada: false }];
+
 async function main() {
   const chrome = CHROMES.find((c) => fs.existsSync(c));
   if (!chrome) { console.error('No encontre Chrome ni Edge'); process.exit(1); }
@@ -111,6 +122,7 @@ async function main() {
     cli.on((m) => { if (m.method === 'Runtime.exceptionThrown') errores.push(String((m.params.exceptionDetails.exception || {}).description || m.params.exceptionDetails.text).slice(0, 160)); });
 
     /* ── El backend simulado ── */
+    let listaServidor = PREMIOS, demoraGet = 0;
     let giro = { en: 2000, r: { ok: true, nombre: 'Juana', lead: 'L-0099', premio: { i: 1, txt: '6 empanadas de regalo', nada: false, min: 0 }, cupon: 'RUL-AB12', vence: '22/10/2026' } };
     let cupon = { ok: true, codigo: 'RUL-AB12', tipo: 'REGALO', valor: 0, scope: 'TODO', mensaje: '6 empanadas de regalo', stack: true, descuento: 0, pending: false, minimo: 0 };
     const posts = [], navs = [];
@@ -125,7 +137,14 @@ async function main() {
       if (/wa\.me/.test(url)) { navs.push(url); fulfill(requestId, '<p>whatsapp simulado</p>', 'text/html'); return; }
       if (!/script\.google\.com/.test(url)) { cli.enviar('Fetch.failRequest', { requestId, errorReason: 'BlockedByClient' }).catch(() => {}); return; }
       if (request.method === 'GET') {
-        if (/action=ruleta&/.test(url)) return fulfill(requestId, JSON.stringify({ ok: true, activa: true, premios: PREMIOS }));
+        if (/action=ruleta&/.test(url)) {
+          /* Con demora se puede MIRAR la copia del celular antes de que llegue
+             el servidor. Sin ella, el fulfill local gana siempre la carrera y el
+             chequeo mediria eso y no la tienda. */
+          const cuerpo = JSON.stringify({ ok: true, activa: true, premios: listaServidor });
+          if (demoraGet) { setTimeout(() => fulfill(requestId, cuerpo), demoraGet); return; }
+          return fulfill(requestId, cuerpo);
+        }
         if (/action=validarCupon/.test(url)) return fulfill(requestId, JSON.stringify(cupon));
         return fulfill(requestId, '{"ok":true}');
       }
@@ -161,7 +180,7 @@ async function main() {
       await cli.enviar('Page.navigate', { url: 'about:blank' }); await dormir(200);
       await cli.enviar('Storage.clearDataForOrigin', { origin: base, storageTypes: 'local_storage' });
       await cli.enviar('Page.navigate', { url: base + '/ruleta' + q });
-      await esperar(`document.querySelectorAll('#gira path').length===5`, 8000);
+      await esperar(`document.querySelectorAll('#gira path').length===${listaServidor.length}`, 8000);
     }
 
     console.log('\n== Ruleta · ' + ANCHO + 'px ==\n');
@@ -229,6 +248,77 @@ async function main() {
     await armarYTirar(); await esperar(`/Revisá el celular/.test(document.getElementById('err').textContent)`, 6000);
     chk(await ev(`document.getElementById('tel').classList.contains('mal') && !document.getElementById('girar').disabled && document.getElementById('res').hidden`),
       'un error del servidor en un campo: lo muestra, marca el campo y deja volver a intentar');
+
+    /* ── LA LISTA CAMBIA DE 5 A 6 (24/9/2026) ───────────────────────────────
+       Es lo que va a pasar el dia que se carguen los premios de Los Robles: el
+       celular que ya abrio la ruleta tiene 5 guardados en `maleu_ruleta_premios`
+       y el servidor le manda 6. La rueda se dibuja con la copia para no quedar
+       en blanco, asi que tiene que repintarse sola Y frenar en el casillero de
+       la lista NUEVA — con 6 cada casillero mide 60 grados y no 72, asi que un
+       angulo calculado con la lista vieja cae en el premio equivocado.
+
+       Lo pregunto Backend al cargar los premios, y es la clase de cosa que solo
+       se ve el dia que cambia. */
+    listaServidor = PREMIOS_6; demoraGet = 1800;
+    giro = { en: 1200, r: { ok: true, nombre: 'Tere', lead: 'L-0101',
+      /* El casillero 5 NO EXISTE en la lista vieja. Es lo que hace sensible al
+         chequeo del angulo: con 6 el centro cae en 330 grados y con 5 en 36, que
+         son sextos distintos. Con el premio del casillero 1 los dos caian en el
+         mismo sexto (108 y 90) y el bug pasaba de largo. */
+      premio: { i: 5, txt: 'Un paquete de empanadas', nada: false, min: 0 }, cupon: 'RULETA-XY99', vence: '22/10/2026' } };
+    cupon = { ok: true, codigo: 'RULETA-XY99', tipo: 'REGALO', valor: 0, scope: 'TODO',
+              mensaje: 'Un paquete de empanadas', stack: true, descuento: 0, pending: false, minimo: 0 };
+    await cli.enviar('Page.navigate', { url: 'about:blank' }); await dormir(200);
+    await cli.enviar('Storage.clearDataForOrigin', { origin: base, storageTypes: 'local_storage' });
+    await cli.enviar('Page.navigate', { url: base + '/ruleta?o=evento&d=Los%20Robles&r=lucas' });
+    await esperar(`typeof localStorage !== 'undefined'`, 8000);
+    /* El celular que ya paso por aca: deja los 5 viejos guardados y recarga. */
+    await ev(`localStorage.setItem('maleu_ruleta_premios', ${JSON.stringify(JSON.stringify(PREMIOS))})`);
+    await cli.enviar('Page.navigate', { url: base + '/ruleta?o=evento&d=Los%20Robles&r=lucas&v=2' });
+    await esperar(`document.querySelectorAll('#gira path').length > 0`, 8000);
+    const conCopia = await ev(`document.querySelectorAll('#gira path').length`);
+    chk(conCopia === PREMIOS.length, 'arranca dibujando la copia vieja del celular, sin esperar al servidor', conCopia + ' casilleros');
+    await esperar(`document.querySelectorAll('#gira path').length===${PREMIOS_6.length}`, 8000);
+    const seis = JSON.parse(await ev(`JSON.stringify({ n: document.querySelectorAll('#gira path').length,
+      txt: [].map.call(document.querySelectorAll('#gira text'), function(t){return t.textContent;}) })`));
+    chk(seis.n === 6, 'y cuando llega la lista del servidor se repinta sola a 6 casilleros', seis.n);
+    chk(seis.txt.filter(function (t) { return /15/.test(t); }).length === 3, 'con los tres del 15%', seis.txt.join(' · '));
+    await tipear('nombre', 'Tere Prueba'); await tipear('tel', '1155550007'); await tipear('barrio', 'Manzanares');
+    await armarYTirar();
+    const vio6 = await esperar(`!document.getElementById('res').hidden`, 15000);
+    const fin6 = JSON.parse(await ev(`(function(){ var g=Number((document.querySelector('#gira').getAttribute('transform').match(/rotate\\(([-0-9.]+)/)||[])[1]);
+      var a=((360-(g%360))%360+360)%360; var r=document.getElementById('res');
+      return JSON.stringify({ seg: Math.floor(a/60), txt: r.textContent.replace(/\\s+/g,' ').slice(0,90) }); })()`));
+    chk(vio6 && fin6.seg === 5,
+      'y frena en el casillero 5, que con la rueda vieja de 5 no existia', fin6);
+    chk(/empanadas/i.test(fin6.txt) && /RULETA-XY99/.test(fin6.txt), 'y el resultado dice el premio y su codigo', fin6.txt);
+    /* El indice puede venir calculado con la lista vieja: el backend arma
+       `premio.i` cuando sortea, y entre eso y el frenado la lista puede haber
+       cambiado. `casillero()` compara el TEXTO antes de creerle al indice, asi
+       que tiene que caer en un casillero de empanadas (1 o 5) y nunca en el 0,
+       que con la lista nueva es el del 15%. Si cayera en el 0, la rueda frenaria
+       en un premio y el cartel diria otro. */
+    giro = { en: 900, r: { ok: true, nombre: 'Nico', lead: 'L-0102',
+      premio: { i: 0, txt: 'Un paquete de empanadas', nada: false, min: 0 }, cupon: 'RULETA-XY98', vence: '22/10/2026' } };
+    cupon = { ok: true, codigo: 'RULETA-XY98', tipo: 'REGALO', valor: 0, scope: 'TODO',
+              mensaje: 'Un paquete de empanadas', stack: true, descuento: 0, pending: false, minimo: 0 };
+    demoraGet = 0;
+    await abrirRuleta('?o=evento&d=Los%20Robles&r=lucas&v=3');
+    await tipear('nombre', 'Nico Prueba'); await tipear('tel', '1155550008'); await tipear('barrio', 'Pilara');
+    await armarYTirar();
+    const vioIdx = await esperar(`!document.getElementById('res').hidden`, 15000);
+    const idx = JSON.parse(await ev(`(function(){ var g=Number((document.querySelector('#gira').getAttribute('transform').match(/rotate\\(([-0-9.]+)/)||[])[1]);
+      var a=((360-(g%360))%360+360)%360; return JSON.stringify({ seg: Math.floor(a/60),
+      txt: document.getElementById('res').textContent.replace(/\\s+/g,' ').slice(0,70) }); })()`));
+    chk(vioIdx && (idx.seg === 1 || idx.seg === 5) && /empanadas/i.test(idx.txt),
+      'con un indice de la lista vieja, frena igual donde dice el TEXTO del premio', idx);
+
+    /* Lo dejo como estaba para los bloques de abajo. */
+    listaServidor = PREMIOS; demoraGet = 0;
+    giro = { en: 2000, r: { ok: true, nombre: 'Juana', lead: 'L-0099',
+      premio: { i: 1, txt: '6 empanadas de regalo', nada: false, min: 0 }, cupon: 'RUL-AB12', vence: '22/10/2026' } };
+    cupon = { ok: true, codigo: 'RUL-AB12', tipo: 'REGALO', valor: 0, scope: 'TODO',
+              mensaje: '6 empanadas de regalo', stack: true, descuento: 0, pending: false, minimo: 0 };
 
     /* ── B. El premio en la tienda ── */
     async function pedidoConCupon(q) {
