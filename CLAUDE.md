@@ -2145,8 +2145,10 @@ pensada para eso**, y esa la saca Tadeo.
 ### Las redes
 
 Ninguna red medía esto, y sigue sin haber una que mida "parece hecho con IA" — no es
-medible. Lo que sí se comprobó es que **las 27 redes del repo siguen verdes**, que es lo
-que dice que un rediseño no rompió la tienda.
+medible. Lo que sí se comprobó es que un rediseño no rompió la tienda: **26 de las 27
+redes en verde**, y la 27ª es `verificar-pixel-red`, que da 6 rojos desde un navegador
+headless **desde antes de este cambio** y por el motivo que ya está escrito arriba — no
+se puede usar para concluir nada desde ahí.
 
 > [!warning] Un test atado a la redacción frena el copy
 > `verificar-descuento` pedía el texto exacto *"10% OFF en efectivo"*, así que cambiar la
