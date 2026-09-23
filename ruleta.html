@@ -179,9 +179,20 @@
     if (firma && firma === dibujados) return;   // misma rueda: no la repinto (se notaba el salto)
     dibujados = firma;
     var n = premios.length || 6, A = 360 / n, h = '';
+    /* Un color por PREMIO, no por posicion (23/9/2026). Con los seis de Los
+       Robles, los tres casilleros de "15% OFF" caen en 0, 2 y 4: con un ciclo
+       de cuatro colores, dos salian naranjas y el tercero marron, y en la
+       mesa preguntaron por que un 15% se veia distinto. En una accion presencial la
+       rueda tiene que leerse sola.
+
+       Si el mismo premio cae en dos gajos pegados, comparten color a
+       proposito: es el mismo premio, y verlo como una porcion mas grande dice
+       la verdad — justamente que hay mas chances de que salga. */
+    var tono = {}, nTono = 0;
+    premios.forEach(function (pr) { var t = corto(pr.txt); if (!(t in tono)) tono[t] = nTono++; });
     for (var i = 0; i < n; i++) {
-      var a0 = (i * A) * Math.PI / 180, a1 = ((i + 1) * A) * Math.PI / 180, c = COLORES[i % COLORES.length];
-      if (n % 2 === 1 && i === n - 1 && i % COLORES.length === 0) c = COLORES[1];   // que no se toquen dos iguales
+      var a0 = (i * A) * Math.PI / 180, a1 = ((i + 1) * A) * Math.PI / 180;
+      var c = COLORES[(premios.length ? tono[corto(premios[i].txt)] : i) % COLORES.length];
       var x0 = 150 + 146 * Math.sin(a0), y0 = 150 - 146 * Math.cos(a0), x1 = 150 + 146 * Math.sin(a1), y1 = 150 - 146 * Math.cos(a1);
       h += '<path d="M150 150 L' + x0.toFixed(2) + ' ' + y0.toFixed(2) + ' A146 146 0 ' + (A > 180 ? 1 : 0) + ' 1 ' + x1.toFixed(2) + ' ' + y1.toFixed(2) + ' Z" fill="' + c[0] + '" stroke="#fff" stroke-width="2"/>';
       var txt = premios.length ? corto(premios[i].txt) : '🎁', partes = txt.length > 10 && txt.indexOf(' ') > 0 ? [txt.slice(0, txt.indexOf(' ')), txt.slice(txt.indexOf(' ') + 1)] : [txt];
