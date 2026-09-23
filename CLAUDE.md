@@ -2006,15 +2006,29 @@ Pedido de Backend para la acción de Los Robles, y **dos cosas estaban rotas par
 Cubre las tres puertas: el descuento, el envío gratis de un cupón ENVIO, y el premio REGALO.
 Y **se dice**: un cupón que da cero sin explicar por qué es peor que ninguno.
 
-> [!note] El campo para escribir un cupón a mano NO existe
-> `applyCoupon()` y `#f-cupon` están en `app.js` sin markup que los respalde en ninguna de
-> las 11 páginas. O sea que **el link ya era la única puerta**, que es justo lo que se pidió.
-> Se dejó el código como está —sacarlo es otra tarea— pero conviene saberlo: la guarda de
-> zona es la que sostiene la regla el día que alguien vuelva a poner ese campo.
+> [!danger] Las DOS puertas están cerradas: hoy un cupón que no sea de la ruleta no entra
+> El 23/9/2026 acá decía *"el link ya era la única puerta, que es justo lo que se pidió"*, y
+> **era falso**. Es cierto que `applyCoupon()` y `#f-cupon` están en `app.js` sin markup en
+> ninguna de las 11 páginas, o sea que el campo manual no existe. Lo que faltó juntar es la
+> otra mitad: **el link filtra `/^RUL(?:ETA)?-…/` y sale con `return` sin avisar**. Las dos
+> mitades estaban verificadas por separado y la conclusión de juntarlas nunca se sacó.
+>
+> Lo reprodujo la sesión de Wati con Tadeo en un pedido real: entró a
+> `maleu.com.ar/?cupon=EMPA20`, sumó $18.000 de empanadas y pagó $18.000 + envío, **sin
+> descuento y sin un cartel que dijera por qué**. Un cupón de campaña hoy es inaplicable.
+>
+> **Cuando se arregle, el filtro tiene que ser por FORMA y no por prefijo** (algo como
+> `/^[A-Z0-9][A-Z0-9-]{2,23}$/`). Un prefijo no defiende de nada: quien quiera probar
+> códigos arbitrarios manda `RUL-AAAA`, `RUL-AAAB`. El que decide si un cupón vale es el
+> backend. Con un prefijo nuevo, el próximo tipo de cupón vuelve a chocar con lo mismo.
 
-**El 15% del premio se SUMA al 10% de efectivo** (25% en el primer pedido). No es una
-decisión de la tienda: sale del campo `stack` del cupón, que pone Backend. Con `stack:true`
-el 10% se calcula sobre el subtotal entero en vez de sobre lo que el cupón no cubre.
+> [!danger] Y al abrirlo, ojo con `_guardarOrigenNuestro`: le saca clientes a los vendedores
+> El bloque que valida el cupón marca al cliente como **"lo trajimos nosotros"**. Para la
+> ruleta corresponde — esa persona vino por nosotros. Pero **las campañas de WATI le hablan
+> a la base que YA nos conoce, y ahí adentro están los clientes de Rufo, Marcos y Fini**:
+> ampliar el filtro sin tocar esto les transfiere clientes a Maleu en silencio, y son los
+> mismos clientes por los que se les paga el 17%. El marcado se queda **sólo** para
+> `RUL`/`RULETA`.
 
 **El 15% del premio NO se suma al 10% de efectivo.** Tadeo subió el premio de 10% a 15%
 **justamente para eso**: así el premio siempre vale más que el descuento que esa persona ya
