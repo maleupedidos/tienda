@@ -71,9 +71,14 @@ const VENDEDORES = { vendedores: [
     barrios: ['Tortugas y alrededores', 'El Lucero', 'Los Tacos', 'Villa Bertha', 'Azzurra'] },
 ] };
 
-/* El premio de la ruleta. RUL-OK01 lo valida el backend; RUL-TRUCHO no. */
-const CUPON_OK = { ok: true, codigo: 'RUL-OK01', tipo: 'PORCENTAJE', valor: 10, scope: 'todo',
-                   mensaje: '10% en tu primera compra', stack: false, minimo: 0 };
+/* El premio de la ruleta. `RULETA-OK01` es el formato que emite Backend desde
+   el 24/9/2026: tipo PCT, 15%, y `stack` para que se SUME al 10% de efectivo
+   (hasta 25% en el primer pedido). `RUL-OK01` es el formato viejo, que tiene que
+   seguir entrando. `RUL-TRUCHO` no lo valida el backend. */
+const CUPON_OK = { ok: true, codigo: 'RUL-OK01', tipo: 'PCT', valor: 15, scope: 'TODO',
+                   mensaje: '15% en tu primera compra', stack: true, minimo: 0 };
+const CUPON_RULETA = { ok: true, codigo: 'RULETA-OK01', tipo: 'PCT', valor: 15, scope: 'TODO',
+                       mensaje: '15% en tu primera compra', stack: true, minimo: 0 };
 
 function servir() {
   return new Promise((listo, fallo) => {
@@ -155,7 +160,9 @@ const PREP = '(function () {' +
   '  if (u.indexOf("action=piezas_full") >= 0) return json(' + JSON.stringify(PIEZAS) + ');' +
   '  if (u.indexOf("action=vendedores") >= 0) return json(' + JSON.stringify(VENDEDORES) + ');' +
   '  if (u.indexOf("action=validarCupon") >= 0) {' +
-  '    return json(/RUL-OK01/.test(u) ? ' + JSON.stringify(CUPON_OK) + ' : { ok: false, error: "Ese codigo no existe" });' +
+  '    if (/RULETA-OK01/.test(u)) return json(' + JSON.stringify(CUPON_RULETA) + ');' +
+  '    if (/RUL-OK01/.test(u)) return json(' + JSON.stringify(CUPON_OK) + ');' +
+  '    return json({ ok: false, error: "Ese codigo no existe" });' +
   '  }' +
   '  if (u.indexOf("script.google") >= 0) return json({ ok: true });' +
   '  return orig.apply(this, arguments);' +
@@ -346,7 +353,63 @@ async function main() {
     chk(e6.envio === 0, 'y Estancias sigue sin envio, como siempre', String(e6.envio));
     chk(e6.carne > 0, 'y con su carne', e6.carne + ' cortes');
 
-    /* ── 7. NADA SALIO ─────────────────────────────────────────────── */
+    /* ── 7. EL CUPON DE LA RULETA ──────────────────────────────────── */
+    console.log('\n' + DIM + '== El premio de la ruleta: donde vale y donde no ==' + RST);
+    /* El formato que emite Backend desde el 24/9/2026. El link solo aceptaba
+       `RUL-`, asi que un `RULETA-XXXX` entraba y NO SE APLICABA: ni el
+       descuento, ni la marca de "lo trajimos nosotros". */
+    await abrir(SEMILLA_RUFO, '&cupon=RULETA-OK01');
+    await esperar('!!appliedCoupon', 9000);
+    const c1 = JSON.parse(await ev('JSON.stringify({ cod: appliedCoupon && appliedCoupon.codigo,' +
+      ' tipo: appliedCoupon && appliedCoupon.tipo, nuestro: _esNuestro(), esRed: _pilarBarrioIsRed(),' +
+      ' vale: cuponValeEnEstaZona() })'));
+    chk(c1.cod === 'RULETA-OK01' && c1.tipo === 'PCT', 'un cupon RULETA- entra desde el link', JSON.stringify(c1));
+    chk(c1.nuestro === true && c1.esRed === false && c1.vale === true,
+        'y en el barrio de Rufo vale igual, porque al cliente lo trajimos nosotros', JSON.stringify(c1));
+    await ev('(function () { var p = getActiveProducts().filter(function (x) { return !esPorPeso(x); })[0]; addToCart(String(p.id)); })()');
+    await dormir(400);
+    const desc1 = JSON.parse(await ev('JSON.stringify({ sub: cartTotal(), cupon: getCouponDiscount(), efectivo: getCashDiscount() })'));
+    chk(desc1.cupon === Math.round(desc1.sub * 0.15), 'descuenta el 15%', JSON.stringify(desc1));
+
+    /* En Estancias, con efectivo, los dos descuentos se suman: el cupon viene
+       con `stack`, asi que el 10% se calcula sobre el subtotal entero. */
+    await abrir({ maleu_zone: 'estancias' }, '&cupon=RULETA-OK01');
+    await esperar('!!appliedCoupon', 9000);
+    await ev('(function () { var p = getActiveProducts().filter(function (x) { return !esPorPeso(x); })[0]; addToCart(String(p.id));' +
+      ' var e = document.querySelector("input[name=pago][value=Efectivo]"); if (e) { e.checked = true; e.dispatchEvent(new Event("change", { bubbles: true })); } })()');
+    await dormir(500);
+    const suma = JSON.parse(await ev('JSON.stringify({ sub: descontableSubtotal(), cupon: getCouponDiscount(),' +
+      ' efectivo: getCashDiscount(), total: getTotalDiscount() })'));
+    chk(suma.cupon > 0 && suma.efectivo === Math.round(suma.sub * 0.10),
+        'en Estancias el 10% de efectivo se calcula sobre el subtotal ENTERO, no sobre lo que queda',
+        JSON.stringify(suma));
+    chk(suma.total === suma.cupon + suma.efectivo && suma.total === Math.round(suma.sub * 0.25),
+        'asi que el premio y el efectivo se suman: 25% en el primer pedido', JSON.stringify(suma));
+
+    /* Y donde atiende un VENDEDOR no vale: esos pedidos van a la hoja Red, que
+       va sin descuentos.
+
+       Para llegar a ese estado hay que sacarle la marca de "lo trajimos
+       nosotros", y no es un truco del test: es que hoy NO SE PUEDE llegar de
+       otra forma. El link siempre marca, y el campo para escribir un cupon a
+       mano **no existe en el HTML** — y  quedaron en
+        sin markup que los respalde—, asi que el link es la unica puerta,
+       que es justo lo que se pidio. La guarda se prueba igual porque es la que
+       sostiene la regla el dia que alguien vuelva a poner ese campo. */
+    await abrir(SEMILLA_RUFO, '&cupon=RULETA-OK01');
+    await esperar('!!appliedCoupon', 9000);
+    await ev('(function () { var p = getActiveProducts().filter(function (x) { return !esPorPeso(x); })[0]; addToCart(String(p.id)); })()');
+    await dormir(300);
+    await ev('localStorage.removeItem("maleu_origen"); updateUI();');
+    await dormir(400);
+    const red = JSON.parse(await ev('JSON.stringify({ cod: appliedCoupon && appliedCoupon.codigo,' +
+      ' esRed: _pilarBarrioIsRed(), vale: cuponValeEnEstaZona(), desc: getCouponDiscount(),' +
+      ' resumen: (document.getElementById("form-summary") || {}).textContent || "" })'));
+    chk(red.cod === 'RULETA-OK01' && red.esRed === true, 'sin la marca, el barrio vuelve a ser el de Rufo con el cupon cargado', JSON.stringify({ cod: red.cod, red: red.esRed }));
+    chk(red.vale === false && red.desc === 0, 'pero NO descuenta: Red va sin descuentos', JSON.stringify({ vale: red.vale, desc: red.desc }));
+    chk(/no se puede usar/i.test(red.resumen), 'y se dice por que, en vez de dar cero callado', red.resumen.slice(0, 90));
+
+    /* ── 8. NADA SALIO ─────────────────────────────────────────────── */
     console.log('\n' + DIM + '== Nada salio hacia afuera ==' + RST);
     chk(escapados.length === 0, 'ningun POST escapo por CDP', escapados.join(' | ') || '0');
     const errs = JSON.parse(await ev('JSON.stringify(window.__err || [])'));

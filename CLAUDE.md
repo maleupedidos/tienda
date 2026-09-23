@@ -1983,6 +1983,42 @@ Estancias no se entera; y cero POST.
 
 Probada con **diez bugs reinyectados de a uno**, y **los diez se agarran**.
 
+### El cupón de la ruleta: sólo desde el link, y no donde atiende un vendedor (24/9/2026)
+
+Pedido de Backend para la acción de Los Robles, y **dos cosas estaban rotas para mañana**:
+
+> [!danger] El link aceptaba `RUL-XXXX` y Backend emite `RULETA-XXXX`
+> El filtro del auto-aplicado era `/^RUL-[A-Z0-9]{4,}$/`, así que un premio de la ruleta
+> nueva entraba a la tienda y **no se aplicaba nada**: ni el descuento, ni la marca de "lo
+> trajimos nosotros" —que cuelga del mismo bloque—. O sea que el cliente de Los Robles
+> habría perdido su 15% **y** habría quedado como pedido de su vendedor. Hoy el filtro es
+> `/^RUL(?:ETA)?-[A-Z0-9]{4,}$/`. Sigue siendo un filtro y no un "aceptá cualquier cosa":
+> lo que llega por la URL se le manda al backend a validar.
+
+> [!important] `cuponValeEnEstaZona()`: no vale donde el pedido lo atiende un vendedor
+> Esos van a la hoja `Red`, que va sin descuentos, y el ERP los recalcularía igual — el
+> cliente vería un total y la planilla guardaría otro. **Y el caso que parece una excepción
+> no lo es**: el cliente que trajimos nosotros por la ruleta, aunque viva en el barrio de
+> Rufo, no lo atiende un vendedor (`_pilarBarrioIsRed()` ya da false para él), así que su
+> premio vale. Que las dos reglas cuelguen de la misma función es lo que las mantiene de
+> acuerdo.
+
+Cubre las tres puertas: el descuento, el envío gratis de un cupón ENVIO, y el premio REGALO.
+Y **se dice**: un cupón que da cero sin explicar por qué es peor que ninguno.
+
+> [!note] El campo para escribir un cupón a mano NO existe
+> `applyCoupon()` y `#f-cupon` están en `app.js` sin markup que los respalde en ninguna de
+> las 11 páginas. O sea que **el link ya era la única puerta**, que es justo lo que se pidió.
+> Se dejó el código como está —sacarlo es otra tarea— pero conviene saberlo: la guarda de
+> zona es la que sostiene la regla el día que alguien vuelva a poner ese campo.
+
+**El 15% del premio se SUMA al 10% de efectivo** (25% en el primer pedido). No es una
+decisión de la tienda: sale del campo `stack` del cupón, que pone Backend. Con `stack:true`
+el 10% se calcula sobre el subtotal entero en vez de sobre lo que el cupón no cubre.
+
+Lo prueban **8 chequeos** dentro de `_tools/verificar-vendedor.js` (39 en total), con
+**4 bugs reinyectados y los 4 agarrados**.
+
 ### La rueda cuando cambia la lista de premios (24/9/2026)
 
 Backend, al cargar los premios de Los Robles: *"cuando cargue los seis, la rueda va a pasar

@@ -2025,8 +2025,24 @@ function _subtotalForScope(scope) {
     return sum + (match ? it.precio * it.qty : 0);
   }, 0);
 }
+/* ¿Vale un cupon en esta zona? (24/9/2026)
+
+   No, cuando el pedido lo atiende un VENDEDOR: esos van a la hoja Red, que va
+   sin descuentos, y el ERP los recalcularia igual — el cliente veria un total y
+   la planilla guardaria otro.
+
+   Si en Estancias y en lo que entrega Maleu en Pilar. Y ojo con el caso que
+   parece una excepcion y no lo es: el cliente que trajimos nosotros por la
+   ruleta, aunque viva en el barrio de Rufo, NO lo atiende un vendedor
+   —`_pilarBarrioIsRed()` ya devuelve false para el— asi que su premio vale. Que
+   las dos reglas cuelguen de la misma funcion es lo que las mantiene de
+   acuerdo. */
+function cuponValeEnEstaZona() {
+  return !(currentZone === 'pilar' && _pilarBarrioIsRed());
+}
 function getCouponDiscount() {
   if (!appliedCoupon) return 0;
+  if (!cuponValeEnEstaZona()) return 0;
   const sub = _subtotalForScope(appliedCoupon.scope);
   if (sub <= 0) return 0;
   if (appliedCoupon.tipo === 'PCT')  return Math.round(sub * (appliedCoupon.valor / 100));
@@ -2070,6 +2086,7 @@ function getTotalDiscount() {
 }
 function getCouponShippingOverride() {
   // Si cupón=ENVIO, devuelve true para anular el envío
+  if (!cuponValeEnEstaZona()) return false;
   return appliedCoupon && appliedCoupon.tipo === 'ENVIO';
 }
 
@@ -4322,9 +4339,16 @@ function updateFormSummary() {
   if (cuponDesc > 0 && appliedCoupon) {
     html += '<div class="summary-line discount-line" style="color:#2e7d32"><span>🎟️ ' + appliedCoupon.codigo + ' · ' + (appliedCoupon.mensaje || '') + '</span><span>-' + ars(cuponDesc) + '</span></div>';
   }
+  /* El premio existe pero en este barrio no se puede usar. Decirlo es lo unico
+     honesto: el cliente lo cargo desde el link y lo vio aplicado hasta que
+     eligio su barrio. (24/9/2026) */
+  if (appliedCoupon && !cuponValeEnEstaZona()) {
+    html += '<div class="summary-line discount-line" style="color:#8a3b00"><span>🎟️ ' + appliedCoupon.codigo
+      + ' · en un barrio con vendedor no se puede usar</span><span>—</span></div>';
+  }
   /* El premio de la ruleta (22/9/2026): no descuenta plata, se suma al pedido.
      Si tiene minimo y no llega, dice cuanto falta. */
-  if (appliedCoupon && appliedCoupon.tipo === 'REGALO') {
+  if (appliedCoupon && appliedCoupon.tipo === 'REGALO' && cuponValeEnEstaZona()) {
     var faltaPremio = Math.max(0, (appliedCoupon.minimo || 0) - subtotal);
     html += '<div class="summary-line discount-line" style="color:#2e7d32"><span>🎁 ' + (appliedCoupon.mensaje || 'Tu premio') + ' · ' + appliedCoupon.codigo + '</span><span>' +
       (faltaPremio > 0 ? 'sumá ' + ars(faltaPremio) : 'de regalo') + '</span></div>';
@@ -6898,7 +6922,8 @@ function limpiarBusqueda() {
    y el backend lo marca usado al guardar el pedido. */
 var CUPON_GUARDADO = 'maleu_cupon_premio';
 function _premioActivo() {
-  return !!(appliedCoupon && appliedCoupon.tipo === 'REGALO' && cartTotal() >= (appliedCoupon.minimo || 0));
+  return !!(appliedCoupon && appliedCoupon.tipo === 'REGALO' && cuponValeEnEstaZona()
+            && cartTotal() >= (appliedCoupon.minimo || 0));
 }
 (function () {
   var q = '';
@@ -6909,7 +6934,17 @@ function _premioActivo() {
   }
   var cod = q;
   if (!cod) { try { cod = localStorage.getItem(CUPON_GUARDADO) || ''; } catch (e) {} }
-  if (!/^RUL-[A-Z0-9]{4,}$/.test(cod)) return;
+  /* `RUL-` y `RULETA-`. Los primeros (22/9/2026) eran REGALO; desde el
+     24/9/2026 Backend emite `RULETA-XXXX` tipo PCT. El link solo aceptaba los
+     viejos, asi que un premio de la ruleta nueva entraba a la tienda y NO SE
+     APLICABA: ni el descuento, ni la marca de "lo trajimos nosotros". Se
+     encontro el dia anterior a Los Robles, leyendo el pedido de Backend.
+
+     El filtro no es decoracion: lo que llega por la URL se manda al backend a
+     validar, y aceptar cualquier cosa seria pegarle con lo que escriba
+     cualquiera. El codigo escrito a mano tiene su propia puerta (applyCoupon),
+     que es donde corresponde que se pueda probar cualquier cosa. */
+  if (!/^RUL(?:ETA)?-[A-Z0-9]{4,}$/.test(cod)) return;
   fetch(APPS_SCRIPT_URL + '?action=validarCupon&codigo=' + encodeURIComponent(cod) + '&t=' + Date.now(), { cache: 'no-store' })
     .then(function (r) { return r.json(); })
     .then(function (d) {
