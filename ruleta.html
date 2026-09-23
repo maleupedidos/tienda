@@ -46,6 +46,15 @@
   /* SIN transform-origin en .gira (23/9/2026): el centro de giro ya va en el
      atributo, rotate(a 150 150). Con 50% 50% encima, Chrome suma los dos centros
      y la rueda se sale de su lugar al girar: a 180° quedaba 300px más abajo. */
+  /* Habilitada para el dedo: atrapa el gesto (sin scrollear la página) y late. */
+  .rueda { -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+  .rueda.lista { touch-action:none; cursor:grab; animation:late 1.1s ease-in-out infinite; }
+  .rueda.lista:active { cursor:grabbing; }
+  @keyframes late { 0%,100% { transform:scale(1); } 50% { transform:scale(1.035); } }
+  @media (prefers-reduced-motion: reduce) { .rueda.lista { animation:none; } }
+  .tirala { text-align:center; margin:-4px 0 14px; }
+  .tirala-txt { font-size:1.2rem; font-weight:800; color:var(--brown); min-height:1.5em; }
+  .linkbtn { margin-top:8px; background:none; border:0; font-family:var(--font); font-size:.85rem; color:#7a6666; text-decoration:underline; padding:10px; min-height:44px; cursor:pointer; }
   .aguja { position:absolute; left:50%; top:-8px; transform:translateX(-50%); width:0; height:0;
            border-left:15px solid transparent; border-right:15px solid transparent; border-top:28px solid var(--brown); z-index:2;
            filter:drop-shadow(0 2px 2px rgba(0,0,0,.25)); }
@@ -80,13 +89,18 @@
 <body>
 <div class="wrap">
   <img class="logo" src="img/logo-maleu.png?v=80e04e45" alt="Maleu" />
-  <h1>Girá la ruleta y ganate <em>un regalo</em> para tu primer pedido</h1>
-  <p class="sub" id="sub">Comida lista para cocinar, en la puerta de tu casa.</p>
+  <h1>Girá la ruleta y ganate <em>empanadas gratis</em></h1>
+  <p class="sub" id="sub">O un 10% OFF en tu primera compra. Comida lista para cocinar, en la puerta de tu casa.</p>
 
   <div class="rueda" aria-hidden="true">
     <div class="aguja"></div>
     <svg viewBox="0 0 300 300"><g class="gira" id="gira"></g></svg>
     <div class="centro"><img src="img/logo-icono.png?v=d8163724" alt="" /></div>
+  </div>
+
+  <div class="tirala" id="tirala" hidden>
+    <p class="tirala-txt" id="tirala-txt">👆 ¡Girá la rueda con el dedo!</p>
+    <button class="linkbtn" id="tirala-btn" type="button">No me sale, girala vos</button>
   </div>
 
   <form class="card" id="form" novalidate>
@@ -103,7 +117,7 @@
     <!-- Un campo que la persona no ve: si viene lleno, lo lleno un bot. -->
     <div class="trampa" aria-hidden="true"><label for="web">No completar</label><input id="web" name="web" tabindex="-1" autocomplete="off" /></div>
     <div class="err" id="err" role="alert"></div>
-    <button class="btn" id="girar" type="submit">Girar la ruleta</button>
+    <button class="btn" id="girar" type="submit">¡Listo! Quiero girar</button>
     <p class="legal">Usamos tus datos solo para darte tu premio y contarte novedades de Maleu. <a href="privacidad.html">Privacidad</a>.</p>
   </form>
 
@@ -134,12 +148,15 @@
      Ahora arranca con la última lista que vio este celular o, la primera vez, con
      esta copia; el servidor confirma por atrás y solo se redibuja si cambió.
      OJO: esta lista es solo para DIBUJAR. El premio lo sigue eligiendo el servidor. */
+  /* Los del 24/9/2026 (Los Robles): 10% 70 · empanadas 20 · nada 10, en 6 casilleros
+     (los repetidos se reparten el peso en Config_Maleu) para que parezca una ruleta. */
   var PREMIOS_COPIA = [
-    { i: 0, txt: '3 empanadas de regalo', min: 0, nada: false },
-    { i: 1, txt: '6 empanadas de regalo', min: 0, nada: false },
-    { i: 2, txt: 'Una pizza de regalo', min: 0, nada: false },
-    { i: 3, txt: 'Un Franui de regalo', min: 50000, nada: false },
-    { i: 4, txt: 'Nada esta vez', min: 0, nada: true }
+    { i: 0, txt: '10% en tu primera compra', min: 0, nada: false },
+    { i: 1, txt: 'Un paquete de empanadas', min: 0, nada: false },
+    { i: 2, txt: '10% en tu primera compra', min: 0, nada: false },
+    { i: 3, txt: 'Nada esta vez', min: 0, nada: true },
+    { i: 4, txt: '10% en tu primera compra', min: 0, nada: false },
+    { i: 5, txt: 'Un paquete de empanadas', min: 0, nada: false }
   ];
   try { var g0 = JSON.parse(localStorage.getItem('maleu_ruleta_premios') || 'null'); if (Array.isArray(g0) && g0.length) premios = g0; } catch (e) {}
   if (!premios.length) premios = PREMIOS_COPIA.slice();
@@ -147,7 +164,13 @@
   var COLORES = [['#F07D47', '#fff'], ['#F2E8C7', '#331C1C'], ['#331C1C', '#F2E8C7'], ['#FFD2B8', '#331C1C']];
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  function corto(t) { t = String(t || ''); if (/^nada\b/i.test(t)) return 'Nada'; return t.replace(/\s+de regalo$/i, ''); }
+  function corto(t) {
+    t = String(t || ''); var m;
+    if (/^nada\b/i.test(t)) return 'Nada';
+    if ((m = t.match(/(\d+)\s*%/))) return m[1] + '% OFF';
+    if (/paquete de empanadas/i.test(t)) return 'Empanadas';
+    return t.replace(/\s+de regalo$/i, '');
+  }
 
   /* La rueda, con los premios que manda el servidor. Sin respuesta, una rueda
      genérica: la página no se queda en blanco. */
@@ -173,20 +196,33 @@
   function poner() { gira.setAttribute('transform', 'rotate(' + (rot % 360).toFixed(2) + ' 150 150)'); }
 
   /* Gira parejo mientras el servidor contesta; al llegar el premio, frena sobre él. */
-  var VEL = 540;   // grados por segundo
-  function arrancar() {
-    girando = true; var t0 = performance.now();
-    (function paso(t) { if (!girando) return; rot += VEL * (t - t0) / 1000; t0 = t; poner(); raf = requestAnimationFrame(paso); })(t0);
+  var VEL = 540, VMIN = 420, VMAX = 1600, vel = VEL;   // grados por segundo; vel lleva el signo del dedo
+  function arrancar(v) {
+    girando = true; vel = v || VEL; var t0 = performance.now();
+    (function paso(t) {
+      if (!girando) return;
+      var dt = (t - t0) / 1000; t0 = t;
+      /* Mientras el servidor sortea, la rueda pierde velocidad de a poco como una de
+         verdad, pero nunca baja de VMIN: parada, parecería trabada. */
+      var s = Math.max(VMIN, Math.abs(vel) * Math.pow(0.55, dt));
+      vel = vel < 0 ? -s : s;
+      rot += vel * dt; poner(); raf = requestAnimationFrame(paso);
+    })(t0);
   }
   function frenarEn(i, listo) {
     girando = false; cancelAnimationFrame(raf);
-    var n = premios.length, A = 360 / n;
+    var n = premios.length, A = 360 / n, s = Math.abs(vel) || VEL, dir = vel < 0 ? -1 : 1;
     var jit = (Math.random() - 0.5) * A * 0.6;
     var destino = ((360 - (i * A + A / 2) + jit) % 360 + 360) % 360;
-    var desde = rot, base = rot + 360, fin = base + (((destino - base % 360) % 360) + 360) % 360;   // 1 a 2 vueltas más: frena en 2-4 s
-    var D = 3 * (fin - desde) / VEL * 1000, t0 = performance.now();   // arranca a la misma velocidad que venia
+    /* Frena en el sentido en que la tiró el dedo, con al menos media vuelta más
+       (o lo que dé la velocidad), y arrancando a esa misma velocidad: el ease-out
+       cuadrático sale a 2·Δ/D, así que D = 2·Δ/s. Frena en ~1-2,5 s. */
+    var extra = Math.max(180, s * 0.55), desde = rot, fin;
+    if (dir > 0) { var b = rot + extra; fin = b + (((destino - b % 360) % 360) + 360) % 360; }
+    else { var b2 = rot - extra; fin = b2 - ((((b2 % 360) - destino) % 360) + 360) % 360; }
+    var D = 2 * Math.abs(fin - desde) / s * 1000, t0 = performance.now();   // ease-out cuadrático: sale a 2·Δ/D = s
     (function paso(t) {
-      var x = Math.min(1, (t - t0) / D), e = 1 - Math.pow(1 - x, 3);
+      var x = Math.min(1, (t - t0) / D), e = 1 - (1 - x) * (1 - x);
       rot = desde + (fin - desde) * e; poner();
       if (x < 1) requestAnimationFrame(paso); else listo();
     })(t0);
@@ -231,7 +267,14 @@
     if (d.yaCliente) {
       h = '<div class="emoji">🧡</div><h2>¡' + (nombre ? nombre + ', y' : 'Y') + 'a sos cliente de Maleu!</h2><p>La ruleta es para quien todavía no nos probó. Gracias por elegirnos.</p>' + link('Hacer un pedido', TIENDA);
     } else if (d.premio && d.premio.nada) {
-      h = '<div class="emoji">🙃</div><h2>' + (d.repetido ? 'Ya giraste la ruleta' : 'Esta vez no hubo premio') + '</h2><p>Igual te esperamos: pizzas, empanadas, sorrentinos y carne fresca, en la puerta de tu casa.</p>' + link('Ver la tienda', TIENDA);
+      h = '<div class="emoji">🙃</div><h2>' + (d.repetido ? 'Ya giraste la ruleta' : '¡Uh, esta vez no tocó!') + '</h2><p>Pero chusmeá la tienda: pizzas, empanadas, sorrentinos y carne fresca, en la puerta de tu casa.</p>' + link('Chusmear la tienda', TIENDA);
+    } else if (d.premio && (d.premio.tipo === 'MOMENTO' || /paquete de empanadas/i.test(d.premio.txt || ''))) {
+      /* Se entrega AHÍ, en el puesto: lo que importa es que se vea grande para
+         mostrárselo a Lucas. El cupón nace usado (no se canjea otra vez online). */
+      h = '<div class="emoji">🥟</div><h2>' + (d.repetido ? 'Ya giraste: te tocó' : '¡' + nombre + ', ganaste') + ' <span style="color:#F07D47">' + esc(d.premio.txt) + '</span>' + (d.repetido ? '' : '!') + '</h2>'
+        + (d.cupon ? '<div class="codigo">' + esc(d.cupon) + '</div>' : '')
+        + '<p><b>Mostrá esta pantalla en nuestro puesto y retirá tu paquete.</b></p>'
+        + link('Ver la tienda', TIENDA, true);
     } else if (d.premio) {
       var min = Number(d.premio.min) || 0;
       h = '<div class="emoji">🎉</div><h2>' + (d.repetido ? 'Ya giraste la ruleta: tu premio es' : '¡' + nombre + ', ganaste') + ' <span style="color:#F07D47">' + esc(d.premio.txt) + '</span>' + (d.repetido ? '' : '!') + '</h2>';
@@ -243,35 +286,104 @@
           + '<p class="hint">Sacale una captura a esta pantalla. Si pedís por WhatsApp, pasanos el código.</p>';
       }
     }
-    box.innerHTML = h; box.hidden = false; $('form').hidden = true;
+    box.innerHTML = h; box.hidden = false; $('form').hidden = true; $('tirala').hidden = true;
     try { box.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
     try { localStorage.setItem('maleu_ruleta', JSON.stringify({ t: Date.now(), d: d })); } catch (e) {}
   }
 
+  /* ── Girar con el dedo (23/9/2026) ─────────────────────────────────────────
+     Tadeo: "que gire con el dedo como en Preguntados; si tocan el botón y gira
+     solo parece fake". Flujo: el adulto completa sus datos → "Listo" → la rueda
+     se habilita y se tira con el dedo. La velocidad y el sentido son los del dedo;
+     el premio lo sigue eligiendo el servidor (la rueda frena donde él dice).
+     Antes de completar los datos la rueda NO atrapa el dedo: el que la roza para
+     scrollear tiene que poder scrollear. */
+  var datos = null, armada = false, lanzada = false, rueda = document.querySelector('.rueda'), btn = $('girar');
+
+  function armar() {
+    armada = true; rueda.classList.add('lista');
+    $('form').hidden = true; $('tirala').hidden = false;
+    try { rueda.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+  }
+  function desarmar(msg) {
+    armada = false; lanzada = false; rueda.classList.remove('lista');
+    $('tirala').hidden = true; $('form').hidden = false; btn.disabled = false; btn.textContent = '¡Listo! Quiero girar';
+    mostrarError(msg || '');
+  }
+
   $('form').addEventListener('submit', function (ev) {
     ev.preventDefault();
-    if (girando) return;
+    if (girando || lanzada) return;
     var nombre = $('nombre').value.trim(), tel = $('tel').value.trim(), barrio = $('barrio').value.trim();
     if (nombre.length < 2) return mostrarError('Contanos tu nombre', 'nombre');
     if (tel.replace(/\D/g, '').length < 10) return mostrarError('Tu celular con código de área, por ejemplo 11 2345 6789', 'tel');
     if (barrio.length < 2) return mostrarError('¿En qué barrio vivís?', 'barrio');
     mostrarError('');
-    var btn = $('girar'); btn.disabled = true; btn.textContent = 'Girando…';
-    arrancar();
+    datos = { nombre: nombre, tel: tel, barrio: barrio };
+    armar();
+  });
+
+  /* El gesto: la rueda sigue al dedo mientras arrastra; al soltar, la velocidad de
+     los últimos ~100 ms decide si sale girando. Un toque suave no cuenta. */
+  var arr = null;
+  function anguloDe(ev) {
+    var r = rueda.getBoundingClientRect(), x = ev.clientX - (r.left + r.width / 2), y = ev.clientY - (r.top + r.height / 2);
+    return Math.atan2(x, -y) * 180 / Math.PI;   // 0 arriba, positivo en sentido horario (igual que rotate())
+  }
+  rueda.addEventListener('pointerdown', function (ev) {
+    if (!armada || lanzada) {
+      if (!lanzada && !girando) { mostrarError('Primero completá tus datos 👇', 'nombre'); try { $('form').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {} }
+      return;
+    }
+    ev.preventDefault();
+    try { rueda.setPointerCapture(ev.pointerId); } catch (e) {}
+    var a = anguloDe(ev);
+    arr = { id: ev.pointerId, ult: a, rot0: rot, mov: [{ t: performance.now(), rot: rot }] };
+  });
+  rueda.addEventListener('pointermove', function (ev) {
+    if (!arr || ev.pointerId !== arr.id) return;
+    var a = anguloDe(ev), d = a - arr.ult;
+    if (d > 180) d -= 360; else if (d < -180) d += 360;   // cruzar el "arriba" no es media vuelta
+    arr.ult = a; rot += d; poner();
+    var t = performance.now(); arr.mov.push({ t: t, rot: rot });
+    while (arr.mov.length > 2 && t - arr.mov[0].t > 120) arr.mov.shift();
+  });
+  function soltar(ev) {
+    if (!arr || ev.pointerId !== arr.id) return;
+    /* La velocidad sale de los últimos movimientos, no del momento de soltar: entre
+       el último movimiento y el soltar siempre hay una pausa mínima que la diluía.
+       Si el dedo quedó quieto más de 150 ms antes de soltar, frenó: no se tira. */
+    var m = arr.mov, t = performance.now(), p = m[0], u = m[m.length - 1], v = 0;
+    if (m.length > 1 && u.t - p.t > 8 && t - u.t < 150) v = (u.rot - p.rot) / ((u.t - p.t) / 1000);
+    arr = null;
+    if (Math.abs(v) < 250) { $('tirala-txt').textContent = '¡Más fuerte! Deslizá rápido el dedo sobre la rueda'; return; }
+    lanzar(Math.max(VMIN, Math.min(VMAX, Math.abs(v))) * (v < 0 ? -1 : 1));
+  }
+  rueda.addEventListener('pointerup', soltar);
+  rueda.addEventListener('pointercancel', soltar);
+  /* Para quien no puede deslizar (accesibilidad, o un dedo que no le sale). */
+  $('tirala-btn').addEventListener('click', function () { if (armada && !lanzada) lanzar(900); });
+
+  function lanzar(v0) {
+    lanzada = true; rueda.classList.remove('lista');
+    $('tirala-txt').textContent = '¡Girando!'; $('tirala-btn').hidden = true;
+    var txt = function (s) { $('tirala-txt').textContent = s; };
+    arrancar(v0);
     var t0 = Date.now(), cortado = false;
     /* Si el servidor tarda, que se note que está trabajando: una rueda que gira
        sin fin parece colgada. */
-    var aviso1 = setTimeout(function () { if (girando) btn.textContent = 'Sorteando tu premio…'; }, 3500);
-    var aviso2 = setTimeout(function () { if (girando) btn.textContent = 'Ya casi…'; }, 11000);
-    var reloj = setTimeout(function () { cortado = true; clearTimeout(aviso1); clearTimeout(aviso2); parar(); btn.disabled = false; btn.textContent = 'Girar la ruleta'; mostrarError('No pudimos girar: revisá la conexión y probá de nuevo.'); }, 30000);
+    var aviso1 = setTimeout(function () { if (girando) txt('Sorteando tu premio…'); }, 3000);
+    var aviso2 = setTimeout(function () { if (girando) txt('Ya casi…'); }, 10000);
+    var fallo = function (msg, campo) { parar(); desarmar(msg || 'No pudimos girar: revisá la conexión y probá de nuevo.'); if (campo) mostrarError(msg, campo); };
+    var reloj = setTimeout(function () { cortado = true; clearTimeout(aviso1); clearTimeout(aviso2); fallo(); }, 30000);
     fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'ruletaGirar', nombre: nombre, tel: tel, barrio: barrio, web: $('web').value, o: P.o || '', d: P.d || '', r: P.r || '' }) })
+      body: JSON.stringify({ action: 'ruletaGirar', nombre: datos.nombre, tel: datos.tel, barrio: datos.barrio, web: $('web').value, o: P.o || '', d: P.d || '', r: P.r || '' }) })
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (cortado) return; clearTimeout(reloj); clearTimeout(aviso1); clearTimeout(aviso2);
-        var espera = Math.max(0, 1800 - (Date.now() - t0));   // que gire un poco aunque el servidor conteste rápido
+        var espera = Math.max(0, 1000 - (Date.now() - t0));   // que gire un poco aunque el servidor conteste rápido
         var seguir = function () {
-          if (!d || (!d.ok && !d.yaCliente)) { parar(); btn.disabled = false; btn.textContent = 'Girar la ruleta'; return mostrarError((d && d.error) || 'No pudimos girar. Probá de nuevo.', d && d.campo); }
+          if (!d || (!d.ok && !d.yaCliente)) return fallo((d && d.error) || 'No pudimos girar. Probá de nuevo.', d && d.campo);
           if (!d.ok || !d.premio) { return frenarSuave(function () { resultado(d); }); }   // ya es cliente
           dibujar();   // si el servidor cambió la lista mientras giraba, la rueda queda al día antes de frenar
           var i = casillero(d.premio);
@@ -290,8 +402,8 @@
           alConfirmar.push(una); setTimeout(una, 4000);
         }, espera);
       })
-      .catch(function () { if (cortado) return; clearTimeout(reloj); parar(); btn.disabled = false; btn.textContent = 'Girar la ruleta'; mostrarError('No pudimos girar: revisá la conexión y probá de nuevo.'); });
-  });
+      .catch(function () { if (cortado) return; clearTimeout(reloj); clearTimeout(aviso1); clearTimeout(aviso2); fallo(); });
+  }
 
   if (P.o === 'evento') $('sub').textContent = 'Si querés Maleu en tu casa, empezá con un regalo.';
   cargar();
