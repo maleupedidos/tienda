@@ -131,8 +131,12 @@
 <noscript><img height="1" width="1" style="display:none"
   src="https://www.facebook.com/tr?id=856053897491524&ev=PageView&noscript=1" alt="" /></noscript>
 
-<!-- MODAL BIENVENIDA (zona + fecha) -->
-<div class="loc-overlay" id="loc-overlay">
+<!-- MODAL DE ZONA. Arranca ESCONDIDO (23/9/2026): la tienda abre en el
+     catalogo y este modal se muestra cuando hace falta — al tocar "+ Agregar"
+     sin zona elegida, o desde los chips de arriba. De paso se termina el
+     parpadeo que veia todo el mundo mientras el JS decidia si esconderlo.
+     El paso de fecha sigue vivo, pero se llega solo desde el chip 📅. -->
+<div class="loc-overlay hidden" id="loc-overlay">
   <div class="loc-box">
     <!-- PASO 1: Zona -->
     <div class="loc-step" id="loc-step-zone">
@@ -254,6 +258,17 @@
   <a href="#productos-ancla" class="hero-cta" onclick="scrollToProductos();return false;">Armar mi pedido →</a>
   <a href="#combos-ancla" class="hero-cta hero-cta-combos" id="hero-combos-cta" style="display:none" onclick="scrollToCombos();return false;">🎁 Ver los combos →</a>
 </section>
+
+<!-- ¿A DONDE TE LO LLEVAMOS?: lo unico que le pedimos arriba, y es una
+     invitacion, no una pared. Se ve solo mientras la zona es provisoria; lo
+     prende y apaga _updateZonaCta() desde applyZone(). (23/9/2026) -->
+<button type="button" class="zona-cta" id="zona-cta" onclick="showZoneModal('cartel')" hidden>
+  <span class="zona-cta-txt">
+    <strong>📍 ¿A dónde te lo llevamos?</strong>
+    <small>Elegí tu zona y te mostramos los días de entrega y el envío</small>
+  </span>
+  <span class="zona-cta-btn">Elegir zona</span>
+</button>
 
 <!-- LO QUE PEDISTE LA ÚLTIMA VEZ: los productos del último pedido que se mandó
      desde este navegador, con sus cards de siempre. Lo llena
@@ -633,6 +648,6 @@
   </div>
 </div>
 
-<script src="app.js?v=da9d38cf"></script>
+<script src="app.js?v=810ca1f7"></script>
 </body>
 </html>

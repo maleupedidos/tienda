@@ -243,6 +243,12 @@ async function main() {
       if (!(await esperar("typeof PRODUCTOS !== 'undefined' && !!document.getElementById('loc-step-zone')", 15000))) {
         throw new Error('la tienda no arranco');
       }
+      /* Desde el 23/9/2026 la tienda abre en el catalogo y el modal ya no sale
+         solo. Este test es el del MODAL —que cada zona ofrezca sus dias, su
+         envio y su hoja—, asi que si la zona todavia esta sin elegir se abre
+         por donde lo abre una persona: el chip de arriba. Que entre sin nada
+         encima lo prueba verificar-entrada.js. */
+      await ev('(function () { if (typeof zonaProvisoria !== "undefined" && zonaProvisoria) showZoneModal("chip"); })()');
       await dormir(300);
     };
     const listos = async () => {
@@ -250,8 +256,16 @@ async function main() {
       await esperar('typeof piezasEstado !== "undefined" && piezasEstado !== "cargando"', 10000);
       await dormir(300);
     };
-    const fechasDelModal = async () => JSON.parse(await ev('JSON.stringify([].map.call(document.querySelectorAll("#loc-dates-grid .loc-date-card"), function (b) {' +
-      ' var m = /setDeliveryDate\\(\'([0-9-]+)\',\'([^\']*)\'/.exec(b.getAttribute("onclick") || ""); return m ? m[1] + " " + m[2] : ""; }))'));
+    /* Abre el paso de fecha antes de leerlo. Desde el 23/9/2026 elegir la zona
+       (o el barrio) cierra el modal y al calendario se llega desde el chip 📅.
+       Lo que se mide —que cada zona y cada barrio ofrezcan SUS dias— no cambio;
+       cambio por donde se llega. */
+    const fechasDelModal = async () => {
+      await ev('showDateModal()');
+      await dormir(300);
+      return JSON.parse(await ev('JSON.stringify([].map.call(document.querySelectorAll("#loc-dates-grid .loc-date-card"), function (b) {' +
+        ' var m = /setDeliveryDate\\(\'([0-9-]+)\',\'([^\']*)\'/.exec(b.getAttribute("onclick") || ""); return m ? m[1] + " " + m[2] : ""; }))'));
+    };
     const diasDelForm = async () => JSON.parse(await ev('JSON.stringify([].map.call(document.querySelectorAll("#day-picker .dp-cell.available"), function (b) { return b.getAttribute("data-dia"); }).filter(function (d, i, a) { return a.indexOf(d) === i; }))'));
     const carneVisible = async () => ev('document.querySelectorAll(".carne-card").length');
     const ultimoPost = async () => {
@@ -373,7 +387,13 @@ async function main() {
     await ev('togglePieza("CVa", "VAC-01"); addToCart(5)');
     chk(await ev('Object.keys(piezaCart).length') === 1, 'la pieza entro al carrito');
     await ev('showDateModal()'); await dormir(300);
-    chk(await tocar('#loc-step-date .loc-back-btn'), '"Volver" desde la fecha');
+    chk(await tocar('#loc-step-date .loc-back-btn'), '"Volver" desde la fecha se toca');
+    chk(await ev('document.getElementById("loc-overlay").classList.contains("hidden")'),
+        'y CIERRA, en vez de mandarlo a reelegir zona y barrio que ya tiene (23/9/2026)');
+    /* El paso del barrio se abre con el mismo "← Cambiar zona" de siempre; el
+       camino del cliente para cambiar solo el barrio sin perder el carrito es
+       el desplegable del formulario. */
+    await ev('welcomeShowSubBarrioStep(); _setOverlay(true);'); await dormir(300);
     chk(await tocar('#loc-step-subbarrio .loc-back-btn'), '"Cambiar zona" desde el barrio');
     chk(await tocar('#loc-barrios-grid button[onclick*="Tortugas"]'), 'la zona de Marcos se toca');
     chk(await tocar('#loc-subbarrios-grid button[onclick*="El Lucero"]'), 'El Lucero se toca');

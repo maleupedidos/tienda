@@ -297,6 +297,11 @@ async function main() {
       'var dormir = function (ms) { return new Promise(function (s) { setTimeout(s, ms); }); };' +
       'var z = [].slice.call(document.querySelectorAll("#loc-step-zone .loc-btn")).filter(function (b) { return (b.getAttribute("onclick") || "").indexOf("estancias") >= 0; })[0];' +
       'z.click(); await dormir(500);' +
+      /* Desde el 23/9/2026 elegir la zona ya no lleva al paso de fecha: la
+         tienda abre en el catalogo y el dia se elige despues. Este escenario es
+         el del cliente que SI elige "hoy", asi que lo elige donde quedo: el
+         chip 📅. */
+      'showDateModal(); await dormir(300);' +
       'var f = document.querySelector("#loc-dates-grid button[onclick*=\'2026-09-13\']"); if (f) f.click();' +
       'await dormir(500); var ov = document.getElementById("loc-overlay"); return !!(ov && getComputedStyle(ov).display !== "none");' +
       '})()');

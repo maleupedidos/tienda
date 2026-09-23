@@ -771,6 +771,12 @@ function piezasEnCarrito(abbr) {
 /* Poner o sacar una pieza del carrito. Es un interruptor y no un +/-: la
    pieza es unica, o te la llevas o no. */
 function togglePieza(abbr, piezaId) {
+  if (_pedirZonaAntes(function () {
+        if (!getActiveProducts().some(function (p) { return p.abbr === abbr; })) {
+          _noEstaEnEstaZona('La carne'); return;
+        }
+        togglePieza(abbr, piezaId);
+      }, 'carne')) return;
   if (piezaCart[piezaId]) {
     var fuera = piezaCart[piezaId];
     delete piezaCart[piezaId];
@@ -1622,6 +1628,17 @@ function pilarIsOtroBarrio() {
 // de la tienda: con una sola de las dos puntas, el cliente ve un total y el ERP
 // guarda otro.
 function cashDiscountActive() {
+  /* Con la zona provisoria no se afirma: el 10% es de Estancias y de los dos
+     ex-Home, y en un barrio con vendedor no aplica. Prometerselo a alguien que
+     todavia no dijo de donde es seria mentirle a la mitad de los que entran.
+
+     Va ACA y no en la franja de arriba. Por el descuento preguntan tres
+     lugares —la franja, el incentivo del carrito y el cartel del medio de
+     pago—, y apagar uno solo deja los otros dos prendidos: la primera version
+     tapaba la franja en `updatePromoBar` y `updateUI` se la volvia a encender
+     dos lineas despues. Es la leccion de siempre de este repo: se arregla en
+     la raiz, no en los call sites. (23/9/2026) */
+  if (zonaProvisoria) return false;
   if (currentZone === 'estancias') return true;
   // Ex-Home: conservan el 10% en efectivo aunque ahora estén en zona Pilar.
   if (_pilarBarrioEsExHome()) return true;
@@ -1997,18 +2014,106 @@ function _setOverlay(show) {
   if (!ov) return;
   ov.classList.toggle('hidden', !show);
   _fondoQuieto('zona', show);
+  if (!show) _catalogoALaVista();
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   LA TIENDA ABRE EN EL CATALOGO (23/9/2026)
+
+   Hasta hoy el catalogo arrancaba tapado por el modal: zona, y despues
+   fecha. Para alguien de Estancias eran 2 pantallas antes de ver un precio;
+   para alguien de Pilar, 4 (zona, zona de Pilar, barrio, fecha). Tadeo,
+   mirando entrar a un cliente nuevo: "es bastante dificil el flujo...
+   demasiada informacion 'de donde sos', 'cuando queres que te entregue'. Lo
+   primero que quieren es ver que vendo y que precios tengo".
+
+   La zona y la fecha son para ENTREGAR, no para MIRAR. Preguntarlas antes
+   es pedirle el domicilio a alguien que todavia no entro al local. Ahora:
+
+     entra        -> el catalogo entero, con precios, sin nada encima
+     primer "+"   -> una pantalla, tres botones: donde entregamos
+     el dia       -> en el formulario, que es donde ya esta decidiendo
+
+   Mientras no elige, la tienda trabaja con una zona PROVISORIA —Estancias,
+   el catalogo mas grande y de donde sale la mayor parte de las ventas— que
+   NO se guarda en localStorage: el cliente no eligio nada, y guardarla seria
+   decidir por el. Todo lo que seria una afirmacion sobre su zona se calla
+   hasta que elija: los dias de entrega del hero y la franja del 10% (que en
+   un barrio con vendedor no aplica).
+
+   Sin fecha elegida `getStockMode()` devuelve 'ilimitado', asi que el
+   catalogo se ve completo y sin carteles de "Sin stock" — que es justo lo
+   que vino a ver. El tope real entra cuando elige el dia en el formulario:
+   `selectDayPicker` llama a `setDeliveryDate`, y de ahi cuelga
+   `_ensureCartFitsDate`, que recorta y lo dice.
+   ═══════════════════════════════════════════════════════════════════ */
+var ZONA_PROVISORIA = 'estancias';
+var zonaProvisoria = false;
+var _zonaOrigen = 'entrada';   // de donde salio la pregunta, para medirla
+var _zonaPend = null;          // lo que el cliente estaba haciendo cuando se le pregunto
+
+/* La puerta. Devuelve true si FRENO lo que se estaba por hacer — el que la
+   llama tiene que cortar ahi —, y corre `seguir` cuando la zona ya quedo
+   elegida.
+
+   Va en las funciones que el cliente toca (addToCart, togglePieza, los
+   combos) y no adentro de modifyCart: para retomar hay que volver a hacer lo
+   MISMO que pidio, y eso solo lo sabe la funcion de arriba. */
+function _pedirZonaAntes(seguir, motivo) {
+  if (!zonaProvisoria) return false;
+  _zonaPend = seguir || null;
+  _track('zona_pedida', { motivo: motivo || 'agregar' });
+  showZoneModal('agregar');
+  return true;
+}
+/* Un solo lugar cierra el modal con la zona ya completa. Si el cliente venia
+   de tocar "+ Agregar" se retoma eso y NO se sube arriba de todo: esta
+   mirando ese producto. */
+function _cerrarModalZona() {
+  _setOverlay(false);
+  var seguir = _zonaPend; _zonaPend = null;
+  if (seguir) { seguir(); return; }
+  window.scrollTo(0, 0);
+}
+/* El producto puede no existir en la zona recien elegida. Pasa de verdad:
+   entra por el catalogo provisorio de Estancias, toca un pack y elige Clubes,
+   que tiene otro catalogo. Agregarlo igual meteria en el carrito algo que la
+   pantalla no muestra. */
+function _enLaZona(id) {
+  return getActiveProducts().some(function (p) { return String(p.id) === String(id); });
+}
+function _noEstaEnEstaZona(nombre) {
+  var z = ZONAS[currentZone];
+  toast('⚠️ ' + (nombre || 'Eso') + ' no lo tenemos en ' + ((z && z.nombre) || 'esta zona'), 4000);
+}
+/* El cartel de arriba del catalogo, mientras la zona sea provisoria. */
+function _updateZonaCta() {
+  var cta = $id('zona-cta'); if (!cta) return;
+  cta.hidden = !zonaProvisoria;
+}
+/* "Entro al catalogo", una vez por visita. Antes esto lo marcaba
+   `select_zone`, porque elegir zona ERA entrar. Ahora se entra sin elegir
+   nada, asi que el momento es otro y el evento tambien — si no, el publico de
+   remarketing de Meta se quedaria solo con los que eligieron zona, y el
+   denominador para medir este cambio no existiria. */
+var _vioCatalogo = false;
+function _catalogoALaVista() {
+  if (_vioCatalogo) return;
+  _vioCatalogo = true;
+  _track('ver_catalogo', { zone: currentZone, provisoria: zonaProvisoria ? 1 : 0 });
+}
+
 function setZone(zone) {
   currentZone = zone;
+  zonaProvisoria = false;
   localStorage.setItem('maleu_zone', zone);
-  _track('select_zone', { zone: zone });
+  _track('select_zone', { zone: zone, origen: _zonaOrigen });
   applyZone();
   // Clubes: la entrega es siempre Viernes "a coordinar" en la puerta del
   // club, no tiene sentido preguntar fecha. Se setea automáticamente.
   if (zone === 'clubes') {
     _setClubesDefaultDate();
-    _setOverlay(false);
-    window.scrollTo(0, 0);
+    _cerrarModalZona();
     return;
   }
   // Pilar: cuando el cliente elige Pilar EXPLÍCITAMENTE desde el modal,
@@ -2019,15 +2124,12 @@ function setZone(zone) {
     welcomeShowBarrioStep();
     return;
   }
-  // Si ya tenía fecha guardada y aún es vigente, no volver a preguntar.
-  // Si no, avanzar al paso de fecha.
-  if (!_loadSavedDate()) {
-    _olvidarFecha();
-    welcomeShowDateStep();
-  } else {
-    _setOverlay(false);
-    window.scrollTo(0, 0);
-  }
+  /* El paso de fecha ya no es parte de la entrada (23/9/2026). Si el cliente
+     tenia una fecha guardada y vigente se respeta; si no, entra sin fecha —el
+     catalogo se ve entero— y el dia lo elige en el formulario o desde el
+     chip 📅. */
+  if (!_loadSavedDate()) _olvidarFecha();
+  _cerrarModalZona();
 }
 function welcomeShowBarrioStep() {
   _hideAllSteps();
@@ -2036,10 +2138,11 @@ function welcomeShowBarrioStep() {
   renderWelcomeBarrioGrid();
 }
 function welcomeBackFromDate() {
-  // Botón "← Volver" del paso fecha. En Pilar volvemos al paso sub-barrio
-  // (más cercano). En Home/Clubes al paso de zona.
-  if (currentZone === 'pilar') welcomeShowSubBarrioStep();
-  else welcomeShowZoneStep();
+  /* Botón "← Volver" del paso fecha. Desde el 23/9/2026 a ese paso se llega
+     SOLO desde el chip 📅, asi que volver es cerrar: mandarlo a reelegir zona
+     y barrio —que es lo que hacia— seria devolverle el interrogatorio que
+     este cambio vino a sacar. */
+  _setOverlay(false);
 }
 function renderWelcomeBarrioGrid() {
   var grid = $id('loc-barrios-grid');
@@ -2085,7 +2188,8 @@ function setPilarBarrio(val, nombre) {
 }
 
 /* Paso 3 del welcome: el cliente eligió el sub-barrio dentro de la zona.
-   Guardamos y avanzamos a fecha (o cerramos si ya había fecha guardada). */
+   Con eso la zona esta completa y se cierra: desde el 23/9/2026 no hay paso
+   de fecha atras. */
 function setPilarSubBarrio(val, nombre) {
   selectedPilarBarrio = val;
   selectedPilarBarrioName = nombre || val;
@@ -2100,13 +2204,8 @@ function setPilarSubBarrio(val, nombre) {
     if (typeof onPilarBarrioChange === 'function') onPilarBarrioChange();
   }
   _updateZoneChip();
-  if (!_loadSavedDate()) {
-    _olvidarFecha();
-    welcomeShowDateStep();
-  } else {
-    _setOverlay(false);
-    window.scrollTo(0, 0);
-  }
+  if (!_loadSavedDate()) _olvidarFecha();
+  _cerrarModalZona();
 }
 
 /* Muestra el paso 3 (sub-barrio) con las cards individuales de la zona
@@ -2189,8 +2288,10 @@ function _setClubesDefaultDate() {
   _updateDateChip();
   _preselectDayPicker();
 }
-function showZoneModal() {
-  // Reabrir desde el chip "📍 Zona"
+function showZoneModal(origen) {
+  // Reabrir desde el chip "📍", desde el cartel del catalogo, o porque el
+  // cliente toco "+ Agregar" sin haber elegido zona todavia.
+  _zonaOrigen = origen || 'chip';
   welcomeShowZoneStep();
   _setOverlay(true);
 }
@@ -2557,7 +2658,17 @@ function _updateDateChip() {
   var chip = $id('date-chip'); if (!chip) return;
   // En Clubes no se muestra el chip de fecha (entrega siempre Vie en cancha)
   if (currentZone === 'clubes') { chip.style.display = 'none'; return; }
-  if (!selectedDeliveryDate && !selectedDateIsFlexible) { chip.style.display = 'none'; return; }
+  /* Sin fecha elegida el chip INVITA, no se esconde (23/9/2026). Desde que
+     el dia no se pregunta al entrar, este es el unico lugar donde el cliente
+     ve que todavia esta sin elegir, y por donde lo puede elegir sin bajar
+     hasta el formulario. */
+  if (!selectedDeliveryDate && !selectedDateIsFlexible) {
+    chip.style.display = '';
+    chip.textContent = '📅 Elegí el día';
+    chip.classList.add('is-pendiente');
+    return;
+  }
+  chip.classList.remove('is-pendiente');
   chip.style.display = '';
   if (selectedDateIsFlexible) {
     chip.textContent = '📅 Cualquier día';
@@ -2600,6 +2711,14 @@ function _preselectDayPicker() {
    Se llama desde applyZone() y desde cada punto donde cambia el barrio. */
 function _updateZoneChip() {
   var chip = $id('zone-chip'); if (!chip) return;
+  /* Zona provisoria: el chip pregunta en vez de afirmar una zona que eligio
+     la tienda y no el cliente. */
+  if (zonaProvisoria) {
+    chip.textContent = '📍 ¿Dónde entregamos?';
+    chip.classList.add('is-pendiente');
+    return;
+  }
+  chip.classList.remove('is-pendiente');
   var z = ZONAS[currentZone];
   var label = z ? z.nombre : '';
   if (currentZone === 'estancias') {
@@ -2628,6 +2747,13 @@ function _pintarHeroEntregas() {
   const z = ZONAS[currentZone];
   if (!z) return;
   const schedEl = $id('hero-schedule');
+  /* Con la zona provisoria no se dicen dias ni envio: serian los de una zona
+     que el cliente no eligio. Lo pide el cartel de abajo (#zona-cta). */
+  if (zonaProvisoria) {
+    $id('hero-delivery').style.display = 'none';
+    if (schedEl) schedEl.style.display = 'none';
+    return;
+  }
   // Hero delivery text — si hay schedule detallado, mostrar solo eso
   if (z.schedule) {
     $id('hero-delivery').style.display = 'none';
@@ -2642,6 +2768,13 @@ function _pintarHeroEntregas() {
 function applyZone() {
   const z = ZONAS[currentZone];
   _updateZoneChip();
+  _updateZonaCta();
+  /* El chip de fecha tambien, y no solo cuando hay fecha: desde el 23/9/2026
+     cuando NO hay dice "Elegí el día", y ese es justamente el estado con el
+     que entra todo el mundo. Lo pintaban `_loadSavedDate` (solo si encontraba
+     una) y `_olvidarFecha`, asi que el cliente nuevo se quedaba con el "📅
+     Fecha" escrito a mano en el HTML. Lo agarro verificar-entrada.js. */
+  _updateDateChip();
   _pintarHeroEntregas();
   // Aviso del cutoff en el hero: solo Clubes, que no pasa por el paso de fecha
   // del modal y por lo tanto no lo vería en ningún otro lado.
@@ -3381,6 +3514,13 @@ function _metaForzarCarga() {
   try { if (typeof window.traerMeta === 'function') window.traerMeta(); } catch (e) {}
 }
 function addToCart(id, mensaje) {
+  /* La zona, primero: cambia el catalogo, el envio y el 10% en efectivo, y
+     applyZone() vacia el carrito. Preguntarla despues le borraria en la cara
+     lo que acaba de agregar. */
+  if (_pedirZonaAntes(function () {
+        if (!_enLaZona(id)) { _noEstaEnEstaZona(PROD_MAP[id] && PROD_MAP[id].nombre); return; }
+        addToCart(id, mensaje);
+      }, 'producto')) return false;
   if (!modifyCart(id, 1)) return false;
   const p = PROD_MAP[id];
   _track('add_to_cart', { id: p.id, item_name: p.nombre, price: p.precio, zone: currentZone });
@@ -3416,6 +3556,11 @@ function addComboInstance(comboId, comp, picks) {
 }
 /* Combo sin elecciones reales: arma la config por defecto y la agrega directo. */
 function addComboDefault(comboId) {
+  if (_pedirZonaAntes(function () {
+        var cz = COMBO_MAP[comboId];
+        if (!cz || !comboAvailableInZone(cz)) { _noEstaEnEstaZona('Ese combo'); return; }
+        addComboDefault(comboId);
+      }, 'combo')) return;
   const c = COMBO_MAP[comboId]; if (!c) return;
   if (c.terminado) { toast('⚠ Este combo ya no está disponible', 3000); return; }
   const r = resolveComp(c, defaultSelection(c));
@@ -3501,6 +3646,11 @@ function updateStockBadgesCombos() {
    ══════════════════════════════════════════════════ */
 let _comboConfig = null;  // { comboId, sel:[[prodId,...], ...] }
 function openComboConfig(comboId) {
+  if (_pedirZonaAntes(function () {
+        var cz = COMBO_MAP[comboId];
+        if (!cz || !comboAvailableInZone(cz)) { _noEstaEnEstaZona('Ese combo'); return; }
+        openComboConfig(comboId);
+      }, 'combo')) return;
   const c = COMBO_MAP[comboId]; if (!c) return;
   if (c.terminado) { toast('⚠ Este combo ya no está disponible', 3000); return; }
   _comboConfig = { comboId, sel: defaultSelectionInStock(c) };
@@ -3830,6 +3980,7 @@ function toggleCart() {
   }
 }
 function goToForm() {
+  if (_pedirZonaAntes(function () { goToForm(); }, 'formulario')) return;
   toggleCart();
   _track('begin_checkout', { value: cartTotal(), zone: currentZone, items: cartCount() });
   const section = $id('form-section');
@@ -3985,6 +4136,15 @@ function selectDayPicker(el) {
   var hiddenF = $id('f-dia-fecha');
   if (hidden) hidden.value = dia;
   if (hiddenF) hiddenF.value = fecha;
+  /* Y esta es la fecha del pedido (23/9/2026). Hasta hoy elegir un dia aca no
+     movia `selectedDeliveryDate`: el tope de stock seguia calculado con la
+     fecha del modal, asi que se podia armar el carrito para el viernes (todo
+     disponible) y pedir la entrega para hoy (freezer vacio). Ahora el dia del
+     formulario es el que manda y `_ensureCartFitsDate` recorta y lo dice,
+     igual que cuando se cambia desde el chip 📅. Desde que la fecha dejo de
+     preguntarse al entrar, este es ADEMAS el lugar donde la mayoria la elige:
+     el agujero paso de raro a estar en el camino principal. */
+  setDeliveryDate(fecha, dia, { sinScroll: true });
   clearError('f-dia','err-dia');
   if (root) root.classList.remove('error');
   onDiaChange();
@@ -4099,7 +4259,13 @@ function hideSendLoader() {
 /* ── ENVIAR PEDIDO ── */
 function enviarPedido() {
   if (_enviando) return;
-  if (!currentZone) { showZoneModal(); return; }
+  if (!currentZone) { showZoneModal('enviar'); return; }
+  /* Una zona provisoria vale para MIRAR, no para entregar: el pedido iria a la
+     hoja equivocada, con el envio y el descuento de una zona que el cliente
+     nunca eligio. En la practica no se llega aca —para tener algo en el
+     carrito ya hubo que elegirla—, pero es la ultima puerta y las puertas se
+     cierran todas. */
+  if (zonaProvisoria) { showZoneModal('enviar'); return; }
 
   const nombre = $id('f-nombre').value.trim();
   const telefono = $id('f-telefono').value.trim();
@@ -5525,6 +5691,9 @@ function agregarLoMismoOtraFecha(yaPregunto) {
 
 function agregarLoMismo(sufijo) {
   sufijo = typeof sufijo === 'string' ? sufijo : '';
+  /* En la practica no se da —el que tiene un pedido guardado tiene zona—,
+     pero es una puerta al carrito y las puertas se cierran todas. */
+  if (_pedirZonaAntes(function () { agregarLoMismo(sufijo); }, 'repetir')) return;
   var u = _ultimoItems(); if (!u || !u.items.length) return;
   var sumados = 0, sinStock = 0, recortados = 0, valor = 0;
   u.items.forEach(function (x) {
@@ -5639,24 +5808,24 @@ if (savedZone && ZONAS[savedZone]) {
     } else if (!tieneBarrio) {
       welcomeShowSubBarrioStep();    // Paso 3: elegir sub-barrio (zona ya elegida)
       _setOverlay(true);
-    } else if (_loadSavedDate()) {
-      _setOverlay(false);            // Zona + barrio + fecha OK → cerrar modal
     } else {
-      welcomeShowDateStep();
-      _setOverlay(true);
+      _loadSavedDate();              // Zona + barrio OK → adentro
+      _setOverlay(false);
     }
-  } else if (_loadSavedDate()) {
-    // Tiene fecha vigente → todo listo.
-    _setOverlay(false);
   } else {
-    // Falta fecha → abrir el modal directamente en paso fecha.
-    welcomeShowDateStep();
-    _setOverlay(true);
+    // Con fecha vigente se respeta; sin ella, entra sin fecha y la elige en
+    // el formulario. En ningun caso se le abre el modal (23/9/2026).
+    _loadSavedDate();
+    _setOverlay(false);
   }
 } else {
-  // Cliente nuevo: paso 1 (zona) primero
-  welcomeShowZoneStep();
-  _setOverlay(true);
+  /* Cliente nuevo: no se le pregunta NADA. Entra al catalogo con la zona
+     provisoria y el cartel "¿A donde te lo llevamos?" arriba; la zona se le
+     pregunta en el primer "+ Agregar" (_pedirZonaAntes). */
+  currentZone = ZONA_PROVISORIA;
+  zonaProvisoria = true;
+  applyZone();
+  _setOverlay(false);
 }
 
 loadClientData();

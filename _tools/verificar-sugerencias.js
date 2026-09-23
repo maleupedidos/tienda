@@ -237,8 +237,19 @@ async function main() {
         'var dormir = function (ms) { return new Promise(function (s) { setTimeout(s, ms); }); };' +
         'var z = [].slice.call(document.querySelectorAll("#loc-step-zone .loc-btn")).filter(function (b) { return (b.getAttribute("onclick") || "").indexOf(' + JSON.stringify(zona) + ') >= 0; })[0];' +
         'z.click(); await dormir(500);' +
-        'if (' + JSON.stringify(zona) + ' === "pilar") { var o = document.querySelector(' + JSON.stringify(pilarZona || '#loc-overlay button[onclick*=__otro__]') + '); if (o) { o.click(); await dormir(400); } }' +
-        'var f = document.querySelector("#loc-dates-grid button[onclick*=\'2026-09-\']"); if (f) f.click();' +
+        /* En Pilar se elige la zona Y el barrio, como una persona. Hasta el
+           23/9/2026 el test se quedaba en el paso del barrio —el calendario no
+           existia todavia— y por eso Pilar corria sin fecha ni tope. */
+        'if (' + JSON.stringify(zona) + ' === "pilar") { var o = document.querySelector(' + JSON.stringify(pilarZona || '#loc-overlay button[onclick*=__otro__]') + '); if (o) { o.click(); await dormir(400); }' +
+        '  var sb = document.querySelector("#loc-subbarrios-grid button"); if (sb) { sb.click(); await dormir(400); } }' +
+        /* Desde el 23/9/2026 el paso de fecha se abre desde el chip 📅. */
+        'showDateModal(); await dormir(300);' +
+        'var cards = [].slice.call(document.querySelectorAll("#loc-dates-grid button[onclick*=\'2026-09-\']"));' +
+        /* Estancias mide el domingo "hoy" (tope al freezer), que es el escenario
+           de varios chequeos de mas arriba. Pilar va a la fecha mas lejana, sin
+           tope: lo que viene a medir es a quien se le sugiere carne, no el
+           stock — y hasta hoy corria justamente asi, sin fecha. */
+        'var f = ' + (zona === 'pilar' ? 'cards[cards.length - 1]' : 'cards[0]') + '; if (f) f.click();' +
         '})()');
       await esperar('Object.keys(stockMap).length > 5', 10000);
       await esperar('piezasEstado !== "cargando"', 10000);

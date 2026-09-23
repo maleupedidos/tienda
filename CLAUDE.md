@@ -1648,6 +1648,162 @@ en el carrito; Los Alcanfores; la migración; el que vuelve a Pilar; Clubes. Con
 antes da **28 rojos**. Actualizados: `verificar-pedido.js` (las tres zonas en pantalla) y
 `verificar-sugerencias.js` (Pilar con vendedor sin carne, "Otra zona" con carne).
 
+## La tienda abre en el catálogo (23/9/2026)
+
+Tadeo, mirando entrar a un cliente nuevo: *"es bastante difícil el flujo para alguien
+que entra por primera vez, demasiada información 'de dónde sos', 'cuándo querés que te
+entregue'… lo primero que quieren es ver qué vendo y qué precios tengo"*.
+
+Hasta ese día el catálogo arrancaba **tapado** por el modal de bienvenida:
+
+| | antes | ahora |
+|---|---|---|
+| Estancias | **2 pantallas** (zona → fecha) | **0** |
+| Pilar | **4 pantallas** (zona → zona de Pilar → barrio → fecha) | **0** |
+| la zona | antes de ver un precio | **en el primer "+ Agregar"** |
+| el día | antes de ver un precio | **en el formulario** |
+
+> [!important] La zona y la fecha son para ENTREGAR, no para MIRAR
+> Preguntarlas antes es pedirle el domicilio a alguien que todavía no entró al local. Lo
+> único que decide si se queda es qué vendemos y a cuánto, y eso es lo que tiene que
+> estar en la primera pantalla.
+
+### La zona provisoria
+
+Mientras el cliente no elige, la tienda trabaja con `currentZone = 'estancias'` y
+**`zonaProvisoria = true`**. Estancias es el catálogo más grande y de donde sale la mayor
+parte de las ventas.
+
+> [!danger] No se guarda en `localStorage`, a propósito
+> El cliente no eligió nada: guardarla sería decidir por él, y el que vuelve entraría
+> derecho a una zona que nunca dijo. `maleu_zone` se escribe recién en `setZone()`.
+
+**Y todo lo que sería una afirmación sobre su zona se calla hasta que elija:**
+
+| | por qué |
+|---|---|
+| los días de entrega del hero | serían los de Estancias, y puede ser de Pilar |
+| la franja del **10% en efectivo** | es de Estancias y los dos ex-Home; en un barrio con vendedor **no aplica** |
+| el chip 📍 | dice *"¿Dónde entregamos?"*, no una zona |
+
+> [!danger] El 10% se apagó en `cashDiscountActive()`, no en la franja
+> Por el descuento preguntan **tres** lugares: la franja de arriba, el incentivo del
+> carrito y el cartel del medio de pago. La primera versión tapaba la franja en
+> `updatePromoBar()` y **`updateUI()` se la volvía a encender dos líneas después** — el
+> test lo agarró en la primera corrida. Es la lección de siempre de este repo: se arregla
+> en la raíz, no en los call sites.
+
+Sin fecha elegida `getStockMode()` devuelve **`ilimitado`**, así que el catálogo se ve
+entero y **sin un solo "Sin stock"**. Es lo contrario del callejón sin salida del 13/9,
+cuando un domingo con el freezer vacío los cuatro "Lo más pedido" estaban en gris.
+
+### La zona se pregunta en el primer "+ Agregar"
+
+`_pedirZonaAntes(seguir, motivo)` frena la acción, abre el modal y **retoma lo mismo**
+cuando la zona queda completa (`_cerrarModalZona`). Sin subir el scroll: el cliente está
+mirando ese producto.
+
+> [!important] Antes de agregar, no después — `applyZone()` vacía el carrito
+> Preguntar la zona después le borraría en la cara lo que acaba de sumar.
+
+Las puertas cerradas son **seis**: `addToCart`, `togglePieza`, `openComboConfig`,
+`addComboDefault`, `agregarLoMismo`, `goToForm` y —la última— `enviarPedido`. La puerta
+va en la función que el cliente toca y **no adentro de `modifyCart`**: para retomar hay
+que volver a hacer lo mismo que pidió, y eso sólo lo sabe la función de arriba.
+
+> [!warning] Lo que la zona nueva no vende NO entra al carrito
+> El caso real: entra por el catálogo provisorio de Estancias, toca un pack y elige
+> **Clubes**, que tiene otro catálogo. Al retomar se chequea `_enLaZona(id)` y si no está
+> se dice (*"⚠️ Pizza Margarita no lo tenemos en Clubes Deportivos"*).
+
+### El día se elige en el formulario — y ahora SÍ es la fecha del pedido
+
+> [!danger] `selectDayPicker` no movía `selectedDeliveryDate`. Era un agujero abierto.
+> Elegir un día en el formulario marcaba los campos y el horario, **y nada más**: el tope
+> de stock seguía calculado con la fecha del modal. O sea que se podía armar el carrito
+> para el viernes (todo disponible) y pedir la entrega **para hoy** (freezer vacío), y el
+> pedido entraba igual.
+>
+> Existía desde antes de este cambio y era raro —había que elegir la fecha en el modal y
+> después otra en el formulario—. Con la fecha fuera de la entrada **pasó a estar en el
+> camino principal**, así que se cerró: `selectDayPicker` llama a `setDeliveryDate(...,
+> { sinScroll: true })`, y de ahí cuelgan `_ensureCartFitsDate` (recorta y avisa),
+> `updateStockDisplay` y el chip de arriba.
+
+El chip 📅 **invita cuando no hay fecha** (*"Elegí el día"*) en vez de esconderse: es el
+único lugar donde el cliente ve que el día todavía está sin elegir, y por donde lo puede
+elegir sin bajar hasta el formulario. Lo pinta `applyZone()`, que es por donde pasan
+todas las puertas — antes lo pintaban sólo `_loadSavedDate` (y únicamente si encontraba
+una) y `_olvidarFecha`, así que el cliente nuevo se quedaba con el *"📅 Fecha"* escrito a
+mano en el HTML.
+
+**El paso de fecha del modal sigue vivo**, con su calendario por zona y su cartel de
+cierre; se llega desde el chip 📅. Su *"← Volver"* ahora **cierra**: mandarlo a reelegir
+zona y barrio que ya tiene era devolverle el interrogatorio.
+
+> [!note] El que vuelve no pierde nada
+> Con zona guardada entra directo, igual que antes. Si su fecha sigue vigente se respeta;
+> si venció —el caso común del que vuelve una semana después— **ya no se le abre el modal
+> en "¿para cuándo?"**: ve el catálogo entero y el chip lo invita.
+
+### Cómo se mide
+
+| evento | cuándo |
+|---|---|
+| **`ver_catalogo`** | una vez por visita, cuando el catálogo queda a la vista. **Es el denominador** |
+| `select_zone` | la zona elegida, con **`origen`**: `entrada` · `agregar` · `cartel` · `chip` · `enviar` |
+| `zona_pedida` | la puerta frenó algo, con el `motivo` |
+
+> [!important] `ViewContent` de Meta se mudó de `select_zone` a `ver_catalogo`
+> El comentario viejo lo decía él mismo: *"el momento en que el visitante deja de mirar
+> la portada y entra al catálogo"*. Ese momento ahora es **abrir la página**. Si se
+> hubiera quedado colgado de `select_zone`, el público de remarketing se quedaría sólo
+> con los que eligieron zona — justo los que este cambio dejó de exigir.
+
+**Para medir si el cambio sirvió**, el número es `ver_catalogo` contra `select_zone` y
+contra `purchase`. Antes del cambio no existía el denominador: el que se iba en el modal
+no dejaba rastro ninguno.
+
+### La red: `node _tools/verificar-entrada.js [ancho]`
+
+**68 chequeos**, verdes a 390 y 1440px, con el reloj congelado el domingo 13/9/2026 05:00:
+la primera pantalla (nada encima, 43 cards con precio, cero grises por fecha, el cartel
+tocable, los dos chips, el hero y la franja callados, la zona sin guardar, `ver_catalogo`
+una vez); el primer "+ Agregar" (pregunta, no agrega mientras pregunta, retoma, no sube el
+scroll, el origen del evento); el día en el formulario (que sea la fecha del pedido, que
+tope el stock y que recorte avisando); Clubes con un producto que no vende; Pilar
+completando zona, barrio y sub barrio; el que vuelve con fecha vigente y con fecha
+vencida; y cero POST.
+
+Probada en la dirección contraria con **diez bugs reinyectados de a uno**: el modal que
+vuelve a salir, la zona provisoria guardada, "+ Agregar" sin preguntar, la zona elegida
+que no retoma, el hero y la franja hablando de más, `selectDayPicker` sin mover la fecha,
+lo que la zona no vende entrando igual, el chip de fecha mudo y el cartel que no aparece.
+**Los diez se agarran.**
+
+> [!danger] El toque se mide DOS veces, y por un caso real
+> Entre acomodar el scroll y soltar el click la página se sigue moviendo. En una corrida
+> el toque al calendario del formulario **le cayó a una pieza de vacío y la sumó al
+> carrito**, y el test culpaba a la tienda de no mover la fecha. Ahora se acomoda el
+> scroll, se espera, y **recién ahí** se lee dónde quedó el elemento.
+
+> [!warning] `goToForm()` hace `toggleCart()` sin preguntar
+> Se llama siempre DESDE el carrito abierto, así que llamarla sola **lo abre**, y el
+> carrito tapa medio formulario. Un test que la llame directo tiene que abrir el carrito
+> antes.
+
+### Las redes viejas: qué se tocó y qué no
+
+Cinco ayudantes elegían la fecha en el paso que dejó de salir solo. Se les agregó
+`showDateModal()` antes de leer el calendario —el mismo camino que le queda a una
+persona—, y `verificar-datos-cliente` pasó a probar el flujo nuevo de punta a punta
+(entra, toca "+ Agregar", le preguntan, elige, y lo que tocó se suma solo).
+
+> [!note] Hallazgo de paso en `verificar-sugerencias`
+> El escenario de Pilar **nunca elegía el sub barrio**: se quedaba en ese paso, el
+> calendario no existía todavía, y por eso Pilar corría sin fecha y sin tope. Ahora
+> completa el barrio como una persona.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

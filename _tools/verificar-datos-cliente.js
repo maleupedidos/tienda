@@ -94,15 +94,43 @@ function cdp(url) {
 const ELEGIR_ZONA_FECHA = `(async function () {
   var dormir = function (ms) { return new Promise(function (s) { setTimeout(s, ms); }); };
   var ov = document.getElementById('loc-overlay');
-  var abierto = function () { return !!(ov && getComputedStyle(ov).display !== 'none'); };
+  var abierto = function () { return !!(ov && getComputedStyle(ov).display !== 'none' && !ov.classList.contains('hidden')); };
+  /* Desde el 23/9/2026 la tienda abre en el catalogo: el modal ya no sale solo.
+     Si la zona todavia esta sin elegir, se abre por donde lo abre una persona
+     que no toco "+ Agregar" — el chip 📍 de arriba. */
+  if (!abierto() && typeof zonaProvisoria !== 'undefined' && zonaProvisoria) {
+    showZoneModal('chip'); await dormir(300);
+  }
   if (abierto()) {
     var z = [].slice.call(document.querySelectorAll('#loc-step-zone .loc-btn'))
       .filter(function (b) { return (b.getAttribute('onclick') || '').indexOf('estancias') >= 0; })[0];
     if (z) { z.click(); await dormir(500); }
-    var f = document.querySelector('#loc-dates-grid button:not([disabled])');
+    /* Si quedo abierto es porque falta un paso (en Pilar, el barrio). En
+       Estancias cierra ahi mismo: la fecha se elige en el formulario. */
+    var f = abierto() ? document.querySelector('#loc-dates-grid button:not([disabled])') : null;
     if (f) { f.click(); await dormir(700); }
   }
   return abierto();
+})()`;
+
+/* Cliente nuevo con el flujo del 23/9/2026: entra al catalogo sin que le
+   pregunten nada, toca "+ Agregar", AHI le preguntan la zona, elige, y lo que
+   habia tocado se suma solo. */
+const AGREGAR_Y_ELEGIR_ZONA = `(async function () {
+  var dormir = function (ms) { return new Promise(function (s) { setTimeout(s, ms); }); };
+  var ov = document.getElementById('loc-overlay');
+  var abierto = function () { return !!(ov && getComputedStyle(ov).display !== 'none' && !ov.classList.contains('hidden')); };
+  var alEntrar = abierto();
+  var act = getActiveProducts().filter(function (p) { return !esPorPeso(p); });
+  var id = act[0].id;
+  addToCart(id);
+  await dormir(400);
+  var pregunto = abierto(), mientras = cartCount();
+  var z = [].slice.call(document.querySelectorAll('#loc-step-zone .loc-btn'))
+    .filter(function (b) { return (b.getAttribute('onclick') || '').indexOf('estancias') >= 0; })[0];
+  if (z) { z.click(); await dormir(600); }
+  return JSON.stringify({ alEntrar: alEntrar, pregunto: pregunto, mientras: mientras,
+                          abierto: abierto(), sumado: cartCount(), id: id });
 })()`;
 
 /* Lo que se ve en el formulario. Un campo vacío es un campo que hay que
@@ -196,14 +224,14 @@ const LEER_FORM = `(function(){
     titulo('visita 1 — cliente nuevo: elige zona, carga y manda el pedido');
     await abrir();
     await visitar();
-    const modal1 = await ev(ELEGIR_ZONA_FECHA);
-    ch(modal1 === false, 'eligio zona y fecha como una persona');
+    const modal1 = JSON.parse(await ev(AGREGAR_Y_ELEGIR_ZONA));
+    ch(modal1.alEntrar === false, 'entra al catalogo sin nada encima (23/9/2026)');
+    ch(modal1.pregunto === true, 'al tocar "+ Agregar" le pregunta la zona');
+    ch(modal1.mientras === 0, 'y mientras pregunta no agrega nada', String(modal1.mientras));
+    ch(modal1.abierto === false && modal1.sumado === 1, 'al elegir la zona cierra y suma lo que habia tocado',
+       JSON.stringify({ abierto: modal1.abierto, carrito: modal1.sumado }));
 
-    await ev(`(function(){
-      var act = getActiveProducts().filter(function(p){ return !esPorPeso(p); });
-      addToCart(act[0].id); addToCart(act[0].id);
-      goToForm();
-    })()`);
+    await ev('addToCart(' + JSON.stringify(modal1.id) + '); goToForm();');
     await dormir(700);
     const vacio = JSON.parse(await ev(LEER_FORM));
     ch(!vacio.nombre && !vacio.tel, 'el formulario arranca vacio, que es lo correcto para alguien nuevo',
@@ -266,12 +294,14 @@ const LEER_FORM = `(function(){
     ch(v2.bp === CLI.bp, 'el barrio privado vuelve solo', JSON.stringify(v2.bp));
     ch(v2.barrio === CLI.barrio, 'el sub-barrio vuelve solo', JSON.stringify(v2.barrio));
     ch(v2.lote === CLI.lote, 'el lote vuelve solo', JSON.stringify(v2.lote));
-    /* El dia NO sale de la precarga: lo pone la fecha que el cliente eligio en
-       el modal de esta visita, que es lo correcto. Lo que no tiene que volver
-       es el PAGO — cambia en cada pedido y precargarlo seria decidir por el. */
+    /* El dia NO sale de la precarga: sale de la fecha que quedo elegida. Desde
+       el 23/9/2026 esa fecha la pone el calendario del FORMULARIO
+       (selectDayPicker llama a setDeliveryDate), no el modal. Lo que no tiene
+       que volver es el PAGO — cambia en cada pedido y precargarlo seria decidir
+       por el. */
     ch(!v2.pago, 'el metodo de pago NO vuelve, y es a proposito: se elige en cada pedido',
        JSON.stringify(v2.pago));
-    ch(!!v2.dia, 'el dia viene de la fecha elegida en el modal, no de lo guardado', JSON.stringify(v2.dia));
+    ch(!!v2.dia, 'el dia viene de la fecha que quedo elegida, no de lo guardado', JSON.stringify(v2.dia));
     /* 12/9/2026: si la fecha guardada sigue vigente el modal NO se abre, y el
        dia lo marca goToForm. Con eso aparecio el riesgo contrario: que al
        volver del carrito pise un dia que el cliente cambio en el formulario. */
@@ -308,7 +338,7 @@ const LEER_FORM = `(function(){
     const hay = JSON.parse(await ev(`JSON.stringify({ pg: !!localStorage.getItem('maleu_cliente_pg'), zone: localStorage.getItem('maleu_zone') })`));
     ch(hay.pg === true && !hay.zone, 'el escenario quedo sembrado: datos guardados y sin zona', JSON.stringify(hay));
     const m3 = await ev(ELEGIR_ZONA_FECHA);
-    ch(m3 === false, 'eligio zona y fecha en el modal');
+    ch(m3 === false, 'eligio la zona en el modal');
     await ev('goToForm()'); await dormir(700);
     const v3 = JSON.parse(await ev(LEER_FORM));
     ch(v3.nombre === CLI.nombre, 'el nombre vuelve al elegir la zona en el modal', JSON.stringify(v3.nombre));

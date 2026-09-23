@@ -247,6 +247,10 @@ async function main() {
         'var dormir = function (ms) { return new Promise(function (s) { setTimeout(s, ms); }); };' +
         'var z = [].slice.call(document.querySelectorAll("#loc-step-zone .loc-btn")).filter(function (b) { return (b.getAttribute("onclick") || "").indexOf(' + JSON.stringify(zona) + ') >= 0; })[0];' +
         'z.click(); await dormir(500);' +
+        /* La fecha ya no se pregunta al entrar (23/9/2026): el paso sigue vivo
+           pero se llega desde el chip 📅. El test la elige por ese camino, que
+           es el que le queda a una persona. */
+        'showDateModal(); await dormir(300);' +
         'var f = document.querySelector("#loc-dates-grid button[onclick*=\'2026-09-13\']"); if (f) f.click();' +
         '})()');
       await esperar('Object.keys(stockMap).length > 5', 10000);
