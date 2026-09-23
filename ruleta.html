@@ -90,7 +90,7 @@
 <div class="wrap">
   <img class="logo" src="img/logo-maleu.png?v=80e04e45" alt="Maleu" />
   <h1>Girá la ruleta y ganate <em>empanadas gratis</em></h1>
-  <p class="sub" id="sub">O un 10% OFF en tu primera compra. Comida lista para cocinar, en la puerta de tu casa.</p>
+  <p class="sub" id="sub">O un 15% OFF en tu primera compra. Comida lista para cocinar, en la puerta de tu casa.</p>
 
   <div class="rueda" aria-hidden="true">
     <div class="aguja"></div>
@@ -148,14 +148,21 @@
      Ahora arranca con la última lista que vio este celular o, la primera vez, con
      esta copia; el servidor confirma por atrás y solo se redibuja si cambió.
      OJO: esta lista es solo para DIBUJAR. El premio lo sigue eligiendo el servidor. */
-  /* Los del 24/9/2026 (Los Robles): 10% 70 · empanadas 20 · nada 10, en 6 casilleros
-     (los repetidos se reparten el peso en Config_Maleu) para que parezca una ruleta. */
+  /* Los del 24/9/2026 (Los Robles): 15% 70 · empanadas 15 · nada 15, en 6 casilleros
+     (los repetidos se reparten el peso en Config_Maleu) para que parezca una ruleta.
+
+     EL TEXTO TIENE QUE SER EL MISMO QUE MANDA EL SERVIDOR, palabra por palabra.
+     No es prolijidad: `dibujar()` compara la firma (los textos unidos) para
+     decidir si repinta, asi que una copia que dice otra cosa hace que la rueda
+     se redibuje de golpe a los ~6 segundos — que es justo lo que esta copia
+     vino a evitar. Verificado contra el endpoint el 23/9/2026: manda
+     "15% en tu primera compra". */
   var PREMIOS_COPIA = [
-    { i: 0, txt: '10% en tu primera compra', min: 0, nada: false },
+    { i: 0, txt: '15% en tu primera compra', min: 0, nada: false },
     { i: 1, txt: 'Un paquete de empanadas', min: 0, nada: false },
-    { i: 2, txt: '10% en tu primera compra', min: 0, nada: false },
+    { i: 2, txt: '15% en tu primera compra', min: 0, nada: false },
     { i: 3, txt: 'Nada esta vez', min: 0, nada: true },
-    { i: 4, txt: '10% en tu primera compra', min: 0, nada: false },
+    { i: 4, txt: '15% en tu primera compra', min: 0, nada: false },
     { i: 5, txt: 'Un paquete de empanadas', min: 0, nada: false }
   ];
   try { var g0 = JSON.parse(localStorage.getItem('maleu_ruleta_premios') || 'null'); if (Array.isArray(g0) && g0.length) premios = g0; } catch (e) {}
