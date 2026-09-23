@@ -1898,6 +1898,98 @@ persona—, y `verificar-datos-cliente` pasó a probar el flujo nuevo de punta a
 > calendario no existía todavía, y por eso Pilar corría sin fecha y sin tope. Ahora
 > completa el barrio como una persona.
 
+## La venta es del que trajo al cliente, no del barrio (24/9/2026)
+
+Tadeo, la noche anterior a la ruleta de Los Robles, después de la mesa de Grupo Matriz:
+*"si una persona de Manzanares entra por la ruleta, le va a dirigir el pedido a Rufino, y
+eso está mal, porque Rufino no hizo nada para conseguir este cliente. A los 3 vendedores
+les pagamos lo que les pagamos porque ellos se mueven para conseguir clientes"*.
+
+Hasta ese día la tienda ruteaba por **geografía**: barrio con vendedor → hoja `Red`, y el
+vendedor cobra su 17% más los $3.000 del envío. Daba igual quién hubiera conseguido al
+cliente. Ahora rutea por **quién lo trajo**, que es lo que se está pagando.
+
+### Cuándo un cliente es nuestro
+
+`_esNuestro()`, guardado en `localStorage` (`maleu_origen`). Se marca cuando llegó por un
+canal de Maleu:
+
+| | |
+|---|---|
+| **el cupón de la ruleta** (`RUL-…`) | el caso de Los Robles |
+| **un link nuestro** con `?o=` / `?d=` / `?r=` | los mismos tres parámetros que ya usan los QR (`o` de dónde salió · `d` el lugar · `r` lucas/tadeo/joaco) |
+
+> [!danger] El cupón marca cuando lo VALIDA EL BACKEND, no al leer la URL
+> Si marcara con lo que dice la barra de direcciones, cualquiera que escriba
+> `?cupon=RUL-LOQUESEA` le saca un cliente a un vendedor. Se marca adentro del `.then()`
+> de `validarCupon`, con el código que el backend reconoció.
+
+> [!important] El primero que lo trajo es el que vale
+> `_guardarOrigenNuestro` no pisa lo que ya estaba. Es la contracara de lo que se le paga
+> al vendedor: si el cliente es suyo lo es siempre, y si es nuestro, también. Y se queda
+> guardado, así que el que compra a la semana siguiente sin el link sigue siendo nuestro.
+
+### Qué cambia para ese pedido
+
+El corte es **una sola línea**, en `_pilarBarrioIsRed()`:
+
+> [!important] Esa función contesta "¿a este pedido lo atiende un vendedor?"
+> No "¿este barrio queda en su zona?". De ella cuelgan los días de entrega, el envío, el
+> alias al que se transfiere, el tope de stock y si se ofrece carne. Para un cliente que
+> trajimos nosotros la respuesta es **no**, aunque viva en Manzanares. Se corta ahí, en la
+> raíz, y no en los seis lugares que preguntan — la lección que este repo ya aprendió con
+> los botones muertos del 10/9 y con la franja del 10% del 23/9.
+
+| | barrio con vendedor | el mismo barrio, cliente nuestro |
+|---|---|---|
+| hoja | `Red`, con su vendedor | **`Pilar`, sin vendedor** |
+| días | solo viernes | **miércoles y viernes** |
+| carne | no (la hoja Red no tiene columnas) | **sí** |
+| envío | $3.000, se lo queda el vendedor | **$5.000**, lo reparte Maleu |
+| alias | el del vendedor | **el de Maleu** |
+
+> [!warning] `_pilarEntregaMaleu()` exigía que la zona fuera "Otra zona de Pilar"
+> Con `_pilarBarrioIsRed()` en falso y nada más, el de Manzanares salía de la hoja Red
+> —bien— pero se quedaba con los viernes del vendedor y sin carne: media promesa. Lo
+> encontró `verificar-vendedor.js` en su primera corrida.
+
+> [!warning] El marcador tiene que existir ANTES de que la tienda dibuje nada
+> La primera versión leía `?r=` al final de `app.js`, al lado del cupón, y para entonces
+> `applyZone()` ya había dibujado el calendario con los días del vendedor. El bloque se
+> mudó arriba, junto a las funciones que usa. Para el cupón —que llega por `fetch`, después
+> del arranque— está `_repintarPorOrigen()`, que repinta lo que depende de quién entrega
+> **sin llamar a `applyZone()`, que vacía el carrito**.
+
+El pedido viaja con `origenDetalle` (*"evento · Los Robles · lucas"*), así el ERP sabe quién
+lo trajo. El cupón ya viajaba aparte y se puede cruzar con el lead; un link con `?r=` no
+tiene cupón y sin esto no dejaría rastro.
+
+### Lo que falta, y es del ERP
+
+> [!danger] Un cliente que YA le compra a un vendedor puede girar la ruleta igual
+> `ruletaGirar` no le da premio a quien ya compró, y eso es lo que hace segura toda esta
+> regla: **el cupón sólo existe para alguien que nunca nos compró**. Pero el cruce
+> (`LEADS_HOJAS_CRUCE_`) mira **Home, Pilar y Clubes — no `Red`**. O sea que un cliente de
+> Rufo no figura como cliente, gira, gana, y con esta regla su próximo pedido dejaría de ser
+> de Rufo. Es la misma injusticia dada vuelta. Agregar `Red` al cruce es de Backend.
+
+### La red: `node _tools/verificar-vendedor.js [ancho]`
+
+**31 chequeos** verdes a 390 y 1440px, con el reloj congelado el lunes 14/9/2026: el de
+Manzanares sin marca sigue siendo de Rufo con su envío, sus viernes y sin carne (esa mitad
+va **primera**, porque es la que protege al vendedor); el mismo barrio con `?r=lucas` pasa a
+la hoja Pilar; la marca se queda y no se pisa; el cupón validado marca y uno inventado no;
+Estancias no se entera; y cero POST.
+
+Probada con **diez bugs reinyectados de a uno**, y **los diez se agarran**.
+
+> [!note] Dos rojos que no eran míos, heredados del commit de la ruleta de ese día
+> `a6d2d98` cambió la ruleta para que se gire con el dedo (+142/−30 líneas) y **no tocó su
+> red**, que siguió clickeando el botón viejo: 7 rojos sobre una ruleta que andaba. Ahora
+> el test arma con el formulario y tira con *"No me sale, girala vos"*, que es el mismo
+> camino y existe para el que no puede arrastrar. Y `verificar-paginas` marcaba el nombre de
+> Tadeo en un comentario nuevo de `ruleta.html`. Los dos estaban publicados.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

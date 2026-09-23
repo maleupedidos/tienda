@@ -282,7 +282,14 @@
       else {
         h += '<div class="codigo">' + esc(d.cupon) + '</div>'
           + '<p>Para tu primer pedido' + (min ? ', con un pedido de más de $' + min.toLocaleString('es-AR') : '') + (d.vence ? '. Vale hasta el ' + esc(d.vence) : '') + '.</p>'
-          + link('Hacer mi pedido', TIENDA + '?cupon=' + encodeURIComponent(d.cupon))
+          /* El origen viaja con el cupon (24/9/2026): asi la tienda sabe que a
+             este cliente lo trajimos nosotros y no se lo asigna al vendedor del
+             barrio. Sin esto, el de Manzanares que gira la ruleta termina como
+             pedido de Rufo. */
+          + link('Hacer mi pedido', TIENDA + '?cupon=' + encodeURIComponent(d.cupon)
+              + '&o=' + encodeURIComponent(P.o || 'ruleta')
+              + (P.d ? '&d=' + encodeURIComponent(P.d) : '')
+              + (P.r ? '&r=' + encodeURIComponent(P.r) : ''))
           + '<p class="hint">Sacale una captura a esta pantalla. Si pedís por WhatsApp, pasanos el código.</p>';
       }
     }
@@ -292,8 +299,8 @@
   }
 
   /* ── Girar con el dedo (23/9/2026) ─────────────────────────────────────────
-     Tadeo: "que gire con el dedo como en Preguntados; si tocan el botón y gira
-     solo parece fake". Flujo: el adulto completa sus datos → "Listo" → la rueda
+     El pedido fue textual: "que gire con el dedo como en Preguntados; si tocan
+     el botón y gira solo parece fake". Flujo: el adulto completa sus datos → "Listo" → la rueda
      se habilita y se tira con el dedo. La velocidad y el sentido son los del dedo;
      el premio lo sigue eligiendo el servidor (la rueda frena donde él dice).
      Antes de completar los datos la rueda NO atrapa el dedo: el que la roza para

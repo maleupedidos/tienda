@@ -1580,6 +1580,12 @@ function _getPilarZonaActual() {
    no se le puede prometer a nadie. */
 function _pilarEntregaMaleu() {
   if (currentZone !== 'pilar') return false;
+  /* Al cliente que trajimos nosotros lo entregamos nosotros, viva donde viva
+     (24/9/2026). Hasta hoy el unico caso era "Otra zona de Pilar", y por eso
+     esta funcion exigia `isOther`: con esa condicion sola, el de Manzanares que
+     entra por la ruleta salia de la hoja Red —bien— pero se quedaba con los
+     viernes del vendedor y sin carne, que es media promesa. */
+  if (_esNuestro()) return true;
   var z = _getPilarZonaActual();
   if (!z || !z.isOther) return false;
   return !_pilarBarrioIsRed();
@@ -1692,7 +1698,107 @@ function _isDeliveryBeforeNextFriday(iso) {
 /* Devuelve true si el barrio elegido en Pilar pertenece a un vendedor Red
    (hoy Marcos: El Lucero / Los Tacos / Villa Bertha). Si todavía no eligió
    barrio, devuelve false (no-Red por default → más estricto). */
+/* ═══════════════════════════════════════════════════════════════════
+   EL CLIENTE QUE TRAJIMOS NOSOTROS (24/9/2026)
+
+   Tadeo, despues de la mesa de Grupo Matriz y con la ruleta de Los Robles al
+   dia siguiente: "si una persona de Manzanares [el barrio de Rufo] entra por
+   la ruleta, le va a dirigir el pedido a Rufino, y eso esta mal, porque Rufino
+   no hizo nada para conseguir este cliente. A los 3 vendedores les pagamos lo
+   que les pagamos porque ellos se mueven para conseguir clientes".
+
+   Hasta hoy la tienda ruteaba por GEOGRAFIA: barrio con vendedor -> hoja Red,
+   y el vendedor cobra su 17% mas los $3.000 del envio. Da igual quien haya
+   conseguido al cliente. Ahora la tienda rutea por QUIEN LO TRAJO, que es lo
+   que se esta pagando.
+
+   Un cliente es "nuestro" cuando llego por un canal de Maleu:
+     · giro la ruleta y tiene su cupon `RUL-…`  (el caso de Los Robles);
+     · o entro por un link nuestro con `?r=lucas|tadeo|joaco` — el mismo
+       parametro que ya usan los QR de la ruleta (`o` = de donde salio,
+       `d` = el lugar, `r` = quien lo consiguio).
+
+   Y se queda guardado: el que compra a la semana siguiente sigue siendo
+   nuestro. Es la contracara de lo que se le paga al vendedor — si el cliente
+   es suyo lo es siempre, y si es nuestro, tambien.
+
+   EL CORTE VA ACA Y NO EN EL ERP. Se podia cortar en tres lugares: la tienda
+   al elegir el canal, el backend al rutear, o la hoja Red al liquidar. Los dos
+   ultimos ya escribieron plata y habria que corregirla; este no escribio nada
+   todavia. (Verificado con Backend, 24/9/2026.)
+   ═══════════════════════════════════════════════════════════════════ */
+var ORIGEN_NUESTRO = 'maleu_origen';
+
+/* Guarda de donde vino, una sola vez: el primer canal que lo trajo es el que
+   vale. Si vuelve por otro link no le cambiamos el dueño. */
+function _guardarOrigenNuestro(o) {
+  try {
+    if (localStorage.getItem(ORIGEN_NUESTRO)) return;
+    localStorage.setItem(ORIGEN_NUESTRO, JSON.stringify(o));
+  } catch (e) {}
+}
+function _origenNuestro() {
+  try { return JSON.parse(localStorage.getItem(ORIGEN_NUESTRO) || 'null'); } catch (e) { return null; }
+}
+function _esNuestro() { return !!_origenNuestro(); }
+
+/* Un link nuestro marca al cliente como nuestro (24/9/2026). Son los mismos
+   tres parametros que ya usan los QR de la ruleta:
+     o = folleto | colegio | evento | meta   (de donde salio)
+     d = el lugar, texto libre               (ej. "Los Robles")
+     r = lucas | tadeo | joaco               (quien lo consiguio)
+   Alcanza con UNO de los tres. Despues se borran de la barra de direcciones,
+   igual que el cupon: el link que el cliente comparta no tiene por que arrastrar
+   de donde salio. */
+(function () {
+  try {
+    var p = new URLSearchParams(location.search);
+    var o = (p.get('o') || '').trim(), d = (p.get('d') || '').trim(), r = (p.get('r') || '').trim();
+    if (o || r) {
+      _guardarOrigenNuestro({ o: o || 'link', d: d, r: r, t: Date.now() });
+      var u = new URL(location.href);
+      ['o', 'd', 'r'].forEach(function (k) { u.searchParams.delete(k); });
+      history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    }
+  } catch (e) {}
+})();
+/* Repinta lo que depende de quien entrega. Hace falta cuando la marca aparece
+   DESPUES del arranque, que es el caso del cupon: el backend lo valida por
+   fetch, y para entonces el calendario y el catalogo ya estan dibujados con
+   los dias del vendedor. No se llama a applyZone(), que vacia el carrito. */
+function _repintarPorOrigen() {
+  try {
+    _updateZoneChip();
+    _pintarHeroEntregas();
+    if (typeof renderPilarBarrios === 'function' && currentZone === 'pilar') renderPilarBarrios();
+    renderDayPicker();
+    renderCatalog();
+    renderCatNav();
+    updateUI();
+    updateStockDisplay();
+    updatePromoBar();
+  } catch (e) {}
+}
+
+/* Lo que se le manda al ERP para que sepa quien lo trajo: "ruleta · Los Robles
+   · lucas". El cupon `RUL-…` ya viaja aparte y el ERP lo puede cruzar con el
+   lead, pero un link con `?r=` no tiene cupon y sin esto no dejaria rastro. */
+function _origenNuestroTexto() {
+  var o = _origenNuestro(); if (!o) return '';
+  return [o.o, o.d, o.r].filter(function (x) { return x; }).join(' · ');
+}
+
 function _pilarBarrioIsRed() {
+  /* La pregunta que contesta esta funcion es "¿a este pedido lo atiende un
+     vendedor?", no "¿este barrio queda en su zona?" — y de eso cuelgan los
+     dias de entrega, el envio, el alias al que se transfiere, el tope de stock
+     y si se ofrece carne. Para un cliente que trajimos nosotros la respuesta
+     es NO, aunque viva en Manzanares.
+
+     Se corta aca, en la raiz, y no en cada uno de los seis lugares que
+     preguntan: es la leccion que este repo ya aprendio dos veces (los botones
+     muertos del 10/9 y la franja del 10% del 23/9). */
+  if (_esNuestro()) return false;
   var sel = $id('f-pilar-barrio');
   // Priorizar selectedPilarBarrio (estado JS) sobre el dropdown — el dropdown
   // puede tener value='' si la option aún no fue cargada por renderPilarBarrios.
@@ -4747,6 +4853,11 @@ function enviarPedido() {
        Maleu, que es lo que la pantalla le dijo al cliente ("Te lo entrega
        Maleu"). Sin carne sigue como siempre. */
     if (vendedorMatch && Object.keys(piezaCart).length && _pilarEntregaMaleu()) vendedorMatch = null;
+    /* Y el cliente que trajimos nosotros no se le asigna a nadie: el pedido va
+       a la hoja Pilar y lo entrega Maleu (24/9/2026). `barrioToVendedor` mira
+       el barrio, que sigue siendo el de Rufo — lo que cambia es de quien es la
+       venta. */
+    if (vendedorMatch && _esNuestro()) vendedorMatch = null;
   }
 
   // Mensaje unificado: mínimo imprescindible para el cliente.
@@ -4888,6 +4999,10 @@ function enviarPedido() {
   if (Object.keys(reservaCortes).length && reservaInfo) {
     postData.reservaCarne = { llega: reservaInfo.llega, cortes: reservaCortes };
   }
+  /* De donde salio el cliente, cuando lo trajimos nosotros. El backend ignora
+     los campos que no conoce, asi que esto no rompe nada mientras no lo lea. */
+  var _org = _origenNuestroTexto();
+  if (_org) postData.origenDetalle = _org;
   // Metadata de combos (trazabilidad). El backend ignora campos que no conoce;
   // queda listo para cuando el Panel desglose el combo desde la receta.
   if (combosPayload.length) {
@@ -6804,6 +6919,13 @@ function _premioActivo() {
         return;
       }
       if (appliedCoupon && appliedCoupon.tipo !== 'REGALO') return;   // no pisa otro cupon
+      /* Un cupon `RUL-…` VALIDADO POR EL BACKEND quiere decir que esta persona
+         giro la ruleta, o sea que la trajimos nosotros. Se marca aca y no al
+         leer la URL a proposito: un codigo tipeado a mano no le puede sacar un
+         cliente a un vendedor. (24/9/2026) */
+      var _eraNuestro = _esNuestro();
+      _guardarOrigenNuestro({ o: 'ruleta', d: '', r: '', cupon: d.codigo, t: Date.now() });
+      if (!_eraNuestro) _repintarPorOrigen();
       appliedCoupon = { codigo: d.codigo, tipo: d.tipo, valor: d.valor, scope: d.scope, mensaje: d.mensaje, stack: !!d.stack, minimo: Number(d.minimo) || 0 };
       try { updateUI(); } catch (e) {}
       if (q) toast('🎁 Tu premio quedó cargado: ' + (d.mensaje || d.codigo), 3500);

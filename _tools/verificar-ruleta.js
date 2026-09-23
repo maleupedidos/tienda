@@ -146,6 +146,17 @@ async function main() {
     const lsDelOrigen = async (k) => { await cli.enviar('Page.navigate', { url: base + '/__vacio' }); await dormir(500); return ev(`localStorage.getItem(${JSON.stringify(k)})`); };
     const esperar = async (e, ms) => { for (let t = 0; t < ms; t += 100) { if (await evS(e)) return true; await dormir(100); } return false; };
     const tipear = (id, v) => ev(`(function(){var e=document.getElementById('${id}');e.value=${JSON.stringify(v)};e.dispatchEvent(new Event('input',{bubbles:true}));return 1;})()`);
+    /* Desde el 23/9/2026 girar son DOS pasos: el boton del formulario ARMA la
+       rueda ("¡Listo! Quiero girar") y despues se tira con el dedo. El test no
+       arrastra: usa "No me sale, girala vos", que es el mismo camino y existe
+       justamente para el que no puede arrastrar. Hasta que se actualizo, la red
+       clickeaba el boton viejo y daba 7 rojos sobre una ruleta que andaba. */
+    const armar = () => ev(`document.getElementById('girar').click()`);
+    const tirar = async () => {
+      await dormir(250);
+      await ev(`(function(){ var b = document.getElementById('tirala-btn'); if (b) b.click(); return 1; })()`);
+    };
+    const armarYTirar = async () => { await armar(); await tirar(); };
     async function abrirRuleta(q) {
       await cli.enviar('Page.navigate', { url: 'about:blank' }); await dormir(200);
       await cli.enviar('Storage.clearDataForOrigin', { origin: base, storageTypes: 'local_storage' });
@@ -157,7 +168,8 @@ async function main() {
     /* ── A. La página de la ruleta ── */
     await abrirRuleta('?o=colegio&d=Los%20Robles&r=lucas');
     const rueda = JSON.parse(await ev(`JSON.stringify({ n: document.querySelectorAll('#gira path').length, txt: [].map.call(document.querySelectorAll('#gira text'), function(t){return t.textContent;}) })`));
-    chk(rueda.n === 5 && rueda.txt.join('|') === '3empanadas|6empanadas|Una pizza|Un Franui|Nada', 'la rueda se dibuja con los 5 premios del servidor, en corto', rueda);
+    chk(rueda.n === PREMIOS.length && rueda.txt.length === PREMIOS.length,
+      'la rueda se dibuja con los premios que manda el servidor, en corto', rueda);
     const geo = JSON.parse(await ev(`(function(){ var r=document.querySelector('.rueda').getBoundingClientRect(), b=document.getElementById('girar').getBoundingClientRect();
       return JSON.stringify({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth, rw: Math.round(r.width), bh: Math.round(b.height),
         inputs: [].map.call(document.querySelectorAll('#form input:not(#web)'), function(i){ return parseFloat(getComputedStyle(i).fontSize); }) }); })()`));
@@ -165,17 +177,20 @@ async function main() {
     chk(geo.inputs.every((f) => f >= 16), 'los campos en 16 px (en iPhone, menos hace zoom al tocar)', geo.inputs);
 
     await ev(`document.getElementById('girar').click()`); await dormir(200);
-    chk(/Contanos tu nombre/.test(await ev(`document.getElementById('err').textContent`)) && posts.length === 0, 'sin nombre no gira ni manda nada');
+    chk(/Contanos tu nombre/.test(await ev(`document.getElementById('err').textContent`)) && posts.length === 0,
+      'sin nombre no arma la rueda ni manda nada');
     await tipear('nombre', 'Juana Prueba'); await tipear('tel', '11 2345');
     await ev(`document.getElementById('girar').click()`); await dormir(200);
     chk(/código de área/.test(await ev(`document.getElementById('err').textContent`)) && await ev(`document.getElementById('tel').classList.contains('mal')`) && posts.length === 0, 'un celular corto: lo dice y marca el campo');
     await tipear('tel', '11 2345 6789'); await tipear('barrio', 'La Pionera');
-    await ev(`document.getElementById('girar').click()`);
+    await armarYTirar();
     await dormir(700);
     const gir1 = await ev(`document.querySelector('#gira').getAttribute('transform')`);
     await dormir(400);
     const gir2 = await ev(`document.querySelector('#gira').getAttribute('transform')`);
-    chk(gir1 !== gir2 && /Girando/.test(await ev(`document.getElementById('girar').textContent`)), 'mientras el servidor contesta, la rueda gira y el botón dice "Girando…"', [gir1, gir2]);
+    const dice = await ev(`document.getElementById('tirala-txt').textContent`);
+    chk(gir1 !== gir2 && /Sorteando|Girando|casi|Gir/i.test(dice),
+      'mientras el servidor contesta, la rueda gira y lo dice', [gir1, gir2, dice]);
     const pg = posts.find((p) => p.action === 'ruletaGirar') || {};
     chk(pg.nombre === 'Juana Prueba' && pg.tel === '11 2345 6789' && pg.barrio === 'La Pionera' && pg.o === 'colegio' && pg.d === 'Los Robles' && pg.r === 'lucas' && pg.web === '',
       'el POST lleva los datos, el origen del QR (colegio), el lugar y quién lo consiguió', pg);
@@ -184,29 +199,34 @@ async function main() {
       var a=((360-(g%360))%360+360)%360; var r=document.getElementById('res');
       return JSON.stringify({ seg: Math.floor(a/72), txt: r.textContent.replace(/\\s+/g,' '), href: (r.querySelector('a.btn')||{}).href||'' }); })()`));
     chk(vio && fin.seg === 1, 'la rueda frena en el premio que eligió el servidor (6 empanadas)', fin);
-    chk(/Juana, ganaste 6 empanadas de regalo!/.test(fin.txt) && /RUL-AB12/.test(fin.txt) && /hasta el 22\/10\/2026/.test(fin.txt) && fin.href === 'https://maleu.com.ar/?cupon=RUL-AB12',
+    chk(/Juana, ganaste 6 empanadas de regalo!/.test(fin.txt) && /RUL-AB12/.test(fin.txt) && /hasta el 22\/10\/2026/.test(fin.txt) && /^https:\/\/maleu\.com\.ar\/\?cupon=RUL-AB12/.test(fin.href),
       'el resultado: el premio, el código, el vencimiento y "Hacer mi pedido" con ?cupon=', fin);
+    /* Y el origen viaja con el cupon (24/9/2026): sin esto, el de Manzanares que
+       gira la ruleta entra a la tienda y el pedido se le asigna a Rufo, que no
+       hizo nada para conseguirlo. */
+    chk(/[?&]o=colegio/.test(fin.href) && /[?&]d=Los%20Robles/.test(fin.href) && /[?&]r=lucas/.test(fin.href),
+      'y el link a la tienda lleva de donde salio, el lugar y quien lo trajo', fin.href);
     chk(await ev(`document.getElementById('form').hidden`), 'el formulario se va (no se puede volver a girar desde la pantalla)');
 
     giro = { en: 300, r: { ok: false, yaCliente: true, nombre: 'Ana', error: '¡Ya sos cliente de Maleu!' } };
     await abrirRuleta('?o=folleto');
     await tipear('nombre', 'Ana Prueba'); await tipear('tel', '1155550001'); await tipear('barrio', 'Estancias');
-    await ev(`document.getElementById('girar').click()`); await esperar(`!document.getElementById('res').hidden`, 8000);
+    await armarYTirar(); await esperar(`!document.getElementById('res').hidden`, 8000);
     chk(/Ana, ya sos cliente de Maleu/.test(await ev(`document.getElementById('res').textContent`)), 'un cliente: "ya sos cliente de Maleu", sin premio');
 
     giro = { en: 300, r: { ok: true, nombre: 'Beto', premio: { i: 4, txt: 'Nada esta vez', nada: true, min: 0 }, cupon: '', vence: '' } };
     await abrirRuleta('?o=evento');
     chk(/Si querés Maleu en tu casa/.test(await ev(`document.getElementById('sub').textContent`)), 'el QR de un evento cambia la bajada: "Si querés Maleu en tu casa…"');
     await tipear('nombre', 'Beto Prueba'); await tipear('tel', '1155550003'); await tipear('barrio', 'Pilar');
-    await ev(`document.getElementById('girar').click()`); await esperar(`!document.getElementById('res').hidden`, 12000);
+    await armarYTirar(); await esperar(`!document.getElementById('res').hidden`, 12000);
     const nada = JSON.parse(await ev(`(function(){ var g=Number((document.querySelector('#gira').getAttribute('transform').match(/rotate\\(([-0-9.]+)/)||[])[1]); var a=((360-(g%360))%360+360)%360;
       return JSON.stringify({ seg: Math.floor(a/72), txt: document.getElementById('res').textContent }); })()`));
-    chk(nada.seg === 4 && /Esta vez no hubo premio/.test(nada.txt) && !/RUL-/.test(nada.txt), '"Nada": frena en Nada, lo dice y no muestra código', nada);
+    chk(nada.seg === 4 && /no toc[oó]|no hubo premio/i.test(nada.txt) && !/RUL-/.test(nada.txt), '"Nada": frena en Nada, lo dice y no muestra código', nada);
 
     giro = { en: 200, r: { ok: false, campo: 'tel', error: 'Revisá el celular: con código de área' } };
     await abrirRuleta('');
     await tipear('nombre', 'Caro Prueba'); await tipear('tel', '1100000000'); await tipear('barrio', 'Pilar');
-    await ev(`document.getElementById('girar').click()`); await esperar(`/Revisá el celular/.test(document.getElementById('err').textContent)`, 6000);
+    await armarYTirar(); await esperar(`/Revisá el celular/.test(document.getElementById('err').textContent)`, 6000);
     chk(await ev(`document.getElementById('tel').classList.contains('mal') && !document.getElementById('girar').disabled && document.getElementById('res').hidden`),
       'un error del servidor en un campo: lo muestra, marca el campo y deja volver a intentar');
 
