@@ -6,6 +6,40 @@
 Este repo es **la tienda online y nada más**. Es lo único que ve un cliente.
 Publica en **https://maleu.com.ar** (GitHub Pages + dominio propio).
 
+> [!danger] Lo que publica es `main`, y la rama local `main` está MUY atrás (23/9/2026)
+> Medido ese día: la rama local era **`tienda-v2`** y **`main` local estaba 40 commits
+> atrás de `origin/main`**, que es la que sirve GitHub Pages. O sea que
+> `git checkout main && git push` desde acá **publica una tienda de hace semanas en
+> maleu.com.ar**, sin que nada avise: para git es un push normal.
+>
+> **Pushear siempre con `git push origin HEAD:main`**, que manda lo que tenés
+> trabajado a la rama que publica, sin depender de en qué rama estés parado. Y antes,
+> `git fetch` + `git log --oneline HEAD..origin/main`: si eso devuelve algo, te falta
+> lo publicado y todavía no estás para pushear.
+>
+> Hay seis ramas locales vivas (`carne`, `carne-rangos`, `reserva-carne`,
+> `respaldo-autopedido`, `tienda-v2`, `main`). No asumas en cuál estás parado.
+
+> [!warning] Este repo suele tener trabajo de OTRA sesión sin commitear
+> El 23/9/2026, al publicar la página de Catering, el árbol tenía sin commitear el
+> rediseño del modal de zona: **239 líneas de `app.js`**, `index.html` y seis
+> `_tools/verificar-*.js`. Terminado, fechado ese mismo día, **y sin publicar**.
+>
+> Acá no hay `deploy.sh` que frene nada: **el push ES la publicación**. Un
+> `git add -A` habría puesto en producción el modal que ve todo el que entra a la
+> tienda, sin que nadie lo probara.
+>
+> **Antes de commitear, mirá `git status` y `git diff` de lo que no escribiste vos.**
+> Si hay algo ajeno en un archivo que SÍ tenés que tocar (pasó con `index.html`), se
+> puede commitear sólo tu parte sin tocarle el disco al otro: armás el contenido a
+> partir de `git show HEAD:<archivo>` con tu cambio encima, y lo ponés en el índice
+> con `git hash-object -w` + `git update-index --cacheinfo`.
+>
+> Y si tenés que destrabar el árbol para rebasear, **copiá los archivos ajenos antes**
+> (al scratchpad, nunca al lado del archivo). El `stash`/`pop` los devuelve enteros
+> pero convertidos a CRLF, así que comparalos ignorando el fin de línea antes de
+> asustarte.
+
 ## Por qué está separada del ERP
 
 Hasta el 25/8/2026 la tienda y el ERP vivían en el mismo repo
