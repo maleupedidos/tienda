@@ -43,7 +43,9 @@
   .sub { text-align:center; font-size:.93rem; margin:.45rem auto 0; max-width:34ch; color:#5c4444; }
   .rueda { position:relative; width:min(78vw, 300px); aspect-ratio:1; margin:18px auto 14px; }
   .rueda svg { width:100%; height:100%; display:block; filter:drop-shadow(0 6px 14px rgba(51,28,28,.22)); }
-  .rueda .gira { transform-origin:50% 50%; }
+  /* SIN transform-origin en .gira (23/9/2026): el centro de giro ya va en el
+     atributo, rotate(a 150 150). Con 50% 50% encima, Chrome suma los dos centros
+     y la rueda se sale de su lugar al girar: a 180° quedaba 300px más abajo. */
   .aguja { position:absolute; left:50%; top:-8px; transform:translateX(-50%); width:0; height:0;
            border-left:15px solid transparent; border-right:15px solid transparent; border-top:28px solid var(--brown); z-index:2;
            filter:drop-shadow(0 2px 2px rgba(0,0,0,.25)); }
@@ -124,7 +126,24 @@
   var TIENDA = 'https://maleu.com.ar/';
   var P = {}; try { new URLSearchParams(location.search).forEach(function (v, k) { P[k] = v; }); } catch (e) {}
   var $ = function (id) { return document.getElementById(id); };
-  var gira = $('gira'), premios = [], rot = 0, girando = false, raf = 0;
+  var gira = $('gira'), premios = [], rot = 0, girando = false, raf = 0, dibujados = '';
+
+  /* La rueda se dibuja YA, sin esperar al servidor (23/9/2026). El GET de premios
+     tarda ~6 s en frío: mientras tanto la rueda mostraba 🎁 genéricos, se redibujaba
+     de golpe, y si la persona giraba antes frenaba en seco sin caer en su premio.
+     Ahora arranca con la última lista que vio este celular o, la primera vez, con
+     esta copia; el servidor confirma por atrás y solo se redibuja si cambió.
+     OJO: esta lista es solo para DIBUJAR. El premio lo sigue eligiendo el servidor. */
+  var PREMIOS_COPIA = [
+    { i: 0, txt: '3 empanadas de regalo', min: 0, nada: false },
+    { i: 1, txt: '6 empanadas de regalo', min: 0, nada: false },
+    { i: 2, txt: 'Una pizza de regalo', min: 0, nada: false },
+    { i: 3, txt: 'Un Franui de regalo', min: 50000, nada: false },
+    { i: 4, txt: 'Nada esta vez', min: 0, nada: true }
+  ];
+  try { var g0 = JSON.parse(localStorage.getItem('maleu_ruleta_premios') || 'null'); if (Array.isArray(g0) && g0.length) premios = g0; } catch (e) {}
+  if (!premios.length) premios = PREMIOS_COPIA.slice();
+  var confirmados = false, alConfirmar = [];
   var COLORES = [['#F07D47', '#fff'], ['#F2E8C7', '#331C1C'], ['#331C1C', '#F2E8C7'], ['#FFD2B8', '#331C1C']];
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -133,6 +152,9 @@
   /* La rueda, con los premios que manda el servidor. Sin respuesta, una rueda
      genérica: la página no se queda en blanco. */
   function dibujar() {
+    var firma = premios.map(function (p) { return p.txt; }).join('|');
+    if (firma && firma === dibujados) return;   // misma rueda: no la repinto (se notaba el salto)
+    dibujados = firma;
     var n = premios.length || 6, A = 360 / n, h = '';
     for (var i = 0; i < n; i++) {
       var a0 = (i * A) * Math.PI / 180, a1 = ((i + 1) * A) * Math.PI / 180, c = COLORES[i % COLORES.length];
@@ -161,7 +183,7 @@
     var n = premios.length, A = 360 / n;
     var jit = (Math.random() - 0.5) * A * 0.6;
     var destino = ((360 - (i * A + A / 2) + jit) % 360 + 360) % 360;
-    var desde = rot, base = rot + 720, fin = base + (((destino - base % 360) % 360) + 360) % 360;
+    var desde = rot, base = rot + 360, fin = base + (((destino - base % 360) % 360) + 360) % 360;   // 1 a 2 vueltas más: frena en 2-4 s
     var D = 3 * (fin - desde) / VEL * 1000, t0 = performance.now();   // arranca a la misma velocidad que venia
     (function paso(t) {
       var x = Math.min(1, (t - t0) / D), e = 1 - Math.pow(1 - x, 3);
@@ -171,12 +193,30 @@
   }
   function parar() { girando = false; cancelAnimationFrame(raf); }
 
+  /* Frena donde esté, suave. Solo si el premio que mandó el servidor no está en la
+     rueda dibujada (no debería pasar): antes cortaba en seco. */
+  function frenarSuave(listo) { frenarEn(Math.floor(Math.random() * (premios.length || 1)), listo); }
+
+  /* En qué casillero cae el premio: por posición si coincide el texto, si no por texto. */
+  function casillero(p) {
+    if (!p) return -1;
+    if (p.i >= 0 && premios[p.i] && premios[p.i].txt === p.txt) return p.i;
+    for (var j = 0; j < premios.length; j++) if (premios[j].txt === p.txt) return j;
+    return -1;
+  }
+
+  function confirmar() { confirmados = true; var f = alConfirmar; alConfirmar = []; f.forEach(function (g) { g(); }); }
   function cargar() {
+    dibujar();
     fetch(API + '?action=ruleta&t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
-      if (d && d.ok && Array.isArray(d.premios) && d.premios.length) premios = d.premios;
+      if (d && d.ok && Array.isArray(d.premios) && d.premios.length) {
+        premios = d.premios;
+        try { localStorage.setItem('maleu_ruleta_premios', JSON.stringify(d.premios)); } catch (e) {}
+      }
       if (d && d.ok && d.activa === false) { $('girar').disabled = true; mostrarError('La ruleta está en pausa. ¡Volvé más tarde!'); }
-      dibujar();
-    }).catch(function () { dibujar(); });
+      if (!girando) dibujar();   // girando: se redibuja al frenar, no a mitad de vuelta
+      confirmar();
+    }).catch(function () { confirmar(); });
   }
 
   function mostrarError(t, campo) {
@@ -217,25 +257,37 @@
     if (barrio.length < 2) return mostrarError('¿En qué barrio vivís?', 'barrio');
     mostrarError('');
     var btn = $('girar'); btn.disabled = true; btn.textContent = 'Girando…';
-    if (!premios.length) dibujar();
     arrancar();
     var t0 = Date.now(), cortado = false;
-    var reloj = setTimeout(function () { cortado = true; parar(); btn.disabled = false; btn.textContent = 'Girar la ruleta'; mostrarError('No pudimos girar: revisá la conexión y probá de nuevo.'); }, 30000);
+    /* Si el servidor tarda, que se note que está trabajando: una rueda que gira
+       sin fin parece colgada. */
+    var aviso1 = setTimeout(function () { if (girando) btn.textContent = 'Sorteando tu premio…'; }, 3500);
+    var aviso2 = setTimeout(function () { if (girando) btn.textContent = 'Ya casi…'; }, 11000);
+    var reloj = setTimeout(function () { cortado = true; clearTimeout(aviso1); clearTimeout(aviso2); parar(); btn.disabled = false; btn.textContent = 'Girar la ruleta'; mostrarError('No pudimos girar: revisá la conexión y probá de nuevo.'); }, 30000);
     fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'ruletaGirar', nombre: nombre, tel: tel, barrio: barrio, web: $('web').value, o: P.o || '', d: P.d || '', r: P.r || '' }) })
       .then(function (r) { return r.json(); })
       .then(function (d) {
-        if (cortado) return; clearTimeout(reloj);
-        var espera = Math.max(0, 1200 - (Date.now() - t0));   // que gire un poco aunque el servidor conteste rápido
-        setTimeout(function () {
+        if (cortado) return; clearTimeout(reloj); clearTimeout(aviso1); clearTimeout(aviso2);
+        var espera = Math.max(0, 1800 - (Date.now() - t0));   // que gire un poco aunque el servidor conteste rápido
+        var seguir = function () {
           if (!d || (!d.ok && !d.yaCliente)) { parar(); btn.disabled = false; btn.textContent = 'Girar la ruleta'; return mostrarError((d && d.error) || 'No pudimos girar. Probá de nuevo.', d && d.campo); }
-          var i = d.premio && d.premio.i;
-          if (!d.ok || d.repetido || !(i >= 0) || i >= premios.length) { parar(); return resultado(d); }
+          if (!d.ok || !d.premio) { return frenarSuave(function () { resultado(d); }); }   // ya es cliente
+          dibujar();   // si el servidor cambió la lista mientras giraba, la rueda queda al día antes de frenar
+          var i = casillero(d.premio);
+          if (i < 0 || d.repetido) { return (i < 0 ? frenarSuave : function (f) { frenarEn(i, f); })(function () { setTimeout(function () { resultado(d); }, 300); }); }
           frenarEn(i, function () {
             setTimeout(function () { resultado(d); }, 450);
             try { gtag('event', 'generate_lead', { origen: P.o || 'qr', premio: d.premio.txt }); } catch (e) {}
             try { fbq('track', 'Lead', { content_name: 'Ruleta ' + (P.o || 'qr') }); } catch (e) {}
           });
+        };
+        /* Frena recién con la lista de premios confirmada por el servidor (tope 4 s):
+           así la rueda no cae en un casillero de una lista vieja. */
+        setTimeout(function () {
+          if (confirmados || !d || !d.premio || casillero(d.premio) >= 0) return seguir();   // el premio ya está en la rueda: no hay que esperar
+          var hecho = false, una = function () { if (!hecho) { hecho = true; seguir(); } };
+          alConfirmar.push(una); setTimeout(una, 4000);
         }, espera);
       })
       .catch(function () { if (cortado) return; clearTimeout(reloj); parar(); btn.disabled = false; btn.textContent = 'Girar la ruleta'; mostrarError('No pudimos girar: revisá la conexión y probá de nuevo.'); });
