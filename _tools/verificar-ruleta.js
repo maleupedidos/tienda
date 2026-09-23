@@ -353,7 +353,11 @@ async function main() {
       'la tienda toma ?cupon=, lo valida, lo guarda en el celular, lo saca de la URL y avisa', cargo);
     await armarForm(2);
     const res = await ev(`document.getElementById('form-summary').textContent.replace(/\\s+/g,' ')`);
-    chk(/🎁 6 empanadas de regalo · RUL-AB12\s?de regalo/.test(res) && !/-\$0/.test(res), 'el resumen del pedido muestra el premio "de regalo" (sin un descuento de $0)', res);
+    /* Sin el 🎁 adelante: el 23/9/2026 los emojis que hacian de icono se
+       fueron de la interfaz. Lo que este chequeo cuida es que el premio se
+       NOMBRE en el resumen y que no aparezca un "-$0" — no con que simbolo
+       se dibuja al lado. */
+    chk(/6 empanadas de regalo · RUL-AB12\s?de regalo/.test(res) && !/-\$0/.test(res), 'el resumen del pedido muestra el premio "de regalo" (sin un descuento de $0)', res);
     posts.length = 0; navs.length = 0;
     await ev('enviarPedido()');
     await esperar(`false`, 0);
@@ -368,7 +372,7 @@ async function main() {
     await pedidoConCupon('?cupon=RUL-FR99');
     await armarForm(1);
     const res2 = JSON.parse(await ev(`JSON.stringify({ s: document.getElementById('form-summary').textContent.replace(/\\s+/g,' '), tot: cartTotal() })`));
-    chk(res2.tot < 50000 && /🎁 Un Franui de regalo · RUL-FR99\s?sumá \$38\.500/.test(res2.s), 'con mínimo de $50.000 sin alcanzar: dice cuánto falta', res2);
+    chk(res2.tot < 50000 && /Un Franui de regalo · RUL-FR99\s?sumá \$38\.500/.test(res2.s), 'con mínimo de $50.000 sin alcanzar: dice cuánto falta', res2);
     posts.length = 0; navs.length = 0;
     await ev('enviarPedido()');
     for (let t = 0; t < 12000 && !navs.length; t += 200) await dormir(200);

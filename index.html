@@ -153,12 +153,12 @@
       <button class="loc-btn" onclick="setZone('pilar')">
         Pilar y Alrededores
         <small>Entregas los miércoles y los viernes</small>
-        <small class="loc-note">⏰ Para el viernes, pedidos hasta el <strong>jueves a las 12 hs</strong></small>
+        <small class="loc-note"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 1.9"/></svg> Para el viernes, pedidos hasta el <strong>jueves a las 12 hs</strong></small>
       </button>
       <button class="loc-btn" onclick="setZone('clubes')">
         Clubes Deportivos
         <small>Entregas los viernes, en la puerta del club</small>
-        <small class="loc-note">⏰ Pedidos hasta el <strong>jueves a las 12 hs</strong></small>
+        <small class="loc-note"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 1.9"/></svg> Pedidos hasta el <strong>jueves a las 12 hs</strong></small>
       </button>
     </div>
     <!-- PASO 2: Zona de Pilar (solo Pilar) -->
@@ -216,10 +216,10 @@
   </nav>
 
   <div class="header-chips">
-    <button class="zone-chip" id="zone-chip" onclick="showZoneModal()">📍 Zona</button>
-    <button class="zone-chip date-chip" id="date-chip" onclick="showDateModal()" style="display:none">📅 Fecha</button>
-    <button class="cart-btn" onclick="toggleCart()">
-      🛒 <span class="cart-badge" id="cart-badge" style="display:none">0</span>
+    <button class="zone-chip" id="zone-chip" onclick="showZoneModal()"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg><span class="chip-txt">Zona</span></button>
+    <button class="zone-chip date-chip" id="date-chip" onclick="showDateModal()" style="display:none"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><span class="chip-txt">Fecha</span></button>
+    <button class="cart-btn" onclick="toggleCart()" aria-label="Ver mi pedido">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 8h12l-1.1 12.2H7.1L6 8Z"/><path d="M9 8V6.2a3 3 0 0 1 6 0V8"/></svg><span class="cart-badge" id="cart-badge" style="display:none">0</span>
     </button>
   </div>
 </header>
@@ -255,19 +255,21 @@
        Clubes es la única zona que NO pasa por el paso de fecha: entra directo
        a la tienda. Lo llena applyZone() con _cutoffNote(). -->
   <div class="hero-cutoff-note" id="hero-cutoff-note" style="display:none"></div>
-  <a href="#productos-ancla" class="hero-cta" onclick="scrollToProductos();return false;">Armar mi pedido →</a>
-  <a href="#combos-ancla" class="hero-cta hero-cta-combos" id="hero-combos-cta" style="display:none" onclick="scrollToCombos();return false;">🎁 Ver los combos →</a>
 </section>
+<!-- El hero NO lleva botones (23/9/2026). Tenia dos, apilados y los dos con
+     flecha: "Armar mi pedido →" y "🎁 Ver los combos →". Abajo del hero
+     empiezan las categorias y los productos, o sea que los dos botones no
+     llevaban a ningun lado al que el cliente no llegara bajando — y dos
+     llamados a la accion uno arriba del otro es la firma de una pagina de
+     publicidad, no de una tienda. Un local no te recibe con dos carteles que
+     dicen "entra"; te muestra lo que vende. -->
 
 <!-- ¿A DONDE TE LO LLEVAMOS?: lo unico que le pedimos arriba, y es una
      invitacion, no una pared. Se ve solo mientras la zona es provisoria; lo
      prende y apaga _updateZonaCta() desde applyZone(). (23/9/2026) -->
 <button type="button" class="zona-cta" id="zona-cta" onclick="showZoneModal('cartel')" hidden>
-  <span class="zona-cta-txt">
-    <strong>📍 ¿A dónde te lo llevamos?</strong>
-    <small>Elegí tu zona y te mostramos los días de entrega y el envío</small>
-  </span>
-  <span class="zona-cta-btn">Elegir zona</span>
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg><span class="zona-cta-txt">Entregamos en Estancias, Pilar y alrededores</span>
+  <span class="zona-cta-btn">Elegí tu zona</span>
 </button>
 
 <!-- LO QUE PEDISTE LA ÚLTIMA VEZ: los productos del último pedido que se mandó
@@ -342,22 +344,22 @@
     <button class="close-cart-btn" onclick="toggleCart()">×</button>
   </div>
   <div class="cart-body" id="cart-body">
-    <div class="cart-empty-msg"><span>🛒</span>Todavía no agregaste nada.</div>
+    <div class="cart-empty-msg"><svg class="ico ico-grande" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 8h12l-1.1 12.2H7.1L6 8Z"/><path d="M9 8V6.2a3 3 0 0 1 6 0V8"/></svg>Todavía no agregaste nada.</div>
   </div>
   <div id="cart-foot" style="display:none" class="cart-foot">
     <div class="cart-total-row"><span>Subtotal</span><span id="cart-subtotal">$0</span></div>
     <div class="cart-total-row discount-row" id="cart-discount-row" style="display:none"><span>10% OFF</span><span id="cart-discount">-$0</span></div>
     <div class="cart-total-row"><span>Envío</span><span id="cart-shipping">$0</span></div>
-    <div class="cart-total-row discount-row" id="cart-saldo-row" style="display:none;color:#5D4037"><span>🎁 Saldo a favor</span><span id="cart-saldo">-$0</span></div>
+    <div class="cart-total-row discount-row" id="cart-saldo-row" style="display:none;color:#5D4037"><span>Saldo a favor</span><span id="cart-saldo">-$0</span></div>
     <div class="cart-total-row grand"><span>Total</span><span id="cart-total">$0</span></div>
     <div class="cart-incentive" id="cart-incentive" style="display:none"></div>
-    <button class="go-form-btn" onclick="goToForm()">Confirmar pedido →</button>
+    <button class="go-form-btn" onclick="goToForm()">Confirmar pedido</button>
   </div>
 </aside>
 
 <!-- FORMULARIO -->
 <section class="form-section collapsed" id="form-section">
-  <button class="form-expand-btn" onclick="expandForm()">Completar datos y pedir →</button>
+  <button class="form-expand-btn" onclick="expandForm()">Completar datos y pedir</button>
   <form class="form-wrap" onsubmit="event.preventDefault(); enviarPedido();">
     <h2 class="section-heading" id="form-title">Completá tu pedido</h2>
     <p class="section-sub">Revisá el resumen y completá tus datos.</p>
@@ -378,14 +380,14 @@
           <div class="radio-opt">
             <input type="radio" id="pago-ef" name="pago" value="Efectivo" onchange="onPagoChange()">
             <label for="pago-ef">
-              <strong>💵 Efectivo</strong>
+              <strong>Efectivo</strong>
               <small>Lo pagás al recibir el pedido</small>
             </label>
           </div>
           <div class="radio-opt">
             <input type="radio" id="pago-tr" name="pago" value="Transferencia" onchange="onPagoChange()">
             <label for="pago-tr">
-              <strong>📲 Transferencia</strong>
+              <strong>Transferencia</strong>
               <small>Transferís al alias desde tu app después de mandar el pedido</small>
             </label>
           </div>
@@ -399,7 +401,7 @@
         </div>
         <p class="mp-alias-vendedor-note hidden" id="mp-alias-vendedor-note" style="font-size:.82rem;color:#1565c0;margin-top:.4rem;font-weight:600;background:#e3f2fd;border:1px solid #bbdefb;border-radius:8px;padding:.55rem .7rem;"></p>
         <span class="pago-error" id="err-pago">⚠ Elegí un método de pago</span>
-        <p class="pago-hint" id="pago-hint" style="font-size:.8rem;color:#2e7d32;margin-top:.4rem;font-weight:600;display:none;">💵 Pagando en efectivo tenés 10% OFF</p>
+        <p class="pago-hint" id="pago-hint" style="font-size:.8rem;color:#2e7d32;margin-top:.4rem;font-weight:600;display:none;">Pagando en efectivo tenés 10% OFF</p>
       </fieldset>
 
 
@@ -539,7 +541,7 @@
         <span class="field-error" id="err-telefono">⚠ Completá tu número</span>
         <!-- Banner saldo a favor (auto-detectado por teléfono) -->
         <div id="saldoFavorBanner" style="display:none;margin-top:10px;padding:12px 14px;background:linear-gradient(135deg,#FFF8E1 0%,#FFECB3 100%);border:2px solid #F9A825;border-radius:10px;font-size:13px;line-height:1.4">
-          <div style="font-weight:700;color:#5D4037;font-size:14px;margin-bottom:4px">🎁 Tenés saldo a favor</div>
+          <div style="font-weight:700;color:#5D4037;font-size:14px;margin-bottom:4px">Tenés saldo a favor</div>
           <div style="color:#5D4037">De tu compra anterior te quedaron <strong id="saldoFavorMonto">$0</strong>. Se aplica automáticamente al total de este pedido.</div>
         </div>
       </div>

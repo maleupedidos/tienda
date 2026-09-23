@@ -137,6 +137,15 @@ body.modal-open { overflow:hidden; height:100%; touch-action:none; }
 .loc-back-btn:hover { color:var(--orange); }
 
 /* Chip de fecha en header (mismo estilo que zone-chip) */
+/* ── LOS ICONOS DE LA INTERFAZ (23/9/2026) ──
+   Reemplazaron a los emojis 📍 📅 🛒. Miden en `em` y no en pixeles para que
+   acompanen al texto que tienen al lado cualquiera sea su tamano, y heredan
+   `currentColor`: un chip naranja lo pinta naranja, uno marron marron. Eso es
+   lo que un emoji no puede hacer — siempre viene con el color que le puso el
+   sistema operativo. */
+.ico { width:1.05em; height:1.05em; flex:none; display:inline-block; vertical-align:-.15em; }
+.ico-grande { width:2rem; height:2rem; display:block; margin:0 auto .5rem; opacity:.5; }
+.chip-txt { display:inline; }
 .header-chips { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; justify-content:flex-end; }
 .date-chip { background:#FFF3E0; color:#E65100; }
 
@@ -148,7 +157,9 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .logo-wrap { display:flex; align-items:center; gap:.5rem; text-decoration:none; }
 .logo-ico { height:36px; }
 .logo-name { font-size:1.5rem; font-weight:700; color:var(--brown); letter-spacing:-.03em; }
-.zone-chip { font-size:.7rem; background:#fff; color:var(--brown); padding:.3rem .65rem; border-radius:20px; cursor:pointer; border:1px solid rgba(51,28,28,.12); font-family:var(--font); font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+/* `inline-flex` y `gap`: el icono y el texto son dos elementos, no una cadena
+   con un emoji adentro, asi que el espacio entre ellos lo pone el layout. */
+.zone-chip { display:inline-flex; align-items:center; gap:.32rem; font-size:.7rem; background:#fff; color:var(--brown); padding:.3rem .65rem; border-radius:20px; cursor:pointer; border:1px solid rgba(51,28,28,.12); font-family:var(--font); font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,.04); }
 .zone-chip:hover { background:#FFF8F0; border-color:rgba(51,28,28,.2); }
 .cart-btn { display:flex; align-items:center; gap:.4rem; background:var(--orange); color:#fff; border:none; border-radius:50px; padding:.5rem 1rem .5rem .75rem; font-family:var(--font); font-weight:700; font-size:.85rem; cursor:pointer; transition:background .15s; }
 .cart-btn:hover { background:var(--hover-orange); }
@@ -157,20 +168,25 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 @keyframes badgeBounce { 0%{transform:scale(1)} 40%{transform:scale(1.45)} 100%{transform:scale(1)} }
 
 /* ── HERO ── */
-.hero { padding:2.5rem 1.5rem 2rem; text-align:center; background:linear-gradient(to bottom, var(--cream) 0%, var(--cream) 75%, #fff 100%); }
+/* El padding de abajo bajo de 2rem a .9rem el 23/9/2026: lo ocupaban los dos
+   botones que se sacaron, y sin ellos quedaba un hueco de aire antes del
+   catalogo — justo lo que el cliente vino a ver. */
+.hero { padding:2.5rem 1.5rem .9rem; text-align:center; background:linear-gradient(to bottom, var(--cream) 0%, var(--cream) 75%, #fff 100%); }
 .hero h1 { font-size:1.7rem; font-weight:700; line-height:1.2; margin-bottom:.5rem; }
 .hero h1 span { color:var(--orange); }
 .hero .hero-sub { color:#666; font-size:.95rem; margin-bottom:.5rem; }
 .hero .hero-delivery { font-size:.8rem; color:#767676; margin-bottom:1.2rem; }
-.hero-cta { display:inline-block; background:var(--orange); color:#fff; text-decoration:none; padding:.7rem 1.8rem; border-radius:50px; font-weight:700; font-size:.9rem; transition:background .15s; }
-.hero-cta:hover { background:var(--hover-orange); }
-.hero-cta.hero-cta-combos { display:block; width:fit-content; margin:.7rem auto 0; background:#fff; color:var(--orange); border:1.6px solid var(--orange); }
-.hero-cta.hero-cta-combos:hover { background:#FFF3E0; }
+/* `.hero-cta` se borro el 23/9/2026 junto con los dos botones del hero. Si
+   aparece la clase escrita en algun lado, es de antes de esa fecha. */
 
 /* ── PROMO BAR ── */
 .promo-bar { background:var(--brown); overflow:hidden; white-space:nowrap; }
 .promo-track { display:inline-block; animation:promoScroll 18s linear infinite; }
-.promo-msg { display:inline-block; font-size:.75rem; font-weight:700; color:var(--cream); padding:.5rem 0; letter-spacing:.02em; }
+/* Mayusculas, fina y espaciada — el registro de una franja de tienda. Antes
+   iba en negrita con un emoji por mensaje (💵 🎁 ⏰ 📦), que la hacia leer
+   como un chat. El `uppercase` lo hace el CSS y no el texto: asi el mismo
+   mensaje se puede reusar en un lugar donde no vaya gritado. (23/9/2026) */
+.promo-msg { display:inline-block; font-size:.68rem; font-weight:600; color:var(--cream); padding:.55rem 0; letter-spacing:.09em; text-transform:uppercase; }
 @keyframes promoScroll { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
 
 /* ── CAT NAV ── */
@@ -199,9 +215,11 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .cat-nav-btn.cat-nav-pulse { animation: catNavPulse .6s ease-out 2; }
 /* Chip "Combos": color propio, siempre relleno (es el único coloreado entre los
    chips blancos de categorías), para que se distinga del resto. */
-.cat-nav-btn.cat-nav-combos { background:linear-gradient(135deg,#E65100,#ff8a3d); color:#fff; border-color:transparent; box-shadow:0 2px 9px rgba(230,81,0,.32); }
-.cat-nav-btn.cat-nav-combos:hover { background:linear-gradient(135deg,#d84a00,#ff7a26); color:#fff; transform:translateY(-1px); }
-.cat-nav-btn.cat-nav-combos.active { background:linear-gradient(135deg,#bf3e00,#E65100); color:#fff; box-shadow:0 3px 12px rgba(230,81,0,.45); }
+/* Sin degrade, sin sombra de color y sin el salto al pasar el mouse
+   (23/9/2026): era el unico chip de la fila con ese acabado y se notaba. */
+.cat-nav-btn.cat-nav-combos { background:var(--brown); color:#fff; border-color:transparent; }
+.cat-nav-btn.cat-nav-combos:hover { background:#4a2a2a; color:#fff; }
+.cat-nav-btn.cat-nav-combos.active { background:var(--orange); color:#fff; }
 
 /* Hint arriba de la barra: guía al usuario que es deslizable */
 .cat-nav-hint { font-size:.68rem; color:#9a8b85; text-align:center; padding:.95rem 1rem .1rem; letter-spacing:.08em; font-weight:700; }
@@ -272,7 +290,10 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .combo-full-comp { font-size:.7rem; color:#7a6a5a; line-height:1.4; margin-bottom:.5rem; font-weight:600; }
 .combo-full-foot .stock-indicator { margin-bottom:.25rem; }
 .combo-full-foot .product-footer { margin-top:0; }
-.combo-flag { position:absolute; top:.5rem; left:.5rem; z-index:2; font-size:.62rem; font-weight:700; background:var(--orange,#E65100); color:#fff; padding:.18rem .5rem; border-radius:20px; letter-spacing:.03em; box-shadow:0 2px 6px rgba(0,0,0,.18); }
+/* Decia 🎁; ahora dice "Combo". El texto explica solo, el simbolo habia que
+   adivinarlo — y arriba de una foto de comida, un emoji de regalo se lee como
+   un adorno y no como una etiqueta. (23/9/2026) */
+.combo-flag { position:absolute; top:.5rem; left:.5rem; z-index:2; font-size:.62rem; font-weight:700; background:var(--brown); color:#fff; padding:.22rem .55rem; border-radius:4px; letter-spacing:.06em; text-transform:uppercase; }
 .combo-includes { list-style:none; margin:0 0 .4rem; padding:.4rem .55rem; background:#FFF8F0; border-radius:8px; }
 .combo-includes li { font-size:.66rem; color:#7a6a5a; line-height:1.5; padding-left:.9rem; position:relative; }
 .combo-includes li::before { content:"•"; position:absolute; left:.15rem; color:var(--orange,#E65100); }
@@ -343,8 +364,15 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .cart-body { flex:1; overflow-y:auto; padding:1rem 1.2rem; }
 .cart-empty-msg { text-align:center; color:#767676; padding:3rem 0; }
 .cart-empty-msg span { display:block; font-size:2rem; margin-bottom:.5rem; }
+.cart-empty-msg .ico-grande { stroke-width:1.3; }
 .cart-item { display:flex; align-items:center; gap:.7rem; padding:.7rem 0; border-bottom:1px solid #f5f5f5; }
 .cart-item-emoji { font-size:1.3rem; }
+/* La foto real del producto, del mismo tamano para todos los renglones para
+   que la columna de nombres arranque siempre en el mismo lugar. Si la imagen
+   no carga se apaga sola (`onerror`) y el renglon sigue leyendose. */
+.cart-item-thumb { width:46px; height:46px; flex:none; border-radius:8px;
+  object-fit:cover; background:#F3EDE7; }
+.cart-item-thumb.sin-foto { visibility:hidden; }
 .cart-item-info { flex:1; }
 .cart-item-name { font-size:.85rem; font-weight:600; }
 .cart-item-sub { font-size:.75rem; color:#6b6b6b; }
@@ -362,7 +390,7 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .go-form-btn:hover { background:var(--hover-orange); }
 
 /* ── FLOAT CART ── */
-.float-cart-btn { display:none; position:fixed; bottom:1.2rem; left:50%; transform:translateX(-50%); background:var(--orange); color:#fff; border:none; border-radius:50px; padding:.75rem 1.5rem; font-family:var(--font); font-weight:700; font-size:.85rem; cursor:pointer; z-index:50; box-shadow:0 4px 16px rgba(240,125,71,.4); white-space:nowrap; }
+.float-cart-btn { display:none; align-items:center; justify-content:center; gap:.45rem; position:fixed; bottom:1.2rem; left:50%; transform:translateX(-50%); background:var(--orange); color:#fff; border:none; border-radius:50px; padding:.75rem 1.5rem; font-family:var(--font); font-weight:700; font-size:.85rem; cursor:pointer; z-index:50; box-shadow:0 4px 16px rgba(240,125,71,.4); white-space:nowrap; }
 
 /* ── REPEAT BLOCK ── */
 
@@ -1814,22 +1842,29 @@ body.busqueda-activa #ultimo-section { display: none !important; }
    LA TIENDA ABRE EN EL CATALOGO (23/9/2026)
    El cartel que pide la zona y los dos chips cuando todavia esta sin elegir.
    ═══════════════════════════════════════════════════════════════════ */
-.zona-cta { display:flex; align-items:center; gap:.9rem; width:calc(100% - 2rem);
-  max-width:1100px; margin:0 auto 1.1rem; padding:.85rem 1rem; text-align:left;
-  background:#FFF3E0; border:1px solid rgba(230,81,0,.22); border-radius:14px;
-  cursor:pointer; font-family:var(--font); box-shadow:0 1px 3px rgba(51,28,28,.06); }
+/* Una BARRA, no una tarjeta (23/9/2026). Era una caja crema con borde naranja,
+   un titulo en negrita con emoji, un renglon que explicaba que iba a pasar al
+   tocarla, y un boton relleno adentro — cuatro piezas para pedir un dato.
+   Asi se ve una pagina que te esta explicando como usarla; una tienda avisa
+   donde entrega en un renglon y sigue.
+   El area tocable se mantiene en 44px: cambio la forma, no la funcion. */
+.zona-cta { display:flex; align-items:center; justify-content:center; gap:.45rem;
+  width:100%; margin:0 0 1.5rem; padding:.7rem 1.2rem; min-height:44px;
+  text-align:center; flex-wrap:wrap;
+  background:#fff; border:0; border-top:1px solid rgba(51,28,28,.07);
+  border-bottom:1px solid rgba(51,28,28,.07); border-radius:0;
+  cursor:pointer; font-family:var(--font); font-size:.82rem; color:#6b564e; }
 .zona-cta[hidden] { display:none; }
-.zona-cta:hover { background:#FFECD6; border-color:rgba(230,81,0,.35); }
-.zona-cta-txt { display:flex; flex-direction:column; gap:.15rem; flex:1; min-width:0; }
-.zona-cta-txt strong { font-size:.95rem; color:#8a3b00; font-weight:700; }
-.zona-cta-txt small { font-size:.78rem; color:#7a5c48; line-height:1.35; }
-.zona-cta-btn { flex:none; background:var(--orange); color:#fff; font-weight:700;
-  font-size:.82rem; padding:.6rem .95rem; border-radius:999px; white-space:nowrap;
-  min-height:44px; display:inline-flex; align-items:center; }
+.zona-cta:hover { background:#FDFAF6; }
+.zona-cta .ico { color:var(--orange); }
+.zona-cta-txt { min-width:0; }
+.zona-cta-btn { font-weight:600; color:var(--brown); text-decoration:underline;
+  text-underline-offset:3px; text-decoration-thickness:1px; white-space:nowrap; }
+.zona-cta:hover .zona-cta-btn { color:var(--orange); }
 /* Los dos chips del header mientras falta elegir: piden, no informan. */
 .zone-chip.is-pendiente { background:#FFF3E0; color:#8a3b00; border-color:rgba(230,81,0,.3); font-weight:700; }
 @media (max-width:480px) {
-  .zona-cta { gap:.6rem; padding:.75rem .85rem; }
+  .zona-cta { gap:.35rem; padding:.7rem .9rem; font-size:.78rem; }
   .zona-cta-btn { font-size:.78rem; padding:.55rem .8rem; }
 }
 

@@ -215,10 +215,17 @@ function catPedirPresupuesto() {
   var v = function (id) { var e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; };
   var fecha = v('cat-fecha'), personas = v('cat-personas'), donde = v('cat-donde'), plan = v('cat-plan');
   var t = '¡Hola Maleu! Quiero un presupuesto de catering de pizzas.';
-  if (fecha) t += '\n📅 Fecha: ' + fecha;
-  if (personas) t += '\n👥 Somos ' + personas + (personas === '1' ? ' persona' : ' personas');
-  if (donde) t += '\n📍 Dónde: ' + donde;
-  if (plan) t += '\n🍕 Menú: ' + plan;
+  /* SIN EMOJI DE 4 BYTES, y es la misma leccion que el mensaje de pedido:
+     medido en WATI el 12/9/2026, de 8 mensajes con el mismo codigo DOS
+     llegaron con el emoji roto. Depende del celular del cliente, no del
+     codigo — el archivo los tenia bien escritos. Este mensaje llevaba
+     CUATRO (fecha, personas, donde y menu), o sea que un presupuesto de
+     catering podia llegar ilegible justo en los datos que hacen falta para
+     cotizarlo. Los caracteres simples si llegan. (23/9/2026) */
+  if (fecha) t += '\nFecha: ' + fecha;
+  if (personas) t += '\nSomos ' + personas + (personas === '1' ? ' persona' : ' personas');
+  if (donde) t += '\nDónde: ' + donde;
+  if (plan) t += '\nMenú: ' + plan;
   /* Se abre el chat con el texto listo y lo manda la persona: el mensaje sale de
      SU telefono. Maleu no escribe primero, nunca. */
   window.open('https://wa.me/5491155038905?text=' + encodeURIComponent(t), '_blank', 'noopener');

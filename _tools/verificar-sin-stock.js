@@ -535,7 +535,11 @@ async function main() {
       '})()'));
     chk(med.formAlign !== 'center' && med.formMargen >= 0, 'el subtitulo del formulario va alineado con su titulo (' + med.formAlign + ', margen ' + med.formMargen + ')');
     chk(med.topAlign === 'center', 'y el de "Lo mas pedido" sigue centrado');
-    chk(/^📲 Transferencia/.test(med.pago), 'el pago se llama "Transferencia": "' + med.pago.slice(0, 40) + '"');
+    /* Lo que este chequeo vino a cuidar (13/9/2026) es que NO diga "Mercado
+       Pago" con el alias de un vendedor. Pedia el 📲 de adelante, asi que se
+       puso en rojo cuando el emoji se fue (23/9). El emoji no era el punto. */
+    chk(/^Transferencia/.test(med.pago) && !/Mercado Pago/i.test(med.pago),
+        'el pago se llama "Transferencia" y no "Mercado Pago": "' + med.pago.slice(0, 40) + '"');
     if (ANCHO < 560) {
       chk(med.qty >= 38, 'los +/- del carrito miden ' + med.qty + 'px');
     } else if (ANCHO >= 1024) {

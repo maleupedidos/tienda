@@ -255,7 +255,11 @@ async function main() {
     chk(/efectivo/i.test(tr.incentivo) && /10%/.test(tr.incentivo),
         'el carrito recuerda el efectivo, aunque el pedido sea grande: "' + tr.incentivo.trim() + '"');
     chk(tr.hint, 'y el cartel del medio de pago tambien');
-    chk(/10% OFF en efectivo/.test(tr.promo) && !/100\.000/.test(tr.promo) && !/acumulables/i.test(tr.promo),
+    /* Se pide QUE LO DIGA, no las palabras exactas: el 23/9/2026 la franja
+       paso a 'pagando en efectivo' (y a mayusculas por CSS) y este chequeo se
+       puso en rojo sin que el descuento hubiera cambiado. Un test atado a la
+       redaccion frena el copy, que es justo lo que tiene que poder moverse. */
+    chk(/10% OFF/.test(tr.promo) && /efectivo/i.test(tr.promo) && !/100\.000/.test(tr.promo) && !/acumulables/i.test(tr.promo),
         'la barra de promo dice el efectivo y nada de "$100.000" ni "no acumulables"');
     chk(!/100\.000|\+\$100K/.test(tr.toda), 'la palabra "100.000" no aparece en ninguna parte de la pagina');
 

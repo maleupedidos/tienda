@@ -2077,6 +2077,107 @@ que la rueda dibuje la copia primero, se repinte sola a 6 y frene donde correspo
 > camino y existe para el que no puede arrastrar. Y `verificar-paginas` marcaba el nombre de
 > Tadeo en un comentario nuevo de `ruleta.html`. Los dos estaban publicados.
 
+## Que la tienda no parezca hecha con IA (23/9/2026)
+
+Tadeo, mandando una captura de somosmomento.com.ar —la tienda de Joaco, hecha en Tienda
+Nube—: *"hoy en día maleu.com.ar se ve claramente que está hecha toda con IA… el box '¿a
+dónde te lo llevamos?' o los carteles de 'armar mi pedido' y 'ver los combos', te das
+cuenta de acá a la China. Quiero que se parezca a una tienda lo más HUMANA posible"*.
+
+> [!important] El diagnóstico, en una frase
+> La tienda estaba diseñada como **una página que te explica cómo usarla**, y una tienda
+> es **un local que te muestra lo que vende**. Todo lo de abajo sale de ahí.
+
+| El síntoma | Qué se hizo |
+|---|---|
+| **Emojis como iconografía** — 📍 📅 🛒 💵 🎁 ⏰ 📦 🚚 👥 🍳 | íconos SVG de trazo (`_ico()`) |
+| **El carrito mostraba el emoji del producto** (🍕 en las tres pizzas) | la **foto real**, que ya estaba a un campo de distancia |
+| **Dos botones en el hero**, apilados y los dos con flecha | ninguno: abajo están las categorías y los productos |
+| **Una tarjeta para pedir la zona**: título con emoji, renglón que explicaba qué iba a pasar, y un botón relleno adentro | **una barra** de un renglón, con la acción subrayada |
+| **La franja de arriba** en negrita, con un emoji por mensaje | mayúsculas, fina y espaciada, sin emoji |
+| **El chip de Combos** con degradé naranja, sombra de color y salto al pasar el mouse | el mismo botón que los demás, en el marrón de la marca |
+| **La chapita 🎁** sobre cada combo | dice **"COMBO"** |
+| **"Confirmar pedido →"**, **"Completar datos y pedir →"** | sin flecha |
+
+### Por qué los emojis son el detalle que más delata
+
+**Un emoji no es un ícono.** Lo dibuja el sistema operativo: se ve distinto en cada
+teléfono, en varios viene de otro color, y nunca hereda el color de la marca. Un ícono de
+trazo hereda `currentColor` — en un chip naranja sale naranja, en uno marrón sale marrón —
+y se escala con el texto porque mide en `em`.
+
+Van **inline en `_ICONOS`**, no como archivo: son cuatro, pesan menos que la conexión que
+habría que abrir para bajarlos, y tienen que estar dibujados cuando se pinta la primera
+pantalla.
+
+> [!warning] El texto de un chip va por `textContent`, nunca concatenado al HTML
+> `_chipIcono(chip, ico, texto)` arma el ícono por `innerHTML` y el texto por
+> `textContent`. No es ceremonia: varias de esas etiquetas son **nombres de barrio que
+> llegan de la planilla** (`action=vendedores`), o sea de afuera del código. Antes eran
+> `chip.textContent = '📍 ' + label`, que era seguro por accidente; pasar a `innerHTML`
+> sin separarlo habría abierto una puerta que no existía.
+
+### Lo que NO se tocó, y por qué
+
+> [!note] El 🎂 de "¿Cuándo es tu cumpleaños?" se queda
+> Es el único emoji que sobrevive en pantalla, y no es un descuido. Los que se fueron
+> estaban **haciendo de ícono** en un botón, un chip o una etiqueta; ese es decorativo, en
+> un bloque opcional y afectuoso. Sacarlo lo dejaba más frío sin ganar nada.
+
+El **✓** de *"✓ Pizza Margarita agregado"* también: es un carácter tipográfico, no un
+emoji de cuatro bytes, y se dibuja con la fuente de la página.
+
+**El naranja de marca no se tocó** — sigue valiendo lo de «Escaneo general»: lo decide el
+manual de marca con Juani Peña, no un rediseño al pasar.
+
+### Lo que falta, y necesita una foto de Tadeo
+
+**El hero sigue siendo un slogan sobre fondo crema.** Es lo que más lo diferencia de una
+tienda de verdad: Momento abre con una foto a sangre. Las del catálogo no sirven — son
+cuadradas o verticales y se recortan feo a lo ancho. Hace falta **una foto apaisada
+pensada para eso**, y esa la saca Tadeo.
+
+> [!tip] Cuando llegue, va con `python _tools/fotos-producto.py`
+> Y hay que cuidar dos cosas que hoy están bien: el **CLS de la carga es 0** (una imagen
+> sin `width`/`height` lo rompe), y el título encima de una foto necesita su capa oscura o
+> deja de leerse en la mitad de las pantallas.
+
+### Las redes
+
+Ninguna red medía esto, y sigue sin haber una que mida "parece hecho con IA" — no es
+medible. Lo que sí se comprobó es que **las 27 redes del repo siguen verdes**, que es lo
+que dice que un rediseño no rompió la tienda.
+
+> [!warning] Un test atado a la redacción frena el copy
+> `verificar-descuento` pedía el texto exacto *"10% OFF en efectivo"*, así que cambiar la
+> franja a *"10% OFF pagando en efectivo"* lo puso en rojo **sin que el descuento hubiera
+> cambiado**. Ahora pide `/10% OFF/` y `/efectivo/i`: que lo diga, no cómo lo dice. Si un
+> chequeo se rompe al reescribir una frase y la plata no cambió, el que está mal es el
+> chequeo.
+
+> [!note] Un rojo preexistente que apareció de paso, y NO es de este cambio
+> `verificar-datos-cliente` da **35 ok · 1 mal** en *"el día viene de la fecha que quedó
+> elegida"*. **Medido contra HEAD limpio con `RAIZ=`: falla igual.** Es del cambio del
+> 23/9 a la mañana: con la zona ya elegida el modal no se abre, así que en la segunda
+> visita nunca se elige fecha, y el test todavía espera que el día venga puesto. El test
+> quedó viejo, la tienda hace lo que tiene que hacer — el chip 📅 invita a elegirlo.
+
+### El color de la ruleta: uno por premio, no por posición (24/9/2026)
+
+Pedido de Backend, para Los Robles. Con los seis premios, los tres casilleros de "15% OFF"
+caen en los índices 0, 2 y 4, y `COLORES[i % 4]` les daba naranja / marrón / naranja:
+Tadeo preguntó por qué un 15% se veía distinto.
+
+Ahora el color sale del **texto del premio**. Comprobado con la configuración de mañana:
+los tres 15% en naranja, empanadas en crema, nada en marrón, y **cero pares pegados del
+mismo color**, contando el que cierra la vuelta — que es lo que la guarda vieja de
+`n % 2 === 1` intentaba cubrir y ya no hace falta.
+
+> [!important] Dos gajos pegados del mismo premio SÍ comparten color, a propósito
+> Es el mismo premio: verlo como una porción más grande dice la verdad — que hay más
+> chances de que salga. Pintarlos distinto para que "no se toquen dos iguales" sería
+> disimular la probabilidad real.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

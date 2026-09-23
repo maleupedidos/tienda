@@ -1089,6 +1089,26 @@ function esReservaPid(pid) { return String(pid).indexOf('R:') === 0; }
 function reservaEnCarrito(abbr) { return piezaCart[_resClave(abbr)] || null; }
 function hayReservaEnCarrito() { return Object.keys(piezaCart).some(esReservaPid); }
 function _corteDe(abbr) { return PRODUCTOS.filter(function (x) { return x.abbr === abbr; })[0]; }
+/* LA MINIATURA DEL CARRITO (23/9/2026)
+
+   Cada renglon mostraba el `emoji` del producto: una pizza 🍕 para las tres
+   pizzas, un 🥩 para los cinco cortes. O sea que en el carrito los productos
+   se veian todos iguales — y la foto de verdad la teniamos ahi al lado, es la
+   misma que se ve en la card del catalogo.
+
+   Mostrar la foto es lo que hace cualquier tienda, y ademas resuelve algo
+   practico: al revisar el pedido antes de confirmarlo, el cliente reconoce lo
+   que eligio de un vistazo en vez de leer tres nombres parecidos.
+
+   El emoji queda de respaldo por si algun dia entra un producto sin foto. */
+function _miniCarrito(o) {
+  if (o && o.img) {
+    return '<img class="cart-item-thumb" src="' + fotoUrl(o.img) + '" alt="" loading="lazy" ' +
+           'width="46" height="46" onerror="this.classList.add(\'sin-foto\')">';
+  }
+  return '<span class="cart-item-emoji">' + ((o && o.emoji) || '') + '</span>';
+}
+
 /* "1,5 kg" y "2 kg": en una reserva los gramos no existen. */
 function _kgCorto(kg) { return String(Math.round((Number(kg) || 0) * 1000) / 1000).replace('.', ',') + ' kg'; }
 
@@ -1334,7 +1354,7 @@ const ZONAS = {
     envio: 0,
     canal: "Home",
     horarios: { "Lunes":"18 a 19 hs", "Miércoles":"19 a 21 hs", "Viernes":"19 a 21 hs", "Sábado":"19 a 21 hs", "Domingo":"11 a 13 hs" },
-    deliveryText: "📅 Entregas: Lun · Mié · Vie · Sáb · Dom",
+    deliveryText: "Entregas: Lun · Mié · Vie · Sáb · Dom",
     schedule: "Lunes 18 a 19hs · Miércoles, Viernes y Sábado 19 a 21hs · Domingo 11 a 13hs",
     showStock: false
   },
@@ -1348,8 +1368,8 @@ const ZONAS = {
     // y un pedido suyo es "a pedido" (entra en la orden del jueves), así que un
     // miércoles no habría con qué armarlo. Lo decide _pilarEntregaMaleu.
     horarios: { "Miércoles":"A coordinar", "Viernes":"A coordinar" },
-    deliveryText: "📅 Entregas: miércoles y viernes · Para el viernes, pedidos hasta el jueves 12 hs",
-    deliveryTextVendedor: "📅 Entregas: viernes durante el día · Pedidos hasta el jueves 12 hs",
+    deliveryText: "Entregas: miércoles y viernes · Para el viernes, pedidos hasta el jueves 12 hs",
+    deliveryTextVendedor: "Entregas: viernes durante el día · Pedidos hasta el jueves 12 hs",
     showStock: false
   },
   clubes: {
@@ -1357,7 +1377,7 @@ const ZONAS = {
     envio: 0,
     canal: "Clubes",
     horarios: { "Viernes":"Horario a coordinar" },
-    deliveryText: "📅 Entrega los viernes en la puerta del club · Pedidos hasta el jueves 12 hs",
+    deliveryText: "Entrega los viernes en la puerta del club · Pedidos hasta el jueves 12 hs",
     showStock: false
   }
 };
@@ -2530,7 +2550,7 @@ function renderWelcomeBarrioGrid() {
     return '<button type="button" class="' + classes.join(' ') + '"'
          + ' onclick="setPilarBarrio(\'' + valEsc + '\',\'' + nombreEsc + '\')">'
          + '<div class="loc-zona-head">'
-         +   '<span class="loc-zona-name">📍 ' + b.nombre + '</span>'
+         +   '<span class="loc-zona-name">' + _ico('pin') + b.nombre + '</span>'
          +   badge
          + '</div>'
          + subBarrios
@@ -2599,14 +2619,14 @@ function renderWelcomeSubBarrioGrid() {
     var nombreEsc = nombre.replace(/'/g, "\\'");
     return '<button type="button" class="loc-zona-card is-simple"'
          + ' onclick="setPilarSubBarrio(\'' + valEsc + '\',\'' + nombreEsc + '\')">'
-         +   '<span class="loc-zona-name">📍 ' + nombre + '</span>'
+         +   '<span class="loc-zona-name">' + _ico('pin') + nombre + '</span>'
          + '</button>';
   });
   if (zona.isOther) {
     cards.push(
       '<button type="button" class="loc-zona-card is-simple is-other"'
     + ' onclick="setPilarSubBarrio(\'__otro__\',\'Otro barrio\')">'
-    +   '<span class="loc-zona-name">📍 Otro barrio</span>'
+    +   '<span class="loc-zona-name">' + _ico('pin') + 'Otro barrio</span>'
     +   '<span class="loc-zona-sub">Escribís la dirección al confirmar</span>'
     + '</button>'
     );
@@ -2694,6 +2714,11 @@ function welcomeShowZoneStep() {
    que va en el hero, que es lo primero que ven al entrar.
 
    Devuelve null en Estancias, que no depende de este cutoff. */
+/* Sin emoji adelante (23/9/2026). Cada uno viaja con su `tone` —info,
+   urgente, entregando— y el tono es el que pinta el cartel de naranja, de
+   amarillo o de verde. El ⏰ 📦 📅 🚚 repetia en simbolo lo que el color ya
+   decia, y cuatro emojis distintos en cuatro variantes del mismo cartel se
+   leen como cuatro avisos distintos. */
 function _cutoffNote(zone) {
   zone = zone || currentZone;
   if (!_zonaDependeDelCutoffViernes(zone)) return null;
@@ -2719,30 +2744,30 @@ function _cutoffNote(zone) {
     var sigVieMs = ((dow === 4 && hour >= 12) || dow === 5) ? proxVieMs + 7 * 86400000 : proxVieMs;
     var mieTras = function (ms) { return dm(ms - 2 * 86400000); };   // el miércoles de esa misma semana
     if (dow === 4 && hour < 12) {
-      return { tone: 'urgente', html: '⏰ <strong>¡Estás a tiempo!</strong> Para mañana viernes ' + dm(proxVieMs) + ' cerramos los pedidos <strong>hoy a las 12 hs</strong>. También entregamos el <strong>miércoles ' + mieTras(proxVieMs + 7 * 86400000) + '</strong>.' };
+      return { tone: 'urgente', html: '<strong>¡Estás a tiempo!</strong> Para mañana viernes ' + dm(proxVieMs) + ' cerramos los pedidos <strong>hoy a las 12 hs</strong>. También entregamos el <strong>miércoles ' + mieTras(proxVieMs + 7 * 86400000) + '</strong>.' };
     }
     if (dow === 5) {
-      return { tone: 'entregando', html: '📦 <strong>Hoy estamos entregando</strong> ' + donde + '. Volvemos el <strong>miércoles ' + mieTras(sigVieMs) + '</strong> y el <strong>viernes ' + dm(sigVieMs) + '</strong>: dejanos tu pedido y ya quedás en el recorrido.' };
+      return { tone: 'entregando', html: '<strong>Hoy estamos entregando</strong> ' + donde + '. Volvemos el <strong>miércoles ' + mieTras(sigVieMs) + '</strong> y el <strong>viernes ' + dm(sigVieMs) + '</strong>: dejanos tu pedido y ya quedás en el recorrido.' };
     }
     if (dow === 4) {
-      return { tone: 'info', html: '📅 Los pedidos para <strong>mañana viernes ya cerraron</strong>. Pedí para el <strong>miércoles ' + mieTras(sigVieMs) + '</strong> o el <strong>viernes ' + dm(sigVieMs) + '</strong>.' };
+      return { tone: 'info', html: 'Los pedidos para <strong>mañana viernes ya cerraron</strong>. Pedí para el <strong>miércoles ' + mieTras(sigVieMs) + '</strong> o el <strong>viernes ' + dm(sigVieMs) + '</strong>.' };
     }
-    return { tone: 'info', html: '🚚 Entregamos los <strong>miércoles y los viernes</strong> ' + donde + '. Para el viernes ' + dm(sigVieMs) + ', pedí hasta el <strong>jueves ' + dm(sigVieMs - 86400000) + ' a las 12 hs</strong>.' };
+    return { tone: 'info', html: 'Entregamos los <strong>miércoles y los viernes</strong> ' + donde + '. Para el viernes ' + dm(sigVieMs) + ', pedí hasta el <strong>jueves ' + dm(sigVieMs - 86400000) + ' a las 12 hs</strong>.' };
   }
   // Jueves antes del cierre: última chance para el viernes de mañana.
   if (dow === 4 && hour < 12) {
-    return { tone: 'urgente', html: '⏰ <strong>¡Estás a tiempo!</strong> Cerramos los pedidos <strong>hoy a las 12 hs</strong> y mañana viernes ' + dm(proxVieMs) + ' salimos a repartir. Dejanos el tuyo y entrás en el recorrido.' };
+    return { tone: 'urgente', html: '<strong>¡Estás a tiempo!</strong> Cerramos los pedidos <strong>hoy a las 12 hs</strong> y mañana viernes ' + dm(proxVieMs) + ' salimos a repartir. Dejanos el tuyo y entrás en el recorrido.' };
   }
   // Viernes: hoy es el día. Lo invitamos al recorrido de la semana que viene.
   if (dow === 5) {
-    return { tone: 'entregando', html: '📦 <strong>Hoy estamos entregando</strong> ' + donde + '. ¿Querés vivir la experiencia Maleu? El <strong>viernes ' + dm(proxVieMs + 7 * 86400000) + '</strong> volvemos a pasar — dejanos tu pedido ahora y ya quedás en el recorrido.' };
+    return { tone: 'entregando', html: '<strong>Hoy estamos entregando</strong> ' + donde + '. ¿Querés vivir la experiencia Maleu? El <strong>viernes ' + dm(proxVieMs + 7 * 86400000) + '</strong> volvemos a pasar — dejanos tu pedido ahora y ya quedás en el recorrido.' };
   }
   // Jueves después de las 12: el de mañana ya cerró, entra en el siguiente.
   if (dow === 4) {
-    return { tone: 'info', html: '📅 Los pedidos para <strong>mañana viernes ya cerraron</strong>. Dejanos el tuyo ahora y salís en el recorrido del <strong>viernes ' + dm(proxVieMs + 7 * 86400000) + '</strong>.' };
+    return { tone: 'info', html: 'Los pedidos para <strong>mañana viernes ya cerraron</strong>. Dejanos el tuyo ahora y salís en el recorrido del <strong>viernes ' + dm(proxVieMs + 7 * 86400000) + '</strong>.' };
   }
   // Sábado a miércoles: el próximo viernes está abierto hasta el jueves 12 hs.
-  return { tone: 'info', html: '🚚 Entregamos los <strong>viernes</strong> ' + donde + '. Pedí hasta el <strong>jueves ' + cierraJue + ' a las 12 hs</strong> y entrás en el recorrido del <strong>viernes ' + dm(proxVieMs) + '</strong>.' };
+  return { tone: 'info', html: 'Entregamos los <strong>viernes</strong> ' + donde + '. Pedí hasta el <strong>jueves ' + cierraJue + ' a las 12 hs</strong> y entrás en el recorrido del <strong>viernes ' + dm(proxVieMs) + '</strong>.' };
 }
 /* Pinta el aviso en un contenedor. Comparten función el cartel del modal
    (Pilar) y el del hero (Clubes) para que nunca se desincronicen. */
@@ -3033,21 +3058,21 @@ function _updateDateChip() {
      hasta el formulario. */
   if (!selectedDeliveryDate && !selectedDateIsFlexible) {
     chip.style.display = '';
-    chip.textContent = '📅 Elegí el día';
+    _chipIcono(chip, 'cal', 'Elegí el día');
     chip.classList.add('is-pendiente');
     return;
   }
   chip.classList.remove('is-pendiente');
   chip.style.display = '';
   if (selectedDateIsFlexible) {
-    chip.textContent = '📅 Cualquier día';
+    _chipIcono(chip, 'cal', 'Cualquier día');
     return;
   }
   var parts = selectedDeliveryDate.split('-');
-  if (parts.length !== 3) { chip.textContent = '📅 Fecha'; return; }
+  if (parts.length !== 3) { _chipIcono(chip, 'cal', 'Fecha'); return; }
   var DAY_NAMES_SHORT = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
   var d = new Date(Date.UTC(+parts[0], +parts[1]-1, +parts[2]));
-  chip.textContent = '📅 ' + DAY_NAMES_SHORT[d.getUTCDay()] + ' ' + (+parts[2]) + '/' + (+parts[1]);
+  _chipIcono(chip, 'cal', DAY_NAMES_SHORT[d.getUTCDay()] + ' ' + (+parts[2]) + '/' + (+parts[1]));
 }
 function _ensureCartFitsDate() {
   // Si la fecha elegida activa modo limitado, recortar carrito al stock real
@@ -3073,7 +3098,43 @@ function _preselectDayPicker() {
   if (hiddenF) hiddenF.value = selectedDeliveryDate;
   if (typeof renderDayPicker === 'function') renderDayPicker();
 }
-/* Actualiza el chip 📍 del header con la etiqueta más específica disponible:
+/* ═══════════════════════════════════════════════════════════════════
+   LOS ICONOS DE LA INTERFAZ (23/9/2026)
+
+   Hasta hoy la tienda usaba emojis — 📍 📅 🛒 💵 🎁 — como iconografia.
+   Un emoji NO es un icono: lo dibuja el sistema operativo, asi que se ve
+   distinto en cada telefono (y en varios, de otro color), nunca hereda el
+   color de la marca, y se lee como un mensaje de WhatsApp metido adentro de
+   una tienda. Es el detalle que mas delata una pantalla armada a las
+   apuradas.
+
+   Estos son de trazo, heredan `currentColor` y se alinean con el texto que
+   tienen al lado, que es lo que hace cualquier tienda hecha en serio.
+
+   Van inline y no como archivo: son cuatro, pesan menos que la conexion que
+   habria que abrir para bajarlos, y tienen que estar dibujados cuando la
+   primera pantalla se pinta. */
+var _ICONOS = {
+  pin:  '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+  cal:  '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>',
+  bolsa:'<path d="M6 8h12l-1.1 12.2H7.1L6 8Z"/><path d="M9 8V6.2a3 3 0 0 1 6 0V8"/>',
+  reloj:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 1.9"/>'
+};
+function _ico(nombre, clase) {
+  var d = _ICONOS[nombre];
+  if (!d) return '';
+  return '<svg class="ico' + (clase ? ' ' + clase : '') + '" viewBox="0 0 24 24" fill="none" ' +
+         'stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" ' +
+         'aria-hidden="true" focusable="false">' + d + '</svg>';
+}
+/* Pinta un chip como icono + texto. El texto va por `textContent` y NO
+   concatenado al HTML: varias de estas etiquetas son nombres de barrio que
+   llegan de la planilla (`action=vendedores`), o sea de afuera del codigo. */
+function _chipIcono(chip, ico, texto) {
+  chip.innerHTML = _ico(ico) + '<span class="chip-txt"></span>';
+  chip.querySelector('.chip-txt').textContent = texto;
+}
+/* Actualiza el chip de ubicacion del header con la etiqueta más específica disponible:
      Pilar + sub-barrio elegido  → 'Ayres del Pilar' (mostramos el barrio)
      Pilar sin sub-barrio        → nombre de la zona canonical (Tortugas y…)
      Home/Clubes o sin datos     → z.nombre.
@@ -3083,7 +3144,7 @@ function _updateZoneChip() {
   /* Zona provisoria: el chip pregunta en vez de afirmar una zona que eligio
      la tienda y no el cliente. */
   if (zonaProvisoria) {
-    chip.textContent = '📍 ¿Dónde entregamos?';
+    _chipIcono(chip, 'pin', '¿Dónde entregamos?');
     chip.classList.add('is-pendiente');
     return;
   }
@@ -3107,7 +3168,7 @@ function _updateZoneChip() {
       label = selectedPilarZonaName || selectedPilarZona;
     }
   }
-  chip.textContent = '📍 ' + label;
+  _chipIcono(chip, 'pin', label);
 }
 /* Los días de entrega del hero. En Pilar dependen de quién entrega: lo de
    Maleu, miércoles y viernes; un barrio con vendedor, solo viernes. Por eso se
@@ -3126,7 +3187,7 @@ function _pintarHeroEntregas() {
   // Hero delivery text — si hay schedule detallado, mostrar solo eso
   if (z.schedule) {
     $id('hero-delivery').style.display = 'none';
-    if (schedEl) { schedEl.innerHTML = '📅 ' + z.schedule; schedEl.style.display = ''; }
+    if (schedEl) { schedEl.textContent = z.schedule; schedEl.style.display = ''; }
   } else {
     var txt = (currentZone === 'pilar' && !_pilarEntregaMaleu() && z.deliveryTextVendedor) ? z.deliveryTextVendedor : z.deliveryText;
     $id('hero-delivery').textContent = txt;
@@ -3211,7 +3272,7 @@ function _comboCompListHTML(c) {
 
 /* Badge "para cuántas personas" — lo primero que mira el cliente. */
 function _comboPersonasHTML(c) {
-  return c.personas ? '<div class="combo-personas">👥 Para ' + c.personas + '</div>' : '';
+  return c.personas ? '<div class="combo-personas">Para ' + c.personas + '</div>' : '';
 }
 
 function _comboCardHTML(c) {
@@ -3255,7 +3316,7 @@ function _comboCardHTML(c) {
          contenedor que el flag del combo: si fueran dos capas absolutas se
          superpondrian — las dos viven en top:.5rem/left:.5rem. */
       '<div class="chapas-prod">' +
-        '<span class="combo-flag">' + (c.flag || '🎁') + '</span>' +
+        '<span class="combo-flag">' + (c.flag || 'Combo') + '</span>' +
         (c.nuevo ? '<span class="chapa-prod chapa-nuevo">Nuevo</span>' : '') +
         (c.top   ? '<span class="chapa-prod chapa-top">Lo más pedido</span>' : '') +
       '</div>' +
@@ -3308,7 +3369,7 @@ function renderCombosSectionHTML() {
   }
 
   return '<section class="cat-section combos-section" id="combos-ancla"><div class="cat-header">' +
-    '<div class="cat-title">🎁 Combos</div>' +
+    '<div class="cat-title">Combos</div>' +
     '<div class="cat-nota">Propuestas ya armadas a precio cerrado · Elegí los sabores y listo</div>' +
     '<div class="combos-disclaimer">ℹ️ La oferta de combos no es acumulable a los descuentos.</div>' +
     '</div>' + groups + '</section>';
@@ -3476,7 +3537,7 @@ function renderCatalog() {
     return '<section class="cat-section" id="cat-' + slugify(cat.nombre) + '"><div class="cat-header">' +
       '<div class="cat-title">' + cat.nombre + '</div>' +
       '<div class="cat-nota">' + cat.nota + '</div>' +
-      (cat.tip ? '<div class="cat-tip">🍳 ' + cat.tip + '</div>' : '') +
+      (cat.tip ? '<div class="cat-tip">' + cat.tip + '</div>' : '') +
       '</div><div class="products-grid">' +
       prods.map(productCardHTML).join('') +
       '</div></section>';
@@ -3650,7 +3711,7 @@ function armarComboOtraFecha(comboId, yaPregunto) {
      y el cambio de fecha no puede quedar tapado. */
   if (comboHasChoices(c)) {
     openComboConfig(comboId);
-    toast('📅 ' + cuando.charAt(0).toUpperCase() + cuando.slice(1), 4500);
+    toast(cuando.charAt(0).toUpperCase() + cuando.slice(1), 4500);
   } else {
     addComboDefault(comboId);
     toast('✓ ' + c.nombre + ' agregado · ' + cuando, 4500);
@@ -4145,12 +4206,12 @@ function updateUI() {
   const floatBtn = $id('float-cart-btn');
   if (floatBtn) {
     floatBtn.style.display = (count > 0 && !_formVisible) ? 'flex' : 'none';
-    if (count > 0) floatBtn.textContent = '🛒 Ver pedido · ' + ars(total) + ' →';
+    if (count > 0) floatBtn.innerHTML = _ico('bolsa') + '<span class="chip-txt">Ver pedido · ' + ars(total) + '</span>';
   }
 
   const bodyEl = $id('cart-body'), footEl = $id('cart-foot');
   if (count === 0) {
-    bodyEl.innerHTML = '<div class="cart-empty-msg"><span>🛒</span>Todavía no agregaste nada.</div>';
+    bodyEl.innerHTML = '<div class="cart-empty-msg">' + _ico('bolsa', 'ico-grande') + 'Todavía no agregaste nada.</div>';
     footEl.style.display = 'none';
   } else {
     footEl.style.display = 'block';
@@ -4162,7 +4223,7 @@ function updateUI() {
       ).join('');
       const sigEsc = sig.replace(/'/g, "\\'");
       return '<div class="cart-item cart-item-combo">' +
-        '<span class="cart-item-emoji">' + c.emoji + '</span>' +
+        _miniCarrito(c) +
         '<div class="cart-item-info">' +
           '<div class="cart-item-name">' + c.nombre + '</div>' +
           '<div class="cart-item-sub">' + ars(c.precio) + ' c/u · <strong>' + ars(c.precio*inst.qty) + '</strong></div>' +
@@ -4179,7 +4240,7 @@ function updateUI() {
       const p = PROD_MAP[id];
       if (!p) return '';
       return '<div class="cart-item">' +
-        '<span class="cart-item-emoji">' + p.emoji + '</span>' +
+        _miniCarrito(p) +
         '<div class="cart-item-info">' +
           '<div class="cart-item-name">' + p.nombre + '</div>' +
           '<div class="cart-item-sub">' + ars(p.precio) + ' c/u · <strong>' + ars(p.precio*qty) + '</strong></div>' +
@@ -4197,7 +4258,7 @@ function updateUI() {
          que el precio es aproximado: la carne todavia no se peso. */
       if (g.reserva) {
         return '<div class="cart-item cart-item-carne cart-item-reserva">' +
-          '<span class="cart-item-emoji">\ud83e\udd69</span>' +
+          _miniCarrito(_corteDe(abbr)) +
           '<div class="cart-item-info">' +
             '<div class="cart-item-name">' + g.nombre + '</div>' +
             '<div class="cart-item-sub">Reserva de ' + _kgCorto(kg) + ' \u00b7 <strong>aprox. ' + ars(tot) + '</strong></div>' +
@@ -4218,7 +4279,7 @@ function updateUI() {
       }).join('');
       var una = lista.length === 1;
       return '<div class="cart-item cart-item-carne">' +
-        '<span class="cart-item-emoji">\ud83e\udd69</span>' +
+        _miniCarrito(_corteDe(abbr)) +
         '<div class="cart-item-info">' +
           '<div class="cart-item-name">' + g.nombre + '</div>' +
           '<div class="cart-item-sub">' + lista.length +
@@ -4279,7 +4340,7 @@ function updateUI() {
         incentiveEl.style.display = '';
       } else if (!isCash && ahorroPorEfectivo() > 0) {
         // Recordar el efectivo, sea el pedido chico o grande
-        incentiveEl.innerHTML = '<div class="incentive-cash" style="border:none;margin:0;padding:0;">💵 Pagando en efectivo tenés 10% OFF</div>';
+        incentiveEl.innerHTML = '<div class="incentive-cash" style="border:none;margin:0;padding:0;">Pagando en efectivo tenés 10% OFF</div>';
         incentiveEl.style.display = '';
       } else {
         incentiveEl.style.display = 'none';
@@ -4324,7 +4385,7 @@ function updateFormSummary() {
     if (!c) return '';
     const picks = (inst.picks || []).map(pk => _optLabel(pk.nombre, pk.label)).join(' · ');
     return '<div class="summary-line summary-line-combo"><span>' +
-      '<span class="summary-combo-name">' + (c.emoji ? c.emoji + ' ' : '') + c.nombre +
+      '<span class="summary-combo-name">' + c.nombre +
         (inst.qty > 1 ? ' <strong>×' + inst.qty + '</strong>' : '') + '</span>' +
       (picks ? '<span class="summary-combo-picks">' + picks + '</span>' : '') +
       '</span><span>' + ars(c.precio*inst.qty) + '</span></div>';
@@ -4369,7 +4430,7 @@ function updateFormSummary() {
      Si tiene minimo y no llega, dice cuanto falta. */
   if (appliedCoupon && appliedCoupon.tipo === 'REGALO' && cuponValeEnEstaZona()) {
     var faltaPremio = Math.max(0, (appliedCoupon.minimo || 0) - subtotal);
-    html += '<div class="summary-line discount-line" style="color:#2e7d32"><span>🎁 ' + (appliedCoupon.mensaje || 'Tu premio') + ' · ' + appliedCoupon.codigo + '</span><span>' +
+    html += '<div class="summary-line discount-line" style="color:#2e7d32"><span>' + (appliedCoupon.mensaje || 'Tu premio') + ' · ' + appliedCoupon.codigo + '</span><span>' +
       (faltaPremio > 0 ? 'sumá ' + ars(faltaPremio) : 'de regalo') + '</span></div>';
   }
   // Auto-descuento (el 10% en efectivo)
@@ -4378,7 +4439,7 @@ function updateFormSummary() {
   }
   html += '<div class="summary-line shipping-line"><span>Envío</span><span>' + (shipping === 0 ? 'Gratis' : ars(shipping)) + '</span></div>';
   if (saldoAFavor > 0) {
-    html += '<div class="summary-line discount-line" style="color:#2e7d32"><span>🎁 Saldo a favor</span><span>-' + ars(saldoAFavor) + '</span></div>';
+    html += '<div class="summary-line discount-line" style="color:#2e7d32"><span>Saldo a favor</span><span>-' + ars(saldoAFavor) + '</span></div>';
   }
   var conReserva = hayReservaEnCarrito();
   html += '<div class="summary-line total-line"><span>Total' + (conReserva ? ' aprox.' : '') + '</span><span>' + ars(total) + '</span></div>';
@@ -5453,7 +5514,7 @@ function updateWhatsappCta() {
   };
 
   // Necesita carrito con items
-  if (cartCount() === 0) { setState('', '👇', 'Último paso: tocá para enviar tu pedido'); return; }
+  if (cartCount() === 0) { setState('', '', 'Último paso: tocá para enviar tu pedido'); return; }
   // Campos comunes salvo pago: nombre, teléfono, fecha de entrega
   const nombre = ($id('f-nombre') && $id('f-nombre').value || '').trim();
   const telDigits = ($id('f-telefono') && $id('f-telefono').value || '').replace(/\D/g,'');
@@ -5461,7 +5522,7 @@ function updateWhatsappCta() {
   const dia = $id('f-dia') ? $id('f-dia').value : '';
   const pagoSel = document.querySelector('input[name="pago"]:checked');
   const otherCompleto = !!nombre && telDigits.length >= 8 && !!(fechaIso || dia);
-  if (!otherCompleto) { setState('', '👇', 'Último paso: tocá para enviar tu pedido'); return; }
+  if (!otherCompleto) { setState('', '', 'Último paso: tocá para enviar tu pedido'); return; }
   // Campos específicos por zona (los revisamos aparte del pago para poder
   // detectar el caso "solo falta pago").
   let zonaCompleto = true;
@@ -5488,13 +5549,13 @@ function updateWhatsappCta() {
     const gr = ($id('f-grupo') && $id('f-grupo').value || '').trim();
     if (!club || !dep || !gr) zonaCompleto = false;
   }
-  if (!zonaCompleto) { setState('', '👇', 'Último paso: tocá para enviar tu pedido'); return; }
+  if (!zonaCompleto) { setState('', '', 'Último paso: tocá para enviar tu pedido'); return; }
 
   // Todo lo demás está OK. Si solo falta pago → hint específico ambar.
   if (!pagoSel) { setState('missing-pay', '⚠️', 'Te falta elegir el método de pago antes de pedir'); return; }
 
   // Todo listo — el hint clásico verde.
-  setState('ready', '👇', 'Último paso: tocá para enviar tu pedido');
+  setState('ready', '', 'Último paso: tocá para enviar tu pedido');
 }
 function expandForm() {
   const section = $id('form-section');
@@ -5572,7 +5633,7 @@ function renderCatNav() {
     }).join('') +
     // Chip "Combos" al final, color propio. data-slug = id de la sección para que
     // el IntersectionObserver lo resalte al scrollear hasta los combos.
-    (getActiveCombos().length ? '<button class="cat-nav-btn cat-nav-combos" data-slug="combos-ancla" onclick="scrollToCombos()">🎁 Combos</button>' : '') +
+    (getActiveCombos().length ? '<button class="cat-nav-btn cat-nav-combos" data-slug="combos-ancla" onclick="scrollToCombos()">Combos</button>' : '') +
     '</div></div>';
   /* Los id ya vienen en el markup de cada seccion. Aca se asignaban
      emparejando `.cat-section[i]` con `getActiveCategories()[i]`, y eso
@@ -6448,10 +6509,10 @@ function _cutoffChipTexto() {
   var dm = function (ms) { var d = new Date(ms); return d.getUTCDate() + '/' + (d.getUTCMonth() + 1); };
   var proxVieMs = hoyMs + ((5 - dow + 7) % 7) * 86400000;   // si hoy es viernes, hoy
   var sigVieMs = proxVieMs + 7 * 86400000;
-  if (dow === 4 && hour < 12) return '⏰ Último día: pedí hasta hoy a las 12 hs · Entrega mañana viernes ' + dm(proxVieMs);
-  if (dow === 5) return '📦 Hoy estamos entregando · El próximo viernes es el ' + dm(sigVieMs) + ', pedí hasta el jueves ' + dm(sigVieMs - 86400000) + ' a las 12 hs';
-  if (dow === 4) return '⏰ Los pedidos para mañana ya cerraron · Pedí ahora para el viernes ' + dm(sigVieMs);
-  return '⏰ Pedí hasta el jueves ' + dm(proxVieMs - 86400000) + ' a las 12 hs · Entrega el viernes ' + dm(proxVieMs);
+  if (dow === 4 && hour < 12) return 'Último día: pedí hasta hoy a las 12 hs · Entrega mañana viernes ' + dm(proxVieMs);
+  if (dow === 5) return 'Hoy estamos entregando · El próximo viernes es el ' + dm(sigVieMs) + ', pedí hasta el jueves ' + dm(sigVieMs - 86400000) + ' a las 12 hs';
+  if (dow === 4) return 'Los pedidos para mañana ya cerraron · Pedí ahora para el viernes ' + dm(sigVieMs);
+  return 'Pedí hasta el jueves ' + dm(proxVieMs - 86400000) + ' a las 12 hs · Entrega el viernes ' + dm(proxVieMs);
 }
 
 function updatePromoBar() {
@@ -6468,8 +6529,10 @@ function updatePromoBar() {
     /* Hasta el 11/9/2026 iban tambien "🔥 10% OFF superando $100.000" y "No son
        acumulables · Máximo 10% OFF por pedido", que aclaraba que los dos no se
        sumaban. Con un solo descuento, esa aclaracion no tiene de que hablar. */
-    chips.push('💵 10% OFF en efectivo');
-    chips.push('🎁 Combos no participan de esta promoción');
+    /* Sin emoji y sin adorno: el CSS la pone en mayusculas, que es como
+       lo escribe una tienda — no como lo escribiria un chat. */
+    chips.push('10% OFF pagando en efectivo');
+    chips.push('Los combos no participan de esta promoción');
   }
   // Chip de cutoff Red (aplica en Pilar Red haya descuentos o no).
   var cutoffChip = _pilarRedCutoffChip();
@@ -6534,7 +6597,7 @@ function updateShippingBar() {
   } else {
     bar.classList.remove('free');
     const falta = FREE_SHIPPING_MIN - subtotal;
-    text.textContent = '🚚 Sumá ' + ars(falta) + ' más para envío gratis';
+    text.textContent = 'Sumá ' + ars(falta) + ' más para envío gratis';
     fill.style.width = Math.min(100, (subtotal / FREE_SHIPPING_MIN) * 100) + '%';
   }
 }

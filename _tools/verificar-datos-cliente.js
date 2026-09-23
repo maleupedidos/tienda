@@ -301,7 +301,26 @@ const LEER_FORM = `(function(){
        por el. */
     ch(!v2.pago, 'el metodo de pago NO vuelve, y es a proposito: se elige en cada pedido',
        JSON.stringify(v2.pago));
-    ch(!!v2.dia, 'el dia viene de la fecha que quedo elegida, no de lo guardado', JSON.stringify(v2.dia));
+
+    /* Este chequeo se pregunta SI HAY fecha vigente antes de exigir el dia, y
+       no es un aflojada: es que la respuesta correcta son las dos.
+
+       Este test corre con el reloj de verdad —usa un perfil de Chrome que
+       sobrevive a varias visitas, asi que no puede congelarlo como las otras
+       redes— y `_loadSavedDate()` descarta una fecha cuya ventana de entrega
+       ya paso. O sea que corriendo de noche, la fecha que se eligio en la
+       visita 1 puede haber vencido para la visita 2, y ahi el formulario tiene
+       que quedar SIN dia: desde el 23/9 el modal ya no se abre solo a pedirlo,
+       lo pide el chip. Exigir el dia siempre ponia el test en rojo a cierta
+       hora, con la tienda haciendo lo correcto. (23/9/2026) */
+    const fech = JSON.parse(await ev('JSON.stringify({ iso: selectedDeliveryDate || "" })'));
+    if (fech.iso) {
+      ch(!!v2.dia, 'el dia viene de la fecha que quedo elegida, no de lo guardado',
+         JSON.stringify({ dia: v2.dia, fecha: fech.iso }));
+    } else {
+      ch(!v2.dia, 'la fecha guardada ya vencio, asi que el dia queda vacio y lo pide el chip',
+         JSON.stringify({ dia: v2.dia, chip: '(sin fecha vigente)' }));
+    }
     /* 12/9/2026: si la fecha guardada sigue vigente el modal NO se abre, y el
        dia lo marca goToForm. Con eso aparecio el riesgo contrario: que al
        volver del carrito pise un dia que el cliente cambio en el formulario. */
