@@ -2054,24 +2054,38 @@ function couponAppliesToAll() {
   return appliedCoupon && /^TODO\b/i.test(appliedCoupon.scope || 'TODO');
 }
 
+/* CUANTO MAS se ahorra pagando en efectivo — que no siempre es el 10%.
+
+   Con un cupon que NO se suma (`stack:false`) y que cubre todo el carrito, el
+   efectivo **no agrega nada**: su base queda en cero. Es el caso del premio de
+   la ruleta desde el 24/9/2026 — Tadeo subio el premio de 10% a 15% justamente
+   para que NO se sumen, asi el premio siempre vale mas que el descuento que esa
+   persona ya tenia, y el techo queda en 15% y no en 25%.
+
+   Existe aparte de `getCashDiscount()` porque hay tres carteles que preguntan
+   "¿le conviene pagar en efectivo?" ANTES de que elija como paga, y con la
+   cuenta vieja los tres le prometian un 10% que no iba a ver. */
+function ahorroPorEfectivo() {
+  if (!cashDiscountActive()) return 0;
+  // Base = subtotal NO cubierto por el cupón (la parte del cupón ya tiene su descuento).
+  // Excepción: si cupón=ENVIO, no afecta base. Si cupón con stack=true, base = subtotal completo.
+  const total = descontableSubtotal();
+  let base = total;
+  if (appliedCoupon && cuponValeEnEstaZona() && appliedCoupon.tipo !== 'ENVIO' && !appliedCoupon.stack) {
+    const cubierto = _subtotalForScope(appliedCoupon.scope);
+    base = Math.max(0, total - cubierto);
+  }
+  if (base <= 0) return 0;
+  return Math.round(base * 0.10);
+}
 function getCashDiscount() {
   // El 10% en efectivo, y nada mas: el de "+$100K" se dio de baja el 11/9/2026.
   // La base sale de descontableSubtotal(): productos + carne, sin los combos
   // (precio cerrado, no acumulan). El porque esta escrito arriba de esa funcion.
   const sel = document.querySelector('input[name="pago"]:checked');
   const isCash = sel && sel.value === 'Efectivo';
-  if (!isCash || !cashDiscountActive()) return 0;
-
-  // Base = subtotal NO cubierto por el cupón (la parte del cupón ya tiene su descuento).
-  // Excepción: si cupón=ENVIO, no afecta base. Si cupón con stack=true, base = subtotal completo.
-  const total = descontableSubtotal();
-  let base = total;
-  if (appliedCoupon && appliedCoupon.tipo !== 'ENVIO' && !appliedCoupon.stack) {
-    const cubierto = _subtotalForScope(appliedCoupon.scope);
-    base = Math.max(0, total - cubierto);
-  }
-  if (base <= 0) return 0;
-  return Math.round(base * 0.10);
+  if (!isCash) return 0;
+  return ahorroPorEfectivo();
 }
 function getDiscountLabel() {
   const sel = document.querySelector('input[name="pago"]:checked');
@@ -4227,9 +4241,12 @@ function updateUI() {
     if (discount > 0) {
       discRow.style.display = '';
       // Label combinado: si hay cupón + auto, los junta con '+'.
+      /* Solo lo que DESCONTO de verdad. Con un cupon que no se suma, el
+         renglon decia "🎟️ RULETA-XXXX + 10% OFF Efectivo" y descontaba 15%:
+         nombraba un descuento que dio cero. (24/9/2026) */
       var partes = [];
-      if (appliedCoupon) partes.push('🎟️ ' + appliedCoupon.codigo);
-      var autoLbl = getDiscountLabel();
+      if (appliedCoupon && getCouponDiscount() > 0) partes.push('🎟️ ' + appliedCoupon.codigo);
+      var autoLbl = getCashDiscount() > 0 ? getDiscountLabel() : '';
       if (autoLbl) partes.push(autoLbl);
       discRow.querySelector('span').textContent = partes.join(' + ') || '10% OFF';
       $id('cart-discount').textContent = '-' + ars(discount);
@@ -4260,7 +4277,7 @@ function updateUI() {
         // Ya tiene descuento — felicitarlo
         incentiveEl.innerHTML = '<strong>🎉 ¡Descuento aplicado!</strong><br>Estás ahorrando <strong>' + ars(discount) + '</strong>';
         incentiveEl.style.display = '';
-      } else if (!isCash) {
+      } else if (!isCash && ahorroPorEfectivo() > 0) {
         // Recordar el efectivo, sea el pedido chico o grande
         incentiveEl.innerHTML = '<div class="incentive-cash" style="border:none;margin:0;padding:0;">💵 Pagando en efectivo tenés 10% OFF</div>';
         incentiveEl.style.display = '';
@@ -4274,11 +4291,13 @@ function updateUI() {
   // Barra de promo superior: visible normalmente (el 10% aplica a productos
   // sueltos aun con combos). Solo se oculta si el carrito es SOLO combos
   // (no hay nada descontable → el cartel mentiría).
-  var promoBar = $id('promo-bar');
-  if (promoBar && discountsActive()) {
-    var soloCombos = combosInCart() && descontableSubtotal() === 0;
-    promoBar.style.display = soloCombos ? 'none' : '';
-  }
+  /* La franja tiene UNA sola funcion que decide si va: updatePromoBar(). Aca
+     habia una segunda copia de la regla —solo miraba "carrito de solo
+     combos"— y volvia a encender la barra dos lineas despues de que la otra la
+     apagara. Es la tercera vez en el dia que aparece el mismo patron: la
+     primera fue la zona provisoria, la segunda el 10% de efectivo. Se arregla
+     en la raiz, no en el call site. (24/9/2026) */
+  updatePromoBar();
   updateFormSummary();
   updatePagoHint();
   // Si hay cupón aplicado, refresco el card para que pase de pending → activo
@@ -6442,7 +6461,10 @@ function updatePromoBar() {
   var soloCombos = combosInCart() && descontableSubtotal() === 0;
   // Construir el ticker mezclando descuentos (si aplican) + cutoff Red (si aplica).
   var chips = [];
-  if (discountsActive() && !soloCombos) {
+  /* Ya se escondia con un carrito de solo combos, por la misma razon: el cartel
+     no puede hablar de un descuento que este carrito no va a recibir. Con el
+     premio de la ruleta puesto pasa lo mismo. */
+  if (discountsActive() && !soloCombos && !(appliedCoupon && cartCount() > 0 && ahorroPorEfectivo() === 0)) {
     /* Hasta el 11/9/2026 iban tambien "🔥 10% OFF superando $100.000" y "No son
        acumulables · Máximo 10% OFF por pedido", que aclaraba que los dos no se
        sumaban. Con un solo descuento, esa aclaracion no tiene de que hablar. */
@@ -6479,7 +6501,11 @@ function updatePagoHint() {
   // arriba de $100.000, porque ahi ya tenia el 10% por monto: ese se fue, y
   // el efectivo vuelve a ser la unica forma de tenerlo.
   var pSub = descontableSubtotal();
-  hint.style.display = (cashDiscountActive() && !isCash && pSub > 0) ? '' : 'none';
+  /* `ahorroPorEfectivo()` y no `cashDiscountActive()`: con el premio de la
+     ruleta puesto, el efectivo no agrega nada y prometerle un 10% que no va a
+     ver es lo peor que puede hacer esta pantalla justo antes de que elija.
+     (24/9/2026) */
+  hint.style.display = (ahorroPorEfectivo() > 0 && !isCash && pSub > 0) ? '' : 'none';
   /* Con carne reservada no se transfiere todavia: el total cambia al pesarla. */
   var aliasHint = document.querySelector('#mp-alias .mp-alias-hint');
   if (aliasHint) {

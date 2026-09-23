@@ -71,14 +71,20 @@ const VENDEDORES = { vendedores: [
     barrios: ['Tortugas y alrededores', 'El Lucero', 'Los Tacos', 'Villa Bertha', 'Azzurra'] },
 ] };
 
-/* El premio de la ruleta. `RULETA-OK01` es el formato que emite Backend desde
-   el 24/9/2026: tipo PCT, 15%, y `stack` para que se SUME al 10% de efectivo
-   (hasta 25% en el primer pedido). `RUL-OK01` es el formato viejo, que tiene que
-   seguir entrando. `RUL-TRUCHO` no lo valida el backend. */
+/* El premio de la ruleta, como lo emite Backend desde el 24/9/2026:
+   `RULETA-XXXX`, tipo PCT, 15%, **scope TODO y `stack: false`**.
+
+   El `stack:false` no es un detalle tecnico: Tadeo subio el premio de 10% a 15%
+   JUSTAMENTE para que NO se sume al 10% de efectivo. Asi el premio siempre vale
+   mas que el descuento que esa persona ya tenia, y el techo queda en 15% en vez
+   de 25%. Verificado en produccion por Backend: PCT 15 · Scope TODO · Stack No.
+
+   `RUL-OK01` es el formato viejo, que tiene que seguir entrando. `RUL-TRUCHO`
+   no lo valida el backend. */
 const CUPON_OK = { ok: true, codigo: 'RUL-OK01', tipo: 'PCT', valor: 15, scope: 'TODO',
-                   mensaje: '15% en tu primera compra', stack: true, minimo: 0 };
+                   mensaje: '15% en tu primera compra', stack: false, minimo: 0 };
 const CUPON_RULETA = { ok: true, codigo: 'RULETA-OK01', tipo: 'PCT', valor: 15, scope: 'TODO',
-                       mensaje: '15% en tu primera compra', stack: true, minimo: 0 };
+                       mensaje: '15% en tu primera compra', stack: false, minimo: 0 };
 
 function servir() {
   return new Promise((listo, fallo) => {
@@ -371,20 +377,36 @@ async function main() {
     const desc1 = JSON.parse(await ev('JSON.stringify({ sub: cartTotal(), cupon: getCouponDiscount(), efectivo: getCashDiscount() })'));
     chk(desc1.cupon === Math.round(desc1.sub * 0.15), 'descuenta el 15%', JSON.stringify(desc1));
 
-    /* En Estancias, con efectivo, los dos descuentos se suman: el cupon viene
-       con `stack`, asi que el 10% se calcula sobre el subtotal entero. */
+    /* En Estancias, con efectivo, NO se suman: el cupon viene sin `stack`, asi
+       que el 10% se calcula sobre lo que el cupon no cubre — y con scope TODO no
+       queda nada. El cliente se lleva 15% y no 25%, que es lo que Tadeo decidio.
+       Lo que la tienda NO puede hacer es prometerle el 10% igual. */
     await abrir({ maleu_zone: 'estancias' }, '&cupon=RULETA-OK01');
     await esperar('!!appliedCoupon', 9000);
     await ev('(function () { var p = getActiveProducts().filter(function (x) { return !esPorPeso(x); })[0]; addToCart(String(p.id));' +
       ' var e = document.querySelector("input[name=pago][value=Efectivo]"); if (e) { e.checked = true; e.dispatchEvent(new Event("change", { bubbles: true })); } })()');
     await dormir(500);
     const suma = JSON.parse(await ev('JSON.stringify({ sub: descontableSubtotal(), cupon: getCouponDiscount(),' +
-      ' efectivo: getCashDiscount(), total: getTotalDiscount() })'));
-    chk(suma.cupon > 0 && suma.efectivo === Math.round(suma.sub * 0.10),
-        'en Estancias el 10% de efectivo se calcula sobre el subtotal ENTERO, no sobre lo que queda',
-        JSON.stringify(suma));
-    chk(suma.total === suma.cupon + suma.efectivo && suma.total === Math.round(suma.sub * 0.25),
-        'asi que el premio y el efectivo se suman: 25% en el primer pedido', JSON.stringify(suma));
+      ' efectivo: getCashDiscount(), ahorroEf: ahorroPorEfectivo(), total: getTotalDiscount(),' +
+      ' renglon: (document.querySelector("#cart-discount-row span") || {}).textContent || "",' +
+      ' incentivo: (document.getElementById("cart-incentive") || {}).textContent || "" })'));
+    chk(suma.cupon === Math.round(suma.sub * 0.15), 'el premio descuenta su 15%', JSON.stringify(suma));
+    chk(suma.efectivo === 0 && suma.ahorroEf === 0,
+        'y el 10% de efectivo NO se suma: el cupon cubre todo el carrito', JSON.stringify(suma));
+    chk(suma.total === suma.cupon, 'el techo queda en 15%, que es lo que se decidio', suma.total + ' de ' + suma.sub);
+    chk(!/10% OFF/.test(suma.renglon), 'el renglon del carrito NO nombra un descuento que dio cero', '"' + suma.renglon + '"');
+
+    /* Y antes de elegir como paga, tampoco se le promete. */
+    await ev('(function () { var t = document.querySelector("input[name=pago][value=Transferencia]") || document.querySelector("input[name=pago]:not([value=Efectivo])");' +
+      ' if (t) { t.checked = true; t.dispatchEvent(new Event("change", { bubbles: true })); } })()');
+    await dormir(400);
+    const promesa = JSON.parse(await ev('JSON.stringify({ ahorroEf: ahorroPorEfectivo(),' +
+      ' hint: getComputedStyle(document.getElementById("pago-hint")).display,' +
+      ' incentivo: (document.getElementById("cart-incentive") || {}).textContent || "",' +
+      ' promo: getComputedStyle(document.getElementById("promo-bar")).display })'));
+    chk(promesa.hint === 'none', 'el cartel "pagando en efectivo tenes 10% OFF" no aparece', JSON.stringify(promesa));
+    chk(!/efectivo ten[eé]s 10% OFF/i.test(promesa.incentivo), 'ni el incentivo del carrito lo promete', promesa.incentivo.slice(0, 70));
+    chk(promesa.promo === 'none', 'ni la franja de arriba', promesa.promo);
 
     /* Y donde atiende un VENDEDOR no vale: esos pedidos van a la hoja Red, que
        va sin descuentos.

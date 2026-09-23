@@ -2016,8 +2016,36 @@ Y **se dice**: un cupón que da cero sin explicar por qué es peor que ninguno.
 decisión de la tienda: sale del campo `stack` del cupón, que pone Backend. Con `stack:true`
 el 10% se calcula sobre el subtotal entero en vez de sobre lo que el cupón no cubre.
 
-Lo prueban **8 chequeos** dentro de `_tools/verificar-vendedor.js` (39 en total), con
-**4 bugs reinyectados y los 4 agarrados**.
+**El 15% del premio NO se suma al 10% de efectivo.** Tadeo subió el premio de 10% a 15%
+**justamente para eso**: así el premio siempre vale más que el descuento que esa persona ya
+tenía, y el techo queda en 15% en vez de 25%. Sale del campo `stack` del cupón, que Backend
+emite en `false` y verificó en producción (`PCT 15 · Scope TODO · Stack No`).
+
+> [!danger] Tres carteles le prometían un 10% que no iba a ver
+> Con `stack:false` y scope TODO, el cupón cubre todo el carrito y el efectivo **no agrega
+> nada**. Pero el cartel del formulario, el incentivo del carrito y la franja de arriba
+> preguntaban `cashDiscountActive()` —"¿esta zona tiene el 10%?"— y no "¿a este carrito le
+> suma algo?". El renglón del carrito llegaba a decir **"🎟️ RULETA-XXXX + 10% OFF Efectivo"
+> descontando 15%**: nombraba un descuento que dio cero.
+>
+> Lo resuelve `ahorroPorEfectivo()`, que es la misma cuenta que `getCashDiscount()` pero sin
+> mirar qué forma de pago está tildada — porque los tres carteles aparecen **antes** de que
+> el cliente elija.
+
+> [!warning] La franja del 10% tenía una SEGUNDA puerta en `updateUI()`
+> Una copia de la regla que sólo miraba "carrito de sólo combos", y que volvía a encender la
+> barra dos líneas después de que `updatePromoBar()` la apagara. Es la **tercera vez en el
+> día** que aparece el mismo patrón: la primera fue la zona provisoria, la segunda el 10% de
+> efectivo. Ahora `updateUI()` llama a `updatePromoBar()` y punto.
+
+> [!note] De cinco bugs reinyectados se agarran cuatro, y el quinto no es alcanzable
+> El guard del incentivo del carrito (`else if (!isCash && ahorroPorEfectivo() > 0)`) sólo se
+> ejecuta cuando **no hay ningún descuento**; con el cupón puesto la rama de arriba ya dice
+> "🎉 ¡Descuento aplicado!", que es cierto. Queda como defensa, no como algo probado — y
+> decirlo es más útil que inflar el número.
+
+Lo prueban **13 chequeos** dentro de `_tools/verificar-vendedor.js` (44 en total),
+con **4 bugs del cupón y 4 del descuento reinyectados, y los 8 agarrados**.
 
 ### La rueda cuando cambia la lista de premios (24/9/2026)
 
