@@ -283,7 +283,28 @@
       h += '<path d="M150 150 L' + x0.toFixed(2) + ' ' + y0.toFixed(2) + ' A146 146 0 ' + (A > 180 ? 1 : 0) + ' 1 ' + x1.toFixed(2) + ' ' + y1.toFixed(2) + ' Z" fill="' + c[0] + '" stroke="#fff" stroke-width="2"/>';
       var txt = premios.length ? corto(premios[i].txt) : '🎁', partes = txt.length > 10 && txt.indexOf(' ') > 0 ? [txt.slice(0, txt.indexOf(' ')), txt.slice(txt.indexOf(' ') + 1)] : [txt];
       var mid = G[i].mid;
-      h += '<g transform="rotate(' + mid.toFixed(2) + ' 150 150)"><text x="150" y="' + (partes.length > 1 ? 52 : 60) + '" text-anchor="middle" fill="' + c[1] + '" font-family="Montserrat, sans-serif" font-weight="800" font-size="' + (txt.length > 12 ? 12 : 14) + '">'
+      /* EL TEXTO NO PUEDE SER MAS ANCHO QUE SU GAJO. (24/9/2026)
+
+         Tadeo, camino al colegio: *"quedo medio desparejo la palabra
+         'Empanadas' en la ruleta"*. El tamano de letra estaba atado solo al
+         LARGO del texto, no al ancho del gajo — y desde que los gajos miden
+         distinto eso no alcanza: "10% OFF" en un gajo de 104° entra comodo, y
+         "Empanadas" en uno de 47° se sale por los dos lados.
+
+         Se mide el arco que hay disponible a la altura donde cae el texto y se
+         achica la letra hasta que entre. La cuenta de 0,62 por caracter es el
+         ancho medio de la Montserrat en negrita — aproximada a proposito: mas
+         vale una letra un punto chica que una palabra pisando el borde. */
+      var largoMax = Math.max.apply(null, partes.map(function (p) { return p.length; }));
+      var rTxt = 150 - (partes.length > 1 ? 52 : 60);
+      var arco = 2 * Math.PI * rTxt * A / 360;
+      /* 0,85 del arco y no el arco entero: el texto se dibuja en linea RECTA
+         sobre un gajo que se abre, asi que las puntas de la palabra caen mas
+         lejos del centro que el medio y se comen mas angulo del que da la
+         cuenta plana. Con el arco entero daba 13px y "Empanadas" seguia
+         pisando el borde — se vio en la foto, no en el numero. */
+      var fs = Math.max(9, Math.min(txt.length > 12 ? 12 : 14, Math.floor(arco * 0.85 / (0.62 * largoMax))));
+      h += '<g transform="rotate(' + mid.toFixed(2) + ' 150 150)"><text x="150" y="' + (partes.length > 1 ? 52 : 60) + '" text-anchor="middle" fill="' + c[1] + '" font-family="Montserrat, sans-serif" font-weight="800" font-size="' + fs + '">'
         + partes.map(function (p, k) { return '<tspan x="150" dy="' + (k ? 16 : 0) + '">' + esc(p) + '</tspan>'; }).join('') + '</text></g>';
     }
     h += '<circle cx="150" cy="150" r="146" fill="none" stroke="#331C1C" stroke-width="6"/>';
