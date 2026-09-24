@@ -366,6 +366,20 @@
 
   function resultado(d) {
     var box = $('res'), h = '', nombre = esc(d.nombre || '');
+    /* "CLIENTE" NO ES EL NOMBRE DE NADIE. (24/9/2026)
+
+       Desde esta manana el link de WhatsApp lleva SOLO el telefono, asi que la
+       pagina manda `nombre: 'Cliente WhatsApp'` —el backend exige uno— y el
+       servidor devuelve el primer pedazo: **"Cliente"**. La pantalla quedaba
+       saludando *"¡Cliente, ganaste 15%!"*, que no parece un premio, parece un
+       error. Salio en los cinco casos de `ver_pantallas_premios.js`, que es la
+       primera prueba que mira LA PANTALLA y no el JSON de la respuesta.
+
+       Cuando no sabemos como se llama, no se la saluda y listo: "¡Ganaste 15%
+       en tu proxima compra!" se lee mejor que cualquier relleno. Y el dia que
+       el nombre vuelva a viajar, el saludo vuelve solo. */
+    if (/^cliente$/i.test(nombre)) nombre = '';
+    var ganaste = nombre ? '¡' + nombre + ', ganaste' : '¡Ganaste';
     var link = function (txt, url, sec) { return '<a class="btn' + (sec ? ' sec' : '') + '" href="' + esc(url) + '">' + txt + '</a>'; };
     if (d.yaCliente) {
       h = '<div class="emoji">🧡</div><h2>¡' + (nombre ? nombre + ', y' : 'Y') + 'a sos cliente de Maleu!</h2><p>La ruleta es para quien todavía no nos probó. Gracias por elegirnos.</p>' + link('Hacer un pedido', TIENDA);
@@ -374,13 +388,13 @@
     } else if (d.premio && (d.premio.tipo === 'MOMENTO' || /paquete de empanadas/i.test(d.premio.txt || ''))) {
       /* Se entrega AHÍ, en el puesto: lo que importa es que se vea grande para
          mostrárselo a Lucas. El cupón nace usado (no se canjea otra vez online). */
-      h = '<div class="emoji">🥟</div><h2>' + (d.repetido ? 'Ya giraste: te tocó' : '¡' + nombre + ', ganaste') + ' <span style="color:#F07D47">' + esc(d.premio.txt) + '</span>' + (d.repetido ? '' : '!') + '</h2>'
+      h = '<div class="emoji">🥟</div><h2>' + (d.repetido ? 'Ya giraste: te tocó' : ganaste) + ' <span style="color:#F07D47">' + esc(d.premio.txt) + '</span>' + (d.repetido ? '' : '!') + '</h2>'
         + (d.cupon ? '<div class="codigo">' + esc(d.cupon) + '</div>' : '')
         + '<p><b>Mostrá esta pantalla en nuestro puesto y retirá tu paquete.</b></p>'
         + link('Ver la tienda', TIENDA, true);
     } else if (d.premio) {
       var min = Number(d.premio.min) || 0;
-      h = '<div class="emoji">🎉</div><h2>' + (d.repetido ? 'Ya giraste la ruleta: tu premio es' : '¡' + nombre + ', ganaste') + ' <span style="color:#F07D47">' + esc(d.premio.txt) + '</span>' + (d.repetido ? '' : '!') + '</h2>';
+      h = '<div class="emoji">🎉</div><h2>' + (d.repetido ? 'Ya giraste la ruleta: tu premio es' : ganaste) + ' <span style="color:#F07D47">' + esc(d.premio.txt) + '</span>' + (d.repetido ? '' : '!') + '</h2>';
       if (d.usado) h += '<p>Ese premio ya lo usaste en un pedido. ¡Gracias!</p>' + link('Ver la tienda', TIENDA);
       else {
         h += '<div class="codigo">' + esc(d.cupon) + '</div>'
