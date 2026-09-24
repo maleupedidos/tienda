@@ -346,7 +346,38 @@
     mostrarError('');
     datos = { nombre: nombre, tel: tel, barrio: barrio };
     armar();
+    sortear();
   });
+
+  /* El sorteo arranca al tocar "Listo", NO al soltar el dedo (24/9/2026).
+     El servidor tarda ~13 s en sortear (medido en producción el 24/9: 15 s desde
+     soltar el dedo hasta ver el premio). Mientras la persona lee "girá la rueda" y
+     desliza, el servidor ya está trabajando: al soltar, el premio casi siempre ya
+     llegó y la rueda frena enseguida. El premio lo sigue eligiendo el servidor.
+     Si alguien toca "Listo" y nunca gira, el lead y el premio quedan igual cargados
+     (volver a escanear devuelve el mismo premio, con repetido:true). */
+  var sorteo = null;
+  function sortear() {
+    var s = sorteo = { listo: false, d: null, red: false, esperan: [] };
+    var fin = function (d, red) {
+      if (s !== sorteo || s.listo) return;
+      s.listo = true; s.d = d; s.red = !!red; clearTimeout(s.reloj);
+      var f = s.esperan; s.esperan = []; f.forEach(function (g) { g(); });
+      /* Si todavía no giró y el servidor dice que no se puede (dato mal cargado,
+         ya es cliente, sin conexión), se avisa ya: no tiene sentido hacerle
+         girar la rueda para enterarse. */
+      if (!lanzada) {
+        if (s.red || !d || (!d.ok && !d.yaCliente)) { sorteo = null; desarmar((d && d.error) || 'No pudimos girar: revisá la conexión y probá de nuevo.'); if (d && d.campo) mostrarError(d.error, d.campo); }
+        else if (d.yaCliente) { armada = false; rueda.classList.remove('lista'); resultado(d); }
+      }
+    };
+    s.reloj = setTimeout(function () { fin(null, true); }, 30000);
+    fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'ruletaGirar', nombre: datos.nombre, tel: datos.tel, barrio: datos.barrio, web: $('web').value, o: P.o || '', d: P.d || '', r: P.r || '' }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { fin(d, false); })
+      .catch(function () { fin(null, true); });
+  }
 
   /* El gesto: la rueda sigue al dedo mientras arrastra; al soltar, la velocidad de
      los últimos ~100 ms decide si sale girando. Un toque suave no cuenta. */
@@ -394,19 +425,18 @@
     $('tirala-txt').textContent = '¡Girando!'; $('tirala-btn').hidden = true;
     var txt = function (s) { $('tirala-txt').textContent = s; };
     arrancar(v0);
-    var t0 = Date.now(), cortado = false;
-    /* Si el servidor tarda, que se note que está trabajando: una rueda que gira
-       sin fin parece colgada. */
-    var aviso1 = setTimeout(function () { if (girando) txt('Sorteando tu premio…'); }, 3000);
-    var aviso2 = setTimeout(function () { if (girando) txt('Ya casi…'); }, 10000);
-    var fallo = function (msg, campo) { parar(); desarmar(msg || 'No pudimos girar: revisá la conexión y probá de nuevo.'); if (campo) mostrarError(msg, campo); };
-    var reloj = setTimeout(function () { cortado = true; clearTimeout(aviso1); clearTimeout(aviso2); fallo(); }, 30000);
-    fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'ruletaGirar', nombre: datos.nombre, tel: datos.tel, barrio: datos.barrio, web: $('web').value, o: P.o || '', d: P.d || '', r: P.r || '' }) })
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        if (cortado) return; clearTimeout(reloj); clearTimeout(aviso1); clearTimeout(aviso2);
-        var espera = Math.max(0, 1000 - (Date.now() - t0));   // que gire un poco aunque el servidor conteste rápido
+    var t0 = Date.now(), s = sorteo;
+    /* Si el servidor todavía no contestó, que se note que está trabajando: una
+       rueda que gira sin fin parece colgada. */
+    var aviso1 = setTimeout(function () { if (girando) txt('Sorteando tu premio…'); }, 2500);
+    var aviso2 = setTimeout(function () { if (girando) txt('Ya casi…'); }, 9000);
+    var fallo = function (msg, campo) { clearTimeout(aviso1); clearTimeout(aviso2); parar(); sorteo = null; desarmar(msg || 'No pudimos girar: revisá la conexión y probá de nuevo.'); if (campo) mostrarError(msg, campo); };
+    if (!s) return fallo();
+    var alLlegar = function () {
+        clearTimeout(aviso1); clearTimeout(aviso2);
+        if (s.red) return fallo();
+        var d = s.d;
+        var espera = Math.max(0, 900 - (Date.now() - t0));   // que se vea girar aunque el premio ya estuviera
         var seguir = function () {
           if (!d || (!d.ok && !d.yaCliente)) return fallo((d && d.error) || 'No pudimos girar. Probá de nuevo.', d && d.campo);
           if (!d.ok || !d.premio) { return frenarSuave(function () { resultado(d); }); }   // ya es cliente
@@ -426,8 +456,8 @@
           var hecho = false, una = function () { if (!hecho) { hecho = true; seguir(); } };
           alConfirmar.push(una); setTimeout(una, 4000);
         }, espera);
-      })
-      .catch(function () { if (cortado) return; clearTimeout(reloj); clearTimeout(aviso1); clearTimeout(aviso2); fallo(); });
+    };
+    if (s.listo) alLlegar(); else s.esperan.push(alLlegar);
   }
 
   if (P.o === 'evento') $('sub').textContent = 'Si querés Maleu en tu casa, empezá con un regalo.';
