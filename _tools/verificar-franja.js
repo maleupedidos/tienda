@@ -248,21 +248,57 @@ async function main() {
 
        El reloj se mueve en caliente (`window.__ahora`, el shim del PREP) y se
        repinta: no hace falta recargar, y asi el escenario cuesta dos toques. */
-    console.log('\n' + DIM + '== Los dias sin franja ==' + RST);
-    const verFranja = async function (ms) {
-      await ev('window.__ahora = ' + ms + '; updatePromoBar();');
-      await dormir(120);
-      return await ev('(function () { var b = document.getElementById("promo-bar");' +
-        ' return b ? getComputedStyle(b).display : "no-existe"; })()');
+    console.log('\n' + DIM + '== Los dias en que el 10% no se anuncia ==' + RST);
+    /* Son TRES los carteles que hablan del 10%, no uno: la franja de arriba, el
+       incentivo del carrito y el cartel del medio de pago. Tadeo los mando
+       apagar los tres el dia de la ruleta —"para que ningun cliente sospeche de
+       que ya habia un 10% off en efectivo"—, asi que medir solo la franja
+       dejaria pasar justo el que el nombro por telefono.
+
+       Se arma un carrito y se elige transferencia, que es el estado en que los
+       tres tienen algo que decir: con efectivo elegido, el del formulario se
+       calla solo (ya lo esta pagando asi). */
+    await ev('(function () { var a = getActiveProducts().filter(function (p) { return !esPorPeso(p); });' +
+      ' if (a[0]) addToCart(a[0].id); if (a[1]) addToCart(a[1].id);' +
+      ' var t = document.querySelector("input[name=pago][value=Transferencia]");' +
+      ' if (t) { t.checked = true; t.dispatchEvent(new Event("change", { bubbles: true })); } })()');
+    await dormir(400);
+
+    const verCarteles = async function (ms) {
+      await ev('window.__ahora = ' + ms + '; updatePromoBar(); updateUI();' +
+        ' if (typeof updatePagoHint === "function") updatePagoHint();');
+      await dormir(200);
+      return JSON.parse(await ev('(function () {' +
+        ' var vis = function (el) { return !!(el && getComputedStyle(el).display !== "none" && el.offsetParent !== null); };' +
+        ' var inc = document.getElementById("cart-incentive");' +
+        ' return JSON.stringify({ franja: vis(document.getElementById("promo-bar")),' +
+        '   hint: vis(document.getElementById("pago-hint")),' +
+        '   incentivo: !!(inc && getComputedStyle(inc).display !== "none" && /10% OFF/.test(inc.textContent)),' +
+        '   anuncia: _anunciar10Hoy(),' +
+        '   descuentoSigueVivo: ahorroPorEfectivo() > 0 });' +
+        '})()'));
     };
-    const elDia    = await verFranja(Date.UTC(2026, 8, 24, 13, 0, 0));   // 24/9 10:00 AR
-    const esaNoche = await verFranja(Date.UTC(2026, 8, 25, 2, 59, 0));   // 24/9 23:59 AR
-    const alOtroDia= await verFranja(Date.UTC(2026, 8, 25, 3, 1, 0));    // 25/9 00:01 AR
-    const normal   = await verFranja(DOMINGO);
-    chk(elDia === 'none', 'el dia de la ruleta la franja no sale (' + elDia + ')');
-    chk(esaNoche === 'none', 'y sigue sin salir hasta las 23:59 de ese dia (' + esaNoche + ')');
-    chk(alOtroDia !== 'none', 'A LA MEDIANOCHE VUELVE SOLA, sin que nadie publique nada (' + alOtroDia + ')');
-    chk(normal !== 'none', 'y cualquier otro dia esta como siempre (' + normal + ')');
+
+    const elDia     = await verCarteles(Date.UTC(2026, 8, 24, 13, 0, 0));  // 24/9 10:00 AR
+    const esaNoche  = await verCarteles(Date.UTC(2026, 8, 25, 2, 59, 0));  // 24/9 23:59 AR
+    const alOtroDia = await verCarteles(Date.UTC(2026, 8, 25, 3, 1, 0));   // 25/9 00:01 AR
+    const normal    = await verCarteles(DOMINGO);
+
+    chk(!elDia.franja && !elDia.hint && !elDia.incentivo,
+        'el dia de la ruleta NINGUNO de los tres carteles habla del 10%', JSON.stringify(elDia));
+    chk(elDia.descuentoSigueVivo,
+        'pero el descuento sigue aplicandose: se apaga el anuncio, no la plata');
+    chk(!esaNoche.franja && !esaNoche.hint && !esaNoche.incentivo,
+        'y siguen callados hasta las 23:59 de ese dia', JSON.stringify(esaNoche));
+    chk(alOtroDia.franja && alOtroDia.anuncia,
+        'A LA MEDIANOCHE VUELVEN SOLOS, sin que nadie publique nada', JSON.stringify(alOtroDia));
+    chk(normal.franja && normal.hint,
+        'y cualquier otro dia estan como siempre', JSON.stringify(normal));
+
+    /* Se deja la pagina como estaba, que abajo se miden POSTs y el ancho. */
+    await ev('window.__ahora = ' + DOMINGO + '; cart = {}; updateUI(); updatePromoBar();' +
+      ' var s = document.getElementById("cart-sidebar"); if (s) s.classList.remove("open");');
+    await dormir(200);
 
     const posts = await ev('window.__post');
     chk(posts === 0 && escapados.length === 0, 'no salio ningun POST ni salto a WhatsApp (' + posts + '/' + escapados.length + ')');

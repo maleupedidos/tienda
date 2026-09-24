@@ -4338,7 +4338,7 @@ function updateUI() {
         // Ya tiene descuento — felicitarlo
         incentiveEl.innerHTML = '<strong>¡Descuento aplicado!</strong><br>Estás ahorrando <strong>' + ars(discount) + '</strong>';
         incentiveEl.style.display = '';
-      } else if (!isCash && ahorroPorEfectivo() > 0) {
+      } else if (!isCash && ahorroPorEfectivo() > 0 && _anunciar10Hoy()) {
         // Recordar el efectivo, sea el pedido chico o grande
         incentiveEl.innerHTML = '<div class="incentive-cash" style="border:none;margin:0;padding:0;">Pagando en efectivo tenés 10% OFF</div>';
         incentiveEl.style.display = '';
@@ -6542,8 +6542,26 @@ function _hoyAR() {
   var m = d.getUTCMonth() + 1, x = d.getUTCDate();
   return d.getUTCFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (x < 10 ? '0' : '') + x;
 }
-function _franjaApagadaHoy() {
-  /* LA LISTA VA ADENTRO DE LA FUNCION, y no en una `var` de arriba.
+function _anunciar10Hoy() {
+  /* ¿HOY SE ANUNCIA EL 10% DE EFECTIVO? (24/9/2026)
+
+     Tadeo, la manana de la ruleta: "la idea es no mostrar ese 10% por el tema
+     del sorteo de la tarde, para que ningun cliente sospeche de que ya habia un
+     10% off en efectivo". O sea que lo que molesta no es el cartel de arriba:
+     es que alguien que gana el 15% pueda pensar que el premio en realidad le da
+     cinco puntos mas que lo que ya tenia cualquiera.
+
+     Por eso esto NO es "esconder la franja": es una sola respuesta que miran
+     los TRES carteles que hablan del 10% —la franja, el cartel del formulario
+     y el incentivo del carrito—. Colgarlo de cada uno por separado es como se
+     rompio tres veces el 23/9: uno se olvida y sigue hablando.
+
+     OJO CON LO QUE ESTO NO HACE: el descuento SIGUE APLICANDOSE. Lo que se
+     apaga es el anuncio, no la plata. El que elige efectivo lo ve igual en el
+     total, y tiene que verlo — cobrarle 10% de mas sin decirle nada seria otra
+     cosa, y no es lo que se pidio.
+
+     LA LISTA VA ADENTRO DE LA FUNCION, y no en una `var` de arriba.
 
      La primera version la puso en `var DIAS_SIN_FRANJA` justo encima de
      `updatePromoBar()`, en la linea 6536. Pero a `updatePromoBar()` la llama el
@@ -6557,13 +6575,13 @@ function _franjaApagadaHoy() {
      alguien mueva codigo. Lo encontro `verificar-franja.js` en la primera
      corrida, por su chequeo de control: "la franja existe (sin esto lo de abajo
      no mide nada)". (24/9/2026) */
-  var DIAS_SIN_FRANJA = ['2026-09-24'];
-  return DIAS_SIN_FRANJA.indexOf(_hoyAR()) >= 0;
+  var DIAS_SIN_ANUNCIO_10 = ['2026-09-24'];
+  return DIAS_SIN_ANUNCIO_10.indexOf(_hoyAR()) < 0;
 }
 function updatePromoBar() {
   var bar = $id('promo-bar');
   if (!bar) return;
-  if (_franjaApagadaHoy()) { bar.style.display = 'none'; return; }
+  if (!_anunciar10Hoy()) { bar.style.display = 'none'; return; }
   // Carrito solo-combos: los descuentos no aplican → ocultarlos.
   var soloCombos = combosInCart() && descontableSubtotal() === 0;
   // Construir el ticker mezclando descuentos (si aplican) + cutoff Red (si aplica).
@@ -6614,7 +6632,7 @@ function updatePagoHint() {
      ruleta puesto, el efectivo no agrega nada y prometerle un 10% que no va a
      ver es lo peor que puede hacer esta pantalla justo antes de que elija.
      (24/9/2026) */
-  hint.style.display = (ahorroPorEfectivo() > 0 && !isCash && pSub > 0) ? '' : 'none';
+  hint.style.display = (_anunciar10Hoy() && ahorroPorEfectivo() > 0 && !isCash && pSub > 0) ? '' : 'none';
   /* Con carne reservada no se transfiere todavia: el total cambia al pesarla. */
   var aliasHint = document.querySelector('#mp-alias .mp-alias-hint');
   if (aliasHint) {

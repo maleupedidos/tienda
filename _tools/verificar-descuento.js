@@ -252,15 +252,32 @@ async function main() {
     chk(tr.desc === 0, 'no hay descuento (' + tr.desc + ')');
     chk(tr.etiqueta === '', 'ninguna etiqueta de descuento ("' + tr.etiqueta + '")');
     chk(!tr.filaDesc, 'el carrito no dibuja la fila de descuento');
-    chk(/efectivo/i.test(tr.incentivo) && /10%/.test(tr.incentivo),
-        'el carrito recuerda el efectivo, aunque el pedido sea grande: "' + tr.incentivo.trim() + '"');
-    chk(tr.hint, 'y el cartel del medio de pago tambien');
-    /* Se pide QUE LO DIGA, no las palabras exactas: el 23/9/2026 la franja
-       paso a 'pagando en efectivo' (y a mayusculas por CSS) y este chequeo se
-       puso en rojo sin que el descuento hubiera cambiado. Un test atado a la
-       redaccion frena el copy, que es justo lo que tiene que poder moverse. */
-    chk(/10% OFF/.test(tr.promo) && /efectivo/i.test(tr.promo) && !/100\.000/.test(tr.promo) && !/acumulables/i.test(tr.promo),
-        'la barra de promo dice el efectivo y nada de "$100.000" ni "no acumulables"');
+    /* LOS TRES CARTELES SE MIDEN SEGUN EL DIA, y no es una concesion: desde el
+       24/9/2026 hay dias en que el 10% NO SE ANUNCIA (el de la ruleta de Los
+       Robles, para que el premio no parezca valer cinco puntos). El descuento
+       se sigue aplicando; lo que se apaga es el anuncio.
+
+       Este test corre con el reloj de verdad, asi que un chequeo que exija los
+       carteles siempre se pone en rojo justo esos dias, con la tienda haciendo
+       exactamente lo que se le pidio. Se mide la regla entera: si hoy se
+       anuncia, tienen que estar; si no, tienen que estar callados los tres. */
+    const anuncia = (await ev('_anunciar10Hoy()')) === true;
+    if (anuncia) {
+      chk(/efectivo/i.test(tr.incentivo) && /10%/.test(tr.incentivo),
+          'el carrito recuerda el efectivo, aunque el pedido sea grande: "' + tr.incentivo.trim() + '"');
+      chk(tr.hint, 'y el cartel del medio de pago tambien');
+      /* Se pide QUE LO DIGA, no las palabras exactas: el 23/9/2026 la franja
+         paso a 'pagando en efectivo' (y a mayusculas por CSS) y este chequeo se
+         puso en rojo sin que el descuento hubiera cambiado. Un test atado a la
+         redaccion frena el copy, que es justo lo que tiene que poder moverse. */
+      chk(/10% OFF/.test(tr.promo) && /efectivo/i.test(tr.promo) && !/100\.000/.test(tr.promo) && !/acumulables/i.test(tr.promo),
+          'la barra de promo dice el efectivo y nada de "$100.000" ni "no acumulables"');
+    } else {
+      console.log(DIM + '  (hoy es un dia sin anuncio del 10%: se mide al reves)' + RST);
+      chk(!/10%/.test(tr.incentivo), 'hoy el carrito NO menciona el 10%: "' + tr.incentivo.trim() + '"');
+      chk(!tr.hint, 'ni el cartel del medio de pago');
+      chk(!/10% OFF/.test(tr.promo), 'ni la barra de promo ("' + String(tr.promo).slice(0, 40) + '")');
+    }
     chk(!/100\.000|\+\$100K/.test(tr.toda), 'la palabra "100.000" no aparece en ninguna parte de la pagina');
 
     console.log('\n' + DIM + '== En efectivo ==' + RST);
