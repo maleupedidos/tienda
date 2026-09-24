@@ -576,6 +576,23 @@
      Si el link llega SIN teléfono (WATI no reemplazó la variable, o el link se
      reenvió), queda un solo campo: el celular. Sin él no hay candado posible. */
   (function arranque() {
+    /* ?denuevo=1 — BORRA EL CANDADO DEL CELULAR. (24/9/2026)
+
+       Hay DOS candados y son distintos. El del servidor es por telefono y es el
+       que manda. El del celular es una comodidad: guarda el resultado para que
+       al refrescar se vea directo, sin rueda ni pedido.
+
+       Probando la ruleta antes de Los Robles, Tadeo escaneo el QR y le seguia
+       apareciendo el premio de AYER — con el texto viejo "15% en tu primera
+       compra", que ya no existe en la planilla—, porque el candado del celular
+       le gana al servidor: se muestra antes de preguntar. El modo prueba que se
+       habia hecho era del backend y no tocaba esto.
+
+       ESTO NO ABRE NINGUN AGUJERO. El candado de verdad sigue entero: si alguien
+       entra con ?denuevo=1 y ya jugo, el servidor le contesta `repetido` y le
+       muestra el mismo premio de siempre. Lo unico que se saltea es la copia
+       guardada en su propio telefono. */
+    if (/[?&]denuevo=1/.test(location.search)) { try { localStorage.removeItem('maleu_ruleta'); } catch (e) {} }
     try {
       var g = JSON.parse(localStorage.getItem('maleu_ruleta') || 'null');
       /* Solo un PREMIO cierra el candado. "Ya sos cliente" no: desde el 24/9/2026
