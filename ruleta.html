@@ -111,8 +111,8 @@
   <form class="card" id="form" novalidate>
     <div id="f-nombre"><label for="nombre">Tu nombre</label>
     <input id="nombre" name="nombre" autocomplete="name" placeholder="Nombre y apellido" maxlength="60" /></div>
-    <label for="tel">Tu celular</label>
-    <input id="tel" name="tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="11 2345 6789" maxlength="30" />
+    <div id="f-tel"><label for="tel">Tu celular</label>
+    <input id="tel" name="tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="11 2345 6789" maxlength="30" /></div>
     <div id="f-barrio">
     <label for="barrio">Tu barrio</label>
     <input id="barrio" name="barrio" list="barrios" autocomplete="off" placeholder="Por ejemplo, La Pionera" maxlength="60" />
@@ -146,6 +146,25 @@
   var API = 'https://script.google.com/macros/s/AKfycbxmrG5YVSshcYezk8lXFx_uxb7NFGcb9EfTXc7dsIN4rZyj73CET4mk_aKPFPDY2wNi/exec';
   var TIENDA = 'https://maleu.com.ar/';
   var P = {}; try { new URLSearchParams(location.search).forEach(function (v, k) { P[k] = v; }); } catch (e) {}
+
+  /* LOS DATOS DEL EVENTO, POR DEFECTO (24/9/2026).
+
+     El link de WhatsApp llevaba los tres a cuestas:
+       maleu.com.ar/ruleta?o=colegio&d=Los%20Robles&r=lucas&t={{phone}}&n={{name}}
+     y en el telefono eso es un chorizo de tres renglones que encima muestra el
+     `%20`. Tadeo: "es un choclo re feo".
+
+     Son fijos para esta accion, asi que viven aca y el link queda en
+       maleu.com.ar/ruleta?t={{phone}}&n={{name}}
+     — de 95 caracteres a 49, una sola linea.
+
+     **La URL sigue mandando**: si manana hay otro colegio, se le pasan `o`, `d`
+     y `r` como siempre y estos defaults no se usan. O sea que esto acorta el
+     link de hoy sin atar la pagina a Los Robles. Cuando el evento pase, lo
+     honesto es volverlos a vaciar. */
+  if (!P.o) P.o = 'colegio';
+  if (!P.d) P.d = 'Los Robles';
+  if (!P.r) P.r = 'lucas';
   var $ = function (id) { return document.getElementById(id); };
   var gira = $('gira'), premios = [], rot = 0, girando = false, raf = 0, dibujados = '';
 
@@ -557,10 +576,31 @@
     var limpio = function (v) { v = String(v || ''); return /[{}]/.test(v) ? '' : v; };   // "{{phone}}" sin reemplazar = no vino
     var tel = limpio(P.t || P.tel).replace(/\D/g, '');
     var nom = limpio(P.n || P.nombre).replace(/\s+/g, ' ').trim().slice(0, 60);
-    if (nom.length < 2) nom = 'Cliente WhatsApp';
+    /* EL NOMBRE SE PIDE SOLO SI WATI NO LO TIENE (24/9/2026).
+
+       WATI manda el nombre del **perfil publico de WhatsApp** — el que la
+       persona se puso en su propia cuenta, no el que Maleu tenga agendado. Y
+       hay gente que no tiene ninguno: mirando Contactos ese dia, 1 de los 5
+       primeros aparecia sin nombre.
+
+       Hasta hoy esos quedaban como **"Cliente WhatsApp"** en el CRM, que es
+       una forma elegante de perder el lead: 60 madres y varias sin saber quien
+       es cada una.
+
+       Ahora: si el nombre vino, no se le pregunta nada y la rueda arranca sola
+       —que es lo que Tadeo queria, que no parezca que le sacamos datos—. Si no
+       vino, se le pide SOLO el nombre. Es una pregunta, no un formulario, y se
+       la hace unicamente a quien de verdad no podemos identificar. */
+    var hayNombre = nom.length >= 2, hayTel = tel.length >= 10;
+    if (!hayNombre) nom = '';
     $('nombre').value = nom; $('barrio').value = 'Sin dato';
-    $('f-nombre').hidden = true; $('f-barrio').hidden = true;
-    if (tel.length >= 10) {
+    if (hayTel) $('tel').value = tel;
+    $('f-nombre').hidden = hayNombre;
+    $('f-barrio').hidden = true;
+    /* El celular tampoco se pide si ya vino en el link: preguntar un dato que
+       ya tenemos es exactamente lo que hace pensar "me estan sacando datos". */
+    $('f-tel').hidden = hayTel;
+    if (hayTel && hayNombre) {
       datos = { nombre: nom, tel: tel, barrio: 'Sin dato' };
       armar(); sortear();
     }
