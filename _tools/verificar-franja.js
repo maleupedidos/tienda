@@ -238,6 +238,32 @@ async function main() {
       e = await estado();
       chk(e.vis === 'visible' && e.op === 1 && e.shAlto === a0, 'al bajar no se esconde ni cambia de alto (' + a0 + ' → ' + e.shAlto + 'px)');
     }
+    /* ── Los dias sin franja (24/9/2026) ──────────────────────────────────
+       Tadeo la mando apagar el dia de la ruleta de Los Robles, porque ese dia
+       el descuento que se comunica es el premio y dos descuentos anunciados a
+       la vez se pisan. Se hizo POR FECHA y no con un interruptor a mano, asi
+       que lo que hay que probar no es solo que hoy no salga: es que VUELVA
+       SOLA. Un cartel apagado "por un dia" que depende de que alguien lo
+       prenda se queda apagado, porque nadie extrana lo que no ve.
+
+       El reloj se mueve en caliente (`window.__ahora`, el shim del PREP) y se
+       repinta: no hace falta recargar, y asi el escenario cuesta dos toques. */
+    console.log('\n' + DIM + '== Los dias sin franja ==' + RST);
+    const verFranja = async function (ms) {
+      await ev('window.__ahora = ' + ms + '; updatePromoBar();');
+      await dormir(120);
+      return await ev('(function () { var b = document.getElementById("promo-bar");' +
+        ' return b ? getComputedStyle(b).display : "no-existe"; })()');
+    };
+    const elDia    = await verFranja(Date.UTC(2026, 8, 24, 13, 0, 0));   // 24/9 10:00 AR
+    const esaNoche = await verFranja(Date.UTC(2026, 8, 25, 2, 59, 0));   // 24/9 23:59 AR
+    const alOtroDia= await verFranja(Date.UTC(2026, 8, 25, 3, 1, 0));    // 25/9 00:01 AR
+    const normal   = await verFranja(DOMINGO);
+    chk(elDia === 'none', 'el dia de la ruleta la franja no sale (' + elDia + ')');
+    chk(esaNoche === 'none', 'y sigue sin salir hasta las 23:59 de ese dia (' + esaNoche + ')');
+    chk(alOtroDia !== 'none', 'A LA MEDIANOCHE VUELVE SOLA, sin que nadie publique nada (' + alOtroDia + ')');
+    chk(normal !== 'none', 'y cualquier otro dia esta como siempre (' + normal + ')');
+
     const posts = await ev('window.__post');
     chk(posts === 0 && escapados.length === 0, 'no salio ningun POST ni salto a WhatsApp (' + posts + '/' + escapados.length + ')');
   } catch (err) {

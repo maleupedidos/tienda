@@ -6515,9 +6515,55 @@ function _cutoffChipTexto() {
   return 'Pedí hasta el jueves ' + dm(proxVieMs - 86400000) + ' a las 12 hs · Entrega el viernes ' + dm(proxVieMs);
 }
 
+/* DIAS SIN FRANJA (24/9/2026)
+
+   Tadeo, la manana de la ruleta de Los Robles: "sacá el cartel negro del 10%
+   OFF por hoy nomas; mañana si querés que aparezca está ok". El motivo es que
+   hoy el descuento que se comunica es el premio de la ruleta, y dos descuentos
+   anunciados a la vez se pisan: el que gana 15% no tiene que estar leyendo
+   arriba que hay un 10%.
+
+   VA POR FECHA Y NO POR UN INTERRUPTOR A MANO, a proposito. Un cartel que se
+   apaga "por hoy" y depende de que alguien se acuerde de prenderlo se queda
+   apagado: nadie extraña lo que no ve. Asi vuelve solo el 25 a las 00:00 de
+   Argentina, sin que nadie publique nada.
+
+   Para apagarla otro dia, se agrega la fecha a la lista. Para dejarla apagada
+   un fin de semana largo, se agregan los tres dias.
+
+   El 10% SIGUE EXISTIENDO hoy: lo que se apaga es el cartel de arriba, no el
+   descuento. El que paga en efectivo lo recibe igual. */
+function _hoyAR() {
+  /* AR es UTC-3 todo el ano (no hay horario de verano desde 2009), asi que
+     restar 3 horas y leer en UTC da el dia calendario de aca. Es el mismo
+     truco que usa _cutoffChipTexto(), y no `toLocaleDateString`, que en un
+     celular con la zona horaria mal puesta devolveria otro dia. */
+  var d = new Date(Date.now() - 3 * 3600 * 1000);
+  var m = d.getUTCMonth() + 1, x = d.getUTCDate();
+  return d.getUTCFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (x < 10 ? '0' : '') + x;
+}
+function _franjaApagadaHoy() {
+  /* LA LISTA VA ADENTRO DE LA FUNCION, y no en una `var` de arriba.
+
+     La primera version la puso en `var DIAS_SIN_FRANJA` justo encima de
+     `updatePromoBar()`, en la linea 6536. Pero a `updatePromoBar()` la llama el
+     arranque —`applyZone()`, `updateUI()`— y ese arranque corre ANTES de que se
+     ejecute la linea 6536: la `var` esta declarada (hoisting) pero vale
+     `undefined`, asi que `undefined.indexOf(...)` tiraba TypeError, la funcion
+     moria ahi, y LA FRANJA NO SE DIBUJABA NUNCA — ningun dia, no solo hoy.
+
+     Una declaracion `function` se iza entera, con su cuerpo, asi que esto anda
+     desde cualquier lado y no depende de donde quede el bloque el dia que
+     alguien mueva codigo. Lo encontro `verificar-franja.js` en la primera
+     corrida, por su chequeo de control: "la franja existe (sin esto lo de abajo
+     no mide nada)". (24/9/2026) */
+  var DIAS_SIN_FRANJA = ['2026-09-24'];
+  return DIAS_SIN_FRANJA.indexOf(_hoyAR()) >= 0;
+}
 function updatePromoBar() {
   var bar = $id('promo-bar');
   if (!bar) return;
+  if (_franjaApagadaHoy()) { bar.style.display = 'none'; return; }
   // Carrito solo-combos: los descuentos no aplican → ocultarlos.
   var soloCombos = combosInCart() && descontableSubtotal() === 0;
   // Construir el ticker mezclando descuentos (si aplican) + cutoff Red (si aplica).

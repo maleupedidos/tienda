@@ -196,8 +196,11 @@ async function main() {
     chk(geo.inputs.every((f) => f >= 16), 'los campos en 16 px (en iPhone, menos hace zoom al tocar)', geo.inputs);
 
     await ev(`document.getElementById('girar').click()`); await dormir(200);
-    chk(/Contanos tu nombre/.test(await ev(`document.getElementById('err').textContent`)) && posts.length === 0,
-      'sin nombre no arma la rueda ni manda nada');
+    /* Desde el 24/9/2026 el nombre y el barrio no se piden (vienen de WhatsApp o
+       quedan por defecto): lo único que no puede faltar es el celular. */
+    chk(/código de área/.test(await ev(`document.getElementById('err').textContent`)) && posts.length === 0
+        && await ev(`document.getElementById('f-nombre').hidden && document.getElementById('f-barrio').hidden`),
+      'sin celular no arma la rueda ni manda nada (y no pide nombre ni barrio)');
     await tipear('nombre', 'Juana Prueba'); await tipear('tel', '11 2345');
     await ev(`document.getElementById('girar').click()`); await dormir(200);
     chk(/código de área/.test(await ev(`document.getElementById('err').textContent`)) && await ev(`document.getElementById('tel').classList.contains('mal')`) && posts.length === 0, 'un celular corto: lo dice y marca el campo');
@@ -248,6 +251,34 @@ async function main() {
     await armarYTirar(); await esperar(`/Revisá el celular/.test(document.getElementById('err').textContent)`, 6000);
     chk(await ev(`document.getElementById('tel').classList.contains('mal') && !document.getElementById('girar').disabled && document.getElementById('res').hidden`),
       'un error del servidor en un campo: lo muestra, marca el campo y deja volver a intentar');
+
+    /* ── SIN FORMULARIO: el link de WATI trae el teléfono (24/9/2026) ───────
+       Tadeo y Lucas: "escaneando el QR ya nos escribe por WhatsApp; que entren
+       al link y jueguen". La respuesta de WATI lleva t= (teléfono) y n= (nombre).
+       Y UNA vez por persona: el celular recuerda el resultado y el servidor
+       contesta repetido:true por teléfono. */
+    giro = { en: 600, r: { ok: true, nombre: 'Lula', premio: { i: 0, txt: PREMIOS[0].txt, nada: false, min: 0 }, cupon: 'RUL-TT11', vence: '30/10/2026' } };
+    const antesT = posts.length;
+    await abrirRuleta('?o=colegio&d=Los%20Robles&r=lucas&t=5491155550077&n=Lula%20Prueba');
+    await dormir(900);
+    const sf = JSON.parse(await ev(`JSON.stringify({ form: document.getElementById('form').hidden, tirala: !document.getElementById('tirala').hidden })`));
+    const pgT = posts.slice(antesT).find((p) => p.action === 'ruletaGirar') || {};
+    chk(sf.form && sf.tirala && pgT.tel === '5491155550077' && pgT.nombre === 'Lula Prueba',
+      'con el teléfono en el link: sin formulario, la rueda lista y el sorteo ya salió al abrir', { sf, tel: pgT.tel, nombre: pgT.nombre });
+    await tirar(); await esperar(`!document.getElementById('res').hidden`, 8000);
+    const n1 = posts.length;
+    await cli.enviar('Page.navigate', { url: base + '/ruleta?o=colegio&t=5491155550077' });
+    await esperar(`!!document.getElementById('res') && !document.getElementById('res').hidden`, 8000);
+    chk(posts.length === n1 && /Ya giraste/.test(await ev(`document.getElementById('res').textContent`)) && await ev(`document.getElementById('tirala').hidden`),
+      'al refrescar o re-escanear: muestra el premio que ya tenía, sin rueda y sin pedir otro giro');
+    giro = { en: 300, r: { ok: true, repetido: true, nombre: 'Lula', premio: { i: 0, txt: PREMIOS[0].txt, nada: false, min: 0 }, cupon: 'RUL-TT11', vence: '30/10/2026' } };
+    await abrirRuleta('?t=5491155550077');   // borra el celular: es otro navegador con el mismo teléfono
+    await esperar(`!document.getElementById('res').hidden`, 8000);
+    chk(/Ya giraste/.test(await ev(`document.getElementById('res').textContent`)) && await ev(`document.getElementById('tirala').hidden`),
+      'otro navegador con el mismo teléfono: el servidor dice repetido y se muestra sin girar');
+    await abrirRuleta('?o=colegio&t=%7B%7Bphone%7D%7D&n=%7B%7Bname%7D%7D');
+    chk(await ev(`!document.getElementById('form').hidden && document.getElementById('f-nombre').hidden && document.getElementById('f-barrio').hidden && document.getElementById('tirala').hidden`),
+      'si WATI no reemplazó la variable: queda un solo campo, el celular');
 
     /* ── LA LISTA CAMBIA DE 5 A 6 (24/9/2026) ───────────────────────────────
        Es lo que va a pasar el dia que se carguen los premios de Los Robles: el

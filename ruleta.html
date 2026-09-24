@@ -104,16 +104,18 @@
   </div>
 
   <form class="card" id="form" novalidate>
-    <label for="nombre">Tu nombre</label>
-    <input id="nombre" name="nombre" autocomplete="name" placeholder="Nombre y apellido" maxlength="60" />
+    <div id="f-nombre"><label for="nombre">Tu nombre</label>
+    <input id="nombre" name="nombre" autocomplete="name" placeholder="Nombre y apellido" maxlength="60" /></div>
     <label for="tel">Tu celular</label>
     <input id="tel" name="tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="11 2345 6789" maxlength="30" />
+    <div id="f-barrio">
     <label for="barrio">Tu barrio</label>
     <input id="barrio" name="barrio" list="barrios" autocomplete="off" placeholder="Por ejemplo, La Pionera" maxlength="60" />
     <datalist id="barrios">
       <option value="Estancias del Pilar"></option><option value="Estancias del Río"></option><option value="La Pionera"></option>
       <option value="Los Alcanfores"></option><option value="Pilará"></option><option value="Fátima"></option><option value="Pilar Centro"></option>
     </datalist>
+    </div>
     <!-- Un campo que la persona no ve: si viene lleno, lo lleno un bot. -->
     <div class="trampa" aria-hidden="true"><label for="web">No completar</label><input id="web" name="web" tabindex="-1" autocomplete="off" /></div>
     <div class="err" id="err" role="alert"></div>
@@ -368,7 +370,7 @@
          girar la rueda para enterarse. */
       if (!lanzada) {
         if (s.red || !d || (!d.ok && !d.yaCliente)) { sorteo = null; desarmar((d && d.error) || 'No pudimos girar: revisá la conexión y probá de nuevo.'); if (d && d.campo) mostrarError(d.error, d.campo); }
-        else if (d.yaCliente) { armada = false; rueda.classList.remove('lista'); resultado(d); }
+        else if (d.yaCliente || d.repetido) { armada = false; rueda.classList.remove('lista'); resultado(d); }   // ya jugó: el premio que tenía, sin volver a tirar
       }
     };
     s.reloj = setTimeout(function () { fin(null, true); }, 30000);
@@ -388,7 +390,7 @@
   }
   rueda.addEventListener('pointerdown', function (ev) {
     if (!armada || lanzada) {
-      if (!lanzada && !girando) { mostrarError('Primero completá tus datos 👇', 'nombre'); try { $('form').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {} }
+      if (!lanzada && !girando) { mostrarError('Primero poné tu celular 👇', 'tel'); try { $('form').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {} }
       return;
     }
     ev.preventDefault();
@@ -462,6 +464,39 @@
 
   if (P.o === 'evento') $('sub').textContent = 'Si querés Maleu en tu casa, empezá con un regalo.';
   cargar();
+
+  /* ── Sin formulario (24/9/2026) ────────────────────────────────────────────
+     Tadeo y Lucas: "escaneando el QR ya nos escribe por WhatsApp, el lead ya
+     quedó; que entren al link y jueguen, lo más rápido posible". La respuesta
+     de WATI trae el teléfono y el nombre de WhatsApp en el link (t= y n=):
+     con eso no se pregunta nada y el sorteo arranca al abrir.
+
+     UNA vez por persona, con dos candados:
+     · el servidor, por teléfono: volver a entrar devuelve el mismo premio
+       (repetido:true) y se muestra sin rueda;
+     · el celular: el resultado queda guardado y al refrescar o re-escanear se
+       ve directo, sin rueda ni pedido al servidor.
+     Si el link llega SIN teléfono (WATI no reemplazó la variable, o el link se
+     reenvió), queda un solo campo: el celular. Sin él no hay candado posible. */
+  (function arranque() {
+    try {
+      var g = JSON.parse(localStorage.getItem('maleu_ruleta') || 'null');
+      if (g && g.d && (g.d.premio || g.d.yaCliente)) {
+        var dd = g.d; dd.repetido = true;
+        return resultado(dd);
+      }
+    } catch (e) {}
+    var limpio = function (v) { v = String(v || ''); return /[{}]/.test(v) ? '' : v; };   // "{{phone}}" sin reemplazar = no vino
+    var tel = limpio(P.t || P.tel).replace(/\D/g, '');
+    var nom = limpio(P.n || P.nombre).replace(/\s+/g, ' ').trim().slice(0, 60);
+    if (nom.length < 2) nom = 'Cliente WhatsApp';
+    $('nombre').value = nom; $('barrio').value = 'Sin dato';
+    $('f-nombre').hidden = true; $('f-barrio').hidden = true;
+    if (tel.length >= 10) {
+      datos = { nombre: nom, tel: tel, barrio: 'Sin dato' };
+      armar(); sortear();
+    }
+  })();
 })();
 </script>
 </body>
