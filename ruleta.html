@@ -481,7 +481,11 @@
   (function arranque() {
     try {
       var g = JSON.parse(localStorage.getItem('maleu_ruleta') || 'null');
-      if (g && g.d && (g.d.premio || g.d.yaCliente)) {
+      /* Solo un PREMIO cierra el candado. "Ya sos cliente" no: desde el 24/9/2026
+         juegan todos, y un celular que guardó ese cartel ayer se quedaría afuera
+         para siempre aunque el servidor ya lo deje girar. */
+      if (g && g.d && g.d.yaCliente && !g.d.premio) localStorage.removeItem('maleu_ruleta');
+      else if (g && g.d && g.d.premio) {
         var dd = g.d; dd.repetido = true;
         return resultado(dd);
       }
