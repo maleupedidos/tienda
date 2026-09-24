@@ -306,24 +306,27 @@ async function main() {
     await abrir({ piezas: AHORA, demoraPiezas: 300, demoraStock: 300 });
     chk(await esperar('!!window.__t.carne', 6000), 'con solo vacio en el inventario, la carne aparece');
     let c6 = JSON.parse(await ev(CARNES));
-    chk(c6.cards.map((x) => x.a).join(',') === 'CVa,CCo,CEn,CLo,CPi',
-        'estan los cinco cortes, el que hay primero y los agotados al final (' + c6.cards.map((x) => x.a).join(',') + ')');
-    const agot6 = c6.cards.filter((x) => x.agot), disp6 = c6.cards.filter((x) => !x.agot);
-    chk(agot6.length === 4 && disp6.length === 1 && disp6[0].a === 'CVa', 'cuatro marcados agotados y vacio no');
-    chk(agot6.every((x) => x.chapas === 'Sin stock' && /Sin stock por ahora/.test(x.txt) && x.filas === 0),
-        'cada agotado dice "Sin stock" sobre la foto y en el cuerpo, sin "Nuevo" y sin piezas para tocar');
+    /* CON ALGO EN EL FREEZER, SOLO SE MUESTRA LO QUE HAY (24/9/2026).
+       Hasta ese dia se dibujaban los cinco y los agotados iban al final, en
+       chico, diciendo "Sin stock". Tadeo lo dio vuelta la manana de la ruleta:
+       "queda feo que diga sin stock, que solo aparezcan los productos de carne
+       que ya tenemos las piezas confirmadas". Ese dia habia dos cortes de
+       cinco, y la seccion se leia como una carniceria vacia.
+       El caso "no hay NADA" se sigue midiendo mas abajo, y ahi los cinco vuelven
+       a mostrarse: sin eso la categoria Carnes desapareceria entera. */
+    chk(c6.cards.map((x) => x.a).join(',') === 'CVa',
+        'con vacio en el inventario, es el UNICO corte que se dibuja (' + (c6.cards.map((x) => x.a).join(',') || 'ninguno') + ')');
+    const disp6 = c6.cards.filter((x) => !x.agot);
+    chk(c6.cards.every((x) => !x.agot), 'no queda ningun corte marcado agotado a la vista');
     chk(!/Sin stock/.test(disp6[0].txt) && disp6[0].filas === 3, 'el vacio no dice "Sin stock" y muestra sus 3 piezas');
-    /* Un renglon, no una card: en la compu el que hay mide ~205px con tres
-       piezas, asi que la proporcion sola no alcanza — va con techo fijo. */
-    chk(agot6.every((x) => x.h <= 160 && x.h < disp6[0].h),
-        'los agotados van en chico: ' + agot6[0].h + 'px contra ' + disp6[0].h + 'px del que hay');
     chk(c6.tile === '1 opción', 'el tile de Carnes cuenta lo que se puede elegir: "' + c6.tile + '"');
+    chk(c6.chip, 'y el chip de Carnes sigue en la barra');
     chk(!c6.desborde, 'no desborda a lo ancho');
     await ev("(function(){ var i = document.getElementById('buscador-input'); i.value = 'picaña'; buscarEnCatalogo(); })()");
     const busq6 = JSON.parse(await ev(`JSON.stringify({ vis: [].map.call(document.querySelectorAll('#catalog-root .product-card[data-id]:not(.busq-oculto)'),
       function (c) { return c.classList.contains('agotada') ? 'agotada' : 'otra'; }).join(','),
       info: (document.getElementById('buscador-info') || {}).textContent || '' })`));
-    chk(busq6.vis === 'agotada', 'buscar "picaña" la encuentra agotada, en vez de "no encontramos nada" (' + busq6.vis + ')');
+    chk(busq6.vis === '', 'buscar "picaña" no la trae: hoy no esta en la vidriera (' + JSON.stringify(busq6.vis) + ')');
     await ev('limpiarBusqueda()');
 
     await ev('window.__piezasAhora = {}; window.__demoraPiezas = 100;');

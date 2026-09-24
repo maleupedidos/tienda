@@ -263,13 +263,11 @@ function getActiveProducts() {
        viaja, o si no se pudo traer, no se dibuja ningun corte. Decir "sin
        stock" sin haber mirado seria mentir: no saber no es lo mismo que no hay.
 
-       Sabiendolo, un corte sin piezas SE MUESTRA, con "Sin stock" (11/9/2026).
-       Hasta ese dia desaparecia, y Tadeo lo pidio al reves: "si bien ya no hay
-       algunos gustos de carne por no tener stock, estaria bueno que avisemos".
-       Un corte que no esta se lee como "aca no venden colita"; uno que dice
-       "sin stock" se lee como "hoy no hay, vuelvo". Va al final de su
-       categoria (renderCatalog) y en chico, para no empujar los que si hay. */
-    if (esPorPeso(p) && !_carneConocida()) return false;
+       Sabiendolo, un corte sin piezas se muestra con "Sin stock" SOLO si no
+       hay ninguna pieza de ningun corte — la regla esta explicada entera arriba
+       de `_corteSeMuestra`. Cuando se muestra va al final de su categoria
+       (renderCatalog) y en chico, para no empujar los que si hay. */
+    if (!_corteSeMuestra(p)) return false;
     return true;
   });
 }
@@ -1306,6 +1304,45 @@ function _carneConocida() {
    agotado para el — tiene que seguir a la vista con su pieza tildada. */
 function carneAgotada(p) {
   return esPorPeso(p) && !(piezasMap[p.abbr] || []).length;
+}
+
+/* ¿SE MUESTRA UN CORTE QUE NO TIENE PIEZAS? (24/9/2026)
+
+   Tadeo, unas horas antes de la ruleta: "queda feo que diga sin stock, yo los
+   sacaria por el momento, y que solo aparezcan los productos de carne que ya
+   tenemos las piezas confirmadas". Ese dia Caco no habia traido entrana, lomo
+   ni picaña, asi que de cinco cortes habia dos: la seccion se leia como una
+   carniceria vacia justo cuando entraba gente nueva por el evento.
+
+   Es lo contrario de lo que el mismo pidio el 11/9 —"si bien ya no hay algunos
+   gustos, estaria bueno que avisemos"—, y las dos veces tenia razon, porque el
+   caso no era el mismo. UN corte agotado entre cuatro que estan es un aviso
+   util: "hoy no hay entrana, vuelvo". TRES agotados de cinco no avisan nada,
+   nada mas muestran lo que falta.
+
+   Por eso la regla no es "no mostrar nunca" ni "mostrar siempre", sino ESTA:
+   un corte sin piezas se esconde MIENTRAS HAYA OTRO CORTE CON PIEZAS. La
+   vidriera se llena con lo que hay.
+
+   Y si no hay NINGUNA pieza de ningun corte, se muestran todos con "Sin
+   stock", que es el comportamiento del 11/9. No es una excepcion caprichosa:
+   sin eso la categoria Carnes desapareceria entera del catalogo, de los chips
+   y del buscador, y eso si se lee como "aca no venden carne" — que es
+   exactamente lo que ese cambio vino a evitar.
+
+   NO HACE FALTA ACORDARSE DE NADA. El dia que entren piezas de los tres que
+   faltan, aparecen solos; el dia que se acabe todo, vuelven los cinco avisando.
+   No hay interruptor que quede prendido de mas. */
+function _corteSeMuestra(p) {
+  if (!esPorPeso(p)) return true;
+  if (!_carneConocida()) return false;          // no sabemos: no se dibuja
+  if (!carneAgotada(p)) return true;            // tiene piezas: va
+  /* UN CORTE QUE SE PUEDE RESERVAR NO ESTA AGOTADO: hay carne en camino y se
+     vende hoy. Esconderlo apagaria la reserva entera cada vez que otro corte
+     tenga piezas — o sea casi siempre, que es justo cuando sirve. Lo agarro
+     `verificar-reserva.js` apenas se escribio la regla de arriba. */
+  if (reservaMaxKg(p) > 0) return true;
+  return !hayPiezas();                          // agotado de verdad: solo si no hay de NADA
 }
 
 function productsSubtotal() {

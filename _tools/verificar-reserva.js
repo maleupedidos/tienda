@@ -278,7 +278,11 @@ async function main() {
     await estancias('2026-09-18', 'Viernes', { CEn: [{ id: 'ENT-01', kg: 1.163 }] });
     const dormida = JSON.parse(await ev('JSON.stringify({ res: document.querySelectorAll(".reserva-card, .res-caja").length, grises: document.querySelectorAll(".carne-card.agotada").length, info: reservaInfo, tile: ([].filter.call(document.querySelectorAll(".cat-tile"), function (t) { return /Carnes/.test(t.textContent); })[0] || {}).textContent })'));
     chk(dormida.res === 0 && dormida.info === null, 'no se ofrece reservar nada (' + dormida.res + ' cajas)');
-    chk(dormida.grises === 4, 'los cuatro cortes sin piezas dicen "Sin stock" (' + dormida.grises + ')');
+    /* Desde el 24/9/2026 un corte sin piezas NO se dibuja mientras haya otro
+       corte con piezas (ver `_corteSeMuestra`): Tadeo no quiere una vidriera
+       con carteles de "no hay". Un corte que SE PUEDE RESERVAR si se dibuja —
+       no esta agotado, hay carne en camino y se vende hoy. */
+    chk(dormida.grises === 0, 'sin reserva y con la entraña en el freezer, los otros cuatro no se dibujan (' + dormida.grises + ' grises)');
     chk(/1 opci[oó]n/.test(dormida.tile || ''), 'el tile de Carnes cuenta 1 opcion ("' + dormida.tile + '")');
 
     /* ── 2. CON `_reserva`: QUE SE VE ─────────────────────────────────── */
@@ -289,9 +293,14 @@ async function main() {
       'var cards = sec ? [].map.call(sec.querySelectorAll(".carne-card"), function (c) { var p = PROD_MAP[c.getAttribute("data-id")]; return p.abbr + (c.classList.contains("reserva-card") ? ":R" : c.classList.contains("agotada") ? ":X" : ":P"); }) : [];' +
       'var tile = [].filter.call(document.querySelectorAll(".cat-tile"), function (t) { return /Carnes/.test(t.textContent); })[0];' +
       'return JSON.stringify({ cards: cards, tile: tile ? tile.textContent : "" }); })()'));
-    chk(JSON.stringify(vista.cards.map((c) => c.split(':')[1])) === JSON.stringify(['P', 'R', 'R', 'R', 'X']),
-        'primero la entraña con su pieza, despues los tres que se reservan y al final la picaña (' + vista.cards.join(' ') + ')');
-    chk(vista.cards.indexOf('CPi:X') >= 0, 'la picaña, con 0,7 kg para reservar (menos del minimo), dice "Sin stock"');
+    chk(JSON.stringify(vista.cards.map((c) => c.split(':')[1])) === JSON.stringify(['P', 'R', 'R', 'R']),
+        'primero la entraña con su pieza y despues los tres que se reservan (' + vista.cards.join(' ') + ')');
+    /* La picaña tiene 0,7 kg, menos del minimo de 1 kg, asi que no se puede
+       reservar: no es una venta, es un cartel de "no hay". Antes del 24/9/2026
+       se dibujaba diciendo "Sin stock"; ahora, con otros cortes a la venta, no
+       se dibuja. */
+    chk(vista.cards.indexOf('CPi:X') < 0 && vista.cards.indexOf('CPi:R') < 0,
+        'y la picaña no aparece: 0,7 kg no llegan al minimo, asi que no hay nada que venderle');
     chk(/4 opciones/.test(vista.tile), 'el tile de Carnes cuenta 4 opciones ("' + vista.tile + '")');
     const sEnt = await cardSel('CEn');
     const ent = JSON.parse(await ev('(function () { var c = document.querySelector(' + JSON.stringify(sEnt) + ');' +
@@ -439,7 +448,8 @@ async function main() {
     await ev('cambiarReserva("CLo", 0.5)');
     await nuevoInventario({ CEn: [{ id: 'ENT-01', kg: 1.163 }] });
     const sin = JSON.parse(await ev('JSON.stringify({ r: reservaEnCarrito("CLo"), info: reservaInfo, gris: document.querySelectorAll(".carne-card.agotada").length, toast: document.getElementById("toast").textContent })'));
-    chk(sin.r === null && sin.info === null && sin.gris === 4, 'sin `_reserva`: la reserva sale y los cortes vuelven a "Sin stock" (' + sin.gris + ')');
+    chk(sin.r === null && sin.info === null && sin.gris === 0,
+        'sin `_reserva`: la reserva sale del carrito y esos cortes salen de la vidriera (' + sin.gris + ' grises)');
     chk(/Ya no se puede reservar/.test(sin.toast), 'y se dice ("' + sin.toast + '")');
     await nuevoInventario(PIEZAS);
     await ev('cambiarReserva("CCo", 0.5); _enviando = true');
