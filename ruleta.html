@@ -4,13 +4,13 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Girá la ruleta · Maleu</title>
-<meta name="description" content="Dejá tus datos, girá la ruleta y ganate un regalo para tu primer pedido de Maleu." />
+<meta name="description" content="Dejá tus datos, girá la ruleta y ganate un regalo de Maleu." />
 <!-- La ruleta se abre desde un QR (folleto, colegio, evento, Meta): no tiene que
      aparecer en Google. (22/9/2026) -->
 <meta name="robots" content="noindex, nofollow" />
 <meta name="theme-color" content="#331C1C" />
 <meta property="og:title" content="Girá la ruleta de Maleu" />
-<meta property="og:description" content="Ganate un regalo para tu primer pedido." />
+<meta property="og:description" content="Ganate empanadas gratis o un 15% OFF." />
 <meta property="og:image" content="https://maleu.com.ar/img/og-maleu.jpg" />
 <link rel="icon" href="img/logo-icono.png?v=d8163724" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -90,7 +90,7 @@
 <div class="wrap">
   <img class="logo" src="img/logo-maleu.png?v=80e04e45" alt="Maleu" />
   <h1>Girá la ruleta y ganate <em>empanadas gratis</em></h1>
-  <p class="sub" id="sub">O un 15% OFF en tu primera compra. Comida lista para cocinar, en la puerta de tu casa.</p>
+  <p class="sub" id="sub">O un 15% OFF en tu próxima compra. Comida lista para cocinar, en la puerta de tu casa.</p>
 
   <div class="rueda" aria-hidden="true">
     <div class="aguja"></div>
@@ -160,11 +160,11 @@
      vino a evitar. Verificado contra el endpoint el 23/9/2026: manda
      "15% en tu primera compra". */
   var PREMIOS_COPIA = [
-    { i: 0, txt: '15% en tu primera compra', min: 0, nada: false },
+    { i: 0, txt: '15% en tu próxima compra', min: 0, nada: false },
     { i: 1, txt: 'Un paquete de empanadas', min: 0, nada: false },
-    { i: 2, txt: '15% en tu primera compra', min: 0, nada: false },
+    { i: 2, txt: '15% en tu próxima compra', min: 0, nada: false },
     { i: 3, txt: 'Nada esta vez', min: 0, nada: true },
-    { i: 4, txt: '15% en tu primera compra', min: 0, nada: false },
+    { i: 4, txt: '15% en tu próxima compra', min: 0, nada: false },
     { i: 5, txt: 'Un paquete de empanadas', min: 0, nada: false }
   ];
   try { var g0 = JSON.parse(localStorage.getItem('maleu_ruleta_premios') || 'null'); if (Array.isArray(g0) && g0.length) premios = g0; } catch (e) {}
@@ -301,7 +301,7 @@
       if (d.usado) h += '<p>Ese premio ya lo usaste en un pedido. ¡Gracias!</p>' + link('Ver la tienda', TIENDA);
       else {
         h += '<div class="codigo">' + esc(d.cupon) + '</div>'
-          + '<p>Para tu primer pedido' + (min ? ', con un pedido de más de $' + min.toLocaleString('es-AR') : '') + (d.vence ? '. Vale hasta el ' + esc(d.vence) : '') + '.</p>'
+          + '<p>Para tu próximo pedido' + (min ? ', con un pedido de más de $' + min.toLocaleString('es-AR') : '') + (d.vence ? '. Vale hasta el ' + esc(d.vence) : '') + '.</p>'
           /* El origen viaja con el cupon (24/9/2026): asi la tienda sabe que a
              este cliente lo trajimos nosotros y no se lo asigna al vendedor del
              barrio. Sin esto, el de Manzanares que gira la ruleta termina como

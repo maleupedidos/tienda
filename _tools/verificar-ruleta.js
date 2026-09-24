@@ -94,11 +94,11 @@ const PREMIOS = [{ i: 0, txt: '3 empanadas de regalo', min: 0, nada: false }, { 
    reparte entre casilleros iguales para que parezca una ruleta—. Sirven para
    probar el cambio de 5 a 6, que es lo que va a pasar cuando se carguen. */
 const PREMIOS_6 = [
-  { i: 0, txt: '15% en tu primera compra', min: 0, nada: false },
+  { i: 0, txt: '15% en tu próxima compra', min: 0, nada: false },
   { i: 1, txt: 'Un paquete de empanadas', min: 0, nada: false },
-  { i: 2, txt: '15% en tu primera compra', min: 0, nada: false },
+  { i: 2, txt: '15% en tu próxima compra', min: 0, nada: false },
   { i: 3, txt: 'Nada esta vez', min: 0, nada: true },
-  { i: 4, txt: '15% en tu primera compra', min: 0, nada: false },
+  { i: 4, txt: '15% en tu próxima compra', min: 0, nada: false },
   { i: 5, txt: 'Un paquete de empanadas', min: 0, nada: false }];
 
 async function main() {
