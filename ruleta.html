@@ -576,31 +576,35 @@
     var limpio = function (v) { v = String(v || ''); return /[{}]/.test(v) ? '' : v; };   // "{{phone}}" sin reemplazar = no vino
     var tel = limpio(P.t || P.tel).replace(/\D/g, '');
     var nom = limpio(P.n || P.nombre).replace(/\s+/g, ' ').trim().slice(0, 60);
-    /* EL NOMBRE SE PIDE SOLO SI WATI NO LO TIENE (24/9/2026).
+    /* CON EL TELEFONO ALCANZA: NO SE LE PREGUNTA NADA. (Tadeo, 24/9/2026)
 
-       WATI manda el nombre del **perfil publico de WhatsApp** — el que la
-       persona se puso en su propia cuenta, no el que Maleu tenga agendado. Y
-       hay gente que no tiene ninguno: mirando Contactos ese dia, 1 de los 5
-       primeros aparecia sin nombre.
+       El link de WhatsApp lleva SOLO el telefono. El nombre se saco a
+       proposito, y la razon es doble:
 
-       Hasta hoy esos quedaban como **"Cliente WhatsApp"** en el CRM, que es
-       una forma elegante de perder el lead: 60 madres y varias sin saber quien
-       es cada una.
+       · **El link se cortaba.** WhatsApp termina el enlace en el primer
+         espacio, asi que "Tadeo Ustariz" dejaba "Ustariz" colgando en negro
+         afuera del link. Se veia roto y llegaba el nombre a medias.
+       · **Y no hace falta.** Tadeo: *"ya que una madre haya escaneado, ya es un
+         lead. Despues veremos alternativas para sacarle mas info, pero no hace
+         falta saber sus datos de una"*. El telefono identifica a la casa, que
+         es la unidad con la que trabaja Maleu.
 
-       Ahora: si el nombre vino, no se le pregunta nada y la rueda arranca sola
-       —que es lo que Tadeo queria, que no parezca que le sacamos datos—. Si no
-       vino, se le pide SOLO el nombre. Es una pregunta, no un formulario, y se
-       la hace unicamente a quien de verdad no podemos identificar. */
-    var hayNombre = nom.length >= 2, hayTel = tel.length >= 10;
-    if (!hayNombre) nom = '';
+       O sea que viniendo del QR **la rueda arranca sola, sin una sola
+       pregunta**. El lead entra sin nombre (el backend lo guarda como "Cliente
+       WhatsApp", porque exige uno) y se lo reconoce por el telefono.
+
+       El formulario sigue vivo para el unico caso que lo necesita: alguien que
+       abre la pagina sin pasar por el QR, de quien no sabemos ni el telefono. */
+    var hayTel = tel.length >= 10;
+    if (nom.length < 2) nom = 'Cliente WhatsApp';
     $('nombre').value = nom; $('barrio').value = 'Sin dato';
     if (hayTel) $('tel').value = tel;
-    $('f-nombre').hidden = hayNombre;
+    $('f-nombre').hidden = true;
     $('f-barrio').hidden = true;
-    /* El celular tampoco se pide si ya vino en el link: preguntar un dato que
-       ya tenemos es exactamente lo que hace pensar "me estan sacando datos". */
+    /* El celular tampoco se pide si ya vino: preguntar un dato que ya tenemos
+       es exactamente lo que hace pensar "me estan sacando datos". */
     $('f-tel').hidden = hayTel;
-    if (hayTel && hayNombre) {
+    if (hayTel) {
       datos = { nombre: nom, tel: tel, barrio: 'Sin dato' };
       armar(); sortear();
     }
