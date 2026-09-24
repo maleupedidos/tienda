@@ -2216,12 +2216,12 @@ function _renderCouponApplied() {
   if (disc > 0) {
     // Activo: descuento aplicándose ahora
     card.classList.remove('pending');
-    codeEl.textContent = '🎟️ ' + appliedCoupon.codigo + ' aplicado';
+    codeEl.textContent = appliedCoupon.codigo + ' aplicado';
     msgEl.textContent  = appliedCoupon.mensaje || '';
   } else {
     // Pending: el cupón está cargado pero no hay productos del scope
     card.classList.add('pending');
-    codeEl.textContent = '🎟️ ' + appliedCoupon.codigo + ' listo para usar';
+    codeEl.textContent = appliedCoupon.codigo + ' listo para usar';
     if (scopeNice) {
       msgEl.textContent = '¡Adelante! Sumá ' + scopeNice + ' al pedido y activá tu ' +
         (appliedCoupon.tipo === 'PCT' ? appliedCoupon.valor + '% OFF' : 'descuento') + '.';
@@ -4306,7 +4306,7 @@ function updateUI() {
          renglon decia "🎟️ RULETA-XXXX + 10% OFF Efectivo" y descontaba 15%:
          nombraba un descuento que dio cero. (24/9/2026) */
       var partes = [];
-      if (appliedCoupon && getCouponDiscount() > 0) partes.push('🎟️ ' + appliedCoupon.codigo);
+      if (appliedCoupon && getCouponDiscount() > 0) partes.push(appliedCoupon.codigo);
       var autoLbl = getCashDiscount() > 0 ? getDiscountLabel() : '';
       if (autoLbl) partes.push(autoLbl);
       discRow.querySelector('span').textContent = partes.join(' + ') || '10% OFF';
@@ -4336,7 +4336,7 @@ function updateUI() {
 
       if (discount > 0) {
         // Ya tiene descuento — felicitarlo
-        incentiveEl.innerHTML = '<strong>🎉 ¡Descuento aplicado!</strong><br>Estás ahorrando <strong>' + ars(discount) + '</strong>';
+        incentiveEl.innerHTML = '<strong>¡Descuento aplicado!</strong><br>Estás ahorrando <strong>' + ars(discount) + '</strong>';
         incentiveEl.style.display = '';
       } else if (!isCash && ahorroPorEfectivo() > 0) {
         // Recordar el efectivo, sea el pedido chico o grande
@@ -4417,13 +4417,13 @@ function updateFormSummary() {
   }
   // Cupón en su propia línea (verde) — separado del auto para que el cliente entienda qué le aportó.
   if (cuponDesc > 0 && appliedCoupon) {
-    html += '<div class="summary-line discount-line" style="color:#2e7d32"><span>🎟️ ' + appliedCoupon.codigo + ' · ' + (appliedCoupon.mensaje || '') + '</span><span>-' + ars(cuponDesc) + '</span></div>';
+    html += '<div class="summary-line discount-line" style="color:#2e7d32"><span>' + appliedCoupon.codigo + ' · ' + (appliedCoupon.mensaje || '') + '</span><span>-' + ars(cuponDesc) + '</span></div>';
   }
   /* El premio existe pero en este barrio no se puede usar. Decirlo es lo unico
      honesto: el cliente lo cargo desde el link y lo vio aplicado hasta que
      eligio su barrio. (24/9/2026) */
   if (appliedCoupon && !cuponValeEnEstaZona()) {
-    html += '<div class="summary-line discount-line" style="color:#8a3b00"><span>🎟️ ' + appliedCoupon.codigo
+    html += '<div class="summary-line discount-line" style="color:#8a3b00"><span>' + appliedCoupon.codigo
       + ' · en un barrio con vendedor no se puede usar</span><span>—</span></div>';
   }
   /* El premio de la ruleta (22/9/2026): no descuenta plata, se suma al pedido.
@@ -6591,7 +6591,7 @@ function updateShippingBar() {
   const text = $id('shipping-bar-text');
   if (subtotal >= FREE_SHIPPING_MIN) {
     bar.classList.add('free');
-    text.textContent = '🎉 ¡Envío gratis! Tu pedido supera ' + ars(FREE_SHIPPING_MIN);
+    text.textContent = '¡Envío gratis! Tu pedido supera ' + ars(FREE_SHIPPING_MIN);
     fill.style.width = '100%';
     // Override shipping to 0
   } else {
