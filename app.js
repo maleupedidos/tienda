@@ -26,6 +26,7 @@ var IMG_V = {
   "carne-cortes.jpg": "ada9a490",
   "carne-entrana.jpg": "c9bbf036",
   "carne-lomo.jpg": "7f188d99",
+  "carne-picana.jpg": "05684de8",
   "carne-vacio.jpg": "c1827fc5",
   "categoria-carnes.jpg": "7b69d315",
   "combo-finde.jpg": "4e0022fd",
@@ -136,7 +137,7 @@ const PRODUCTOS = [
      de 1,163 kg no sabe si le llega una tira grande o dos. */
   { id:31, abbr:"CEn", cat:"Carnes", porPeso:true, sinVendedor:true, nuevo:true, zonas:["estancias","pilar"], nombre:"Entra\u00f1a",           desc:"Fina, sabrosa y r\u00e1pida. La que sale primero de la parrilla.",          precio:34000, img:"carne-entrana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo","2 tiras por paquete"] },
   { id:32, abbr:"CLo", cat:"Carnes", porPeso:true, sinVendedor:true, nuevo:true, zonas:["estancias","pilar"], nombre:"Lomo sin cord\u00f3n",  desc:"El corte m\u00e1s tierno, limpio y sin cord\u00f3n. Para la ocasi\u00f3n que se merece el mejor.", precio:33000, img:"carne-lomo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Sin cord\u00f3n"] },
-  { id:33, abbr:"CPi", cat:"Carnes", porPeso:true, sinVendedor:true, nuevo:true, zonas:["estancias","pilar"], nombre:"Pica\u00f1a",            desc:"El corte brasilero que se volvi\u00f3 infaltable. Con su tapa de grasa.",  precio:26000, img:"carne-cortes.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
+  { id:33, abbr:"CPi", cat:"Carnes", porPeso:true, sinVendedor:true, nuevo:true, zonas:["estancias","pilar"], nombre:"Pica\u00f1a",            desc:"El corte brasilero que se volvi\u00f3 infaltable. Con su tapa de grasa.",  precio:26000, img:"carne-picana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
   { id:34, abbr:"CVa", cat:"Carnes", porPeso:true, sinVendedor:true, nuevo:true, zonas:["estancias","pilar"], nombre:"Vac\u00edo",             desc:"El cl\u00e1sico del asado argentino. Paciencia y fuego bajo.",            precio:26000, img:"carne-vacio.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
 ];
 
