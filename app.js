@@ -5914,8 +5914,21 @@ async function fetchStock() {
     PRODUCTOS.forEach(p => {
       const abbr = PROD_ABBR[p.id];
       if (!abbr || !full[abbr]) return;
-      stockMap[p.id] = _stockLimpio(full[abbr].f);
-      stockProyectadoMap[p.id] = _stockLimpio(full[abbr].p);
+      /* SOLO el depósito de Tadeo (25/9/2026). `f` y `p` son la suma de LOS DOS
+         depósitos, y eso alcanzaba mientras el de Lucas estaba en cero — que es
+         como estuvo siempre, porque el ERP no tenía forma de repartir.
+         El 25/9 se repartió por primera vez y el agujero se abrió al instante:
+         la tienda ofrecía 25 Empanadas de Carne a Cuchillo con 0 en el depósito
+         de Tadeo; las 27 estaban en el de Lucas. Los pedidos de la tienda los
+         entrega Tadeo, así que lo que está en lo de Lucas no se puede prometer.
+         `f` ya viene con lo reservado descontado, así que restarle el depósito
+         de Lucas da lo disponible del de Tadeo: (ustariz + moresco - reservado)
+         - moresco = ustariz - reservado. `_stockLimpio` lo deja en 0 si da
+         negativo, que pasa cuando hay más reservado que físico.
+         Sin `pd` (backend viejo) da 0 y queda el comportamiento de antes. */
+      var enLucas = (full[abbr].pd && Number(full[abbr].pd.moresco)) || 0;
+      stockMap[p.id] = _stockLimpio(full[abbr].f - enLucas);
+      stockProyectadoMap[p.id] = _stockLimpio(full[abbr].p - enLucas);
     });
     // Ajustar carrito si excede el tope vigente según el modo actual
     const mode = getStockMode();
