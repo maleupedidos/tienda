@@ -5247,10 +5247,11 @@ function enviarPedido() {
   var tLento = setTimeout(function () { if (!_terminado) setSendLoaderLento(); }, SEND_LENTO_MS);
   var tFallback = setTimeout(function () {
     if (_terminado) return;
-    /* Antes de decirle al cliente que la web no confirmó, PREGUNTAR si entró.
-       En el 38% de los casos entró y la respuesta no volvió: sin esto, esos
-       clientes mandan un pedido guardado marcado como dudoso, y Tadeo no sabe
-       si cargarlo a mano (y si lo carga, lo duplica). */
+    /* El vigilante viene preguntando "¿entró?" cada 2,5 s desde el segundo 4.
+       Si a los 25 s todavía no dijo que sí, volver a preguntar acá solo le
+       suma al cliente otros 6 s de espera para oír lo mismo. Si por algo no
+       llegó a arrancar, se pregunta una vez, que es como estaba a la mañana. */
+    if (_vigilado[postData.clientOrderId]) { _fallbackWhatsApp(); return; }
     _pedidoEntro(postData.clientOrderId).then(function (entro) {
       if (_terminado) return;
       if (entro) { _irAWhatsApp(msgNormal, true); return; }
@@ -5311,6 +5312,8 @@ function enviarPedido() {
      por eso se escucha por clientOrderId y no la promesa del primer POST. */
   _alConfirmar(postData.clientOrderId, function () { _irAWhatsApp(msgNormal, true); });
   _sendWithRetry(postData).catch(function () { /* los reintentos siguen solos; a los 25 s decide el fallback */ });
+  /* En paralelo al POST: preguntar si entró. Gana el que conteste primero. */
+  _vigilarSiEntro(postData.clientOrderId);
 }
 
 /* Referencia corta del pedido para el mensaje de WhatsApp que la web NO llego
@@ -5416,6 +5419,8 @@ function _removePending(key) {
 var _enVuelo = {};        // clientOrderId -> promesa del POST que espera respuesta
 var _programado = {};     // clientOrderId -> setTimeout del proximo reintento
 var _alConfirmarCbs = {}; // clientOrderId -> quienes esperan la confirmacion
+var _vigilando = {};      // clientOrderId -> setTimeout de la proxima pregunta "¿entro?"
+var _vigilado = {};       // clientOrderId -> el vigilante llego a arrancar
 
 function _alConfirmar(key, cb) {
   if (!key) return;
@@ -5423,6 +5428,12 @@ function _alConfirmar(key, cb) {
 }
 function _confirmado(key, resp) {
   _removePending(key);
+  /* Se confirmo: no queda nada que reintentar ni que preguntar. Antes el
+     reintento programado seguia disparando igual y llegaba a deduplicarse
+     solo — inofensivo, pero es lo que llenaba `Log Pedidos` de filas
+     "repetido (dedup)" de pedidos que en realidad habian salido bien. */
+  if (_programado[key]) { clearTimeout(_programado[key]); delete _programado[key]; }
+  _dejarDeVigilar(key);
   var cbs = _alConfirmarCbs[key] || [];
   delete _alConfirmarCbs[key];
   cbs.forEach(function (cb) { try { cb(resp); } catch (e) {} });
@@ -5490,6 +5501,65 @@ function _pedidoEntro(coid) {
       return !!(resp && resp.ok === true && resp.entro === true);
     })
     .catch(function () { if (tid) clearTimeout(tid); return false; });
+}
+
+/* ── SE PREGUNTA DESDE EL SEGUNDO 4, NO A LOS 25 (25/9/2026, a la noche) ──
+ *
+ * A la mañana se agregó `pedidoEntro` como red de último momento: a los 25 s,
+ * justo antes de mandar el mensaje feo, se preguntaba una vez si el pedido
+ * había entrado. Servía, pero el cliente igual se comía los 25 segundos.
+ *
+ * A la noche se midió POR QUÉ la respuesta del POST no vuelve, y el resultado
+ * cambia el diseño:
+ *
+ *   · Un POST corto vuelve SIEMPRE — 10 de 10 desde el origen real, con su
+ *     redirect a googleusercontent y su CORS. No es la red ni el navegador.
+ *   · Los intentos que fallan duran 24-29 s: se les agota el tope de 30 s.
+ *     No se rechazan solos.
+ *   · El pedido queda GUARDADO a los ~10 s (p50 sobre 113 pedidos reales).
+ *     Pero `doPost` sigue trabajando después de guardarlo, y lo último que
+ *     hace antes de contestar es `_confirmarPedidoWA_`: una llamada por
+ *     internet a WATI. Encima Apps Script agrega ~5 s de ida y vuelta propios.
+ *
+ * O sea que la respuesta no se pierde: LLEGA TARDE. Y el cliente no necesita
+ * esa respuesta — necesita saber que su pedido entró, que es una pregunta que
+ * el backend ya sabe contestar por GET en menos de un segundo, y los GET de la
+ * tienda no fallan nunca.
+ *
+ * Así que se deja de esperar y se pregunta. El cliente ve su ✓ cuando el
+ * pedido está guardado de verdad (~10 s), mientras el backend todavía está
+ * mandándole el WhatsApp de confirmación. Los reintentos siguen existiendo:
+ * son los que hacen ENTRAR el pedido cuando el POST de verdad falla.
+ *
+ * Nunca da un falso positivo: el backend marca `coid_<id>` recién con el
+ * pedido ya escrito en la hoja.
+ */
+var PEDIDO_ENTRO_DESDE_MS = 4000;   // antes de eso no hay nada que preguntar
+var PEDIDO_ENTRO_CADA_MS = 2500;
+
+function _dejarDeVigilar(key) {
+  if (!key) return;
+  if (_vigilando[key]) { clearTimeout(_vigilando[key]); delete _vigilando[key]; }
+  delete _vigilado[key];
+}
+
+function _vigilarSiEntro(key) {
+  if (!key || _vigilando[key]) return;
+  _vigilado[key] = true;
+  /* Solo se pregunta mientras haya alguien esperando la respuesta. Si el
+     pedido ya se confirmó por el POST, o el cliente se fue por el fallback,
+     `_alConfirmarCbs` esta vacio y el vigilante se apaga solo. */
+  var esperan = function () { return !!(_alConfirmarCbs[key] && _alConfirmarCbs[key].length); };
+  var preguntar = function () {
+    delete _vigilando[key];
+    if (!esperan()) { delete _vigilado[key]; return; }
+    _pedidoEntro(key).then(function (entro) {
+      if (!esperan()) { delete _vigilado[key]; return; }
+      if (entro) { _confirmado(key, { ok: true, via: 'pedidoEntro' }); return; }
+      _vigilando[key] = setTimeout(preguntar, PEDIDO_ENTRO_CADA_MS);
+    });
+  };
+  _vigilando[key] = setTimeout(preguntar, PEDIDO_ENTRO_DESDE_MS);
 }
 
 function _sendWithRetry(data) {
