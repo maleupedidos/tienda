@@ -5192,13 +5192,22 @@ function enviarPedido() {
   var _refPedido = _refDePedido(postData.clientOrderId);
   var _lineaDia = 'Entrega: ' + diaMensaje + (horarioStr && !/coordinar/i.test(horarioStr) ? ' · ' + horarioStr : '');
   var msgNormal = msgLines.concat(['', _lineaDia], aliasLines).join('\n');
+  /* EL TEXTO DEL SIN CONFIRMAR (25/9/2026). Tadeo, viendo uno que le llego:
+     "muy feo el detalle del mensaje como queda". Tenia razon, y eran dos cosas:
+       · Los rotulos ("A nombre de:", "Direccion:") hacian parecer un formulario
+         volcado en un chat. Los datos se leen igual sin ellos.
+       · "La web no llego a confirmar este pedido" esta escrito en tercera
+         persona sobre un sistema, pero el que manda el mensaje es el CLIENTE.
+         Ahora lo dice como lo diria una persona.
+     Lo que NO cambia: que los datos esten. Existen para que Tadeo lo pueda
+     cargar a mano, que es el unico caso en que este mensaje sale. */
   var msgSinConfirmar = msgLines.concat(['',
     _lineaDia,
-    'A nombre de: ' + nombre + ' · ' + telefono,
-    'Dirección: ' + direccionStr,
+    nombre + ' · ' + telefono,
+    direccionStr,
     'Pago: ' + (pagoEl.value === 'Efectivo' ? 'Efectivo' : 'Transferencia'),
     '',
-    '⚠️ _La web no llegó a confirmar este pedido (ref. ' + _refPedido + ')_'
+    '⚠️ No me apareció la confirmación en la web, así que te lo mando por acá (ref. ' + _refPedido + ')'
   ], aliasLines).join('\n');
   // Cumpleaños del cliente (si lo cargó en el form) → backend lo guarda en Clientes Meta.
   var _cumple = getCumpleValue();
@@ -5238,6 +5247,18 @@ function enviarPedido() {
   var tLento = setTimeout(function () { if (!_terminado) setSendLoaderLento(); }, SEND_LENTO_MS);
   var tFallback = setTimeout(function () {
     if (_terminado) return;
+    /* Antes de decirle al cliente que la web no confirmó, PREGUNTAR si entró.
+       En el 38% de los casos entró y la respuesta no volvió: sin esto, esos
+       clientes mandan un pedido guardado marcado como dudoso, y Tadeo no sabe
+       si cargarlo a mano (y si lo carga, lo duplica). */
+    _pedidoEntro(postData.clientOrderId).then(function (entro) {
+      if (_terminado) return;
+      if (entro) { _irAWhatsApp(msgNormal, true); return; }
+      _fallbackWhatsApp();
+    });
+  }, SEND_FALLBACK_MS);
+
+  function _fallbackWhatsApp() {
     setSendLoaderFallback(function () {
       /* Ultimo intento antes de irse: el beacon sobrevive a que la pagina
          cambie. Si llega junto con el fetch que sigue en vuelo, el backend
@@ -5245,7 +5266,7 @@ function enviarPedido() {
       _beaconPendientes();
       _irAWhatsApp(msgSinConfirmar, false);
     });
-  }, SEND_FALLBACK_MS);
+  }
 
   function _irAWhatsApp(texto, confirmado) {
     if (_terminado) return;
@@ -5432,6 +5453,43 @@ function _postPedido(data) {
     if (tid) clearTimeout(tid);
     throw err;
   });
+}
+
+/* ¿El pedido ya entró? — se PREGUNTA, no se supone. (25/9/2026)
+ *
+ * El 25/9 una clienta mandó su pedido por WhatsApp con el cartel "la web no
+ * llegó a confirmar este pedido" y el pedido estaba guardado: entraron los tres
+ * POST —el primero y sus dos reintentos, deduplicados— y ninguna de las tres
+ * respuestas le volvió al navegador. Medido sobre `Log Pedidos`: **41 de 107
+ * pedidos reales (38%) tuvieron reintentos**, o sea que a 4 de cada 10 clientes
+ * la confirmación no les llega.
+ *
+ * Por qué un GET y no arreglar el POST: todavía no se sabe por qué la respuesta
+ * del POST no vuelve (la hipótesis del lock compartido se midió y se descartó).
+ * Pero los GET de la tienda —catálogo, stock, precios— andan siempre. Así que
+ * en lugar de esperar a entender la causa, se usa la vía que funciona.
+ *
+ * NUNCA rechaza y NUNCA se cuelga: si no se puede saber, devuelve false y el
+ * cliente ve el fallback de siempre. El tope es corto a propósito — ya esperó
+ * 25 s, y esto se suma a esa espera. */
+var PEDIDO_ENTRO_TIMEOUT_MS = 6000;
+function _pedidoEntro(coid) {
+  if (!coid) return Promise.resolve(false);
+  var ctrl = null, tid = null;
+  try { ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null; } catch (e) {}
+  var opts = ctrl ? { signal: ctrl.signal } : {};
+  if (ctrl) tid = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, PEDIDO_ENTRO_TIMEOUT_MS);
+  return fetch(APPS_SCRIPT_URL + '?action=pedidoEntro&coid=' + encodeURIComponent(coid), opts)
+    .then(function (r) { return r.text(); })
+    .then(function (txt) {
+      if (tid) clearTimeout(tid);
+      var resp = null;
+      try { resp = JSON.parse(txt); } catch (e) {}
+      /* `ok:false` es "no pude consultar", no "no entró": ante la duda, false,
+         que deja el camino de antes. Solo un si explicito cuenta como si. */
+      return !!(resp && resp.ok === true && resp.entro === true);
+    })
+    .catch(function () { if (tid) clearTimeout(tid); return false; });
 }
 
 function _sendWithRetry(data) {
