@@ -3498,7 +3498,7 @@ function _avisarRecorte(recortes) {
     var nueva = _paraCuando(f.iso);
     var aNueva = nueva === 'mañana' ? 'a mañana' : 'al ' + nueva.slice(3);
     html += '<p class="fecha-modal-txt">Si los querés todos, <strong>para ' + nueva +
-              ' entran completos</strong>: van en la compra que le hacemos al proveedor.</p>' +
+              ' los tenemos completos</strong>.</p>' +
             '<button class="fecha-modal-si" type="button" onclick="recorteMover()">Pedir todo ' + aNueva + '</button>' +
             '<button class="fecha-modal-no" type="button" onclick="recorteNo()">Seguir con lo que hay para ' + cuando + '</button>';
   } else {
