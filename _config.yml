@@ -1,0 +1,19 @@
+# Jekyll corre igual sin este archivo (es el default de GitHub Pages). Existe
+# por UNA razon: sacar de lo publicado los archivos internos del repo.
+#
+# El 28/9/2026 https://maleu.com.ar/CLAUDE.md devolvia 200 — el manual interno
+# de la tienda, con nombres de clientas y margenes adentro, servido en el
+# dominio de la marca y con robots.txt en Allow: /.
+#
+# `_tools/` nunca se publico porque empieza con guion bajo, que es la regla de
+# Jekyll. CLAUDE.md no puede renombrarse (Claude Code lo busca por ese nombre
+# exacto), asi que va aca.
+#
+# Los cuatro de abajo son el exclude por defecto de Jekyll: al declarar
+# `exclude` se pisa la lista entera, y sin ellos se publicarian.
+exclude:
+  - CLAUDE.md
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor

@@ -1,5 +1,22 @@
 # Contexto — la tienda online de Maleu
 
+> [!danger] Este archivo NO se publica, y por eso puede decir cosas de adentro
+> Hasta el 28/9/2026 `https://maleu.com.ar/CLAUDE.md` devolvía **200**: GitHub
+> Pages sirve el repo entero, así que el manual interno de la tienda estaba en
+> internet, con `robots.txt` diciendo `Allow: /`. Adentro había **nombres y
+> apellidos de clientas con el monto de su pedido**, los **márgenes** de dos
+> cortes de carne y el proveedor por su nombre — justo lo que la regla del repo
+> prohíbe. Lo saca `_config.yml` (`exclude`), que es el mismo mecanismo por el
+> que `_tools/` nunca se publicó.
+>
+> **Si agregás un archivo interno, va con guión bajo adelante o entra al
+> `exclude`.** Y comprobalo contra la URL viva: que el repo sea público no es lo
+> mismo que estar servido en el dominio de la marca e indexable por Google.
+>
+> Lo que ya se escribió sigue en la historia de git, que también es pública. Por
+> eso acá no van nombres de clientes, costos ni márgenes: se nombra el hecho y
+> el número se busca en el ERP.
+
 > Se carga en toda sesión que arranque acá adentro, encima del de [Maleu](../CLAUDE.md).
 > **Creado el 25/8/2026**, el día que la tienda se separó del ERP.
 
@@ -263,7 +280,7 @@ habría durado hasta el séptimo camino.
 > parámetro se ignora y la tienda filtra por zona como siempre.
 >
 > Y desde el 10/9/2026 el caso que lo motivó tampoco existe: los 4 sorrentinos
-> que Galarraga no podía pedir hoy están en el catálogo de Estancias, así que el
+> que un cliente de Estancias no podía pedir hoy están en su catálogo, así que el
 > cliente los carga solo.
 
 ## Deploy
@@ -745,7 +762,7 @@ antigua. Pone todo en orden. De menor a mayor"*.
 > El código y su test (`_tools/verificar-oferta.js`) están hasta el commit
 > `e927498`. Dos cosas que ya estaban resueltas y conviene no redescubrir: la
 > oferta **se suma** al 10% de efectivo, así que necesita un piso contra el costo
-> (con el 10% la entraña ya deja 2% y el lomo 4%); y el precio tiene que quedar
+> (con el 10% encima, lo que deja la carne casi desaparece); y el precio tiene que quedar
 > fijo al elegir la pieza, aunque el catálogo se refresque con otro %.
 
 ## La carne se elige pieza por pieza, en una grilla que se despliega (11/9/2026)
@@ -932,7 +949,7 @@ dibuja). Antes el "no se dibuja" era el inventario vacío.
 Tadeo: *"saquemos el 10% off superando los $100.000 porque con la carne ahora es
 muy fácil... saquemos ese descuento y tengamos la libertad en AUTOPEDIDO para
 armar el descuento que queramos!"*. Con dos piezas de lomo ya se pasa el umbral,
-y con el 10% la entraña deja 2% de margen. **El único descuento automático que
+y con el 10% encima la carne casi no deja nada. **El único descuento automático que
 queda es el 10% en efectivo** (Home y los ex-Home de Pilar). Los descuentos
 puntuales se arman a mano en el AUTOPEDIDO del ERP, que ya tenía % global, % por
 categoría y regalo en pesos.
@@ -963,7 +980,7 @@ efectivo en cualquier pedido. Las páginas estáticas no lo mencionaban.
 
 > [!important] Los pedidos cargados antes conservan su descuento
 > Al darlo de baja eran **tres** los pedidos reservados con el 10% por monto:
-> Home **#931**, **#939** y **#944** (Inés Canale, $217.400). El cobro y la
+> Home **#931**, **#939** y **#944** (el mayor, de $217.400). El cobro y la
 > edición del ERP los respetan — *"el precio que vale es el que ves en la tienda
 > al momento de hacer el pedido"*, dicen los términos —, y **no por una fecha de
 > corte**: el ERP los reconoce por lo que el pedido tiene guardado (el 10% exacto
@@ -1141,8 +1158,7 @@ regla de WATI la busca tal cual, se rompería sin avisar.
 
 > [!danger] El mensaje no lleva emoji de 4 bytes (📅 📍 🎁 🥩 👤 💵…)
 > Medido en WATI el 12/9/2026: de **8 pedidos confirmados** con el mismo código,
-> **2 llegaron con `� Sábado 12/09`** y 6 sanos (Laura Álvarez Costa y Clara
-> Gimenez). **Depende del celular del cliente, no del código**: el archivo tenía
+> **2 llegaron con `� Sábado 12/09`** y 6 sanos. **Depende del celular del cliente, no del código**: el archivo tenía
 > el 📅 bien escrito y `encodeURIComponent` lo codifica bien. En esos mismos
 > mensajes rotos, los caracteres simples `·` `•` `—` sí llegaron.
 >
@@ -1689,8 +1705,8 @@ transferir cuando se confirme el total.
 > [!danger] Backend puso dos condiciones para prenderla, y tiene razón
 > · **Retener las piezas de las reservas cuando se carga la tanda.** Si no, la tienda las
 >   muestra todas y un cliente nuevo se lleva la que era de una reserva.
-> · **El estado "Pedida" en Compras Carne.** El 16/9 Lucas cargó el pedido a Caco (CC-0007) y
->   quedó "Recibida", o sea como deuda, con picaña y entraña que Caco avisó el 17/9 que no traía.
+> · **El estado "Pedida" en Compras Carne.** El 16/9 Lucas cargó el pedido al proveedor (CC-0007) y
+>   quedó "Recibida", o sea como deuda, con picaña y entraña que el proveedor avisó el 17/9 que no traía.
 >   Sin "Pedida" se reservarían kilos de cortes que no vienen.
 
 **En el carrito vive adentro de `piezaCart`**, con la clave `R:<abbr>` y `reserva:true`. Así el

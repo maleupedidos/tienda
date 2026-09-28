@@ -217,7 +217,7 @@ function _purgeCartBloqueados() {
 
 /* El modo `?autopedido=1` se ELIMINO el 8/9/2026.
 
-   Existio del 1/9 al 8/9 para un caso real: Javier Galarraga, de Estancias,
+   Existio del 1/9 al 8/9 para un caso real: un cliente de Estancias
    pidio 3 Sorrentinos Espinaca — que en ese momento era exclusivo de Pilar y
    aca no se mostraba. Con el parametro se veia el catalogo completo y Tadeo
    cargaba el pedido por el cliente.
@@ -1326,7 +1326,7 @@ function carneAgotada(p) {
 
    Tadeo, unas horas antes de la ruleta: "queda feo que diga sin stock, yo los
    sacaria por el momento, y que solo aparezcan los productos de carne que ya
-   tenemos las piezas confirmadas". Ese dia Caco no habia traido entrana, lomo
+   tenemos las piezas confirmadas". Ese dia el proveedor no habia traido entrana, lomo
    ni picaña, asi que de cinco cortes habia dos: la seccion se leia como una
    carniceria vacia justo cuando entraba gente nueva por el evento.
 
@@ -1406,10 +1406,13 @@ function combosInCart() { return Object.keys(comboCart).length > 0; }
 
    La carne SI, por decision de Tadeo del 10/9/2026: "el 10% en efectivo es
    para cualquier compra de Maleu. incluyendo carne". Se lo plantee al reves
-   —con el 10% puesto la entrana pasa de 11,8% a 2,0% de margen y el lomo de
-   13,6% a 4,0%, medido contra los costos de la hoja Productos— y lo
-   reafirmo. Queda escrito por si alguna vez se revisan los margenes de la
-   carne: el numero esta, la decision es comercial.
+   —con el 10% puesto, lo que deja la entrana y lo que deja el lomo casi
+   desaparecen— y lo reafirmo: la decision es comercial y esta tomada.
+
+   LOS NUMEROS NO VAN ACA, este repo es publico. Salen de la hoja Productos
+   del ERP, que es de donde hay que sacarlos el dia que se revisen los
+   margenes de la carne. Lo dice el comentario de SUG_CARNE_ORDEN y hasta el
+   28/9/2026 este bloque lo contradecia con los porcentajes escritos.
 
    Existe como funcion y no repetida en cada lugar porque son SEIS los que la
    miran (el descuento, su etiqueta, el incentivo del carrito, el hint de
