@@ -102,8 +102,11 @@ const ELEGIR_ZONA_FECHA = `(async function () {
     showZoneModal('chip'); await dormir(300);
   }
   if (abierto()) {
-    var z = [].slice.call(document.querySelectorAll('#loc-step-zone .loc-btn'))
-      .filter(function (b) { return (b.getAttribute('onclick') || '').indexOf('estancias') >= 0; })[0];
+    /* El modal es un buscador desde el 28/9/2026: se escribe el barrio. */
+    var _i = document.getElementById('dir-input');
+    if (_i) { _i.value = 'Estancias del Pilar'; if (typeof dirBuscar === 'function') dirBuscar(); }
+    await dormir(250);
+    var z = document.querySelector('#dir-lista .dir-op');
     if (z) { z.click(); await dormir(500); }
     /* Si quedo abierto es porque falta un paso (en Pilar, el barrio). En
        Estancias cierra ahi mismo: la fecha se elige en el formulario. */
@@ -126,8 +129,12 @@ const AGREGAR_Y_ELEGIR_ZONA = `(async function () {
   addToCart(id);
   await dormir(400);
   var pregunto = abierto(), mientras = cartCount();
-  var z = [].slice.call(document.querySelectorAll('#loc-step-zone .loc-btn'))
-    .filter(function (b) { return (b.getAttribute('onclick') || '').indexOf('estancias') >= 0; })[0];
+  /* EL MODAL DE ZONA ES UN BUSCADOR DE DIRECCION (28/9/2026): ya no hay un
+     boton por zona. Se escribe el barrio y se toca el resultado, que es lo que
+     hace una persona. Antes esto buscaba el boton de zona del paso 1. */
+  var _inp = document.getElementById('dir-input');
+  if (_inp) { _inp.value = 'Estancias del Pilar'; if (typeof dirBuscar === 'function') dirBuscar(); }
+  var z = document.querySelector('#dir-lista .dir-op');
   if (z) { z.click(); await dormir(600); }
   return JSON.stringify({ alEntrar: alEntrar, pregunto: pregunto, mientras: mientras,
                           abierto: abierto(), sumado: cartCount(), id: id });

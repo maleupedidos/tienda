@@ -275,13 +275,18 @@ async function main() {
     console.log('\n' + DIM + '== La tienda no nombra a Tadeo ==' + RST);
     const pilar = JSON.parse(await ev('(async function () {' +
       'var dormir = function (ms) { return new Promise(function (s) { setTimeout(s, ms); }); };' +
-      'var z = [].slice.call(document.querySelectorAll("#loc-step-zone .loc-btn")).filter(function (b) { return (b.getAttribute("onclick") || "").indexOf("pilar") >= 0; })[0];' +
+      /* El modal es un buscador desde el 28/9/2026: se escribe el barrio.
+         "Pilara" cae en "Otra zona de Pilar", que es lo que este bloque
+         venia a mirar — el rotulo del vendedor cuando entrega Maleu. */
+      'var i = document.getElementById("dir-input"); i.value = "Pilara"; dirBuscar();' +
+      'await dormir(200);' +
+      'var z = document.querySelector("#dir-lista .dir-op");' +
       'z.click(); await dormir(500);' +
-      'var paso = document.getElementById("loc-overlay").innerText;' +
-      'return JSON.stringify({ paso: paso, otra: /Otra zona de Pilar/.test(paso) });' +
+      'var paso = (document.getElementById("loc-overlay") || {}).innerText || "";' +
+      'return JSON.stringify({ paso: paso, otra: selectedPilarZona === "__otro__" });' +
       '})()'));
-    chk(pilar.otra, 'el paso de Pilar se dibujo (sin esto lo de abajo no mide nada)');
-    chk(!/Tadeo|Ustariz/.test(pilar.paso), 'el paso "¿En que zona de Pilar?" no dice Tadeo');
+    chk(pilar.otra, 'el buscador resolvio "Otra zona de Pilar" (sin esto lo de abajo no mide nada)');
+    chk(!/Tadeo|Ustariz/.test(pilar.paso), 'el modal de zona no dice Tadeo');
     const etiqueta = await ev('(function () {' +
       'var sel = document.getElementById("f-pilar-barrio"); var o = document.createElement("option"); o.value = "__otro__"; sel.appendChild(o); sel.value = "__otro__";' +
       'document.getElementById("f-direccion").value = "Calle Falsa 123";' +
@@ -295,7 +300,9 @@ async function main() {
     await esperar("typeof PRODUCTOS !== 'undefined' && !!document.getElementById('loc-step-zone')", 15000);
     const abierto = await ev('(async function () {' +
       'var dormir = function (ms) { return new Promise(function (s) { setTimeout(s, ms); }); };' +
-      'var z = [].slice.call(document.querySelectorAll("#loc-step-zone .loc-btn")).filter(function (b) { return (b.getAttribute("onclick") || "").indexOf("estancias") >= 0; })[0];' +
+      'var i = document.getElementById("dir-input"); i.value = "Estancias del Pilar"; dirBuscar();' +
+      'await dormir(200);' +
+      'var z = document.querySelector("#dir-lista .dir-op");' +
       'z.click(); await dormir(500);' +
       /* Desde el 23/9/2026 elegir la zona ya no lleva al paso de fecha: la
          tienda abre en el catalogo y el dia se elige despues. Este escenario es
@@ -402,10 +409,24 @@ async function main() {
     vacio = JSON.parse(await ev(leerVacio));
     chk(!vacio.modal && vacio.fecha === '2026-09-18' && vacio.pma === 1,
         '"Pasar mi entrega al viernes 18/9" mueve la fecha y agrega la pizza (' + vacio.fecha + ', ' + vacio.pma + ')');
-    /* Volver a "hoy" desde el calendario saca lo que hoy no hay, y lo dice. */
+    /* Volver a "hoy" desde el calendario saca lo que hoy no hay, y lo dice.
+
+       DESDE EL 28/9/2026 ESO ES UN CARTEL QUE SE QUEDA, no un toast. Tadeo lo
+       pidio al ver que el aviso "duraba menos de un segundo" sobre una decision
+       que le cambiaba el pedido. Hay que leerlo Y CERRARLO: si queda abierto,
+       tapa la pantalla y todos los toques de abajo le caen a el — que es
+       exactamente lo que paso la primera vez que se corrio esta red despues del
+       cambio (10 rojos, ninguno de la tienda). */
     const vuelta = JSON.parse(await ev('(function () { setDeliveryDate("2026-09-13", "Domingo", { sinScroll: true });' +
-      ' return JSON.stringify({ pma: cart[' + JSON.stringify(idPMa) + '] || 0, toast: document.getElementById("toast").textContent }); })()'));
-    chk(vuelta.pma === 0 && /ajustado/.test(vuelta.toast), 'y volver a hoy lo saca del carrito avisando: "' + vuelta.toast + '"');
+      ' var ov = document.getElementById("recorte-modal");' +
+      ' return JSON.stringify({ pma: cart[' + JSON.stringify(idPMa) + '] || 0,' +
+      ' cartel: !!(ov && ov.style.display === "flex"),' +
+      ' txt: ov ? ov.innerText.replace(/\\s+/g, " ").trim() : "" }); })()'));
+    chk(vuelta.pma === 0, 'y volver a hoy lo saca del carrito');
+    chk(vuelta.cartel && /no llegamos/i.test(vuelta.txt),
+        'con un cartel que se queda y explica por que: "' + vuelta.txt.slice(0, 80) + '"');
+    await ev('recorteNo()');
+    await dormir(300);
     await dormir(400);
 
     console.log('\n' + DIM + '== Con algo ya elegido para HOY, pregunta antes de mover todo ==' + RST);

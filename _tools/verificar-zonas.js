@@ -220,6 +220,17 @@ async function main() {
     };
     /* Un toque de verdad en el centro del elemento: si algo lo tapa, el toque le
        cae a otro y el test lo dice. */
+    /* ELEGIR EL BARRIO COMO UNA PERSONA (28/9/2026). El modal de zona dejo de
+       ser tres botones y paso a ser un buscador: se escribe el barrio y se
+       toca el resultado. Resuelve solo la zona, la zona de Pilar y el sub
+       barrio, asi que reemplaza a los tres pasos que habia antes. */
+    const elegirBarrio = async (txt) => {
+      await ev('(function(){ var i = document.getElementById("dir-input"); if (!i) return;' +
+               ' i.value = ' + JSON.stringify(txt) + '; if (typeof dirBuscar === "function") dirBuscar(); })()');
+      await dormir(250);
+      return await tocar('#dir-lista .dir-op');
+    };
+
     const tocar = async (sel) => {
       const pos = JSON.parse(await ev('(function () {' +
         'var e = document.querySelector(' + JSON.stringify(sel) + '); if (!e) return "null";' +
@@ -289,17 +300,47 @@ async function main() {
     /* ── 1. EL PASO 1 DEL MODAL ─────────────────────────────────────── */
     console.log(DIM + '== El paso 1: "¿Donde entregamos?" ==' + RST);
     await abrir({});
-    const paso1 = JSON.parse(await ev('JSON.stringify([].map.call(document.querySelectorAll("#loc-step-zone .loc-btn"), function (b) { return { z: (/setZone\\(\'(\\w+)\'/.exec(b.getAttribute("onclick")) || [])[1], t: b.innerText.replace(/\\s+/g, " ").trim() }; }))'));
-    const btnEst = paso1.filter((b) => b.z === 'estancias')[0] || { t: '' };
-    const btnPil = paso1.filter((b) => b.z === 'pilar')[0] || { t: '' };
-    chk(paso1.length === 3 && paso1[0].z === 'estancias', 'la primera opcion es la de Estancias (' + paso1.map((b) => b.z).join(', ') + ')');
-    chk(/Estancias del Pilar y Estancias del R[ií]o/.test(btnEst.t), 'dice "Estancias del Pilar y Estancias del Rio" ("' + btnEst.t.slice(0, 60) + '")');
-    chk(/[Ee]nv[ií]o gratis/.test(btnEst.t) && /lunes, mi[eé]rcoles, viernes, s[aá]bado y domingo/.test(btnEst.t), 'con envio gratis y los cinco dias');
-    chk(/Pilar y Alrededores/.test(btnPil.t) && /mi[eé]rcoles y los viernes/.test(btnPil.t), 'Pilar dice miercoles y viernes ("' + btnPil.t + '")');
+    /* EL PASO 1 ES UN BUSCADOR DE DIRECCION (28/9/2026).
+
+       Antes eran tres botones —Estancias, Pilar, Clubes— y este bloque medía
+       sus textos. Tadeo lo dio vuelta: "que el modal de zona sea uno comun y
+       corriente como cualquier otra tienda". El cliente escribe donde vive y
+       la tienda resuelve la zona por detras.
+
+       Lo que se mide ahora es la regla, no el texto: que esten los barrios,
+       que cada uno diga cuando entregamos ahi, que Clubes NO este —la tienda
+       es 100% consumidor final desde hoy— y que el que no encuentra su barrio
+       tenga salida. */
+    const ops = JSON.parse(await ev('JSON.stringify([].map.call(document.querySelectorAll("#dir-lista .dir-op"), function (b) {' +
+      ' return { n: ((b.querySelector(".dir-op-nombre") || {}).textContent || "").trim(),' +
+      '          d: ((b.querySelector(".dir-op-dato") || {}).textContent || "").trim() }; }))'));
+    const de = (nombre) => ops.filter((o) => o.n === nombre)[0] || { n: '', d: '' };
+    chk(ops.length >= 15, 'el buscador ofrece los barrios que conocemos (' + ops.length + ')');
+    chk(ops[0].n === 'Estancias del Pilar' && ops[1].n === 'Estancias del R\u00edo',
+        'los dos de Estancias van primero (' + ops.slice(0, 2).map((o) => o.n).join(' | ') + ')');
+    chk(/lun, mi[eé], vie, s[aá]b y dom/.test(de('Estancias del Pilar').d),
+        'Estancias dice sus cinco dias ("' + de('Estancias del Pilar').d + '")');
+    chk(/viernes/.test(de('El Lucero').d) && !/mi[eé]rcoles/.test(de('El Lucero').d),
+        'un barrio con vendedor dice solo viernes ("' + de('El Lucero').d + '")');
+    chk(/mi[eé]rcoles y viernes/.test(de('Los Alcanfores').d),
+        'uno que entregamos nosotros dice miercoles y viernes ("' + de('Los Alcanfores').d + '")');
+    /* Tadeo, 28/9: "maleu ahora es 100% para consumidor final... que nos pidan
+       las cantidades por WhatsApp y nosotros hacemos el autopedido". */
+    chk(!ops.some((o) => /club/i.test(o.n)), 'Clubes ya no es una puerta publica del modal');
+    /* El envio se saco a propósito: "solo mostraria los dias de entrega". */
+    chk(!ops.some((o) => /\$/.test(o.d)), 'y ninguno muestra el precio del envio');
+    chk(/No encuentro mi barrio/i.test(ops[ops.length - 1].n),
+        'el que no esta en la lista tiene salida ("' + ops[ops.length - 1].n + '")');
+
+    /* Busca sin acentos: quien escribe "rio" tiene que encontrar "Rio". */
+    await ev('(function(){ var i = document.getElementById("dir-input"); i.value = "rio"; dirBuscar(); })()');
+    const rio = JSON.parse(await ev('JSON.stringify([].map.call(document.querySelectorAll("#dir-lista .dir-op-nombre"), function (e) { return e.textContent.trim(); }))'));
+    chk(rio[0] === 'Estancias del R\u00edo', 'buscar "rio" sin acento encuentra "Estancias del R\u00edo" (' + rio.slice(0, 2).join(' | ') + ')');
+    await ev('(function(){ var i = document.getElementById("dir-input"); i.value = ""; dirBuscar(); })()');
 
     /* ── 2. ESTANCIAS DEL RIO: HOJA HOME ────────────────────────────── */
     console.log('\n' + DIM + '== Estancias del Rio, adentro de la zona Estancias ==' + RST);
-    chk(await tocar('#loc-step-zone .loc-btn[onclick*="estancias"]'), 'el boton de Estancias se toca');
+    chk(await elegirBarrio('Estancias del Pilar'), 'se elige Estancias escribiendo el barrio');
     const fEst = await fechasDelModal();
     chk(fEst.some((f) => /Lunes/.test(f)) && fEst.some((f) => /Domingo/.test(f)), 'el calendario de Estancias sigue con sus cinco dias (' + fEst.slice(0, 5).join(' · ') + ')');
     await ev('setDeliveryDate("2026-09-16", "Miércoles")');
@@ -329,13 +370,13 @@ async function main() {
     /* ── 3. PILAR DE MALEU: MIERCOLES Y VIERNES, CON CARNE ───────────── */
     console.log('\n' + DIM + '== "Otra zona de Pilar": miercoles y viernes, con carne ==' + RST);
     await abrir({});
-    chk(await tocar('#loc-step-zone .loc-btn[onclick*="pilar"]'), 'el boton de Pilar se toca');
-    const otra = await ev('(function () { var b = document.querySelector("#loc-barrios-grid button[onclick*=__otro__]"); return b ? b.innerText.replace(/\\s+/g, " ") : ""; })()');
-    chk(/Los Alcanfores/.test(otra) && !/Estancias del R/.test(otra), '"Otra zona de Pilar" ya no lista Estancias del Rio ("' + otra + '")');
-    chk(await tocar('#loc-barrios-grid button[onclick*="__otro__"]'), 'la tarjeta "Otra zona" se toca');
-    const subs = JSON.parse(await ev('JSON.stringify([].map.call(document.querySelectorAll("#loc-subbarrios-grid button"), function (b) { return b.innerText.replace(/[^A-Za-zÁÉÍÓÚáéíóúñÑ ]/g, "").trim(); }))'));
-    chk(subs.indexOf('Los Alcanfores') >= 0 && !subs.some((s) => /Estancias del R/.test(s)), 'los barrios de la zona: ' + subs.join(', '));
-    chk(await tocar('#loc-subbarrios-grid button[onclick*="Pilara"]'), 'Pilara se toca');
+    /* UN TOQUE EN VEZ DE TRES PASOS. Antes habia que elegir Pilar, despues
+       "Otra zona de Pilar" y despues el sub barrio. El buscador resuelve los
+       tres: el cliente escribe "Pilara" y la tienda sabe el resto. */
+    chk(await elegirBarrio('Pilara'), 'se elige Pilara escribiendo el barrio');
+    const resuelto = JSON.parse(await ev('JSON.stringify({ z: currentZone, pz: selectedPilarZona, sub: selectedPilarBarrio })'));
+    chk(resuelto.z === 'pilar' && resuelto.pz === '__otro__' && resuelto.sub === 'Pilara',
+        'y resuelve sola la zona, la zona de Pilar y el barrio (' + JSON.stringify(resuelto) + ')');
     const fPil = await fechasDelModal();
     chk(fPil.indexOf('2026-09-16 Miércoles') >= 0 && fPil.indexOf('2026-09-18 Viernes') >= 0, 'el calendario ofrece el miercoles 16 y el viernes 18 (' + fPil.slice(0, 4).join(' · ') + ')');
     chk(fPil.every((f) => /Miércoles|Viernes/.test(f)), 'y ningun otro dia (' + fPil.length + ' fechas)');
@@ -451,7 +492,10 @@ async function main() {
     /* ── 9. CLUBES NO CAMBIA ────────────────────────────────────────── */
     console.log('\n' + DIM + '== Clubes ==' + RST);
     await abrir({});
-    await tocar('#loc-step-zone .loc-btn[onclick*="clubes"]');
+    /* Clubes salio del modal el 28/9/2026 pero la zona sigue viva para el que
+       tenga el link: son 87 pedidos desde febrero y no se le rompe la tienda a
+       nadie. Se entra como se entra ahora, no por una puerta que ya no existe. */
+    await ev('setZone("clubes")');
     await listos();
     chk(await carneVisible() === 0, 'en Clubes no hay carne');
 

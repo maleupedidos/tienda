@@ -807,6 +807,67 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
   .send-card p { font-size: .8rem; }
 }
 
+
+/* ── LA LISTA DEL CARTEL DE RECORTE (28/9/2026) ──
+   Reusa el overlay y la caja de `.fecha-modal`: es la misma clase de aviso
+   —algo no entra para la fecha elegida— y una segunda caja propia se despega
+   de la primera al primer cambio de estilo. */
+.recorte-lista { list-style: none; margin: 0 0 1rem; padding: 0; }
+.recorte-fila {
+  display: flex; justify-content: space-between; align-items: baseline; gap: .8rem;
+  padding: .55rem 0; border-bottom: 1px solid #F4ECE4;
+  text-align: left;
+}
+.recorte-fila:last-child { border-bottom: none; }
+.recorte-prod { font-size: .92rem; font-weight: 600; color: var(--brown); }
+.recorte-num { font-size: .82rem; color: #6b5a52; flex: none; }
+.recorte-num strong { color: var(--orange); font-size: .95rem; }
+
+/* El renglon que dice que reconocemos al cliente. Va del lado del texto que
+   ya existe, sin caja ni color propio: es una frase, no un cartel. */
+.form-saludo {
+  margin: -.2rem 0 1.1rem;
+  font-size: .92rem;
+  color: var(--brown);
+  font-weight: 600;
+}
+
+/* ── EL BUSCADOR DE DIRECCION DEL MODAL DE ZONA (28/9/2026) ──
+   Reemplaza a los botones de zona. El detalle de por que esta en app.js,
+   arriba de `_dirDestinos`. */
+.dir-label {
+  display: block; text-align: left;
+  font-size: .78rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+  color: #8a7a70; margin: .2rem 0 .45rem;
+}
+.dir-input {
+  width: 100%; min-height: 48px; padding: .75rem .9rem;
+  border: 1px solid #E3D3C5; border-radius: 12px; background: #fff;
+  font-family: var(--font); font-size: 1rem; color: var(--brown);
+  -webkit-user-select: text; user-select: text; -webkit-touch-callout: default;
+}
+.dir-input:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(240,125,71,.15); }
+
+/* La lista scrollea ella: con 18 barrios, sin tope, el modal se pasa del alto
+   de un iPhone y el boton de "no encuentro mi barrio" queda abajo del borde. */
+.dir-lista {
+  margin-top: .6rem; max-height: 46vh; overflow-y: auto;
+  overscroll-behavior: contain; touch-action: pan-y;
+  border-top: 1px solid #F0E7DE;
+}
+.dir-op {
+  display: flex; flex-direction: column; gap: .12rem;
+  width: 100%; min-height: 52px; padding: .6rem .2rem;
+  background: none; border: none; border-bottom: 1px solid #F4ECE4;
+  text-align: left; cursor: pointer; touch-action: manipulation;
+  font-family: var(--font);
+}
+.dir-op:hover { background: #FFF8F2; }
+.dir-op-nombre { font-size: .95rem; font-weight: 600; color: var(--brown); }
+.dir-op-dato { font-size: .76rem; color: #8a7a70; }
+.dir-op-otro .dir-op-nombre { color: var(--orange); }
+.dir-op:last-child { border-bottom: none; }
+
 /* ── CTA WhatsApp con estado "ready" (último paso) ─────────────
    Cuando todos los campos del form están completos, el wrap agrega
    la clase .ready: el hint aparece arriba del botón y el botón

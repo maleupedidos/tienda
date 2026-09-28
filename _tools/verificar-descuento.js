@@ -128,9 +128,15 @@ const PREP = `(function () {
 
 const ELEGIR_ZONA = `(async function () {
   var dormir = function (ms) { return new Promise(function (s) { setTimeout(s, ms); }); };
-  var z = [].slice.call(document.querySelectorAll('#loc-step-zone .loc-btn'))
-    .filter(function (b) { return (b.getAttribute('onclick') || '').indexOf('estancias') >= 0; })[0];
+  /* EL MODAL DE ZONA ES UN BUSCADOR DE DIRECCION (28/9/2026): ya no hay un
+     boton por zona. Se escribe el barrio y se toca el resultado, que es lo que
+     hace una persona. Antes esto buscaba el boton de zona del paso 1. */
+  var _inp = document.getElementById('dir-input');
+  if (_inp) { _inp.value = 'Estancias del Pilar'; if (typeof dirBuscar === 'function') dirBuscar(); }
+  var z = document.querySelector('#dir-lista .dir-op');
   if (z) { z.click(); await dormir(400); }
+  /* El paso de fecha ya no viene atras del de zona: se llega por el chip. */
+  if (typeof showDateModal === 'function') { showDateModal(); await dormir(300); }
   var f = document.querySelector('#loc-dates-grid button:not([disabled])');
   if (f) f.click();
   await dormir(400);

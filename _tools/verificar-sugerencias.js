@@ -235,13 +235,16 @@ async function main() {
       }
       await ev('(async function () {' +
         'var dormir = function (ms) { return new Promise(function (s) { setTimeout(s, ms); }); };' +
-        'var z = [].slice.call(document.querySelectorAll("#loc-step-zone .loc-btn")).filter(function (b) { return (b.getAttribute("onclick") || "").indexOf(' + JSON.stringify(zona) + ') >= 0; })[0];' +
-        'z.click(); await dormir(500);' +
-        /* En Pilar se elige la zona Y el barrio, como una persona. Hasta el
-           23/9/2026 el test se quedaba en el paso del barrio —el calendario no
-           existia todavia— y por eso Pilar corria sin fecha ni tope. */
-        'if (' + JSON.stringify(zona) + ' === "pilar") { var o = document.querySelector(' + JSON.stringify(pilarZona || '#loc-overlay button[onclick*=__otro__]') + '); if (o) { o.click(); await dormir(400); }' +
-        '  var sb = document.querySelector("#loc-subbarrios-grid button"); if (sb) { sb.click(); await dormir(400); } }' +
+        /* SE ESCRIBE EL BARRIO (28/9/2026). El modal dejo de ser tres botones y
+           tres pasos: ahora es un buscador que resuelve zona, zona de Pilar y
+           sub barrio de una sola vez. El tercer parametro de `abrir` paso de
+           ser un selector de tarjeta a ser, directamente, el nombre del barrio
+           — que es lo que escribe una persona. */
+        'var i = document.getElementById("dir-input");' +
+        'if (i) { i.value = ' + JSON.stringify(zona === 'estancias' ? 'Estancias del Pilar' : (pilarZona || 'Pilara')) + '; dirBuscar(); }' +
+        'await dormir(250);' +
+        'var z = document.querySelector("#dir-lista .dir-op");' +
+        'if (z) { z.click(); await dormir(500); }' +
         /* Desde el 23/9/2026 el paso de fecha se abre desde el chip 📅. */
         'showDateModal(); await dormir(300);' +
         'var cards = [].slice.call(document.querySelectorAll("#loc-dates-grid button[onclick*=\'2026-09-\']"));' +
@@ -412,7 +415,7 @@ async function main() {
        un barrio con vendedor no (sus pedidos van a la hoja Red, sin columnas de
        carne). */
     await cerrarCarrito();
-    await abrir('pilar', '', '#loc-overlay button[onclick*=Tortugas]');
+    await abrir('pilar', '', 'El Lucero');   // un barrio de la zona de Tortugas (vendedor)
     const zona = await ev('currentZone');
     await ev('(function () { var p = getActiveProducts().filter(function (x) { return !esPorPeso(x); })[0]; addToCart(String(p.id)); })()');
     await abrirCarrito();

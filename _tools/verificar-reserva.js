@@ -221,6 +221,16 @@ async function main() {
     };
     /* Un toque de verdad en el centro del elemento: si algo lo tapa, el toque le
        cae a otro y el test lo dice. */
+    /* EL MODAL DE ZONA ES UN BUSCADOR (28/9/2026): se escribe el barrio y se
+       toca el resultado. Resuelve zona, zona de Pilar y sub barrio de una vez,
+       asi que reemplaza a los botones y a los pasos que habia antes. */
+    const elegirBarrio = async (txt) => {
+      await ev('(function(){ var i = document.getElementById("dir-input"); if (!i) return;' +
+               ' i.value = ' + JSON.stringify(txt) + '; if (typeof dirBuscar === "function") dirBuscar(); })()');
+      await dormir(250);
+      return await tocar('#dir-lista .dir-op');
+    };
+
     const tocar = async (sel) => {
       const pos = JSON.parse(await ev('(function () {' +
         'var e = document.querySelector(' + JSON.stringify(sel) + '); if (!e) return "null";' +
@@ -258,7 +268,7 @@ async function main() {
          que no toco "+ Agregar" todavia. */
       await ev('(function () { if (typeof zonaProvisoria !== "undefined" && zonaProvisoria) showZoneModal("chip"); })()');
       await dormir(300);
-      if (!(await tocar('#loc-step-zone .loc-btn[onclick*="estancias"]'))) throw new Error('no se pudo tocar Estancias');
+      if (!(await elegirBarrio('Estancias del Pilar'))) throw new Error('no se pudo tocar Estancias');
       await ev('setDeliveryDate(' + JSON.stringify(iso) + ', ' + JSON.stringify(dia) + ')');
       await listos();
     };
@@ -489,7 +499,7 @@ async function main() {
     chk(abiertoAntes === false && tras.abierto === true && tras.paso !== 'none',
         'reservar kilos abre la pregunta de la zona', JSON.stringify(tras));
     chk(tras.enCarrito === 0, 'y mientras pregunta no reserva nada', String(tras.enCarrito));
-    await tocar('#loc-step-zone .loc-btn[onclick*="estancias"]');
+    await elegirBarrio('Estancias del Pilar');
     await dormir(600);
     const rTras = await ev('JSON.stringify(reservaEnCarrito("CVa"))');
     chk(rTras && rTras !== 'null', 'al elegir la zona se retoma la reserva que habia pedido', String(rTras).slice(0, 90));
@@ -499,7 +509,7 @@ async function main() {
     await listos();
     await ev('cambiarReserva("CVa", 1)');
     await dormir(400);
-    await tocar('#loc-step-zone .loc-btn[onclick*="clubes"]');
+    await ev('setZone("clubes")');
     await dormir(700);
     const club = JSON.parse(await ev('JSON.stringify({ zona: currentZone, res: Object.keys(piezaCart).length,' +
       ' toast: document.getElementById("toast").textContent })'));

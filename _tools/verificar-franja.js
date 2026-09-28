@@ -159,7 +159,11 @@ async function main() {
     await cli.enviar('Page.navigate', { url: 'http://127.0.0.1:' + PUERTO + '/index.html?t=' + Date.now() });
     if (!(await esperar("typeof PRODUCTOS !== 'undefined' && !!document.getElementById('loc-step-zone')", 15000))) throw new Error('la tienda no arranco');
     await ev('(async function () { var d = function (ms) { return new Promise(function (s) { setTimeout(s, ms); }); };' +
-      'var z = [].slice.call(document.querySelectorAll("#loc-step-zone .loc-btn")).filter(function (b) { return (b.getAttribute("onclick") || "").indexOf("estancias") >= 0; })[0]; z.click(); await d(500);' +
+      /* Se escribe el barrio: el modal dejo de tener un boton por zona. */
+      'var i = document.getElementById("dir-input");' +
+      'if (i) { i.value = "Estancias del Pilar"; dirBuscar(); }' +
+      'await d(250);' +
+      'var z = document.querySelector("#dir-lista .dir-op"); if (z) { z.click(); await d(500); }' +
       'var f = document.querySelector("#loc-dates-grid button[onclick*=\'2026-09-18\']"); if (f) f.click(); })()');
     await dormir(1200);
     /* Las fotos lazy cambian el alto de la pagina mientras se scrollea y eso

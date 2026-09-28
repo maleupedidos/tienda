@@ -245,8 +245,18 @@ async function main() {
       }
       await ev('(async function () {' +
         'var dormir = function (ms) { return new Promise(function (s) { setTimeout(s, ms); }); };' +
-        'var z = [].slice.call(document.querySelectorAll("#loc-step-zone .loc-btn")).filter(function (b) { return (b.getAttribute("onclick") || "").indexOf(' + JSON.stringify(zona) + ') >= 0; })[0];' +
-        'z.click(); await dormir(500);' +
+        /* EL MODAL ES UN BUSCADOR (28/9/2026): se escribe el barrio y se toca,
+           que es lo que hace una persona. Antes habia un boton por zona. */
+        /* Clubes salio del modal el 28/9/2026 —la tienda es 100% consumidor
+           final— pero la zona sigue viva para el que tenga el link, asi que se
+           entra por ahi y no por una puerta que ya no existe. */
+        (zona === 'clubes'
+          ? 'setZone("clubes"); await dormir(500);'
+          : 'var i = document.getElementById("dir-input");' +
+            'if (i) { i.value = ' + JSON.stringify(zona === 'estancias' ? 'Estancias del Pilar' : 'Pilara') + '; dirBuscar(); }' +
+            'await dormir(250);' +
+            'var z = document.querySelector("#dir-lista .dir-op");' +
+            'if (z) { z.click(); await dormir(500); }') +
         /* La fecha ya no se pregunta al entrar (23/9/2026): el paso sigue vivo
            pero se llega desde el chip 📅. El test la elige por ese camino, que
            es el que le queda a una persona. */

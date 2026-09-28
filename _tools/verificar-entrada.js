@@ -242,6 +242,16 @@ async function main() {
        calendario del formulario le cayo a una pieza de vacio y la sumo al
        carrito. Se acomoda el scroll, se espera, y RECIEN AHI se lee donde
        quedo. */
+    /* El modal de zona es un buscador desde el 28/9/2026: se escribe el barrio
+       y se toca el resultado. Resuelve zona, zona de Pilar y sub barrio de una
+       sola vez, asi que reemplaza a los tres pasos que habia antes. */
+    const elegirBarrio = async (txt) => {
+      await ev('(function(){ var i = document.getElementById("dir-input"); if (!i) return;' +
+               ' i.value = ' + JSON.stringify(txt) + '; if (typeof dirBuscar === "function") dirBuscar(); })()');
+      await dormir(250);
+      return await tocar('#dir-lista .dir-op');
+    };
+
     const tocar = async (sel) => {
       if ((await ev(_irA(sel))) === 'null') return null;
       await dormir(350);
@@ -337,7 +347,7 @@ async function main() {
     chk(await ev('cartCount()') === 0, 'y mientras pregunta NO agrego nada');
     chk(await ev(eventos('zona_pedida')) === 1, 'se mide "zona_pedida"');
 
-    chk(!!(await tocar('#loc-step-zone .loc-btn[onclick*="estancias"]')), 'el boton de Estancias se toca');
+    chk(!!(await elegirBarrio('Estancias del Pilar')), 'se elige el barrio escribiendolo');
     chk(!(await ev(abierto)), 'el modal se cierra');
     chk(await ev('cartCount()') === 1, 'y entra lo que habia tocado', 'carrito ' + (await ev('cartCount()')));
     chk(/agregado/.test(await ev('document.getElementById("toast").textContent')), 'y lo dice',
@@ -397,26 +407,59 @@ async function main() {
     chk(trasDia.modo === 'real', 'y con eso el stock pasa a toparse contra el freezer', trasDia.modo);
     chk(/13\/9/.test(trasDia.chip), 'el chip de arriba dice la fecha elegida', '"' + trasDia.chip + '"');
     chk(trasDia.margarita === 0, 'la margarita, que para hoy no hay, sale del carrito');
-    chk(/ajustado/i.test(trasDia.toast), 'y se dice por que', '"' + trasDia.toast + '"');
+    /* EL AVISO DEL RECORTE YA NO ES UN TOAST (28/9/2026).
+
+       Tadeo, probando: puso 15 margaritas para hoy, la tienda recorto a 7 y lo
+       aviso con un cartel que "duro menos de un segundo". Ahora es una hoja que
+       se queda hasta que el cliente decide, dice QUE producto y CUANTO quedo, y
+       si hay una fecha sin tope le ofrece llevarse todo ese dia.
+
+       Se mide el cartel y no el toast: buscar el toast aca leia el "agregado"
+       del escenario anterior y daba verde sobre un aviso que ya no existe. */
+    const rec = JSON.parse(await ev('(function () { var ov = document.getElementById("recorte-modal");' +
+      ' return JSON.stringify({ visible: !!(ov && ov.style.display === "flex"),' +
+      ' txt: ov ? ov.innerText.replace(/\\s+/g, " ").trim() : "" }); })()'));
+    chk(rec.visible, 'el cartel del recorte queda en pantalla, no se va solo');
+    chk(/no llegamos/i.test(rec.txt) && /Margarita/.test(rec.txt),
+        'y dice que producto no entro', '"' + rec.txt.slice(0, 90) + '"');
+    /* Cerrarlo es quedarse con lo que hay: la fecha no se mueve sin que lo pidan. */
+    await ev('recorteNo()');
+    await dormir(300);
+    chk(await ev('document.getElementById("recorte-modal").style.display === "none"'), 'y se cierra cuando el cliente decide');
     chk(/2026-09-13/.test(trasDia.guardada), 'la fecha queda guardada para la proxima visita');
 
     /* ── 4. LO QUE LA ZONA NUEVA NO VENDE NO ENTRA ────────────────── */
-    console.log('\n' + DIM + '== Toca un pack y elige Clubes, que tiene otro catalogo ==' + RST);
+    /* EL CASO CAMBIO DE CLUBES A UN BARRIO CON VENDEDOR (28/9/2026).
+
+       La regla que se mide es la misma —lo que la zona elegida no vende no
+       entra al carrito— pero Clubes salio del modal ese dia, asi que el camino
+       ya no existe para una persona. El caso que SI pasa hoy es la carne: un
+       barrio con vendedor va a la hoja Red, que no tiene columnas de carne, y
+       un pedido con carne ahi se cobraria y no se guardaria. */
+    console.log('\n' + DIM + '== Toca carne y elige un barrio con vendedor, que no la vende ==' + RST);
     await abrir({});
-    const idNoClub = await ev('(function () {' +
-      'var club = {}; PRODUCTOS_CLUBES.forEach(function (p) { club[p.id] = 1; });' +
-      'var p = getActiveProducts().filter(function (x) { return !esPorPeso(x) && !club[x.id]; })[0];' +
-      'return p ? String(p.id) : null; })()');
-    chk(!!idNoClub, 'hay un producto de Estancias que Clubes no vende (sin esto el caso no se prueba)');
-    await ev('addToCart(' + JSON.stringify(idNoClub) + ')');
-    await dormir(400);
-    chk(await ev(abierto), 'al tocarlo pregunta la zona');
-    chk(!!(await tocar('#loc-step-zone .loc-btn[onclick*="clubes"]')), 'el boton de Clubes se toca');
-    const club = JSON.parse(await ev('JSON.stringify({ zona: currentZone, carrito: cartCount(),' +
-      ' toast: document.getElementById("toast").textContent, abierto: ' + abierto + ' })'));
-    chk(club.zona === 'clubes' && club.abierto === false, 'la zona queda en Clubes y el modal cierra');
-    chk(club.carrito === 0, 'y el producto NO entra: en Clubes no existe', 'carrito ' + club.carrito);
-    chk(/no lo tenemos/i.test(club.toast), 'y se dice por que', '"' + club.toast + '"');
+    const pieza = JSON.parse(await ev('(function () {' +
+      'var a = Object.keys(piezasMap || {}).filter(function (k) { return (piezasMap[k] || []).length; })[0];' +
+      'if (!a) return "null";' +
+      'return JSON.stringify({ abbr: a, id: piezasMap[a][0].id }); })()'));
+    chk(!!pieza, 'hay una pieza de carne para tocar (sin esto el caso no se prueba)');
+    if (pieza) {
+      /* El toast se limpia antes: si no, lo que se lee despues puede ser el
+         del escenario anterior y el chequeo mide un mensaje viejo. */
+      await ev('document.getElementById("toast").textContent = ""');
+      await ev('togglePieza(' + JSON.stringify(pieza.abbr) + ', ' + JSON.stringify(pieza.id) + ')');
+      await dormir(400);
+      chk(await ev(abierto), 'al tocarla pregunta la zona');
+      chk(!!(await elegirBarrio('El Lucero')), 'se elige un barrio con vendedor');
+      const red = JSON.parse(await ev('JSON.stringify({ zona: currentZone, esRed: _pilarBarrioIsRed(),' +
+        ' piezas: Object.keys(piezaCart).length, toast: document.getElementById("toast").textContent,' +
+        ' abierto: ' + abierto + ' })'));
+      chk(red.zona === 'pilar' && red.esRed === true, 'la zona queda en un barrio de vendedor y el modal cierra');
+      chk(red.abierto === false, 'el modal cierra');
+      chk(red.piezas === 0, 'y la carne NO entra: ese pedido va a la hoja Red, que no la puede guardar',
+          'piezas ' + red.piezas);
+      chk(/no lo tenemos|no est/i.test(red.toast), 'y se dice por que', '"' + red.toast + '"');
+    }
 
     /* ── 5. PILAR: LA ZONA SE COMPLETA ANTES DE AGREGAR ───────────── */
     console.log('\n' + DIM + '== Pilar: se completa zona, barrio y sub barrio, y recien ahi entra ==' + RST);
@@ -426,14 +469,16 @@ async function main() {
       'return p ? String(p.id) : null; })()');
     await ev('addToCart(' + JSON.stringify(idPilar) + ')');
     await dormir(400);
-    chk(!!(await tocar('#loc-step-zone .loc-btn[onclick*="pilar"]')), 'el boton de Pilar se toca');
-    chk(await ev('document.getElementById("loc-step-barrio").style.display !== "none"'),
-        'sigue al paso del barrio, no cierra a mitad de camino');
-    chk(await ev('cartCount()') === 0, 'y todavia no agrego nada');
-    chk(!!(await tocar('#loc-barrios-grid button[onclick*="__otro__"]')), '"Otra zona de Pilar" se toca');
-    chk(await ev('document.getElementById("loc-step-subbarrio").style.display !== "none"'), 'sigue al sub barrio');
-    chk(await ev('cartCount()') === 0, 'y sigue sin agregar nada');
-    chk(!!(await tocar('#loc-subbarrios-grid button')), 'el barrio se toca');
+    /* ERAN TRES PASOS Y AHORA ES UNO. El cliente escribe "Pilara" y la tienda
+       resuelve zona, zona de Pilar y sub barrio sola. Lo que se sigue midiendo
+       —y es lo que importa— es que NO agregue nada hasta que la zona este
+       completa: `applyZone()` vacia el carrito, asi que agregar antes le
+       borraria en la cara lo que acaba de tocar. */
+    chk(await ev('cartCount()') === 0, 'mientras pregunta no agrego nada');
+    chk(!!(await elegirBarrio('Pilara')), 'se elige el barrio escribiendolo');
+    const armado = JSON.parse(await ev('JSON.stringify({ z: currentZone, pz: selectedPilarZona, sub: selectedPilarBarrio })'));
+    chk(armado.z === 'pilar' && armado.pz === '__otro__' && armado.sub === 'Pilara',
+        'y quedan resueltos la zona, la zona de Pilar y el barrio (' + JSON.stringify(armado) + ')');
     const pil = JSON.parse(await ev('JSON.stringify({ zona: currentZone, carrito: cartCount(), abierto: ' + abierto + ',' +
       ' paso: document.getElementById("loc-step-date").style.display })'));
     chk(pil.abierto === false, 'con el barrio elegido el modal CIERRA: la fecha ya no es parte de la entrada');

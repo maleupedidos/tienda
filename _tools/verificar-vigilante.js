@@ -194,6 +194,11 @@ const COMPRAR = `(async function () {
   if (!dia) return JSON.stringify({ error: 'el calendario no ofrece ningun dia' });
   dia.click();
   await dormir(150);
+  /* Elegir el dia puede recortar el carrito, y desde el 28/9/2026 eso abre un
+     cartel que SE QUEDA en pantalla hasta que el cliente decide. Se cierra como
+     lo cierra una persona: si queda abierto, tapa todo lo de abajo. */
+  var _rec = document.getElementById('recorte-modal');
+  if (_rec && _rec.style.display === 'flex' && typeof recorteNo === 'function') { recorteNo(); await dormir(250); }
   var ef = document.querySelector('input[name="pago"][value="Efectivo"]')
         || document.querySelector('input[name="pago"]');
   ef.checked = true; ef.dispatchEvent(new Event('change'));

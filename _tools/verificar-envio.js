@@ -222,8 +222,13 @@ async function main() {
       await cli.enviar('Page.navigate', { url: base + '/index.html?envio=' + Date.now() });
       for (let i = 0; i < 150; i++) { if (await evSeguro("typeof enviarPedido === 'function' && typeof PRODUCTOS !== 'undefined'")) break; await dormir(100); }
       await dormir(900);
-      await ev(`(function(){var b=[].slice.call(document.querySelectorAll('button,[onclick]'))
-        .filter(function(e){return /estancias/i.test(e.innerText||'');}); if(b.length)b[0].click();})()`);
+      /* El modal de zona es un buscador desde el 28/9/2026, y la tienda abre en
+         el catalogo desde el 23/9: hay que abrirlo y escribir el barrio. */
+      await ev(`(function(){ if (typeof showZoneModal === 'function') showZoneModal('test');
+        var i = document.getElementById('dir-input');
+        if (i) { i.value = 'Estancias del Pilar'; if (typeof dirBuscar === 'function') dirBuscar(); } })()`);
+      await dormir(300);
+      await ev(`(function(){ var b = document.querySelector('#dir-lista .dir-op'); if (b) b.click(); })()`);
       await dormir(600);
       await ev(`(function(){var b=[].slice.call(document.querySelectorAll('button,[onclick]'))
         .filter(function(e){return /cualquier d|sin preferencia/i.test(e.innerText||'');}); if(b.length)b[0].click();})()`);

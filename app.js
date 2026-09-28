@@ -1904,6 +1904,25 @@ function _pilarBarrioIsRed() {
   for (var i = 0; i < BARRIOS_PILAR_MODAL.length; i++) {
     if (BARRIOS_PILAR_MODAL[i].val === val && BARRIOS_PILAR_MODAL[i].isRed) return true;
   }
+  /* DEFENSA 3: LA ZONA CANONICA (28/9/2026).
+
+     Las dos de arriba miran el BARRIO —"El Lucero"—, y eso solo se reconoce
+     cuando llego `action=vendedores` de la planilla: la lista de aca abajo
+     tiene las ZONAS ("Tortugas y alrededores"), no sus barrios. O sea que
+     mientras la planilla no conteste, un cliente de El Lucero pasaba por "no
+     es de vendedor": se le ofrecia carne y miercoles, y su pedido se iba a la
+     hoja Pilar en vez de a la Red — la venta de Marcos, cobrada por nosotros.
+
+     `selectedPilarZona` SI guarda el valor canonico y no depende de ninguna
+     respuesta: lo escribe el buscador al resolver el barrio, y antes lo
+     escribia el paso 2 del modal. Preguntarle a el cierra el hueco.
+
+     Lo encontro `verificar-entrada.js` al reescribirlo para el buscador: en el
+     test el backend esta simulado, asi que `barrioToVendedor` llega vacio — y
+     ahi el agujero se ve siempre, no de vez en cuando. */
+  for (var j = 0; j < BARRIOS_PILAR_MODAL.length; j++) {
+    if (BARRIOS_PILAR_MODAL[j].val === selectedPilarZona && BARRIOS_PILAR_MODAL[j].isRed) return true;
+  }
   return false;
 }
 /* Modo "abierto con info": muestra cartel celeste "Hoy hay N en stock ·
@@ -2636,6 +2655,16 @@ function renderWelcomeBarrioGrid() {
    (sub-barrio) — no vamos directo a fecha porque ahora el cliente debe
    elegir su barrio específico dentro de la zona. */
 function setPilarBarrio(val, nombre) {
+  _guardarPilarZona(val, nombre);
+  welcomeShowSubBarrioStep();
+}
+/* GUARDAR SE SEPARO DE AVANZAR DE PASO (28/9/2026), porque ahora hay dos
+   caminos: el de los pasos —que guarda y avanza— y el buscador de direccion,
+   que resuelve zona, barrio y sub barrio de una sola vez y no tiene adonde
+   avanzar. Sin separarlos, el buscador tendria que llamar al paso siguiente y
+   cerrarlo enseguida: un parpadeo, y una copia de este guardado esperando a
+   desincronizarse. */
+function _guardarPilarZona(val, nombre) {
   selectedPilarZona = val;
   selectedPilarZonaName = nombre;
   try {
@@ -2646,7 +2675,6 @@ function setPilarBarrio(val, nombre) {
   // Refresca el dropdown del form (los sub-barrios de la zona nueva).
   if (typeof renderPilarBarrios === 'function') renderPilarBarrios();
   _updateZoneChip();
-  welcomeShowSubBarrioStep();
 }
 
 /* Paso 3 del welcome: el cliente eligió el sub-barrio dentro de la zona.
@@ -2750,6 +2778,235 @@ function _setClubesDefaultDate() {
   _updateDateChip();
   _preselectDayPicker();
 }
+/* ?nuevo=1 — VOLVER A SER UN CLIENTE NUEVO (28/9/2026)
+
+   Tadeo, probando el modal: "ya cargue que soy de estancias y no puedo, quiero
+   ser un usuario nuevo para la tienda". La zona, los datos del cliente, el
+   ultimo pedido y la copia del inventario viven en `localStorage`, asi que la
+   segunda visita nunca vuelve a ser la primera — y la primera es justo la que
+   hay que mirar, porque es la del cliente que no nos conoce.
+
+   SOLO CORRE EN LOCAL, y no es precaucion de mas: en produccion este parametro
+   seria un link que le borra a cualquiera su nombre, su telefono y su ultimo
+   pedido con solo abrirlo. Aca no existe — `maleu.com.ar` ni lo mira.
+
+   Va arriba de todo: si corriera despues, la tienda ya leyo la zona guardada y
+   dibujo el catalogo con ella. */
+(function () {
+  try {
+    var local = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+    if (!local || location.search.indexOf('nuevo=1') < 0) return;
+    localStorage.clear();
+    sessionStorage.clear();
+    var u = new URL(location.href);
+    u.searchParams.delete('nuevo');
+    /* `replace` y no `href`: sin esto, el volver del navegador te trae de nuevo
+       al link que limpia, y limpia otra vez. */
+    location.replace(u.pathname + u.search + u.hash);
+  } catch (e) {}
+})();
+
+/* ══════════ EL MODAL DE ZONA ES UN BUSCADOR DE DIRECCION (28/9/2026) ══════════
+
+   Tadeo, mirando la tienda en incognito: "que el modal de zona sea uno comun y
+   corriente como cualquier otra tienda... arranquemos a comportarnos como una
+   tienda online seria y profesional".
+
+   EL PROBLEMA NO ERA EL DISENO, ERA LA PREGUNTA. Hasta hoy el modal preguntaba
+   "¿sos de Estancias, de Pilar o de un club?" — que es como organizamos
+   NOSOTROS el reparto, no algo que el cliente sepa contestar. Alguien de El
+   Lucero no tiene por que saber que eso es "Tortugas y alrededores" y que lo
+   atiende Marcos. Eran hasta cuatro pantallas antes de ver un precio.
+
+   Ahora se pregunta lo unico que el cliente sabe: donde vive. Escribe su
+   barrio, y la zona, el vendedor, los dias, el envio y el alias los resolvemos
+   por detras.
+
+   LA LISTA SE DERIVA, NO SE ESCRIBE. Sale de `BARRIOS_PILAR_MODAL` —la misma
+   que arma los pasos y el desplegable del formulario— mas los barrios que
+   llegan de la planilla (`action=vendedores`). Una lista escrita a mano seria
+   una segunda copia esperando a quedar vieja el dia que entre un vendedor.
+
+   CLUBES NO ESTA, a proposito. Tadeo, el 28/9: "maleu ahora es 100% para
+   consumidor final... que nos pidan las cantidades por WhatsApp y nosotros
+   hacemos el autopedido". El canal sigue vivo y la zona sigue funcionando por
+   link directo —son 87 pedidos desde febrero y no se le rompe la tienda a
+   nadie que tenga el link guardado—, pero deja de ser una puerta publica. */
+
+/* Los destinos que el buscador conoce. `txt` es lo que el cliente escribe. */
+function _dirDestinos() {
+  var out = [
+    { txt: 'Estancias del Pilar', zona: 'estancias' },
+    { txt: 'Estancias del R\u00edo', zona: 'estancias', privado: 'Estancias del R\u00edo' }
+  ];
+  BARRIOS_PILAR_MODAL.forEach(function (b) {
+    if (_barrioOculto(b.val)) return;
+    (b.subBarriosList || []).forEach(function (sub) {
+      out.push({ txt: sub, zona: 'pilar', pz: b.val, pzNombre: b.nombre, sub: sub });
+    });
+  });
+  /* Los que llegan de la planilla y todavia no estan en la lista de arriba.
+     Asi un barrio nuevo de un vendedor se busca sin tocar el codigo. */
+  Object.keys(barrioToVendedor || {}).forEach(function (k) {
+    var v = barrioToVendedor[k];
+    if (!v || !v.barrio) return;
+    var ya = out.some(function (d) { return _dirNorm(d.txt) === _dirNorm(v.barrio); });
+    if (ya) return;
+    var zc = v.zonaCanon || '__otro__';
+    var zona = BARRIOS_PILAR_MODAL.filter(function (b) { return b.val === zc; })[0];
+    out.push({ txt: v.barrio, zona: 'pilar', pz: zc, pzNombre: (zona && zona.nombre) || zc, sub: v.barrio });
+  });
+  return out;
+}
+
+/* Sin acentos y en minuscula: quien escribe "rio" tiene que encontrar "R\u00edo". */
+function _dirNorm(t) {
+  return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+
+function _dirCoinciden(texto) {
+  var q = _dirNorm(texto);
+  var todos = _dirDestinos();
+  if (!q) return todos;
+  /* Los que EMPIEZAN con lo escrito van primero: quien tipea "los" espera
+     "Los Alcanfores" antes que "Ayres del Pilar". */
+  var empieza = [], contiene = [];
+  todos.forEach(function (d) {
+    var n = _dirNorm(d.txt);
+    if (n.indexOf(q) === 0) empieza.push(d);
+    else if (n.indexOf(q) >= 0) contiene.push(d);
+  });
+  return empieza.concat(contiene);
+}
+
+function dirBuscar() {
+  var inp = $id('dir-input'), lista = $id('dir-lista');
+  if (!inp || !lista) return;
+  var res = _dirCoinciden(inp.value);
+  lista.innerHTML = '';
+  res.forEach(function (d, i) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'dir-op';
+    b.onclick = function () { _dirElegir(d); };
+    var n = document.createElement('span');
+    n.className = 'dir-op-nombre';
+    n.textContent = d.txt;            // sale de la planilla: nunca por innerHTML
+    var s2 = document.createElement('span');
+    s2.className = 'dir-op-dato';
+    s2.textContent = _dirResumen(d);
+    b.appendChild(n); b.appendChild(s2);
+    lista.appendChild(b);
+  });
+  /* SIEMPRE AL FINAL, tambien cuando no hay ninguna coincidencia: el que vive
+     en un barrio que no tenemos cargado no se puede quedar sin salida. */
+  var otro = document.createElement('button');
+  otro.type = 'button';
+  otro.className = 'dir-op dir-op-otro';
+  otro.onclick = _dirOtro;
+  var on = document.createElement('span');
+  on.className = 'dir-op-nombre';
+  on.textContent = res.length ? 'No encuentro mi barrio' : 'Mi barrio no est\u00e1 en la lista';
+  var od = document.createElement('span');
+  od.className = 'dir-op-dato';
+  od.textContent = 'Escribilo vos \u00b7 Entregas mi\u00e9rcoles y viernes';
+  otro.appendChild(on); otro.appendChild(od);
+  lista.appendChild(otro);
+}
+
+/* SOLO LOS DIAS, NO EL ENVIO (28/9/2026). La primera version decia tambien
+   cuanto salia el envio de cada barrio, y Tadeo lo saco apenas lo vio:
+   "sacaria el envio, solo mostraria los dias de entrega".
+
+   Tiene razon y es la misma idea que el resto del rediseno: el precio del
+   envio ahi es ruido, y encima es lo primero que lee alguien que todavia no
+   miro un solo producto. El envio se ve igual en el carrito, cuando ya sabe
+   que esta comprando. Lo que si sirve para elegir el barrio es cuando
+   entregamos ahi. */
+function _dirResumen(d) {
+  if (d.zona === 'estancias') return 'Entregas lun, mi\u00e9, vie, s\u00e1b y dom';
+  var esRed = !!(BARRIOS_PILAR_MODAL.filter(function (b) { return b.val === d.pz; })[0] || {}).isRed;
+  return esRed ? 'Entregas los viernes' : 'Entregas mi\u00e9rcoles y viernes';
+}
+
+/* Resuelve zona + zona de Pilar + barrio de una sola vez y cierra. */
+function _dirElegir(d) {
+  if (d.zona === 'estancias') {
+    setZone('estancias');
+    /* LO QUE YA DIJO NO SE LE VUELVE A PREGUNTAR (28/9/2026).
+
+       Tadeo, probando el flujo: "recien puse que soy de Estancias del Pilar y
+       en el formulario me aparece para elegir mi barrio privado". Tenia razon:
+       el buscador y el campo "Barrio Privado" del formulario preguntan
+       exactamente lo mismo, y preguntarlo dos veces es de un formulario, no de
+       una tienda.
+
+       Queda marcado, no escondido: si se equivoco al elegir, lo corrige ahi
+       mismo. Lo que se saca es el trabajo, no la posibilidad.
+
+       El SUB barrio (Champagnat Alto, El Golf...) si se sigue pidiendo, y no
+       es lo mismo: el buscador nunca lo pregunto, y es lo que necesita el que
+       reparte para encontrar la casa. */
+    var privado = d.privado || d.txt;
+    var bp = $id('f-barrio-privado');
+    /* SOLO SI CAMBIA, Y RECUPERANDO EL SUB BARRIO.
+
+       El `change` de este campo repuebla la lista de sub barrios
+       (`filtrarSubBarrios`), asi que dispararlo cuando el valor YA era ese le
+       borra al cliente el sub barrio que `loadClientData` acababa de devolver:
+       volvia el barrio privado y el lote, y "Champagnat Alto" quedaba vacio.
+       Lo agarro `verificar-datos-cliente.js` en la visita del que vuelve.
+
+       Y cuando si cambia de verdad, se vuelven a cargar los datos guardados:
+       `loadClientData` no pisa nada que tenga algo escrito, asi que completa
+       el sub barrio sin tocar lo demas. */
+    if (bp && privado && bp.value !== privado) {
+      for (var i = 0; i < bp.options.length; i++) {
+        if (bp.options[i].value === privado) { bp.selectedIndex = i; break; }
+      }
+      bp.dispatchEvent(new Event('change', { bubbles: true }));
+      if (typeof loadClientData === 'function') loadClientData();
+    }
+    return;
+  }
+  currentZone = 'pilar';
+  zonaProvisoria = false;
+  try { localStorage.setItem('maleu_zone', 'pilar'); } catch (e) {}
+  _track('select_zone', { zone: 'pilar', origen: _zonaOrigen, barrio: d.sub });
+  applyZone();
+  _guardarPilarZona(d.pz, d.pzNombre);
+  setPilarSubBarrio(d.sub, d.sub);
+}
+
+/* "No encuentro mi barrio": lo escribe el cliente y lo entrega Maleu. Tadeo,
+   28/9: "el envio sera miercoles o viernes". Es el mismo destino que ya existia
+   como "Otra zona de Pilar > Otro barrio", con la diferencia de que ahora se
+   llega en un toque en vez de en cuatro. */
+function _dirOtro() {
+  var inp = $id('dir-input');
+  var escrito = (inp && inp.value || '').trim();
+  currentZone = 'pilar';
+  zonaProvisoria = false;
+  try { localStorage.setItem('maleu_zone', 'pilar'); } catch (e) {}
+  _track('select_zone', { zone: 'pilar', origen: _zonaOrigen, barrio: 'otro' });
+  applyZone();
+  _guardarPilarZona('__otro__', 'Otra zona de Pilar');
+  /* Lo que escribio no se toma como barrio: puede ser media direccion, o el
+     nombre de una calle. Va al campo libre del formulario, que es donde el
+     cliente lo termina de escribir y donde lo lee el que reparte. */
+  setPilarSubBarrio('__otro__', 'Otro barrio');
+  if (escrito) {
+    /* `f-direccion` es el campo libre que aparece con "Otro barrio", adentro
+       de `field-pilar-otro`. Se llena solo si esta vacio: lo que el cliente ya
+       haya escrito manda. */
+    var libre = $id('f-direccion');
+    if (libre && !libre.value) {
+      libre.value = escrito;
+      libre.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }
+}
+
 function showZoneModal(origen) {
   // Reabrir desde el chip "📍", desde el cartel del catalogo, o porque el
   // cliente toco "+ Agregar" sin haber elegido zona todavia.
@@ -2773,6 +3030,11 @@ function _hideAllSteps() {
 function welcomeShowZoneStep() {
   _hideAllSteps();
   $id('loc-step-zone').style.display = '';
+  /* La lista se pinta al abrir, con todos los barrios a la vista: un campo
+     vacio y nada abajo no dice que se puede escribir ahi. No se le pone el
+     foco a proposito — en un celular eso levanta el teclado y tapa la lista
+     justo cuando el cliente la quiere leer. */
+  if (typeof dirBuscar === 'function') dirBuscar();
 }
 /* Aviso contextual del cutoff, para las zonas que dependen del recorrido del
    viernes (Pilar y Clubes).
@@ -3148,21 +3410,138 @@ function _updateDateChip() {
   var d = new Date(Date.UTC(+parts[0], +parts[1]-1, +parts[2]));
   _chipIcono(chip, 'cal', DAY_NAMES_SHORT[d.getUTCDay()] + ' ' + (+parts[2]) + '/' + (+parts[1]));
 }
+/* ══ CUANDO NO ALCANZA EL STOCK, SE EXPLICA Y SE OFRECE SALIDA (28/9/2026) ══
+
+   Tadeo, probando el flujo: puso 15 Pizza Margarita para hoy, el freezer tenia
+   7, la tienda recorto a 7 y lo aviso con un toast que "duro menos de un
+   segundo". Su pedido: "que el cartel dure y que el cliente tenga la opcion de
+   decir: mira, a esas 15 no llegamos, te damos hasta 7, ¿queres agregar algo
+   mas?".
+
+   EL RECORTE EN SI ESTA BIEN — no se puede vender lo que no hay en el freezer.
+   Lo que estaba mal era como se contaba: un aviso que se va solo en un segundo,
+   sin decir QUE producto ni CUANTO quedo, sobre una decision que le cambio el
+   pedido. El cliente ve 7 donde habia puesto 15 y no sabe si se equivoco el.
+
+   Y adentro hay una venta: el que quiere 15 pizzas las quiere igual. Si para el
+   viernes entran, ofrecerselo es la diferencia entre vender 7 y vender 15. Por
+   eso el cartel tiene dos salidas y no un "Entendido". */
+var _recortePend = null;
+
 function _ensureCartFitsDate() {
   // Si la fecha elegida activa modo limitado, recortar carrito al stock real
   if (!isStockLimited()) return;
-  var ajustado = false;
+  var recortes = [];
   Object.entries(cart).forEach(function(kv) {
     var id = kv[0], qty = kv[1];
     var avail = stockMap[id];
     if (avail !== undefined && qty > avail) {
+      var p = PROD_MAP[id];
+      recortes.push({ id: id, nombre: (p && p.nombre) || 'Ese producto', pedido: qty, queda: avail });
       if (avail === 0) delete cart[id];
       else cart[id] = avail;
-      ajustado = true;
       renderCardFooter(id);
     }
   });
-  if (ajustado) { updateUI(); toast('⚠️ Tu carrito fue ajustado al stock disponible para esa fecha'); }
+  if (!recortes.length) return;
+  updateUI();
+  _avisarRecorte(recortes);
+}
+
+/* La primera fecha de entrega SIN tope: ahi entra cualquier cantidad, porque
+   entra en la compra que le hacemos al proveedor. Es la misma cuenta que ya
+   hacia `_fechaParaCombo` adentro, sacada afuera para que no queden dos. */
+function _fechaSinTope() {
+  var lista = _fechasPosteriores();
+  for (var i = 0; i < lista.length; i++) if (lista[i].modo === 'ilimitado') return lista[i].f;
+  return null;
+}
+
+function _avisarRecorte(recortes) {
+  var f = _fechaSinTope();
+  _recortePend = { recortes: recortes, f: f };
+
+  var ov = $id('recorte-modal');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'recorte-modal';
+    ov.className = 'combo-modal-overlay';
+    /* Cerrar por afuera es "me quedo con lo que hay", igual que la ×: la fecha
+       del pedido no se mueve sin que el cliente lo pida. */
+    ov.onclick = function (e) { if (e.target === ov) recorteNo(); };
+    ov.innerHTML = '<div class="combo-modal fecha-modal" role="dialog" aria-modal="true" aria-labelledby="recorte-t">' +
+      '<button class="combo-modal-close" type="button" onclick="recorteNo()" aria-label="Cerrar">×</button>' +
+      '<div id="recorte-content"></div></div>';
+    document.body.appendChild(ov);
+  }
+
+  var cuando = _paraCuando(selectedDeliveryDate);
+  var filas = recortes.map(function (r) {
+    return '<li class="recorte-fila"><span class="recorte-prod"></span>' +
+           '<span class="recorte-num">' + (r.queda === 0
+             ? 'no queda ninguna'
+             : 'pediste ' + r.pedido + ' · te dejamos <strong>' + r.queda + '</strong>') + '</span></li>';
+  }).join('');
+
+  var titulo = recortes.length === 1
+    ? 'Para ' + cuando + ' no llegamos con todo'
+    : 'Para ' + cuando + ' no llegamos con algunas cosas';
+
+  var html =
+    '<div class="combo-modal-head"><div>' +
+      '<div class="combo-modal-title" id="recorte-t">' + titulo + '</div>' +
+      '<div class="combo-modal-desc">Te dejamos lo que tenemos en el freezer para ese día.</div>' +
+    '</div></div>' +
+    '<ul class="recorte-lista">' + filas + '</ul>';
+
+  if (f) {
+    var nueva = _paraCuando(f.iso);
+    var aNueva = nueva === 'mañana' ? 'a mañana' : 'al ' + nueva.slice(3);
+    html += '<p class="fecha-modal-txt">Si los querés todos, <strong>para ' + nueva +
+              ' entran completos</strong>: van en la compra que le hacemos al proveedor.</p>' +
+            '<button class="fecha-modal-si" type="button" onclick="recorteMover()">Pedir todo ' + aNueva + '</button>' +
+            '<button class="fecha-modal-no" type="button" onclick="recorteNo()">Seguir con lo que hay para ' + cuando + '</button>';
+  } else {
+    html += '<button class="fecha-modal-si" type="button" onclick="recorteNo()">Seguir comprando</button>';
+  }
+  html += '<p class="fecha-modal-tip">Podés seguir agregando lo que quieras: el tope es solo de lo que aparece acá arriba.</p>';
+
+  $id('recorte-content').innerHTML = html;
+  /* Los nombres van por textContent: salen del catalogo, que se carga de
+     afuera. Misma regla que los chips de barrio. */
+  var celdas = $id('recorte-content').querySelectorAll('.recorte-prod');
+  recortes.forEach(function (r, i) { if (celdas[i]) celdas[i].textContent = r.nombre; });
+
+  ov.style.display = 'flex';
+  _fondoQuieto('recorte', true);
+  var b = ov.querySelector('.fecha-modal-si');
+  if (b) { try { b.focus({ preventScroll: true }); } catch (e) { b.focus(); } }
+}
+
+function _cerrarRecorte() {
+  var ov = $id('recorte-modal');
+  if (ov) ov.style.display = 'none';
+  _fondoQuieto('recorte', false);
+  var o = _recortePend;
+  _recortePend = null;
+  return o;
+}
+function recorteNo() {
+  _cerrarRecorte();
+  _track('recorte_stock_no', { zone: currentZone });
+}
+/* "Pedir todo para el viernes": se reponen las cantidades que el cliente habia
+   puesto y se mueve la entrega. La venta no se pierde por un tope de hoy. */
+function recorteMover() {
+  var o = _cerrarRecorte();
+  if (!o || !o.f) return;
+  o.recortes.forEach(function (r) { cart[r.id] = r.pedido; });
+  _track('recorte_stock_mover', { zone: currentZone });
+  setDeliveryDate(o.f.iso, o.f.dayName, { sinScroll: true });
+  updateUI();
+  o.recortes.forEach(function (r) { renderCardFooter(r.id); });
+  var n = _paraCuando(o.f.iso);
+  toast('✓ Listo: tu entrega pasa ' + (n === 'mañana' ? 'a mañana' : 'al ' + n.slice(3)));
 }
 function _preselectDayPicker() {
   // Si el day-picker del form existe, marcar la fecha elegida
@@ -6388,6 +6767,11 @@ function _datosClienteDelForm(extra) {
   return d;
 }
 function guardarDatosCliente(extra) {
+  /* El saludo cuelga del guardado y no de cada campo: es el mismo lugar por el
+     que ya pasa todo cambio de dato del cliente. Colgarlo de los call sites es
+     como los botones dejaron de andar el 10/9 — habia cinco y dos se olvidaron
+     de llamarlo. */
+  setTimeout(_pintarSaludo, 0);
   try {
     if (!currentZone || !ZONAS[currentZone]) return;
     var d = _datosClienteDelForm(extra);
@@ -6411,6 +6795,50 @@ function _ponerSiVacio(id, val) {
   e.value = val;
   return true;
 }
+
+/* ══ LA TIENDA DICE QUE TE RECONOCE (28/9/2026) ══
+
+   Los datos del cliente vuelven solos desde el 11/9, pero la tienda los
+   completaba EN SILENCIO: el que vuelve ve los campos llenos y no sabe si eso
+   lo escribio el, si quedo de la vez pasada o si esta bien.
+
+   Tadeo pregunto por cuentas de usuario —"no puede completar sus datos cada
+   vez que entra, es un perno"— y lo que buscaba con eso ya estaba a medias:
+   los datos estaban, faltaba decirlo. Decidimos no armar cuentas todavia (es
+   un backend de autenticacion, y fricción justo antes de comprar), asi que
+   esto es la mitad que si vale y sale gratis.
+
+   LEE LOS CAMPOS, NO EL `localStorage`. Asi dice lo que se va a mandar de
+   verdad: si el cliente corrige el lote, el saludo lo sigue. Guardar aparte
+   una copia de la direccion seria una segunda version del mismo dato. */
+function _pintarSaludo() {
+  var box = $id('form-saludo');
+  if (!box) return;
+  var nombre = (($id('f-nombre') || {}).value || '').trim();
+  if (!nombre) { box.hidden = true; box.textContent = ''; return; }
+
+  /* Solo el primer nombre: "Hola, Maria Jose Fernandez" suena a carta del
+     banco. */
+  var pila = nombre.split(/[ ,]+/)[0];
+  var partes = [];
+  if (currentZone === 'estancias') {
+    var bp = (($id('f-barrio-privado') || {}).value || '').trim();
+    var ba = (($id('f-barrio') || {}).value || '').trim();
+    if (ba) partes.push(ba); else if (bp) partes.push(bp);
+  } else if (currentZone === 'pilar') {
+    var pb = (($id('f-pilar-barrio') || {}).value || '').trim();
+    if (pb === '__otro__') pb = (($id('f-direccion') || {}).value || '').trim();
+    if (pb) partes.push(pb);
+  }
+  var lote = (($id('f-lote') || {}).value || '').trim();
+  if (lote) partes.push('Lote ' + lote);
+
+  box.hidden = false;
+  box.textContent = partes.length
+    ? 'Hola, ' + pila + '. Te lo llevamos a ' + partes.join(', ') + '.'
+    : 'Hola, ' + pila + '.';
+}
+
 function loadClientData() {
   try {
     // Datos específicos de la zona actual (prioridad) o legacy global
@@ -6427,6 +6855,7 @@ function loadClientData() {
     }
     _ponerSiVacio('f-nombre', saved.nombre);
     _ponerSiVacio('f-telefono', saved.telefono);
+    setTimeout(_pintarSaludo, 0);   // despues de que se completen los de abajo
     if (currentZone === 'estancias') {
       if (_ponerSiVacio('f-barrio-privado', saved.barrioPrivado)) filtrarSubBarrios(true);
       _ponerSiVacio('f-barrio', saved.barrio);
