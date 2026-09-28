@@ -738,9 +738,69 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
 .send-wa-btn:hover { background: #20BD5A; }
 .send-card .send-fallback-nota { font-size: .78rem; color: #6b5a52; margin: .7rem 0 0; }
 
+/* ── ESTADO `done`: EL PEDIDO QUEDA CERRADO ACA (28/9/2026) ──
+   Hasta hoy la tienda mandaba al cliente a WhatsApp con el pedido armado y el
+   cierre pasaba alla. Tadeo, el 28/9: "no es real y profesional que el pedido
+   de un cliente lo dirija al WhatsApp".
+
+   Es un estado mas de la misma card y no una pantalla nueva, a proposito: esta
+   ya tiene resueltos el fondo quieto, el foco y el aria, y una segunda pantalla
+   para lo mismo se despega de la primera — la leccion que este repo ya pago con
+   los botones muertos del 10/9. */
+.send-done { display: none; text-align: left; }
+.send-card.done .send-done { display: block; }
+.send-card.done .send-progress,
+.send-card.done .send-fallback { display: none; }
+
+.send-done-datos { margin: 0 0 1rem; padding: 1rem 0 0; border-top: 1px solid #EFE6DD; }
+.send-done-datos > div { display: flex; gap: .8rem; padding: .42rem 0; align-items: baseline; }
+.send-done-datos dt {
+  flex: none; width: 78px;
+  font-size: .74rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+  color: #8a7a70;
+}
+/* `pre-line` para que el detalle del pedido entre en varios renglones sin
+   armarlo con innerHTML: el texto sigue yendo por `textContent`. */
+.send-done-datos dd { margin: 0; flex: 1; font-size: .9rem; color: var(--brown); line-height: 1.4; white-space: pre-line; }
+.send-done-datos .send-done-total { font-weight: 700; font-size: 1.02rem; }
+
+/* El alias va seleccionable a proposito: si el boton de copiar falla —
+   `navigator.clipboard` puede no estar— el cliente se queda sin poder pagar.
+   Es la misma razon por la que el alias del formulario no se bloquea. */
+.send-done-pago {
+  background: #FFF8F2; border: 1px solid #F3E3D5; border-radius: 12px;
+  padding: .85rem .9rem; margin-bottom: 1rem;
+}
+.send-done-pago p { font-size: .82rem; color: #6b5a52; margin: 0 0 .5rem; text-align: left; }
+.send-done-alias {
+  display: flex; align-items: center; gap: .6rem;
+  font-weight: 700; color: var(--brown); font-size: .95rem;
+  -webkit-user-select: text; user-select: text; -webkit-touch-callout: default;
+}
+.send-done-alias button {
+  margin-left: auto; flex: none; min-height: 36px; padding: 0 .8rem;
+  border: 1px solid #E3D3C5; border-radius: 9px; background: #fff;
+  font-family: var(--font); font-size: .8rem; font-weight: 600; color: var(--brown);
+  cursor: pointer; touch-action: manipulation;
+}
+
+.send-done-btn {
+  width: 100%; min-height: 48px; padding: .8rem;
+  background: var(--orange); color: #fff; border: none; border-radius: 12px;
+  font-family: var(--font); font-weight: 700; font-size: 1rem;
+  cursor: pointer; touch-action: manipulation;
+}
+.send-done-duda { font-size: .78rem; color: #8a7a70; margin: .8rem 0 0; text-align: center; }
+.send-done-duda a { color: #6b5a52; }
+
 /* Mobile: card un poco más comprimida */
 @media (max-width: 420px) {
   .send-card { padding: 1.8rem 1.3rem 1.3rem; max-width: 320px; }
+  /* Con el detalle del pedido adentro, la card puede pasar el alto de la
+     pantalla. Scrollea ella: el fondo esta quieto (`_fondoQuieto`) y sin esto
+     el final del pedido y el boton "Listo" quedan abajo del borde. */
+  .send-card.done { max-height: 88vh; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
+  .send-done-datos dt { width: 66px; font-size: .7rem; }
   .send-loader { width: 72px; height: 72px; margin-bottom: 1.2rem; }
   .send-logo { width: 42px; height: 42px; }
   .send-card h3 { font-size: 1.05rem; }

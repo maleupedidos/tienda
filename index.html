@@ -646,6 +646,15 @@
       <button type="button" class="send-wa-btn" id="send-wa-btn">Mandar por WhatsApp</button>
       <p class="send-fallback-nota">Mientras tanto seguimos intentando: si se registra, te llevamos solo.</p>
     </div>
+    <!-- EL PEDIDO SE CIERRA ACA, NO EN WHATSAPP (28/9/2026). Lo llena
+         `setSendLoaderDone`; los renglones van por `textContent` porque la
+         direccion y el detalle salen de lo que escribio el cliente. -->
+    <div class="send-done">
+      <dl class="send-done-datos" id="send-done-datos"></dl>
+      <div class="send-done-pago" id="send-done-pago" hidden></div>
+      <button type="button" class="send-done-btn" id="send-done-btn">Listo</button>
+      <p class="send-done-duda">&#191;Alguna duda con tu pedido? <a href="#" id="send-done-wa" rel="noopener">Escribinos por WhatsApp</a></p>
+    </div>
     <div class="send-progress"><div class="send-progress-bar"></div></div>
   </div>
 </div>

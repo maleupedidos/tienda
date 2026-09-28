@@ -1031,9 +1031,24 @@ function _piezaOrden(a, b) {
    pantalla cambia — aparecen los cortes con "Sin stock". Sin esa marca, la
    firma no cambiaba y el catalogo no se repintaba nunca. */
 function _piezasFirma() {
-  /* Con la reserva adentro: si cambian los kilos que quedan, los cortes que
+  /* VA EL ESTADO ENTERO, NO "SE SABE O NO" (28/9/2026).
+
+     Hasta hoy esto empezaba con 'k' o 'u' —conocido o no— y alcanzaba, porque
+     `cargando` y `sin-datos` dibujaban lo mismo: nada. Desde que `cargando`
+     muestra los cortes con "Cargando las piezas", los dos estados pintan
+     distinto y la firma tiene que poder distinguirlos: cuando la consulta
+     falla, las piezas siguen siendo ninguna, la firma no cambiaba, el catalogo
+     no se repintaba y quedaban cinco cards diciendo "Cargando..." PARA
+     SIEMPRE — que es justo lo que el comentario de `_piezasFallo` prohibe.
+
+     Es el mismo bug que ya esta anotado un estado mas atras, el 11/9: "de
+     cargando a vacio las piezas son las mismas —ninguna— pero la pantalla
+     cambia". Volvio a aparecer al agregar el tercer estado, asi que ahora va
+     el estado tal cual y no un resumen de el.
+
+     Con la reserva adentro: si cambian los kilos que quedan, los cortes que
      se reservan tienen que repintarse aunque las piezas sean las mismas. */
-  return (_carneConocida() ? 'k' : 'u') + '#' + Object.keys(piezasMap).sort().map(function (a) {
+  return piezasEstado + '#' + Object.keys(piezasMap).sort().map(function (a) {
     return a + ':' + piezasMap[a].map(function (pz) { return pz.id + '@' + pz.kg; }).join(',');
   }).join('|') + '#R' + (reservaInfo ? JSON.stringify(reservaInfo) : '');
 }
@@ -1336,7 +1351,28 @@ function carneAgotada(p) {
    No hay interruptor que quede prendido de mas. */
 function _corteSeMuestra(p) {
   if (!esPorPeso(p)) return true;
-  if (!_carneConocida()) return false;          // no sabemos: no se dibuja
+  /* MIENTRAS EL INVENTARIO VIAJA, EL CORTE SE DIBUJA IGUAL (28/9/2026).
+
+     Tadeo abrio maleu.com.ar en incognito y la categoria Carnes no estaba:
+     "deberian aparecer las 9 categorias al instante". Medido contra
+     produccion, `piezas_full` tarda unos 5 s, y hasta que contesta la tienda
+     no dibujaba NINGUN corte — asi que la vidriera arrancaba sin Carnes y
+     cuando el inventario llegaba empujaba para abajo todo lo que el cliente
+     estaba mirando.
+
+     La copia de la ultima visita tapaba esto... para el que ya habia entrado.
+     El cliente NUEVO —el unico que todavia no sabe que vendemos carne— nunca
+     la tiene. O sea que el agujero le pegaba justo al que mas importa.
+
+     La card ya sabia dibujar este estado ("Cargando las piezas de esta
+     semana"), y su comentario decia que nadie se lo pedia nunca. Ahora si.
+
+     NO ES LO MISMO QUE UN FALLO. `cargando` es "viene en camino"; `sin-datos`
+     es "se cayo la consulta", y ahi el corte sigue sin dibujarse: dejar cinco
+     cards diciendo "Cargando..." para siempre seria prometer una carne que
+     nadie va a poder elegir. Lo dice el comentario de `_piezasFallo`. */
+  if (piezasEstado === 'cargando') return true;
+  if (!_carneConocida()) return false;          // fallo la consulta: no se dibuja
   if (!carneAgotada(p)) return true;            // tiene piezas: va
   /* UN CORTE QUE SE PUEDE RESERVAR NO ESTA AGOTADO: hay carne en camino y se
      vende hoy. Esconderlo apagaria la reserva entera cada vez que otro corte
@@ -4769,13 +4805,142 @@ function setSendLoaderFallback(alTocar) {
   var fb = $id('send-wa-btn');
   if (fb) fb.onclick = function () { fb.onclick = null; alTocar(); };
 }
+/* ═════════════ EL PEDIDO SE CIERRA EN LA TIENDA (28/9/2026) ═════════════
+
+   Reunion de equipo del 28/9. Tadeo: "no es real y profesional que el pedido
+   de un cliente lo dirija al WhatsApp... debemos tener una tienda online comun
+   y corriente como cualquiera. Que el pedido termine en la tienda."
+
+   PRENDER ESTO ROMPE DOS COSAS SI SE HACE SOLO, Y POR ESO ESTA APAGADO:
+
+   1. El ERP no avisaba de un pedido nuevo por ningun lado — el aviso ERA el
+      mensaje del cliente. Backend lo resolvio el mismo dia
+      (`_avisarPedidoTienda_`).
+   2. La confirmacion que el cliente recibe hoy sale como MENSAJE DE SESION, y
+      es legitima solo porque el cliente acaba de escribirnos: al mandarlo a
+      wa.me se abre la ventana de 24 h de Meta. Sin ese salto, Meta la rechaza
+      y el cliente deja de recibir su confirmacion EN SILENCIO — el mismo modo
+      de falla que cuando murio el workspace de n8n el 31/8. Hace falta un
+      template de UTILITY aprobado, y ninguno de los 50 de la cuenta sirve:
+      son todos de MARKETING.
+
+   O SEA QUE ESTO SE PRENDE CUANDO `CONFIRMACION_WA_TEMPLATE` ESTE CARGADO EN
+   `Config_Maleu` Y SE HAYA VISTO LLEGAR UN MENSAJE DE PRUEBA EN UN CELULAR.
+   No antes. Apagado, la tienda se comporta exactamente como hasta hoy.
+
+   Es un interruptor de una sola vez y no una palanca de las de "por hoy": se
+   prende el dia que la dependencia de afuera esta lista, y no se vuelve a
+   tocar. Cuando se prenda, este bloque y la rama de `_irAWhatsApp` se borran. */
+var CIERRE_EN_LA_TIENDA = false;
+
+/* La pantalla de pedido cerrado. Los renglones van por `textContent` y no
+   concatenados al HTML: la direccion y el detalle salen de lo que escribio el
+   cliente, que es la misma razon por la que los chips de barrio no se arman
+   con innerHTML. */
+function _sendDoneFila(dl, etiqueta, valor, clase) {
+  if (!valor) return;
+  var fila = document.createElement('div');
+  var dt = document.createElement('dt'); dt.textContent = etiqueta;
+  var dd = document.createElement('dd'); dd.textContent = valor;
+  if (clase) dd.className = clase;
+  fila.appendChild(dt); fila.appendChild(dd);
+  dl.appendChild(fila);
+}
+
+function setSendLoaderDone(info) {
+  var ov = $id('send-overlay');
+  if (!ov) return;
+  var card = ov.querySelector('.send-card');
+  if (card) { card.classList.remove('fallback', 'error'); card.classList.add('success', 'done'); }
+
+  var t = $id('send-title'), sub = $id('send-sub');
+  /* El numero lo devuelve el backend en `n` y hasta hoy la tienda lo tiraba.
+     Es lo que convierte "mandaste un mensaje" en "tenes un pedido". Si por lo
+     que sea no vino, el pedido esta igual: no se inventa ninguno. */
+  if (t) t.textContent = info.n ? 'Pedido #' + info.n + ' confirmado' : 'Pedido confirmado';
+  if (sub) sub.textContent = 'Te mandamos la confirmacion por WhatsApp.';
+
+  var dl = $id('send-done-datos');
+  if (dl) {
+    dl.innerHTML = '';
+    _sendDoneFila(dl, 'Entrega', info.entrega);
+    _sendDoneFila(dl, 'Direccion', info.direccion);
+    _sendDoneFila(dl, 'Pedido', info.detalle);
+    _sendDoneFila(dl, 'Total', info.total, 'send-done-total');
+  }
+
+  /* El alias, solo si transfiere. Va con el boton de copiar Y seleccionable:
+     si `navigator.clipboard` falla el cliente se queda sin poder pagar. */
+  var pago = $id('send-done-pago');
+  if (pago) {
+    pago.innerHTML = '';
+    if (info.alias && info.alias.length) {
+      pago.hidden = false;
+      var p0 = document.createElement('p');
+      p0.textContent = info.aprox
+        ? 'Te confirmamos el total cuando pesemos la carne. Transferi recien ahi:'
+        : (info.alias.length > 1 ? 'Para transferir, a cualquiera de las dos:' : 'Para transferir:');
+      pago.appendChild(p0);
+      info.alias.forEach(function (c) {
+        var fila = document.createElement('div');
+        fila.className = 'send-done-alias';
+        var txt = document.createElement('span');
+        txt.textContent = (c.banco ? c.banco + ': ' : '') + c.alias;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = 'Copiar';
+        btn.onclick = function () { _copiarAlias(c.alias, btn); };
+        fila.appendChild(txt); fila.appendChild(btn);
+        pago.appendChild(fila);
+      });
+    } else {
+      pago.hidden = true;
+    }
+  }
+
+  var wa = $id('send-done-wa');
+  /* Sin texto precargado: esto es soporte, no el pedido. */
+  if (wa) wa.href = 'https://wa.me/' + (info.wa || WA_NUMBER);
+
+  var btn = $id('send-done-btn');
+  if (btn) {
+    btn.onclick = function () { hideSendLoader(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    try { btn.focus({ preventScroll: true }); } catch (e) {}
+  }
+}
+
+/* Copiar con la red del metodo viejo, igual que el alias del formulario: si
+   los dos fallan se lo decimos en vez de no hacer nada. */
+function _copiarAlias(texto, btn) {
+  function ok() { btn.textContent = 'Copiado'; setTimeout(function () { btn.textContent = 'Copiar'; }, 1800); }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(ok, function () { _copiarViejo(texto, btn, ok); });
+      return;
+    }
+  } catch (e) {}
+  _copiarViejo(texto, btn, ok);
+}
+function _copiarViejo(texto, btn, ok) {
+  try {
+    var ta = document.createElement('textarea');
+    ta.value = texto; ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:absolute;left:-9999px';
+    document.body.appendChild(ta); ta.select();
+    var hecho = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (hecho) { ok(); return; }
+  } catch (e) {}
+  btn.textContent = 'Copiá: ' + texto;
+}
+
 function hideSendLoader() {
   var ov = $id('send-overlay');
   if (!ov) return;
   ov.classList.remove('active');
   ov.setAttribute('aria-hidden', 'true');
   var card = ov.querySelector('.send-card');
-  if (card) card.classList.remove('success', 'error', 'fallback');
+  if (card) card.classList.remove('success', 'error', 'fallback', 'done');
   _fondoQuieto('envio', false);
 }
 
@@ -5269,15 +5434,60 @@ function enviarPedido() {
     });
   }
 
-  function _irAWhatsApp(texto, confirmado) {
-    if (_terminado) return;
-    _terminado = true;
-    clearTimeout(tLento); clearTimeout(tFallback);
-    if (confirmado) {
-      if (waBtn) waBtn.innerHTML = '✓ Pedido registrado';
-      setSendLoaderSuccess();
+  /* Vaciar el carrito y dejar el formulario listo para otro pedido. Sale de
+     adentro de `_irAWhatsApp` porque ahora hay dos finales y solo uno cierra la
+     pantalla: cuando el pedido se cierra en la tienda, el overlay se queda
+     hasta que el cliente toque "Listo". El carrito se limpia igual en los dos
+     — el pedido ya entro al ERP. */
+  function _limpiarTrasPedido(cerrarOverlay) {
+    cart = {}; comboCart = {}; piezaCart = {}; updateUI();
+    getActiveProducts().forEach(p => renderCardFooter(p.id));
+    getActiveCombos().forEach(c => renderComboFooter(c.id));
+    $id('f-dia').value = '';
+    if ($id('f-dia-fecha')) $id('f-dia-fecha').value = '';
+    onDiaChange();
+    renderDayPicker();
+    document.querySelectorAll('input[name="pago"]').forEach(r => r.checked = false);
+    removeCoupon();
+    if (waBtn) { waBtn.disabled = false; waBtn.innerHTML = waBtnOrig; waBtn.style.background = ''; }
+    _enviando = false;
+    updateFormVisibility();
+    if (cerrarOverlay) { hideSendLoader(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  }
+
+  /* Los datos que van a la pantalla de pedido cerrado. Salen de las MISMAS
+     variables con las que se arma el mensaje, no de recalcular: si algun dia
+     cambia como se dice la entrega o el total, cambia en los dos lados solo. */
+  function _datosDelCierre(resp) {
+    var detalle = String(prodLines || '')
+      .split('\n')
+      .map(function (l) { return l.replace(/[*_]/g, '').replace(/^[\u2022\s]+/, '').replace(/\s{2,}/g, ' ').trim(); })
+      .filter(Boolean)
+      .join('\n');
+    var alias = [];
+    if (pagoEl.value === 'Transferencia') {
+      if (!vendedorMatch) alias = ALIAS_MALEU.slice();
+      else if (vendedorMatch.alias) alias = [{ banco: '', alias: vendedorMatch.alias }];
     }
-    // Best-effort: sumar uso al cupón. No bloqueamos el flujo si falla.
+    return {
+      n: (resp && resp.n) || '',
+      entrega: entregaStr,
+      direccion: direccionStr,
+      detalle: detalle,
+      /* Con carne reservada el total todavia no es el final: la pieza se pesa
+         al llegar. Decirlo aca es lo mismo que ya dicen el carrito y el
+         resumen — prometer un numero cerrado seria mentir. */
+      total: (_hayRes ? 'Aprox. $' : '$') + Math.round(total).toLocaleString('es-AR') +
+             ' \u00b7 ' + (pagoEl.value === 'Efectivo' ? 'Efectivo' : 'Transferencia'),
+      aprox: !!_hayRes,
+      alias: alias,
+      wa: waTarget
+    };
+  }
+
+  /* Sumarle el uso al cupon. Best-effort de los dos lados: que falle no puede
+     frenar un pedido que ya entro. */
+  function _marcarCuponUsado() {
     if (_cuponVa && appliedCoupon && appliedCoupon.tipo === 'REGALO') { try { localStorage.removeItem(CUPON_GUARDADO); } catch (_e) {} }
     if (_cuponVa && appliedCoupon) {
       try {
@@ -5286,31 +5496,58 @@ function enviarPedido() {
         else fetch(APPS_SCRIPT_URL, { method:'POST', body: blob, mode:'no-cors', keepalive: true }).catch(function(){});
       } catch(_e) {}
     }
+  }
+
+  function _irAWhatsApp(texto, confirmado, resp) {
+    if (_terminado) return;
+    _terminado = true;
+    clearTimeout(tLento); clearTimeout(tFallback);
+    if (confirmado) {
+      if (waBtn) waBtn.innerHTML = '✓ Pedido registrado';
+      /* EL PEDIDO TERMINA ACA. Ver `CIERRE_EN_LA_TIENDA` arriba: apagado hasta
+         que exista el template de UTILITY, porque sin el salto a WhatsApp la
+         ventana de 24 h de Meta no se abre y el cliente se queda sin su
+         confirmacion, en silencio. */
+      if (CIERRE_EN_LA_TIENDA) {
+        /* SI ARMAR LA PANTALLA FALLA, EL PEDIDO SE CIERRA IGUAL.
+
+           Lo encontro reinyectar un bug en `_datosDelCierre`: cuando esa
+           funcion tira, el cliente se queda mirando "Registrando tu pedido..."
+           PARA SIEMPRE, con el carrito lleno y el pedido ya entrado al ERP.
+           Despues lo manda de nuevo y entra duplicado.
+
+           Es la misma regla que el backend ya aplica en tres lugares: un
+           pedido no se puede caer porque falle algo que viene despues de
+           guardarlo. Acá la pantalla es lo de después. Se muestra el cierre
+           simple —que es el que ya existia— y se limpia igual: el pedido
+           esta, y la confirmacion se la manda el ERP por WhatsApp. */
+        var _pintada = false;
+        try { setSendLoaderDone(_datosDelCierre(resp)); _pintada = true; } catch (_ep) {}
+        _marcarCuponUsado();
+        _limpiarTrasPedido(false);
+        if (!_pintada) {
+          setSendLoaderSuccess();
+          var _t = $id('send-sub');
+          if (_t) _t.textContent = 'Te mandamos la confirmacion por WhatsApp.';
+          setTimeout(function () { hideSendLoader(); window.scrollTo({ top: 0, behavior: 'smooth' }); }, 2600);
+        }
+        return;
+      }
+      setSendLoaderSuccess();
+    }
+    _marcarCuponUsado();
     // Con confirmacion, un respiro para que se vea el check verde.
     setTimeout(function () {
       window.location.href = 'https://wa.me/' + waTarget + '?text=' + encodeURIComponent(texto);
     }, confirmado ? 800 : 0);
-    setTimeout(() => {
-      cart = {}; comboCart = {}; piezaCart = {}; updateUI();
-      getActiveProducts().forEach(p => renderCardFooter(p.id));
-      getActiveCombos().forEach(c => renderComboFooter(c.id));
-      $id('f-dia').value = '';
-      if ($id('f-dia-fecha')) $id('f-dia-fecha').value = '';
-      onDiaChange();
-      renderDayPicker();
-      document.querySelectorAll('input[name="pago"]').forEach(r => r.checked = false);
-      removeCoupon();
-      if (waBtn) { waBtn.disabled = false; waBtn.innerHTML = waBtnOrig; waBtn.style.background = ''; }
-      _enviando = false;
-      hideSendLoader();
-      updateFormVisibility();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 1800);
+    setTimeout(function () { _limpiarTrasPedido(true); }, 1800);
   }
 
   /* La confirmacion puede venir del primer intento o de cualquier reintento:
      por eso se escucha por clientOrderId y no la promesa del primer POST. */
-  _alConfirmar(postData.clientOrderId, function () { _irAWhatsApp(msgNormal, true); });
+  /* `resp` trae el N de pedido que asigno el ERP (`n`). Hasta el 28/9/2026 se
+     descartaba: el mensaje de WhatsApp no lo usaba. La pantalla de cierre si. */
+  _alConfirmar(postData.clientOrderId, function (resp) { _irAWhatsApp(msgNormal, true, resp); });
   _sendWithRetry(postData).catch(function () { /* los reintentos siguen solos; a los 25 s decide el fallback */ });
   /* En paralelo al POST: preguntar si entró. Gana el que conteste primero. */
   _vigilarSiEntro(postData.clientOrderId);
@@ -5757,7 +5994,15 @@ function renderCatTiles() {
        "5 opciones" promete de mas. Solo cambia algo en Carnes — en el resto
        carneAgotada es siempre false. */
     const elegibles = suyos.filter(p => !carneAgotada(p) || reservable(p)).length;
-    const cuenta = elegibles ? elegibles + (elegibles === 1 ? ' opción' : ' opciones') : 'Sin stock';
+    /* MIENTRAS EL INVENTARIO VIAJA, EL CONTADOR NO DICE NADA (28/9/2026).
+       Sin esto, el tile de Carnes arranca diciendo "Sin stock" —porque todavia
+       no hay ninguna pieza en el mapa— y se corrige recien a los 5 segundos.
+       Seria peor que no mostrar la categoria: en vez de tardar, mentiria.
+       Un numero inventado tampoco sirve: "5 opciones" y despues 3 es la misma
+       mentira al reves. El hueco se llena solo cuando llega el inventario. */
+    const cargando = suyos.some(esPorPeso) && !_carneConocida();
+    const cuenta = cargando ? ''
+      : elegibles ? elegibles + (elegibles === 1 ? ' opción' : ' opciones') : 'Sin stock';
     return '<button class="cat-tile" type="button" onclick="scrollToCat(\'' + slug + '\')" ' +
              'aria-label="Ver ' + cat.nombre + '">' +
              '<img class="cat-tile-img" src="' + fotoUrl(foto) + '" alt="" loading="lazy">' +

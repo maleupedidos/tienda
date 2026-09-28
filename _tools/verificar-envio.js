@@ -20,6 +20,7 @@
  *   error2   2 {ok:false} y despues ok → reintenta de a uno, nunca dos POST a la vez
  *   red2     2 fallas de red y despues ok
  *   tarde27  contesta a los 27 s     → ya mostro el fallback, pero sigue solo por el camino normal
+ *   cierre   contesta a los 2 s      → el pedido termina EN LA TIENDA, sin salto a WhatsApp
  *
  * NINGUN POST PUEDE LLEGAR A LA PLANILLA. Se cortan por CDP (Fetch), fuera de
  * la pagina, desde antes de la primera navegacion: asi quedan cortados tambien
@@ -128,6 +129,7 @@ const MODOS = {
   error2:  (n) => (n <= 2 ? { en: 800, que: 'noOk' } : { en: 1500, que: 'ok' }),
   red2:    (n) => (n <= 2 ? { en: 300, que: 'falla' } : { en: 1500, que: 'ok' }),
   tarde27: () => ({ en: 27000, que: 'ok' }),
+  cierre:  () => ({ en: 2000, que: 'ok' }),
 };
 
 async function main() {
@@ -357,8 +359,23 @@ async function main() {
       chk(!!nav && clic && nav.t - clic < 1500, 'al tocarlo va a WhatsApp enseguida (' + (nav && clic ? (nav.t - clic) + ' ms' : '-') + ')');
       const txt = nav ? textoWA(nav.url) : '';
       const coid = (fetches()[0] || {}).coid || '';
-      chk(txt.indexOf('⚠️') >= 0 && txt.indexOf('no llegó a confirmar') >= 0, 'y el mensaje DICE que la web no lo confirmo');
-      chk(txt.indexOf('Prueba Envio') >= 0 && txt.indexOf('1122334455') >= 0 && txt.indexOf('Dirección: ') >= 0 && txt.indexOf('Lote 123') >= 0 && txt.indexOf('Pago: Efectivo') >= 0,
+      /* SE PIDE QUE LO DIGA, NO COMO LO DICE. Estos dos chequeos estuvieron en
+         rojo desde `fdadb6d`, que reescribio el mensaje —de "La web no llego a
+         confirmar este pedido" a "No me aparecio la confirmacion en la web"— y
+         le saco el prefijo "Direccion: " al renglon del domicilio. El mensaje
+         siguio llevando todo y el pedido siguio entrando igual: lo unico que
+         cambio fue la redaccion, y encima para mejor (habla el cliente, que es
+         quien lo manda).
+
+         Es la leccion que este repo ya tiene escrita tres veces: si un chequeo
+         se rompe al reescribir una frase y la plata no cambio, el que esta mal
+         es el chequeo. Y cuesta caro tenerlo en rojo — un test que falla por
+         algo que no importa deja de mirarse, y entonces tampoco avisa el dia
+         que falla por algo que si. */
+      chk(txt.indexOf('⚠️') >= 0 && /no me apareci|no lleg|sin confirmar|no (se )?confirm/i.test(txt),
+          'y el mensaje avisa que el pedido NO quedo confirmado: "' +
+          (txt.split('\n').filter(function (l) { return l.indexOf('⚠️') >= 0; })[0] || '(no lo dice)').slice(0, 70) + '"');
+      chk(txt.indexOf('Prueba Envio') >= 0 && txt.indexOf('1122334455') >= 0 && txt.indexOf('Lote 123') >= 0 && txt.indexOf('Pago: Efectivo') >= 0,
           'con los datos para cargarlo a mano: nombre, telefono, direccion y pago');
       chk(txt.indexOf('(ref. ' + refDe(coid) + ')') >= 0, 'y la referencia (' + refDe(coid) + '), la que cruza con Log Pedidos');
       chk(!sinEmoji4(txt).length, 'tambien sin emoji de 4 bytes (' + (sinEmoji4(txt).join(' ') || 'ninguno') + ')');
@@ -400,6 +417,119 @@ async function main() {
       chk(est.some((e) => /fallback/.test(e.cls)), 'a los 25 s ofrecio mandarlo por WhatsApp');
       chk(!!nav && nav.t >= 27000, 'no se fue sin que nadie tocara nada antes de la confirmacion (' + (nav ? nav.t : '-') + ' ms)');
       chk(!!nav && textoWA(nav.url).indexOf('no llegó a confirmar') < 0, 'y al confirmar sigue solo, con el mensaje NORMAL');
+    }
+
+    // ── cierre ───────────────────────────────────────────────────────────
+    /* EL PEDIDO TERMINA EN LA TIENDA (28/9/2026).
+
+       Tadeo, en la reunion de equipo: "no es real y profesional que el pedido
+       de un cliente lo dirija al WhatsApp". El salto se saca prendiendo
+       `CIERRE_EN_LA_TIENDA` en app.js, que hoy esta APAGADO a proposito: sin
+       un template de UTILITY aprobado por Meta, la ventana de 24 h no se abre
+       y el cliente deja de recibir su confirmacion en silencio.
+
+       Este escenario lo prende desde la pagina —es una global— y mide el
+       camino que va a quedar. Asi el dia que se cambie esa linea no se publica
+       codigo sin medir: ya esta medido. */
+    if (correr('cierre')) {
+      console.log('\n' + DIM + '== el pedido se cierra en la tienda, sin ir a WhatsApp ==' + RST);
+      modo = 'cierre';
+
+      /* EL CONTROL, PRIMERO. Sin esto, "no fue a WhatsApp" no prueba nada:
+         probaria que el pedido no salio. Con el interruptor apagado el mismo
+         pedido TIENE que irse a wa.me, que es como se comporta hoy. */
+      await prepararPedido();
+      await enviarYMirar(9000);
+      chk(navs.length === 1, 'CONTROL con el interruptor apagado: el pedido se va a WhatsApp como hasta hoy (' + navs.length + ' veces)');
+
+      await prepararPedido();
+      /* Pago por transferencia: es el unico caso que muestra el alias, que es
+         lo que el cliente necesita para poder pagar. */
+      await ev(`(function(){ var t = document.querySelector('input[name="pago"][value="Transferencia"]');
+        if (t) { t.checked = true; t.dispatchEvent(new Event('change', {bubbles:true})); } })()`);
+      await dormir(500);
+      await ev('CIERRE_EN_LA_TIENDA = true');
+      await enviarYMirar(9000);
+
+      chk(navs.length === 0, 'NO manda al cliente a WhatsApp (' + navs.length + ' navegaciones)');
+
+      const pant = JSON.parse(await ev(`(function(){
+        var ov = document.getElementById('send-overlay');
+        var card = ov ? ov.querySelector('.send-card') : null;
+        var filas = [].map.call(document.querySelectorAll('#send-done-datos > div'), function (f) {
+          return { k: (f.querySelector('dt')||{}).textContent || '', v: (f.querySelector('dd')||{}).textContent || '' };
+        });
+        var pago = document.getElementById('send-done-pago');
+        var btn = document.getElementById('send-done-btn');
+        var r = btn ? btn.getBoundingClientRect() : null;
+        return JSON.stringify({
+          activo: !!(ov && ov.classList.contains('active')),
+          done: !!(card && card.classList.contains('done')),
+          titulo: (document.getElementById('send-title')||{}).textContent || '',
+          filas: filas,
+          aliasVisible: !!(pago && !pago.hidden),
+          aliasTxt: pago ? pago.textContent : '',
+          copiar: !!(pago && pago.querySelector('button')),
+          btnH: r ? Math.round(r.height) : 0,
+          desborda: document.documentElement.scrollWidth > window.innerWidth,
+          carrito: typeof cartCount === 'function' ? cartCount() : -1
+        }); })()`));
+
+      chk(pant.activo && pant.done, 'queda la pantalla de pedido cerrado (activo=' + pant.activo + ', done=' + pant.done + ')');
+      /* El backend simulado contesta n:"999". Ese numero lo devuelve el ERP de
+         verdad y hasta hoy la tienda lo tiraba a la basura. */
+      chk(/999/.test(pant.titulo), 'con el N de pedido que devolvio el ERP: "' + pant.titulo + '"');
+
+      const k = pant.filas.map((f) => f.k).join(',');
+      chk(/Entrega/.test(k) && /Direccion|Dirección/.test(k) && /Pedido/.test(k) && /Total/.test(k),
+          'con entrega, direccion, detalle y total (' + k + ')');
+      const dir = (pant.filas.find((f) => /Direcc/.test(f.k)) || {}).v || '';
+      chk(/Lote 123/.test(dir), 'la direccion es la que cargo el cliente: "' + dir + '"');
+      const det = (pant.filas.find((f) => /Pedido/.test(f.k)) || {}).v || '';
+      chk(det.length > 3 && !/[*_\u2022]/.test(det), 'el detalle va limpio, sin el formato de WhatsApp: "' + det.slice(0, 48) + '"');
+      const tot = (pant.filas.find((f) => /Total/.test(f.k)) || {}).v || '';
+      chk(/\$/.test(tot) && /Transferencia/.test(tot), 'el total dice cuanto y como paga: "' + tot + '"');
+
+      chk(pant.aliasVisible && pant.copiar, 'por transferencia muestra el alias con boton de copiar');
+      chk(pant.btnH >= 44, 'el boton "Listo" se puede tocar (' + pant.btnH + 'px)');
+      chk(!pant.desborda, 'sin desbordar a lo ancho');
+      /* El carrito se vacia igual que siempre: el pedido ya entro al ERP. Lo
+         que NO pasa es que se cierre la pantalla sola. */
+      chk(pant.carrito === 0, 'el carrito quedo vacio (' + pant.carrito + ')');
+
+      await dormir(2200);
+      const sigue = await ev("!!document.getElementById('send-overlay').classList.contains('active')");
+      chk(sigue, 'y la pantalla NO se cierra sola: el cliente la lee el tiempo que quiera');
+
+      await ev("document.getElementById('send-done-btn').click()");
+      await dormir(600);
+      const cerro = JSON.parse(await ev(`(function(){ var ov = document.getElementById('send-overlay');
+        var c = ov ? ov.querySelector('.send-card') : null;
+        return JSON.stringify({ activo: !!(ov && ov.classList.contains('active')),
+                                done: !!(c && c.classList.contains('done')),
+                                scroll: !!document.documentElement.style.overflow || true }); })()`));
+      chk(!cerro.activo && !cerro.done, 'al tocar "Listo" se cierra y no deja el estado puesto');
+
+      /* SI LA PANTALLA REVIENTA, EL PEDIDO SE CIERRA IGUAL.
+         Salio de reinyectar un bug en `_datosDelCierre`: al tirar, el cliente
+         quedaba mirando "Registrando tu pedido..." para siempre con el pedido
+         YA entrado al ERP — y el paso siguiente de cualquier persona es
+         mandarlo de nuevo. Se rompe la funcion a proposito desde la pagina,
+         que es la unica forma de ejercitar el catch. */
+      await prepararPedido();
+      await ev('CIERRE_EN_LA_TIENDA = true; setSendLoaderDone = function(){ throw new Error("pantalla rota"); };');
+      /* Se mira la PELICULA y no la foto del final: la pantalla de respaldo se
+         cierra sola a los 2,6 s, asi que a los 9 s ya no esta. Leer el estado
+         final diria "no mostro nada" sobre algo que se mostro bien — la misma
+         trampa que el cartel de "Sin stock" que duraba 2 segundos. */
+      const estRoto = await enviarYMirar(9000);
+      const vistoOk = estRoto.find((e) => /success/.test(e.cls) && !/Registrando/.test(e.tit));
+      const roto = JSON.parse(await ev(`(function(){
+        return JSON.stringify({ carrito: typeof cartCount === 'function' ? cartCount() : -1,
+          enviando: typeof _enviando !== 'undefined' ? _enviando : null }); })()`));
+      chk(!!vistoOk, 'con la pantalla rota igual dice que el pedido entro: "' + (vistoOk ? vistoOk.tit : '(nunca lo dijo)') + '"');
+      chk(roto.carrito === 0, 'y el carrito se vacia igual (' + roto.carrito + '): si no, el cliente lo manda de nuevo');
+      chk(roto.enviando === false, 'y la tienda queda lista para otro pedido');
     }
 
     chk(noBackend > 0, 'todos los POST al backend los contesto el simulador (' + noBackend + '): ninguno llego a la planilla');

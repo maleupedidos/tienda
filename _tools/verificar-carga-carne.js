@@ -225,6 +225,35 @@ async function main() {
     // ── 1. Sin copia: las piezas y el stock salen juntos ────────────────
     console.log('\n' + DIM + '== 1. Primera visita, con el backend tardando 2 s en cada consulta ==' + RST);
     await abrir({ piezas: AHORA, demoraPiezas: 2000, demoraStock: 2000 });
+
+    /* LA VIDRIERA ESTA COMPLETA DESDE EL ARRANQUE (28/9/2026).
+
+       Tadeo abrio maleu.com.ar en incognito y saco una captura: estaban Pack
+       Pizzas, Pizzas Individuales, Wraps y Empanadas — faltaba Carnes, que va
+       tercera. "Deberian aparecer las 9 categorias al instante."
+
+       No era que la carne no estuviera: aparecia a los ~5 s, cuando contesta
+       `piezas_full`. Y la copia de la ultima visita tapaba el problema JUSTO
+       para el que ya habia entrado, o sea para todos menos el cliente nuevo.
+
+       Esto se mide ANTES de que el backend conteste (tarda 2 s a proposito) y
+       sin copia: es exactamente la primera pantalla de alguien que entra por
+       primera vez. */
+    const alInstante = JSON.parse(await ev(`JSON.stringify({
+      cats: [].map.call(document.querySelectorAll('.cat-tile-name'), function (e) { return e.textContent.trim(); }),
+      carnes: [].some.call(document.querySelectorAll('.carne-card'), function (c) { return /Cargando/i.test(c.textContent); }),
+      cuentaCarnes: (function () {
+        var t = [].filter.call(document.querySelectorAll('.cat-tile'), function (b) {
+          return /Carnes/.test((b.querySelector('.cat-tile-name') || {}).textContent || ''); })[0];
+        return t ? ((t.querySelector('.cat-tile-count') || {}).textContent || '').trim() : '(no esta)'; })(),
+      piezasFin: !!(window.__t && window.__t.piezasFin) })`));
+    chk(!alInstante.piezasFin, 'CONTROL: se mide antes de que el backend conteste (si ya contesto, lo de abajo no prueba nada)');
+    chk(alInstante.cats.indexOf('Carnes') >= 0,
+        'Carnes esta en la vidriera desde el primer instante (' + alInstante.cats.join(' | ') + ')');
+    chk(alInstante.carnes, 'y los cortes dicen que las piezas vienen en camino, sin afirmar que no hay');
+    /* Un numero inventado es tan mentira como un "Sin stock" inventado. */
+    chk(alInstante.cuentaCarnes === '', 'el tile de Carnes no dice "Sin stock" ni un numero que no sabe: "' + alInstante.cuentaCarnes + '"');
+
     chk(await esperar('!!window.__t.carne', 8000), 'la carne aparece');
     let t = await ev('window.__t');
     chk(t.piezasIni != null && t.stockIni != null && Math.abs(t.piezasIni - t.stockIni) < 300,
@@ -279,7 +308,18 @@ async function main() {
     console.log('\n' + DIM + '== 5. Copias que NO se usan ==' + RST);
     await abrir({ copia: JSON.stringify({ t: Date.now() - 13 * 3600e3, m: COPIA }), piezas: AHORA, demoraPiezas: 4000, demoraStock: 300 });
     await dormir(800);
-    chk(!(await ev('!!document.querySelector(".carne-card")')), 'una de hace 13 horas no se dibuja: se espera la de ahora');
+    /* Lo que importa es que NO SE USEN LAS PIEZAS VIEJAS: son piezas que ya no
+       existen, y ofrecerlas es prometer carne que no hay. Desde el 28/9/2026
+       la card si se dibuja mientras el inventario de ahora viene en camino
+       —Tadeo: "deberian aparecer las 9 categorias al instante"—, asi que medir
+       "no hay card" seria medir la regla vieja. Se mide que no haya ni una
+       pieza para tocar y que la card lo diga. */
+    const venc = JSON.parse(await ev(`JSON.stringify({
+      cards: document.querySelectorAll('.carne-card').length,
+      filas: document.querySelectorAll('.carne-card .pz-fila').length,
+      cargando: /Cargando/i.test((document.querySelector('.carne-card') || {}).textContent || '') })`));
+    chk(venc.filas === 0, 'una copia de hace 13 horas no se usa: cero piezas para elegir (' + venc.filas + ')');
+    chk(venc.cards === 0 || venc.cargando, 'y si la card esta, dice que las piezas vienen en camino');
     chk(await esperar('!!window.__t.carne', 6000), 'y cuando llega, aparece');
     await abrir({ copia: '{esto no es json', piezas: AHORA, demoraPiezas: 1500, demoraStock: 300 });
     chk(await esperar('!!window.__t.carne', 6000), 'una rota se ignora sin romper nada, y la carne aparece igual');
