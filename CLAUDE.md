@@ -2194,6 +2194,218 @@ mismo color**, contando el que cierra la vuelta — que es lo que la guarda viej
 > chances de que salga. Pintarlos distinto para que "no se toquen dos iguales" sería
 > disimular la probabilidad real.
 
+## El modal de zona pregunta dónde vivís (28/9/2026)
+
+Tadeo, mirando la tienda en incógnito: *"que el modal de zona sea uno común y
+corriente como cualquier otra tienda… arranquemos a comportarnos como una
+tienda online seria y profesional"*. La referencia que puso fue Frizata.
+
+> [!important] El problema no era el diseño, era la pregunta
+> Hasta ese día el modal preguntaba **"¿sos de Estancias, de Pilar o de un
+> club?"** — que es cómo organizamos **nosotros** el reparto. Alguien de El
+> Lucero no tiene por qué saber que eso es "Tortugas y alrededores" y que lo
+> atiende Marcos. Eran hasta **cuatro pantallas** antes de ver un precio.
+>
+> Ahora se pregunta lo único que el cliente sabe: **dónde vive**. Escribe su
+> barrio y la tienda resuelve zona, zona de Pilar y sub barrio sola.
+
+| | |
+|---|---|
+| Un campo | *"Ingresá tu dirección de envío"*, con la lista abajo |
+| Cada barrio dice | **cuándo entregamos ahí**, y nada más |
+| Al final, siempre | **"No encuentro mi barrio"** → lo escribe y lo entrega Maleu |
+
+**La lista se DERIVA, no se escribe** (`_dirDestinos`): sale de
+`BARRIOS_PILAR_MODAL` —la misma que arma el desplegable del formulario— más los
+barrios que llegan de la planilla (`action=vendedores`). Una lista escrita a
+mano sería una segunda copia esperando a quedar vieja el día que entre un
+vendedor. Busca **sin acentos** ("rio" encuentra "Río") y los que **empiezan**
+con lo tipeado van primero.
+
+> [!note] El envío se sacó de la lista, y lo pidió Tadeo al verlo
+> La primera versión decía también cuánto salía el envío de cada barrio:
+> *"sacaría el envío, sólo mostraría los días de entrega"*. Tiene razón — el
+> precio ahí es ruido, y es lo primero que lee alguien que todavía no miró un
+> producto. El envío se ve igual en el carrito.
+
+> [!danger] Clubes salió del modal: la tienda es 100% consumidor final
+> Tadeo: *"para todo lo que sea B2B, Clubes, etc, deberíamos hacer nosotros el
+> autopedido… que nos pidan las cantidades por WhatsApp"*.
+>
+> **La zona sigue viva y se entra por link directo** (`setZone('clubes')`): son
+> **87 pedidos desde el 21/2/2026**, ~2 por semana, y a nadie que tenga el link
+> guardado se le rompe la tienda. Lo que dejó de existir es la puerta pública.
+
+**Una dirección que no reconocemos** cae en "Otra zona de Pilar": la entrega
+Maleu, **miércoles y viernes** (decisión de Tadeo), y lo que el cliente escribió
+queda cargado en `f-direccion`. No se lo deja comprar a ciegas: sin zona
+conocida no sabríamos ni el envío ni el día.
+
+### El agujero de plata que encontró una red al reescribirla
+
+> [!danger] `_pilarBarrioIsRed()` no reconocía un barrio de vendedor hasta que contestaba la planilla
+> Sus dos defensas miran el **barrio** ("El Lucero") y eso sólo se sabe cuando
+> llega `action=vendedores`; la lista del código tiene las **zonas** ("Tortugas
+> y alrededores"). En esos segundos —o si la consulta falla— un cliente de El
+> Lucero pasaba por *"no es de vendedor"*: se le ofrecía carne y miércoles, y
+> **su pedido se iba a la hoja Pilar en vez de a la Red**. La venta de Marcos,
+> cobrada por nosotros.
+>
+> **Defensa 3: la zona canónica** (`selectedPilarZona`), que la escribe el
+> buscador y no depende de ninguna respuesta del servidor.
+>
+> Lo encontró `verificar-entrada.js` al reescribirlo: ahí el backend está
+> simulado y `barrioToVendedor` llega vacío, así que **el agujero se ve
+> siempre**. En producción pasaba de a ratos, que es peor — se nota una vez cada
+> tanto y no se puede reproducir.
+
+### Cosas del mismo día
+
+- **El barrio no se pregunta dos veces.** Lo elegido en el buscador queda
+  marcado en el formulario. Pero **marcarlo no puede borrar el sub barrio**: el
+  `change` de `f-barrio-privado` repuebla la lista y pisaba lo que
+  `loadClientData` acababa de devolver. Se dispara sólo si el valor cambia. Lo
+  agarró `verificar-datos-cliente.js`.
+- **La tienda dice que te reconoce** (`_pintarSaludo`): *"Hola, Tadeo. Te lo
+  llevamos a Champagnat Alto, Lote 289"*. Los datos volvían solos desde el
+  11/9, pero en silencio. Lee **los campos**, no el `localStorage`, así dice lo
+  que se va a mandar de verdad. Nació de una pregunta de Tadeo sobre cuentas de
+  usuario — ver abajo.
+- **`?nuevo=1` SÓLO EN LOCAL** para probar como cliente nuevo. En producción
+  sería un link que le borra a cualquiera su nombre, su teléfono y su último
+  pedido con sólo abrirlo.
+
+> [!tip] Las redes entran por el buscador, como una persona
+> Las ~20 que elegían zona tocando `#loc-step-zone .loc-btn` ahora escriben el
+> barrio en `#dir-input` y tocan `#dir-lista .dir-op`. Si aparece otra que
+> falla por esto, el helper `elegirBarrio(txt)` ya está en zonas, entrada,
+> reserva y sugerencias: copialo.
+
+## Cuando no alcanza el stock, se explica y se ofrece salida (28/9/2026)
+
+Tadeo puso **15 Pizza Margarita para hoy**, el freezer tenía 7, la tienda
+recortó a 7 y lo avisó con un toast que *"duró menos de un segundo"*.
+
+**El recorte está bien** —no se puede vender lo que no hay— **lo que estaba mal
+era cómo se contaba**. El cliente ve 7 donde puso 15 y no sabe si se equivocó él.
+
+Ahora es una hoja que **se queda hasta que el cliente decide**, dice qué
+producto y cuánto quedó, y si hay una fecha sin tope ofrece **"Pedir todo al
+viernes"** — que repone las cantidades originales y mueve la entrega.
+
+> [!important] Adentro había una venta
+> El que quiere 15 pizzas las quiere igual. Es la diferencia entre vender 7 y
+> vender 15, y antes se perdía en un cartel de un segundo.
+
+> [!warning] Un cartel que se queda TAPA la pantalla, y los tests lo sufren
+> Al publicarlo, `sin-stock` pasó a 10 rojos y `vigilante` a 10 — ninguno de la
+> tienda: los tests seguían tocando botones sin cerrar el cartel. Si una red
+> empieza a fallar con "nada tapa el botón" o se queda en "Enviando tu
+> pedido…", fijate si quedó abierto `#recorte-modal` y cerralo con
+> `recorteNo()`.
+
+## El pedido se cierra en la tienda — APAGADO hasta que Meta apruebe (28/9/2026)
+
+Reunión de equipo del 28/9. Tadeo: *"no es real y profesional que el pedido de
+un cliente lo dirija al WhatsApp… debemos tener una tienda online común y
+corriente como cualquiera. Que el pedido termine en la tienda"*.
+
+**La pantalla está hecha, medida y publicada, con `CIERRE_EN_LA_TIENDA = false`.**
+Con el interruptor apagado la tienda se comporta exactamente como antes.
+
+> [!danger] Prenderlo solo rompe DOS cosas
+> **1. El aviso a nosotros.** El ERP no avisaba de un pedido nuevo por ningún
+> lado: **el aviso era el mensaje del cliente**. Backend lo resolvió el mismo
+> día (`_avisarPedidoTienda_`).
+>
+> **2. La confirmación al cliente.** `_confirmarPedidoWA_` manda un **mensaje de
+> sesión**, legítimo sólo porque el cliente acaba de escribirnos al saltar a
+> `wa.me`. Sin ese salto la ventana de 24 h de Meta no se abre y el mensaje se
+> rechaza **en silencio** — el mismo modo de falla que cuando murió el workspace
+> de n8n el 31/8. Hace falta un **template de UTILITY aprobado**, y ninguno de
+> los 50 de la cuenta sirve: son todos de MARKETING.
+
+**Al 28/9/2026 el template está en Pending en Meta.** Lo cargó Tadeo a mano en
+wati.io —crear templates **no se puede por API**, probado endpoint por endpoint
+el 1/9— y tarda de minutos a 48 h.
+
+**Cuando aprueben, son cinco minutos:**
+
+1. Backend carga el nombre en `Config_Maleu` → `CONFIRMACION_WA_TEMPLATE`
+   (vacío = mensaje de sesión, o sea lo de hoy). Tarda hasta 5 min en tomar.
+2. Pedido de prueba con el número de Tadeo, **y lo mira en el celular**: un
+   template puede salir "OK" y llegar mal formateado, y eso no lo ve ningún
+   código.
+3. Recién ahí: `CIERRE_EN_LA_TIENDA = true` **y el botón verde deja de ser de
+   WhatsApp** — `.whatsapp-btn` hoy dice "Pedir por WhatsApp" con el logo, y
+   pasa a "Confirmar mi pedido" en el naranja de la marca.
+
+**El template quedó con parámetros CON NOMBRE** (WATI no usa posicionales):
+`nombre`, `pedido`, `entrega`, `direccion`, `detalle`, `total`. Sin emojis, sin
+el footer "Powered by wati.io", y `detalle` lleva **la lista completa** de
+productos —no el conteo— porque sin el salto a WhatsApp el chat del cliente
+tiene la confirmación y nada más.
+
+> [!important] Si armar la pantalla falla, el pedido se cierra igual
+> Lo encontró reinyectar un bug: cuando `_datosDelCierre` tira, el cliente
+> quedaba en *"Registrando tu pedido…"* **para siempre**, con el pedido ya
+> entrado al ERP — y lo que hace cualquiera ahí es mandarlo de nuevo. Es la
+> misma regla que el backend aplica en tres lugares: nada de lo que viene
+> después de guardar puede tumbar el pedido.
+
+## Los avisos del ERP suenan en el celular (28/9/2026)
+
+`Config_Maleu` → `AVISOS_CANAL` pasó de **`mail`** a **`telegram`**, con el bot
+`@maleu_pedidos_bot` escribiendo en el grupo **"Pedidos Maleu"**
+(`AVISOS_TG_CHAT = -5556938423`, Tadeo + Lucas + el bot).
+
+**Por qué importaba hacerlo antes de sacar el WhatsApp:** el aviso de pedido
+nuevo es lo único que va a avisar que entró una venta, y salía a dos casillas de
+mail. El comentario del propio bloque de AVISOS lo dice desde el 2/9: las
+alertas de este ERP siempre murieron porque escribían **en un lugar al que hay
+que ir, y nadie fue**. Un viernes a las nueve de la noche un mail no levanta la
+cabeza de nadie.
+
+**El mail no se perdió como respaldo:** `_avisar_` manda por mail igual si
+Telegram estaba elegido y falló. Por eso NO se dejó en `ambos` — dos avisos de
+cada cosa terminan en que no se mira ninguno.
+
+> [!warning] `api.telegram.org` no se alcanza desde el sandbox de Claude Code
+> `curl` da 000. Para hablar con la API de Telegram desde acá hay que usar el
+> navegador de Playwright, que sí sale. Así se verificaron `getMe`,
+> `getUpdates` (para sacar el chat id) y un `sendMessage` de prueba.
+
+> [!note] El bot no contesta nada, y está bien
+> No es conversacional: es un emisor. Tadeo escribió `/start` en el grupo, no
+> pasó nada y pensó que había fallado. Ese `/start` existe sólo para que el
+> `getUpdates` deje ver el chat id — el bot está en modo privacidad
+> (`can_read_all_group_messages: false`), que es lo correcto porque sólo tiene
+> que escribir.
+
+## Las cuentas de cliente se descartaron por ahora (28/9/2026)
+
+Tadeo: *"un usuario no puede cada vez que entra a maleu.com.ar tener que
+completar sus datos cada vez que entra, es un perno"*, y preguntó por el
+registro con mail de Frizata (verificado: **email + contraseña**).
+
+> [!important] Lo sentía roto porque estaba probando en incógnito
+> Los datos vuelven solos desde el 11/9 y lo cubren 36 chequeos en verde. Lo que
+> faltaba era **decirlo** → `_pintarSaludo`. Es el mismo patrón que con la carne
+> esa misma tarde: **la forma de probar mostraba un problema que el cliente no
+> tiene.**
+
+**Se decidió NO hacer cuentas.** Mail + contraseña trae registro, verificación,
+"olvidé mi contraseña" y guardar contraseñas de forma segura — un backend de
+autenticación para mantener — y sobre todo es **fricción justo antes de
+comprar**, cuando se le acababan de sacar cuatro pantallas a la entrada.
+
+**Si algún día se hace, va por teléfono con código por WhatsApp**, no por mail:
+el ERP indexa por teléfono, WATI habla por teléfono y el pedido entra por
+teléfono. Y de paso cierra el agujero ya anotado — un endpoint que devuelva
+pedidos por teléfono sería una puerta a los datos de cualquiera; **el código es
+lo que lo cierra**. Tadeo: *"coincido que por ahora armar cuentas a clientes es
+un quilombo y todavía no es urgente"*.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en
