@@ -6814,6 +6814,86 @@ function _ponerSiVacio(id, val) {
    LEE LOS CAMPOS, NO EL `localStorage`. Asi dice lo que se va a mandar de
    verdad: si el cliente corrige el lote, el saludo lo sigue. Guardar aparte
    una copia de la direccion seria una segunda version del mismo dato. */
+/* ═══════════════ EL CARRUSEL DEL HERO (28/9/2026) ═══════════════
+
+   Tadeo: "ya podes meter dos, tres fotos para que la gente ya mire". Hasta
+   hoy el hero era texto sobre fondo crema; una tienda abre mostrando lo que
+   vende.
+
+   Las tres fotos son del catalogo a proposito: se bajaban igual para las
+   cards, asi que la primera pantalla no pesa un byte mas. Cuando haya fotos
+   de ambiente sacadas para esto, se cambian los tres `src` del index y ya.
+
+   El giro solo se detiene apenas el cliente toca un punto o desliza: si
+   eligio una foto, moversela sola es pelearle. */
+var heroI = 0;
+var heroTimer = null;
+var HERO_MS = 5200;
+
+function heroFotos() { return [].slice.call(document.querySelectorAll('#hero-fotos .hero-foto')); }
+
+function heroIr(i, porElCliente) {
+  var fotos = heroFotos();
+  if (!fotos.length) return;
+  heroI = ((i % fotos.length) + fotos.length) % fotos.length;
+  fotos.forEach(function (f, n) { f.classList.toggle('is-activa', n === heroI); });
+  var puntos = [].slice.call(document.querySelectorAll('#hero-puntos .hero-punto'));
+  puntos.forEach(function (b, n) { b.setAttribute('aria-selected', n === heroI ? 'true' : 'false'); });
+  if (porElCliente) heroParar();
+}
+
+function heroParar() {
+  if (heroTimer) { clearInterval(heroTimer); heroTimer = null; }
+}
+
+function _heroArrancar() {
+  var cont = $id('hero-carrusel');
+  var fotos = heroFotos();
+  if (!cont || fotos.length < 2) return;
+
+  /* Los puntos se dibujan desde el JS y no en el HTML: si manana son dos
+     fotos o cuatro, la cantidad sale sola de las fotos que haya. Es lo mismo
+     que aprendio la ruleta cuando paso de 5 premios a 6. */
+  var cajaPuntos = $id('hero-puntos');
+  if (cajaPuntos) {
+    cajaPuntos.innerHTML = '';
+    fotos.forEach(function (f, n) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'hero-punto';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', n === 0 ? 'true' : 'false');
+      b.setAttribute('aria-label', 'Foto ' + (n + 1) + ' de ' + fotos.length);
+      b.addEventListener('click', function () { heroIr(n, true); });
+      cajaPuntos.appendChild(b);
+    });
+  }
+
+  /* Deslizar con el dedo. Solo cuenta si el movimiento es mas horizontal que
+     vertical: si no, el que scrollea la pagina con el dedo encima de la foto
+     cambia de slide sin querer. */
+  var x0 = null, y0 = null;
+  cont.addEventListener('touchstart', function (e) {
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+  }, { passive: true });
+  cont.addEventListener('touchend', function (e) {
+    if (x0 === null) return;
+    var dx = e.changedTouches[0].clientX - x0;
+    var dy = e.changedTouches[0].clientY - y0;
+    if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) heroIr(heroI + (dx < 0 ? 1 : -1), true);
+    x0 = null; y0 = null;
+  }, { passive: true });
+
+  var quieto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (quieto) return;
+  heroTimer = setInterval(function () {
+    /* Con la pestania de fondo no se gasta nada, y sobre todo no se acumulan
+       vueltas para cuando el cliente vuelva. */
+    if (document.hidden) return;
+    heroIr(heroI + 1);
+  }, HERO_MS);
+}
+
 function _pintarSaludo() {
   var box = $id('form-saludo');
   if (!box) return;
@@ -7213,6 +7293,7 @@ if (savedZone && ZONAS[savedZone]) {
 }
 
 loadClientData();
+_heroArrancar();
 $id('cart-badge').style.display = 'none';
 fetchStock();
 fetchVendedores();

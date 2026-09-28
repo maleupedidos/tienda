@@ -2422,6 +2422,92 @@ pedidos por teléfono sería una puerta a los datos de cualquiera; **el código 
 lo que lo cierra**. Tadeo: *"coincido que por ahora armar cuentas a clientes es
 un quilombo y todavía no es urgente"*.
 
+## El hero es una foto, no un slogan sobre fondo crema (28/9/2026)
+
+Tadeo: *"vos tenés el acceso al Google Drive, así que ya podés meter dos, tres
+fotos para que la gente ya mire"*. Era lo único que quedaba de la deuda del
+23/9 —*"que la tienda no parezca hecha con IA"*—, y ahí quedó anotado el
+porqué: **Momento abre con una foto a sangre y nosotros abríamos con texto.**
+
+| | antes | ahora |
+|---|---|---|
+| la primera pantalla | un slogan centrado sobre crema | **tres fotos**, con el título encima |
+| el alto | el del texto | 250px en el celular, 400 en la compu — **del CSS** |
+| el CLS de la carga | 0 | **0**, medido cinco corridas seguidas |
+| peso extra | — | **ninguno** |
+
+> [!important] Las tres fotos son del catálogo, y por eso no pesan
+> `sorrentinos-cordero-v2.jpg`, `pizza-margarita-cocida.jpg` y
+> `categoria-carnes.jpg` **ya se bajaban** para las cards y los tiles de abajo.
+> El navegador las pide una sola vez, así que la primera pantalla no cuesta un
+> byte más. Ya están selladas en `IMG_V` por la misma razón.
+>
+> **No son fotos de ambiente pensadas para un hero**, y se nota: son fotos de
+> producto recortadas. Cuando Tadeo saque las de verdad se cambian los tres
+> `src` de `index.html` y listo — el resto no se toca.
+
+> [!danger] El alto sale del CSS. Si alguien se lo saca, vuelve el salto
+> Una foto sin lugar reservado empuja media página cuando termina de bajar:
+> es el modo de falla número uno de un hero con imágenes, y Google lo
+> penaliza. Acá el contenedor tiene alto propio y las fotos van
+> `position:absolute` adentro, así que **no participan del flujo**.
+>
+> Medido con el control puesto: **sin el alto fijo el contenedor queda en 0px**
+> y el test corta. Y contra la tienda de antes del carrusel el CLS también da
+> 0 — o sea que el 0 de ahora no es del instrumento, es de la página.
+
+**Los puntos nacieron mal y los agarró una red vieja.** Medían 24px y la regla
+de este repo son **44** (la misma que se le aplicó a los controles del combo el
+13/9/2026). Lo marcó `verificar-layout.js` sin que nadie lo tocara: *"mide 24px
+de alto (mínimo 44)"*. Hoy el botón mide 44x44 y el punto que se ve, 7px.
+Por eso el título subió a `bottom: 3.2rem`: con el área tocable de 44px desde
+el borde, el dedo que apuntaba a la última línea le caía al carrusel.
+
+**La cantidad de puntos sale de las fotos que haya** (`_heroArrancar` los
+dibuja), no de un número escrito a mano. Es la lección de la ruleta cuando
+pasó de 5 premios a 6: el día que sean dos fotos o cuatro, no hay que acordarse
+de nada.
+
+**Deja de girar solo apenas el cliente elige** una foto o desliza. Si eligió
+una, moversela sola es pelearle. Y con la pestaña de fondo no gira, para que
+no se acumulen vueltas para cuando vuelva.
+
+**El deslizar sólo cuenta si el movimiento es más horizontal que vertical.**
+Sin eso, el que scrollea la página con el dedo encima de la foto cambia de
+slide sin querer.
+
+**El velo no es decorativo.** Es un degradado oscuro de abajo hacia arriba
+entre la foto y el título: sin él, el blanco se pierde en la foto de la pizza,
+que tiene el fondo claro. El `span` de «Pensá en Maleu» va en `#FFC9A6` —el
+naranja de marca aclarado— porque el `--orange` puro no se lee sobre foto.
+**Eso no es tocar el color de marca**: el `--orange` no se movió.
+
+### La red: `node _tools/verificar-hero.js [ancho]`
+
+**25 chequeos**, verdes a 390 y 1440px: el alto propio (y que no cambie al
+esconder las fotos), el CLS de la carga, que las tres fotos existan —un 404
+deja el hero negro— con su `alt` y recortándose en vez de deformarse, un punto
+por foto de 44px, el orden de las capas velo/título, la vuelta en los dos
+sentidos, que el giro se detenga cuando el cliente elige, y cero POST.
+
+Probada en la dirección contraria con **ocho bugs reinyectados de a uno**
+—sacar el alto, una foto 404, una sin `alt`, sin velo, sin sombra, que siga
+girando, `object-fit:fill`, y los puntos escritos a mano— y **los ocho se
+agarran**. Se corre con `RAIZ=<carpeta>`.
+
+> [!warning] `Fetch.enable` cuelga el test entero, y no lo dice
+> La primera versión cortaba los POST con `Fetch.enable`, que **pausa cada
+> request esperando que el test la conteste**. Sin manejar sus eventos, la
+> página no carga nada y el test mide un hero vacío dando verde. Se cortan con
+> `Network.setBlockedURLs`, que además saca Analytics y Meta — si no, cada
+> corrida le suma visitas falsas a las métricas reales.
+
+> [!note] El CLS midió 0,005 dos veces y 0 las cinco siguientes
+> Las dos primeras lecturas fueron con el disco frío. No se repitió en cinco
+> corridas seguidas y está veinte veces por debajo del umbral de Google, así
+> que se deja medido y anotado en vez de perseguido. **Si alguna vez sube de
+> 0,01, el test ahora dice qué elemento se movió** — no sólo cuánto.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en
