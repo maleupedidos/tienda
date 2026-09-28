@@ -3733,6 +3733,10 @@ function applyZone() {
   renderCatalog();
   renderCatNav();
   updateCatNavTop();
+  /* El hero, DESPUES de renderCatalog: mira getActiveProducts() para saber si
+     esta zona vende carne, y eso solo esta bien una vez que el catalogo es el
+     de la zona nueva. */
+  if (typeof _heroSegunZona === 'function') _heroSegunZona();
   // Botón "Ver los combos" del hero: solo si la zona tiene combos (Estancias y Pilar).
   var combosCta = $id('hero-combos-cta');
   if (combosCta) combosCta.style.display = getActiveCombos().length ? '' : 'none';
@@ -6876,7 +6880,51 @@ var heroI = 0;
 var heroTimer = null;
 var HERO_MS = 5200;
 
-function heroFotos() { return [].slice.call(document.querySelectorAll('#hero-fotos .hero-foto')); }
+/* Solo las que van en ESTA zona. `hidden` lo pone _heroSegunZona(). */
+function heroFotos() {
+  return [].slice.call(document.querySelectorAll('#hero-fotos .hero-foto')).filter(function (f) { return !f.hidden; });
+}
+
+/* LA PRIMERA PANTALLA NO MUESTRA LO QUE ESA ZONA NO VENDE (28/9/2026)
+
+   Lo encontro el simulador: un cliente de El Lucero —barrio de vendedor, que
+   va a la hoja Red y no lleva carne— entraba y lo primero que veia era una
+   foto de carne a la parrilla a toda pantalla. Abajo no hay categoria Carnes
+   ni un solo corte.
+
+   Se cuelga de applyZone(), que es por donde pasan TODAS las puertas: la zona
+   guardada, el modal y el cambio de barrio. Colgarlo de los call sites es
+   como se rompieron los botones el 10/9 y el 10% el 23/9.
+
+   Si quedara una sola foto no seria un carrusel: en ese caso se muestra igual
+   la que se saltearia, porque una primera pantalla vacia es peor que una foto
+   de algo que no vendemos ahi. Hoy no puede pasar (son tres y solo una es de
+   carne), pero el dia que sean dos el codigo no miente. */
+function _heroSegunZona() {
+  var todas = [].slice.call(document.querySelectorAll('#hero-fotos .hero-foto'));
+  if (!todas.length) return;
+
+  var vendeCarne = true;
+  try {
+    vendeCarne = getActiveProducts().some(function (p) { return esPorPeso(p); });
+  } catch (e) { /* si todavia no hay catalogo, no se esconde nada */ }
+
+  var sobran = todas.filter(function (f) { return f.dataset.cat === 'carne' && !vendeCarne; });
+  if (sobran.length >= todas.length) sobran = [];
+
+  todas.forEach(function (f) { f.hidden = sobran.indexOf(f) >= 0; });
+
+  /* Si la activa quedo escondida, se pasa a la primera que si va — si no, el
+     hero se queda en negro. */
+  var visibles = heroFotos();
+  if (!visibles.length) return;
+  if (!visibles.some(function (f) { return f.classList.contains('is-activa'); })) {
+    todas.forEach(function (f) { f.classList.remove('is-activa'); });
+    visibles[0].classList.add('is-activa');
+  }
+  heroI = Math.max(0, visibles.findIndex(function (f) { return f.classList.contains('is-activa'); }));
+  _heroPuntos();
+}
 
 function heroIr(i, porElCliente) {
   var fotos = heroFotos();
@@ -6886,6 +6934,27 @@ function heroIr(i, porElCliente) {
   var puntos = [].slice.call(document.querySelectorAll('#hero-puntos .hero-punto'));
   puntos.forEach(function (b, n) { b.setAttribute('aria-selected', n === heroI ? 'true' : 'false'); });
   if (porElCliente) heroParar();
+}
+
+/* Los puntos se redibujan cada vez que cambia CUANTAS fotos hay: al arrancar
+   y al cambiar de zona. Con uno solo no se dibuja ninguno — un punto suelto no
+   dice nada y ademas invitaria a tocar algo que no hace nada. */
+function _heroPuntos() {
+  var caja = $id('hero-puntos');
+  if (!caja) return;
+  var fotos = heroFotos();
+  caja.innerHTML = '';
+  if (fotos.length < 2) return;
+  fotos.forEach(function (f, n) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'hero-punto';
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', f.classList.contains('is-activa') ? 'true' : 'false');
+    b.setAttribute('aria-label', 'Foto ' + (n + 1) + ' de ' + fotos.length);
+    b.addEventListener('click', function () { heroIr(n, true); });
+    caja.appendChild(b);
+  });
 }
 
 function heroParar() {
@@ -6900,20 +6969,7 @@ function _heroArrancar() {
   /* Los puntos se dibujan desde el JS y no en el HTML: si manana son dos
      fotos o cuatro, la cantidad sale sola de las fotos que haya. Es lo mismo
      que aprendio la ruleta cuando paso de 5 premios a 6. */
-  var cajaPuntos = $id('hero-puntos');
-  if (cajaPuntos) {
-    cajaPuntos.innerHTML = '';
-    fotos.forEach(function (f, n) {
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'hero-punto';
-      b.setAttribute('role', 'tab');
-      b.setAttribute('aria-selected', n === 0 ? 'true' : 'false');
-      b.setAttribute('aria-label', 'Foto ' + (n + 1) + ' de ' + fotos.length);
-      b.addEventListener('click', function () { heroIr(n, true); });
-      cajaPuntos.appendChild(b);
-    });
-  }
+  _heroPuntos();
 
   /* Deslizar con el dedo. Solo cuenta si el movimiento es mas horizontal que
      vertical: si no, el que scrollea la pagina con el dedo encima de la foto

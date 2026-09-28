@@ -260,8 +260,12 @@
            class="hero-foto is-activa" fetchpriority="high" decoding="async">
       <img src="img/pizza-margarita-cocida.jpg?v=1e619ec7" alt="Pizza margarita de Maleu recién horneada"
            class="hero-foto" loading="lazy" decoding="async">
+      <!-- data-cat="carne": en los barrios con vendedor la carne NO se
+           vende (van a la hoja Red, que no tiene columnas de kilos), asi que
+           esta foto se saltea. Verla en la primera pantalla y despues no
+           encontrar la categoria es prometer algo que no esta. -->
       <img src="img/categoria-carnes.jpg?v=7b69d315" alt="Cortes de carne a la parrilla, cortados en la tabla"
-           class="hero-foto" loading="lazy" decoding="async">
+           class="hero-foto" data-cat="carne" loading="lazy" decoding="async">
     </div>
     <div class="hero-velo"></div>
     <h1>Hoy no tenés que<br>pensar qué cocinar.<br><span>Pensá en Maleu.</span></h1>

@@ -2508,6 +2508,48 @@ agarran**. Se corre con `RAIZ=<carpeta>`.
 > que se deja medido y anotado en vez de perseguido. **Si alguna vez sube de
 > 0,01, el test ahora dice qué elemento se movió** — no sólo cuánto.
 
+### La primera pantalla no muestra lo que esa zona no vende (28/9/2026)
+
+Segundo hallazgo del simulador, entrando como un cliente de **El Lucero**: lo
+primero que veía era el hero con una **foto de carne a la parrilla a toda
+pantalla**, y abajo no hay categoría Carnes ni un solo corte. Los barrios con
+vendedor van a la hoja `Red`, que **no tiene columnas de kilos**, así que la
+carne no se les vende — está bien que no esté, lo que estaba mal era
+prometerla arriba.
+
+Lo resuelve `_heroSegunZona()`, colgado de **`applyZone()`** —por donde pasan
+todas las puertas: la zona guardada, el modal y el cambio de barrio—, no de los
+call sites. La foto se declara en el HTML con `data-cat="carne"`; para sumar
+otra regla mañana alcanza con marcarla.
+
+Tres cosas que el test comprueba y que son fáciles de romper:
+
+- **si la activa queda escondida, se pasa a la primera que sí va** — si no, el
+  hero se queda en negro;
+- **los puntos se recalculan** (2 fotos → 2 puntos), y con una sola no se
+  dibuja ninguno: un punto suelto invita a tocar algo que no hace nada;
+- **si se escondieran todas, no se esconde ninguna.** Hoy no puede pasar, pero
+  el día que sean dos fotos el código no miente.
+
+`verificar-hero.js` pasó a **32 chequeos**, con el control puesto: antes de
+exigir que la foto de carne no esté, exige que esa zona efectivamente no venda
+carne.
+
+> [!danger] La tienda salta 0,38 al cargar en la computadora — y NO es del hero
+> Medido el 28/9/2026 a 1440px: **una de cada tres cargas** da un CLS de
+> **0,3801**, casi cuatro veces el 0,1 que pide Google. El culpable es
+> **`#cat-tiles-section`**, que pasa de 120 a **334px** de alto cuando se llena
+> la grilla de categorías y empuja todo lo de abajo.
+>
+> **Es preexistente**: medido contra HEAD sin el carrusel, pasa igual (1 de 3
+> en las dos ramas). Por eso el chequeo duro de `verificar-hero.js` es sobre
+> **los elementos del hero**, y el total de la página sale como **aviso** con el
+> culpable nombrado. Un rojo que aparece una de cada tres corridas por algo que
+> no es del hero deja de mirarse, y entonces no sirve para nada.
+>
+> **Queda abierto**: se arregla reservando el alto de la grilla de categorías
+> antes de llenarla, igual que se hizo con el carrusel. Es un trabajo aparte.
+
 ## La tienda vendía entregas cuyo reparto ya había salido (28/9/2026)
 
 Tadeo pidió que el simulador de experiencia de cliente lo hiciera yo, *"de

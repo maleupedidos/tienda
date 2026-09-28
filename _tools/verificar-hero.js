@@ -207,11 +207,35 @@ async function esperarPagina(puerto) {
     console.log('\n' + G + '== El CLS de la carga ==' + F);
     const cls = await ev('window.__cls');
     chk(typeof cls === 'number', 'se pudo medir el CLS (si no, lo de abajo no mide nada)');
-    chk(typeof cls === 'number' && cls <= 0.1, 'el hero con fotos no empuja la pagina',
-        'CLS ' + (typeof cls === 'number' ? cls.toFixed(4) : '?') + ' — Google pide <= 0,1');
-    if (cls > 0.0005) {
-      const quien = await ev('JSON.stringify((window.__culpables||[]).slice(0,6))');
-      console.log(G + '     quien se movio: ' + quien + F);
+
+    /* EL CHEQUEO DURO ES SOBRE EL HERO, que es lo que esta red mide.
+       El total de la pagina se reporta aparte: a 1440px salta 0,38 una de
+       cada tres cargas por culpa de #cat-tiles-section, que crece de 120 a
+       334px cuando se llena la grilla de categorias. Medido contra HEAD el
+       28/9/2026: pasa IGUAL sin el carrusel, o sea que es preexistente y no
+       es del hero. Convertirlo en un rojo de esta red seria un test que
+       falla una de cada tres veces por algo que no es suyo, y un test
+       intermitente deja de mirarse. */
+    const delHero = await ev(`(function () {
+      var c = window.__culpables || [];
+      var suma = 0;
+      c.forEach(function (x) {
+        if (/hero/i.test(x.q || '')) suma += x.v;
+      });
+      return +suma.toFixed(5);
+    })()`);
+    chk(typeof delHero === 'number' && delHero <= 0.02,
+        'ningun elemento del hero empuja la pagina', 'CLS del hero ' + delHero);
+
+    if (typeof cls === 'number' && cls > 0.1) {
+      const quien = await ev(`(function () {
+        var c = (window.__culpables || []).slice(0, 4);
+        return c.map(function (x) { return x.q + ' ' + x.de + ' -> ' + x.a; }).join(' · ');
+      })()`);
+      console.log('  ' + '\x1b[33m' + 'aviso' + F + ' la PAGINA salta CLS ' + cls.toFixed(4) +
+                  ' (Google pide <= 0,1) — no es del hero');
+      console.log(G + '        ' + quien + F);
+      console.log(G + '        preexistente y ~1 de cada 3 cargas a 1440px. Ver el CLAUDE.md.' + F);
     }
 
     /* ─────────── 3. las fotos ─────────── */
@@ -295,7 +319,37 @@ async function esperarPagina(puerto) {
     const corriendo = await ev('heroTimer !== null');
     chk(corriendo === false, 'cuando el cliente elige una foto, deja de girar solo');
 
-    /* ─────────── 7. nada hacia afuera ─────────── */
+    /* ─────────── 7. la primera pantalla no miente sobre la zona ─────────── */
+    console.log('\n' + G + '== El hero no muestra lo que esa zona no vende ==' + F);
+    const antesDeCambiar = await ev('heroFotos().length');
+    chk(antesDeCambiar >= 2, 'en Estancias se ven todas las fotos', antesDeCambiar + ' fotos');
+
+    /* Un barrio con vendedor: va a la hoja Red, que no tiene columnas de
+       kilos, asi que la carne no se vende ahi. La foto de carne a la parrilla
+       en la primera pantalla seria prometer algo que abajo no esta. */
+    const tras = await ev(`(function () {
+      if (typeof setZone !== 'function') return null;
+      currentZone = 'pilar';
+      selectedPilarZona = 'Tortugas y alrededores';
+      try { applyZone(); } catch (e) { return 'reventó: ' + e.message; }
+      var todas = [].slice.call(document.querySelectorAll('#hero-fotos .hero-foto'));
+      return JSON.stringify({
+        visibles: todas.filter(function (f) { return !f.hidden; }).length,
+        carneVisible: todas.some(function (f) { return f.dataset.cat === 'carne' && !f.hidden; }),
+        activaVisible: todas.some(function (f) { return f.classList.contains('is-activa') && !f.hidden; }),
+        puntos: document.querySelectorAll('#hero-puntos .hero-punto').length,
+        vendeCarne: getActiveProducts().some(function (p) { return esPorPeso(p); })
+      });
+    })()`);
+    const t = (tras && tras[0] === '{') ? JSON.parse(tras) : null;
+    chk(!!t, 'se pudo cambiar a un barrio con vendedor', t ? '' : String(tras));
+    chk(t && t.vendeCarne === false, 'CONTROL: en ese barrio la tienda no vende carne');
+    chk(t && t.carneVisible === false, 'y la foto de carne NO se muestra en el hero');
+    chk(t && t.visibles >= 1, 'quedan fotos: el hero no se queda en negro', t && t.visibles + ' fotos');
+    chk(t && t.activaVisible === true, 'la foto que se ve es una de las que quedan');
+    chk(t && t.puntos === t.visibles, 'los puntos se recalculan', t && t.puntos + ' puntos');
+
+    /* ─────────── 8. nada hacia afuera ─────────── */
     console.log('\n' + G + '== Nada salio hacia afuera ==' + F);
     const p = await ev('JSON.stringify(window.__posts || [])');
     const lista = JSON.parse(p || '[]');
