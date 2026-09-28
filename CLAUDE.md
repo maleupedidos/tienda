@@ -2508,6 +2508,86 @@ agarran**. Se corre con `RAIZ=<carpeta>`.
 > que se deja medido y anotado en vez de perseguido. **Si alguna vez sube de
 > 0,01, el test ahora dice qué elemento se movió** — no sólo cuánto.
 
+## La tienda vendía entregas cuyo reparto ya había salido (28/9/2026)
+
+Tadeo pidió que el simulador de experiencia de cliente lo hiciera yo, *"de
+arriba hacia abajo, siempre poniéndote en el lugar del cliente"*. Esto salió en
+el primer recorrido, a las 19:16 de un lunes, y es el agujero más caro que
+tenía la tienda.
+
+> [!danger] "HOY · 18 a 19 hs", ofrecido a las 19:16
+> En Estancias el reparto del lunes es de 18 a 19. A las 19:16 la tienda
+> seguía ofreciendo ese día, dejaba armar el carrito, elegirlo en el
+> calendario y llegar al botón. El cliente paga por transferencia y espera
+> una entrega que **no puede ocurrir**.
+
+**El filtro existía y no hacía lo que decía.** En `_getNextDeliveryDatesGrouped`
+había una línea comentada *"si la entrega ya terminó, saltar"*, que llamaba a
+`_deliveryEndMs(iso)` — y esa función devolvía **la medianoche del día**. O sea
+que preguntaba por el fin del *día*, no por el fin de la *entrega*: nunca sacaba
+«hoy».
+
+Es el patrón que este repo ya conoce: **el nombre de la función decía una cosa y
+el cuerpo hacía otra**, y el call site le creyó al nombre. Por eso ahora se llama
+**`_cierreDelDiaMs`**.
+
+**Cuánto duraba el agujero**, con los horarios de Estancias (lun 18-19,
+mié/vie/sáb 19-21, dom 11-13) aceptando siempre hasta medianoche:
+
+| día | ventana en la que se vendía lo imposible |
+|---|---|
+| lunes | 6 h |
+| miércoles · viernes · sábado | 5 h cada uno |
+| **domingo** | **13 h** — se reparte a las 11 y se seguía vendiendo todo el día |
+| | **~34 horas por semana** |
+
+> [!important] El corte es el INICIO de la franja, no el final
+> Si el reparto sale a las 18, pedir a las 18:30 tampoco llega. Lo que importa
+> no es cuándo termina el recorrido, es **cuándo deja de poder entrar un pedido
+> a ese recorrido**. Si algún día se arma más tarde, se corre el número; el
+> lugar es uno solo.
+
+> [!warning] Sin hora declarada no se inventa ninguna
+> Pilar y Clubes dicen **"A coordinar"**, así que ahí se mantiene el día entero
+> —lo que hacía antes— y el test lo comprueba. **Queda abierto para Tadeo:** si
+> esas zonas tienen una hora de salida, se escribe en `horarios` y el corte sale
+> solo. Mientras no se sepa, un miércoles a las 23 hs Pilar sigue aceptando
+> «hoy».
+
+### La red: `node _tools/verificar-horario.js`
+
+**17 chequeos.** Mueve el reloj a los dos lados del corte de cada día —lunes
+17:30 y 19:16 y 23:40, domingo 10:00 y 13:30, miércoles 18:45 y 21:30— porque
+**es la única forma de probarlo: un martes al mediodía todo da verde igual**.
+Contra la tienda de antes da **5 rojos**.
+
+> [!danger] Los cuatro chequeos que importaban pasaban sin medir nada
+> La primera versión preguntaba por `d.label === 'HOY'`, y el campo se llama
+> `dayShort`. O sea que «¿está hoy?» daba **false siempre**, y los cuatro
+> chequeos de *"NO se ofrece hoy"* pasaban con el bug puesto. **Los delataron
+> los tres casos que esperaban lo contrario** — los que exigían que hoy SÍ
+> estuviera. Sin esos tres, la red habría quedado verde sobre un agujero
+> abierto.
+>
+> Es el mismo control que ya está escrito para `verificar-paneles`: antes de
+> exigir que algo no aparezca, hay que exigir que en el caso anterior aparezca.
+
+> [!note] Y de paso, dos trampas de este repo que volvieron a morder
+> · **Backticks adentro de un template string**: rompieron el test con
+>   `SyntaxError`. Ya estaba anotado; el comentario los tenía.
+> · El `console.warn` de `fetchStock` se traga los fallos del refresco. Se vio
+>   uno en producción durante el recorrido y **no es grave** —el stock anterior
+>   queda y el siguiente refresco lo arregla—, pero conviene saber que existe:
+>   medido en la sesión viva, `stockMap` tenía los 29 productos.
+
+### Lo demás del primer recorrido
+
+| | |
+|---|---|
+| el modal decía *"te mostramos los días y **el envío** de tu barrio"* | Tadeo sacó el envío de la lista el 28/9: el subtítulo prometía algo que ya no está. Ahora dice sólo los días |
+| un **🥩** en el resumen del formulario | del rediseño del 23/9 quedó ese suelto. Es de 4 bytes, de los que se ven rotos en uno de cada cuatro celulares |
+| la chapita **"Nuevo"** en los cortes de carne | lleva puesta desde el 10/9. **Es de Tadeo decidir cuándo sacarla**: es la única chapita que hace que un cliente frecuente vuelva a mirar el catálogo, y gastada deja de significar algo |
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

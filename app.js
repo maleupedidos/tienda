@@ -1957,13 +1957,55 @@ function _deliveryStartMs(iso) {
    Se usa para decidir si la fecha calendario ya pasó. Mantenemos la fecha
    disponible hasta las 23:59 hs AR de ese mismo día, aunque la ventana de
    entrega haya terminado a las 21hs. */
-function _deliveryEndMs(iso) {
+/* ¿DESDE QUE MOMENTO YA NO TIENE SENTIDO PEDIR PARA ESE DIA? (28/9/2026)
+
+   HASTA HOY DEVOLVIA LA MEDIANOCHE, o sea el fin del dia entero, y el unico
+   lugar que la usa la leia creyendo otra cosa: su comentario dice "si la
+   entrega ya termino, saltar". O sea que el filtro existia y NO SACABA "HOY"
+   NUNCA.
+
+   Lo encontro el simulador de experiencia de cliente: un lunes a las 19:16,
+   con el reparto de Estancias de 18 a 19 ya hecho, la tienda ofrecia
+   "HOY - 18 a 19 hs" y dejaba armar el pedido entero. El cliente paga por
+   transferencia y espera una entrega que no existe.
+
+   Cuanto duraba el agujero, en Estancias: lunes 18-19, miercoles/viernes/
+   sabado 19-21 y domingo 11-13, aceptando siempre hasta medianoche, son
+   ~34 horas por semana ofreciendo lo imposible. El peor es el domingo: se
+   reparte a las 11 y se seguia vendiendo trece horas mas.
+
+   EL CORTE ES EL INICIO DE LA FRANJA, NO EL FINAL. Si el reparto sale a las
+   18, pedir a las 18:30 tampoco llega: lo que importa no es cuando termina el
+   recorrido, es cuando deja de poder entrar un pedido a ese recorrido.
+
+   SIN HORA DECLARADA NO SE INVENTA NINGUNA. Pilar y Clubes dicen "A
+   coordinar", asi que ahi se mantiene el dia entero, que es lo que hacia
+   antes. Si esas zonas tienen una hora de salida, se escribe en `horarios`
+   y esto la toma solo.
+
+   Se renombro a proposito: el nombre viejo decia "fin de la entrega" y hacia
+   otra cosa, y eso es exactamente lo que dejo pasar el bug. */
+function _cierreDelDiaMs(iso, zone) {
   if (!iso || iso === 'any') return null;
   var parts = iso.split('-'); if (parts.length !== 3) return null;
-  // 00:00 AR del día siguiente = 03:00 UTC del día siguiente
-  var date = new Date(Date.UTC(+parts[0], +parts[1] - 1, +parts[2] + 1));
-  date.setUTCHours(3, 0, 0, 0);
-  return date.getTime();
+  var y = +parts[0], mes = +parts[1] - 1, dia = +parts[2];
+
+  var DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  var z = ZONAS[zone || currentZone];
+  var franja = (z && z.horarios && z.horarios[DIAS[new Date(Date.UTC(y, mes, dia)).getUTCDay()]]) || '';
+  var hora = franja.match(/(\d{1,2})/);
+
+  var d;
+  if (hora) {
+    /* AR es UTC-3: las 18 de alla son las 21 UTC. Si la suma pasa de 24, el
+       Date avanza de dia solo, que es lo correcto. */
+    d = new Date(Date.UTC(y, mes, dia));
+    d.setUTCHours(+hora[1] + 3, 0, 0, 0);
+  } else {
+    d = new Date(Date.UTC(y, mes, dia + 1));
+    d.setUTCHours(3, 0, 0, 0);
+  }
+  return d.getTime();
 }
 let _formVisible = false;
 const PROD_MAP = {}; PRODUCTOS.forEach(p => PROD_MAP[p.id] = p);
@@ -3263,9 +3305,10 @@ function _getNextDeliveryDatesGrouped(zone) {
     if (validDays.indexOf(dayName) === -1 && !isExtra) continue;
     // Bloqueado por feriado
     if (feriados.indexOf(iso) !== -1) continue;
-    // Si la entrega ya terminó (pasó el horario de cierre), saltar
-    var endMs = _deliveryEndMs(iso);
-    if (endMs && endMs <= Date.now()) continue;
+    /* Si el reparto de ese dia ya salio, no se ofrece: prometer una entrega
+       que no puede pasar es peor que no ofrecerla. Ver _cierreDelDiaMs. */
+    var cierre = _cierreDelDiaMs(iso, zone);
+    if (cierre && cierre <= Date.now()) continue;
     var inThisWeek = d.getTime() < nextMonday.getTime();
     // Filtro de restricción Pilar: solo Vie en thisWeek (las extras también pasan)
     if (pilarRestricted && inThisWeek && dayName !== 'Viernes' && !isExtra) continue;
@@ -4857,13 +4900,16 @@ function updateFormSummary() {
      porque es lo que se compro: "1,240 kg" dice mas que "1 pieza". */
   html += piezasAgrupadas().map(function (g) {
     if (g.reserva) {
-      return '<div class="summary-line"><span>\ud83e\udd69 ' + g.nombre + ' <strong>reserva de ' + _kgCorto(g.kg) + '</strong>' +
+      /* Sin el emoji de carne: el 23/9/2026 se sacaron los emojis que hacian
+         de icono en toda la tienda y este quedo. Ademas es de 4 bytes, los
+         que se ven rotos en uno de cada cuatro celulares. */
+      return '<div class="summary-line"><span>' + g.nombre + ' <strong>reserva de ' + _kgCorto(g.kg) + '</strong>' +
         ' <span class="summary-pz-detalle">a confirmar cuando llegue</span></span><span>aprox. ' + ars(g.total) + '</span></div>';
     }
     var detalle = g.lista.length > 1
       ? ' <span class="summary-pz-detalle">(' + g.lista.map(function (x) { return kgTexto(x.kg); }).join(' + ') + ')</span>'
       : '';
-    return '<div class="summary-line"><span>\ud83e\udd69 ' + g.nombre + ' <strong>' + kgTexto(g.kg) + '</strong>' +
+    return '<div class="summary-line"><span>' + g.nombre + ' <strong>' + kgTexto(g.kg) + '</strong>' +
       detalle + '</span><span>' + ars(g.total) + '</span></div>';
   }).join('');
 
