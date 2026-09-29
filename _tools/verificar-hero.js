@@ -227,6 +227,13 @@ async function esperarPagina(puerto) {
     chk(typeof delHero === 'number' && delHero <= 0.02,
         'ningun elemento del hero empuja la pagina', 'CLS del hero ' + delHero);
 
+    /* La pagina entera tambien se mide, y el 0,1 es el limite de Google.
+       Hasta el 28/9/2026 esto daba 0,3801 una de cada tres cargas a 1440px
+       —la grilla de categorias llegaba vacia al primer pintado y empujaba
+       media pagina al llenarse—. Se arreglo reservandole el alto. */
+    chk(typeof cls === 'number' && cls <= 0.1, 'ni la pagina entera',
+        'CLS total ' + (typeof cls === 'number' ? cls.toFixed(4) : '?') + ' — Google pide <= 0,1');
+
     if (typeof cls === 'number' && cls > 0.1) {
       const quien = await ev(`(function () {
         var c = (window.__culpables || []).slice(0, 4);
@@ -237,6 +244,54 @@ async function esperarPagina(puerto) {
       console.log(G + '        ' + quien + F);
       console.log(G + '        preexistente y ~1 de cada 3 cargas a 1440px. Ver el CLAUDE.md.' + F);
     }
+
+    /* ─────────── 2b. la grilla de categorias reserva su lugar ───────────
+       Se mide la RESERVA y no el salto: el salto (CLS 0,38 a 1440px) salia
+       una de cada tres corridas y despues no volvio en ocho seguidas, asi
+       que con el no se puede demostrar nada. La causa si es medible:
+       #cat-tiles llega VACIA al primer pintado y crece al llenarla. */
+    console.log('\n' + G + '== La grilla de categorias tiene su lugar reservado ==' + F);
+    const reserva = await ev(`(function () {
+      var real = document.getElementById('cat-tiles');
+      var filas = real ? getComputedStyle(real).getPropertyValue('--cat-filas').trim() : '';
+
+      /* El hueco se mide en una grilla vacia con LAS MISMAS filas que la de
+         verdad: si no, se compara el alto por defecto contra otra cantidad de
+         categorias y la diferencia no dice nada. */
+      var d = document.createElement('div');
+      d.className = 'cat-tiles';
+      d.style.visibility = 'hidden';
+      if (filas) d.style.setProperty('--cat-filas', filas);
+      document.body.appendChild(d);
+      var vacia = Math.round(d.getBoundingClientRect().height);
+      d.remove();
+
+      /* Y aparte, lo que reserva SIN que el JS haya corrido todavia: es el
+         estado del primer pintado, el unico momento en que el salto ocurre. */
+      var d2 = document.createElement('div');
+      d2.className = 'cat-tiles';
+      d2.style.visibility = 'hidden';
+      document.body.appendChild(d2);
+      var porDefecto = Math.round(d2.getBoundingClientRect().height);
+      d2.remove();
+
+      return JSON.stringify({
+        vacia: vacia,
+        porDefecto: porDefecto,
+        llena: real ? Math.round(real.getBoundingClientRect().height) : -1,
+        filas: filas,
+        ancho: window.innerWidth
+      });
+    })()`);
+    const rv = JSON.parse(reserva || '{}');
+    chk(rv.llena > 100, 'CONTROL: la grilla llena tiene alto', rv.llena + 'px');
+    chk(rv.porDefecto > 100,
+        'antes de que corra el JS la grilla YA ocupa lugar — llenarla no empuja nada',
+        'sin el arreglo daba 0px; ahora ' + rv.porDefecto + 'px');
+    chk(Math.abs(rv.vacia - rv.llena) <= 24,
+        'y con las filas de esta zona reserva justo lo que ocupa',
+        'vacia ' + rv.vacia + 'px contra llena ' + rv.llena + 'px');
+    chk(rv.filas !== '', 'el JS le dice al CSS cuantas filas son', '--cat-filas: ' + rv.filas);
 
     /* ─────────── 3. las fotos ─────────── */
     console.log('\n' + G + '== Las tres fotos ==' + F);

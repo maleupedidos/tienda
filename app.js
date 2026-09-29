@@ -131,14 +131,14 @@ const PRODUCTOS = [
      guardarlos.
      Se abren esos canales el dia que RED_PRODUCT_COLS y CLUBES_PRODUCT_COLS
      conozcan los ids 30-34. Lo vigila `node _tools/verificar-pedido.js`. */
-  { id:30, abbr:"CCo", cat:"Carnes", porPeso:true, sinVendedor:true, nuevo:true, zonas:["estancias","pilar"], nombre:"Colita de Cuadril", desc:"Jugosa al horno y perfecta a la parrilla. Un corte que nunca falla.", precio:25000, img:"carne-colita.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
+  { id:30, abbr:"CCo", cat:"Carnes", porPeso:true, sinVendedor:true, zonas:["estancias","pilar"], nombre:"Colita de Cuadril", desc:"Jugosa al horno y perfecta a la parrilla. Un corte que nunca falla.", precio:25000, img:"carne-colita.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
   /* La entrana viene de a DOS tiras por paquete (dato de Lucas, 10/9/2026), y
      el peso que se ve es el del paquete entero. Sin decirlo, el que elige una
      de 1,163 kg no sabe si le llega una tira grande o dos. */
-  { id:31, abbr:"CEn", cat:"Carnes", porPeso:true, sinVendedor:true, nuevo:true, zonas:["estancias","pilar"], nombre:"Entra\u00f1a",           desc:"Fina, sabrosa y r\u00e1pida. La que sale primero de la parrilla.",          precio:34000, img:"carne-entrana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo","2 tiras por paquete"] },
-  { id:32, abbr:"CLo", cat:"Carnes", porPeso:true, sinVendedor:true, nuevo:true, zonas:["estancias","pilar"], nombre:"Lomo sin cord\u00f3n",  desc:"El corte m\u00e1s tierno, limpio y sin cord\u00f3n. Para la ocasi\u00f3n que se merece el mejor.", precio:33000, img:"carne-lomo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Sin cord\u00f3n"] },
-  { id:33, abbr:"CPi", cat:"Carnes", porPeso:true, sinVendedor:true, nuevo:true, zonas:["estancias","pilar"], nombre:"Pica\u00f1a",            desc:"El corte brasilero que se volvi\u00f3 infaltable. Con su tapa de grasa.",  precio:26000, img:"carne-picana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
-  { id:34, abbr:"CVa", cat:"Carnes", porPeso:true, sinVendedor:true, nuevo:true, zonas:["estancias","pilar"], nombre:"Vac\u00edo",             desc:"El cl\u00e1sico del asado argentino. Paciencia y fuego bajo.",            precio:26000, img:"carne-vacio.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
+  { id:31, abbr:"CEn", cat:"Carnes", porPeso:true, sinVendedor:true, zonas:["estancias","pilar"], nombre:"Entra\u00f1a",           desc:"Fina, sabrosa y r\u00e1pida. La que sale primero de la parrilla.",          precio:34000, img:"carne-entrana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo","2 tiras por paquete"] },
+  { id:32, abbr:"CLo", cat:"Carnes", porPeso:true, sinVendedor:true, zonas:["estancias","pilar"], nombre:"Lomo sin cord\u00f3n",  desc:"El corte m\u00e1s tierno, limpio y sin cord\u00f3n. Para la ocasi\u00f3n que se merece el mejor.", precio:33000, img:"carne-lomo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Sin cord\u00f3n"] },
+  { id:33, abbr:"CPi", cat:"Carnes", porPeso:true, sinVendedor:true, zonas:["estancias","pilar"], nombre:"Pica\u00f1a",            desc:"El corte brasilero que se volvi\u00f3 infaltable. Con su tapa de grasa.",  precio:26000, img:"carne-picana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
+  { id:34, abbr:"CVa", cat:"Carnes", porPeso:true, sinVendedor:true, zonas:["estancias","pilar"], nombre:"Vac\u00edo",             desc:"El cl\u00e1sico del asado argentino. Paciencia y fuego bajo.",            precio:26000, img:"carne-vacio.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
 ];
 
 const CATEGORIAS = [
@@ -6451,6 +6451,10 @@ function renderCatTiles() {
   var n = tiles.length;
   var cols = n <= 4 ? Math.max(n, 1) : (n % 4 === 0 ? 4 : n % 3 === 0 ? 3 : n % 5 === 0 ? 5 : 4);
   cont.style.setProperty('--cat-cols', cols);
+  /* Las filas, para que el CSS sepa cuanto alto reservar. Sin esto la grilla
+     llega vacia al primer pintado y al llenarse empuja media pagina: 0,38 de
+     CLS a 1440px, una de cada tres cargas (28/9/2026). */
+  cont.style.setProperty('--cat-filas', Math.max(1, Math.ceil(n / cols)));
   tiles = tiles.join('');
   // Sin categorias no queda el titulo "Categorias" solo, colgado de la nada.
   const sec = $id('cat-tiles-section');

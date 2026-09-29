@@ -2508,6 +2508,53 @@ agarran**. Se corre con `RAIZ=<carpeta>`.
 > que se deja medido y anotado en vez de perseguido. **Si alguna vez sube de
 > 0,01, el test ahora dice qué elemento se movió** — no sólo cuánto.
 
+### La grilla de categorías reserva su lugar (28/9/2026)
+
+El `index.html` trae `#cat-tiles` **vacía** y el JS la llena. Entre el primer
+pintado y ese momento la sección crece y empuja todo lo de abajo. Medido a
+1440px: **de 0px a 456px**.
+
+Se resuelve con `min-height`, igual que el carrusel del hero el mismo día. El
+alto sale de **`--cat-filas`**, que pone `renderCatTiles()`; el CSS reserva
+**3 filas por defecto**, que es el caso de Estancias (9 categorías de a 3) y de
+donde sale la mayor parte de las visitas.
+
+> [!danger] El salto NO se puede medir de forma repetible — la reserva sí
+> El CLS de 0,3801 a 1440px aparecía **una de cada tres corridas**, y después
+> **no volvió a salir en ocho seguidas**, ni con el arreglo ni sin él. Con una
+> medición así no se puede demostrar nada: da verde igual estando roto.
+>
+> Lo que sí es determinista es preguntar por **la causa**: ¿la grilla vacía ya
+> ocupa su lugar? Medido con una `.cat-tiles` vacía creada al vuelo:
+>
+> | | sin el arreglo | con el arreglo |
+> |---|---|---|
+> | grilla vacía, 1440px | **0 px** | **692 px** |
+> | grilla vacía, 390px | **0 px** | **206 px** |
+> | y con las filas de la zona | — | **igual que la llena, al píxel** |
+>
+> **La lección es sobre qué se mide.** Un síntoma intermitente no sirve de
+> chequeo; la condición que lo causa, sí. Es lo mismo que ya está escrito para
+> el píxel de Meta: cuando el instrumento no puede repetir el resultado, hay
+> que mirar el dato desde otro ángulo.
+
+> [!note] Queda un achique de 236px en los barrios con vendedor
+> Son 8 categorías (sin carne) y el CSS reserva 3 filas hasta que el JS dice
+> que son 2. Antes ese caso saltaba 456px, así que mejora, pero no es cero. Se
+> arreglaría sabiendo la zona antes de que corra el JS, y eso no se puede: la
+> zona vive en `localStorage` y la lee el JS.
+
+### La chapita "Nuevo" salió de los cinco cortes de carne (28/9/2026)
+
+La tenían desde el **10/9**: dieciocho días. Decisión de Tadeo al verlo en el
+recorrido: *"sacala"*. Es la única chapita que hace que un cliente que ya
+compró vuelva a mirar el catálogo — gastada deja de significar algo.
+
+> [!note] Los 4 sorrentinos premium siguen con `nuevoEn:["estancias"]`
+> Se abrieron a esa zona el **mismo 10/9**, así que tienen la misma edad. Se
+> dejaron a propósito: no se preguntó por ellos. Si la regla es «a las dos
+> semanas deja de ser nuevo», les toca también.
+
 ### La primera pantalla no muestra lo que esa zona no vende (28/9/2026)
 
 Segundo hallazgo del simulador, entrando como un cliente de **El Lucero**: lo

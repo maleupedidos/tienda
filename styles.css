@@ -1131,6 +1131,18 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
              -webkit-overflow-scrolling:touch; scrollbar-width:none; }
 .cat-tiles::-webkit-scrollbar { display:none; }
 
+/* EL LUGAR SE RESERVA ANTES DE LLENARLA (28/9/2026).
+
+   El HTML trae #cat-tiles VACIA y el JS la llena. Entre el primer pintado y
+   ese momento la seccion crece, y todo lo de abajo se va para abajo: medido
+   a 1440px, una de cada tres cargas daba un CLS de 0,3801 — casi cuatro
+   veces el 0,1 que pide Google, que lo usa para rankear.
+
+   Con `min-height` el hueco ya esta ahi desde el primer pintado, asi que
+   llenarla no mueve nada. Es lo mismo que se hizo con el carrusel del hero
+   el mismo dia. */
+.cat-tiles { min-height:calc(190px + 1rem); }
+
 /* font-family explicita: es un <button>, y los botones NO heredan la fuente
    del body. Sin esto "3 opciones" salia en Arial — es la misma razon por la
    que cada boton de la tienda la declara a mano. */
@@ -1163,8 +1175,14 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
 @media (min-width:900px) {
   .cat-tiles-section { padding:2.4rem 1rem 1rem; max-width:1100px; margin:0 auto; }
   .section-title { font-size:2rem; }
+  /* En la compu son varias filas, asi que el alto sale de `--cat-filas`, que
+     pone renderCatTiles(). El 3 de reserva NO es un numero al azar: es el
+     caso de Estancias —9 categorias de a 3—, que es de donde sale la mayor
+     parte de las visitas. Si una zona termina con otra cantidad, el JS
+     corrige la variable y el hueco se ajusta. */
   .cat-tiles { display:grid; grid-template-columns:repeat(var(--cat-cols, 4), 1fr);
-               overflow:visible; margin:0; padding:0; gap:1rem; }
+               overflow:visible; margin:0; padding:0; gap:1rem;
+               min-height:calc(220px * var(--cat-filas, 3) + 1rem * (var(--cat-filas, 3) - 1)); }
   .cat-tile { width:auto; height:220px; }
 }
 
