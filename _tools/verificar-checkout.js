@@ -161,7 +161,12 @@ const LLENAR_DATOS = '(function () {' +
   'var sub = document.getElementById("f-barrio");' +
   'if (sub) { var o = Array.prototype.filter.call(sub.options, function (x) { return x.value && !x.hidden; })[0];' +
   '  if (o) { sub.value = o.value; sub.dispatchEvent(new Event("change", { bubbles: true })); } }' +
-  'set("f-lote", "289"); set("f-telefono", "1155667788");' +
+  'set("f-lote", "289");' +
+  /* El telefono va por sus dos campos desde el 29/9: el hidden lo arma
+     _telArmar y escribirlo directo no dispararia la validacion. */
+  'var a = document.getElementById("f-tel-area"); if (a) { a.value = "11"; _telAreaCambio(); }' +
+  'var tn = document.getElementById("f-tel-num");' +
+  'if (tn) { tn.value = "55667788"; tn.dispatchEvent(new Event("input", { bubbles: true })); }' +
 '})()';
 
 /* Los campos obligatorios de Estancias, con como se vacian. El bloque D los
@@ -170,7 +175,11 @@ const OBLIGATORIOS = [
   { campo: 'f-nombre', paso: 1, err: 'err-nombre' },
   { campo: 'f-barrio-privado', paso: 1, err: 'err-barrio-privado' },
   { campo: 'f-lote', paso: 1, err: 'err-lote' },
-  { campo: 'f-telefono', paso: 1, err: 'err-telefono' },
+  /* El campo que el cliente toca, no el hidden: desde el 29/9 el hidden lo
+     arma _telArmar desde los dos visibles, asi que vaciarlo no prueba nada.
+     Con el hidden, este chequeo daba paso=false sobre una validacion que
+     funciona bien. */
+  { campo: 'f-tel-num', paso: 1, err: 'err-telefono' },
 ];
 
 async function main() {
@@ -375,6 +384,67 @@ async function main() {
         rec.txt.slice(0, 70));
     chk(/Pedir todo al/.test(rec.txt), 'y le ofrece la fecha en la que si estan todos');
 
+    /* ── M. EL TELEFONO SE COMPLETA CON ESTRUCTURA ───────────────────
+       Tadeo: "puede pasar que el cliente haya puesto mal o quiso abreviar su
+       numero y se olvida del codigo de area. Si no, no les va a llegar y LES
+       PUEDE LLEGAR A UNA PERSONA EQUIVOCADA Y DESCONOCIDA".
+
+       Con el cierre en la tienda esto dejo de ser un detalle: la confirmacion
+       sale por WhatsApp al numero que escribio el cliente. La validacion
+       vieja era ">= 8 digitos", o sea casi nada — en la planilla hay numeros
+       guardados como `1554668949`, con el 15 viejo adelante. */
+    console.log('\n' + DIM + '== El telefono: 10 digitos o no sale ==' + RST);
+    await abrir();
+    await ev('(function () { var p = getActiveProducts().filter(function (x) { return !esPorPeso(x); })[0]; addToCart(String(p.id)); })()');
+    await dormir(300);
+    await ev('abrirCheckout()');
+    await dormir(400);
+
+    const tel = async (area, num) => JSON.parse(await ev('JSON.stringify((function () {' +
+      ' document.getElementById("f-tel-area").value = ' + JSON.stringify(area) + '; _telAreaCambio();' +
+      ' var n = document.getElementById("f-tel-num");' +
+      ' n.value = ' + JSON.stringify(num) + '; n.dispatchEvent(new Event("input", { bubbles: true }));' +
+      ' return { viaja: document.getElementById("f-telefono").value,' +
+      '   hint: document.getElementById("tel-hint").textContent,' +
+      '   vale: _telLocal().length === TEL_LARGO }; })())'));
+
+    let t = await tel('11', '3688 7500');
+    chk(t.viaja === '5491136887500', 'un numero de CABA/GBA sale en el formato de WhatsApp', t.viaja);
+    chk(/✓/.test(t.hint), 'y se lo confirma en pantalla', t.hint);
+
+    t = await tel('11', '36887500');
+    chk(t.viaja === '5491136887500', 'da igual si lo escribe con espacios o sin ellos', t.viaja);
+
+    /* EL CASO QUE ESTA EN LA PLANILLA: el 15 de la telefonia vieja. */
+    t = await tel('11', '15 3688 7500');
+    chk(t.viaja === '5491136887500', 'con el 15 viejo adelante, se lo saca solo', t.viaja);
+
+    t = await tel('230', '4421234');
+    chk(t.viaja === '5492304421234', 'y un area de Pilar tambien anda', t.viaja);
+
+    t = await tel('11', '3688');
+    chk(t.viaja === '' && !t.vale, 'a medio escribir NO viaja nada');
+    chk(/falta/i.test(t.hint), 'y le dice cuantos le faltan', t.hint);
+
+    t = await tel('11', '368875001234');
+    chk(t.viaja === '' && !t.vale, 'con numeros de mas, tampoco');
+    chk(/sobra/i.test(t.hint), 'y le dice cuantos le sobran', t.hint);
+
+    /* Y LA PUERTA: con el telefono a medias, el pedido no sale. */
+    await ev(LLENAR_DATOS);
+    await tel('11', '3688');
+    const antesTel = await ev('window.__posts.length');
+    await ev('enviarPedido()');
+    await dormir(400);
+    chk((await ev('window.__posts.length')) === antesTel,
+        'y con el telefono incompleto el pedido NO se manda');
+    chk(await ev('document.getElementById("err-telefono").classList.contains("visible")'),
+        'se lo dice');
+    /* El error tiene que marcarse en el campo que el cliente ve, no en el
+       hidden: un `.error` invisible no le dice nada. */
+    chk(await ev('document.getElementById("f-tel-num").classList.contains("error")'),
+        'y marca el campo donde escribe, no el oculto');
+
     /* ── A. UN SOLO PASO A LA VISTA ──────────────────────────────── */
     console.log('\n' + DIM + '== El formulario abre en el paso 1, y solo se ve ese (' + ANCHO + 'px) ==' + RST);
     await abrir();
@@ -470,7 +540,10 @@ async function main() {
     console.log('\n' + DIM + '== Los pasos y enviarPedido frenan LOS MISMOS campos ==' + RST);
     for (const o of OBLIGATORIOS) {
       await ev(LLENAR_DATOS);
-      await ev('document.getElementById(' + JSON.stringify(o.campo) + ').value = ""');
+      /* Los DOS: desde el 29/9 el hidden es respaldo del visible, asi que
+         vaciar uno solo no prueba nada — y ese es justo el punto del respaldo. */
+      await ev('document.getElementById(' + JSON.stringify(o.campo) + ').value = "";' +
+        (o.campo === 'f-tel-num' ? ' document.getElementById("f-telefono").value = "";' : ''));
       const porElPaso = await ev('!!_coFaltaEnPaso(' + o.paso + ', true)');
       const antes = await ev('window.__posts.length');
       await ev('enviarPedido()');

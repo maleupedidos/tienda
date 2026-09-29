@@ -19,7 +19,7 @@
  *   cuelga   no contesta nunca       → a los 25 s ofrece WhatsApp; el mensaje dice que NO se registro
  *   error2   2 {ok:false} y despues ok → reintenta de a uno, nunca dos POST a la vez
  *   red2     2 fallas de red y despues ok
- *   tarde27  contesta a los 27 s     → ya mostro el fallback, pero sigue solo por el camino normal
+ *   tarde     contesta DESPUES del fallback → ya lo mostro, pero sigue solo por el camino normal
  *   cierre   contesta a los 2 s      → el pedido termina EN LA TIENDA, sin salto a WhatsApp
  *
  * NINGUN POST PUEDE LLEGAR A LA PLANILLA. Se cortan por CDP (Fetch), fuera de
@@ -41,6 +41,14 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 const RAIZ = path.resolve(process.env.RAIZ || path.join(__dirname, '..'));
+/* El umbral del fallback, leido del app.js que se va a servir. Lo usan el
+   simulador de backend (para contestar despues del cartel) y los chequeos. */
+const FALLBACK_MS = (function () {
+  try {
+    const m = /var SEND_FALLBACK_MS = (\d+)/.exec(fs.readFileSync(path.join(RAIZ, 'app.js'), 'utf8'));
+    return m ? Number(m[1]) : 45000;
+  } catch (e) { return 45000; }
+})();
 const ANCHO = Number(process.argv[2] || 390);
 const ALTO = ANCHO < 700 ? 844 : 900;
 const PUERTO = Number(process.env.PUERTO || (8280 + Math.floor(Math.random() * 60)));
@@ -128,7 +136,16 @@ const MODOS = {
   cuelga:  () => ({ que: 'cuelga' }),
   error2:  (n) => (n <= 2 ? { en: 800, que: 'noOk' } : { en: 1500, que: 'ok' }),
   red2:    (n) => (n <= 2 ? { en: 300, que: 'falla' } : { en: 1500, que: 'ok' }),
-  tarde27: () => ({ en: 27000, que: 'ok' }),
+  /* CONFIRMA CON EL CARTEL YA EN PANTALLA. Estaba fijado en 27 s porque el
+     fallback salia a los 25; movido a 45, ese numero dejo de significar nada.
+
+     Y con el umbral nuevo aparece algo que antes no pasaba: 45 s es MAS que
+     el tope de 30 s por intento, asi que cuando sale el cartel la tienda ya
+     abandono el primer POST y esta en el segundo. El escenario tiene que
+     reflejarlo o no prueba lo que dice — por eso el primero cuelga y el
+     segundo contesta 18 s despues de arrancar (t = 32 + 18 = 50 s), que cae
+     despues del cartel. */
+  tarde27: (n) => (n <= 1 ? { que: 'cuelga' } : { en: 18000, que: 'ok' }),
   cierre:  () => ({ en: 2000, que: 'ok' }),
 };
 
@@ -264,6 +281,24 @@ async function main() {
     }
 
     /* Manda el pedido y anota, cada 200 ms, en que estado esta el cartel. */
+    /* Las ventanas de espera salen de los umbrales de la tienda, no de
+       numeros escritos aca: un fallback a los 45 s no se puede medir mirando
+       durante 30, y el test reportaria "no aparecio" sobre algo que funciona. */
+    /* PEREZOSOS: aca todavia no hay pagina —la primera navegacion pasa dentro
+       del primer escenario— y leerlos ahora da ReferenceError. Se piden la
+       primera vez que hacen falta y se guardan. */
+    const _leerUmbral = (nombre, porDefecto) => {
+      try {
+        const txt = fs.readFileSync(path.join(RAIZ, 'app.js'), 'utf8');
+        const m = new RegExp('var ' + nombre + ' = (\d+)').exec(txt);
+        return m ? Number(m[1]) : porDefecto;
+      } catch (e) { return porDefecto; }
+    };
+    const _umbrales = { lento: _leerUmbral('SEND_LENTO_MS', 25000),
+                        fallback: _leerUmbral('SEND_FALLBACK_MS', 45000) };
+    _umbrales.ventana = _umbrales.fallback + 6000;
+    const umbrales = async () => _umbrales;
+
     async function enviarYMirar(hastaMs, alMirar) {
       posts = []; navs = []; enVuelo = 0; maxEnVuelo = 0; nFetch = 0;
       const estados = [];
@@ -329,9 +364,24 @@ async function main() {
     if (correr('lento12')) {
       console.log('\n' + DIM + '== el backend tarda 12 s ==' + RST);
       modo = 'lento12'; await prepararPedido();
-      const est = await enviarYMirar(16000);
+      const est = await enviarYMirar((await umbrales()).lento + 8000);
       const nav = navs[0];
-      chk(est.some((e) => e.t > 8000 && e.t < 12000 && /lenta/.test(e.sub)), 'a los 8 s avisa: "' + ((est.find((e) => /lenta/.test(e.sub)) || {}).sub || '-') + '"');
+      /* ESTE CHEQUEO ESTA DADO VUELTA DESDE EL 29/9/2026, y es el control del
+         cambio de umbral. Con el viejo de 8 s, un backend que tardaba 12
+         disparaba el aviso de "la conexion esta lenta" y aca se exigia que
+         apareciera. Pero 12 s es LO NORMAL —el p50 medido sobre 326 pedidos es
+         13 s— asi que avisar ahi es asustar al cliente por un pedido que esta
+         entrando bien. El umbral se movio a 25 s (arriba del p75) y lo que
+         corresponde ahora es que NO diga nada.
+
+         Los umbrales se leen del app.js servido, no se repiten aca: el dia que
+         Backend baje el tiempo de doPost y se recalibren, este test sigue
+         midiendo lo mismo sin que nadie lo toque. */
+      const _lento = _umbrales.lento;
+      const _avisoLento = est.find((e) => /lenta/.test(e.sub));
+      chk(!_avisoLento,
+          'tardando 12 s —lo normal— NO le dice que la conexion esta lenta (umbral: ' +
+          Math.round(_lento / 1000) + ' s)' + (_avisoLento ? ' · dijo "' + _avisoLento.sub + '"' : ''));
       chk(!!nav && nav.t >= 12000, 'espera la confirmacion: a WhatsApp a los ' + (nav ? nav.t : '-') + ' ms');
       chk(!!nav && textoWA(nav.url).indexOf('no llegó a confirmar') < 0, 'con el mensaje normal');
       chk(fetches().length === 1, 'y sin reintentar mientras espera (' + fetches().length + ' POST)');
@@ -342,7 +392,7 @@ async function main() {
       console.log('\n' + DIM + '== el backend no contesta nunca ==' + RST);
       modo = 'cuelga'; await prepararPedido();
       let clic = 0;
-      const est = await enviarYMirar(30000, async (o) => {
+      const est = await enviarYMirar((await umbrales()).ventana, async (o) => {
         if (/fallback/.test(o.cls) && o.btn && !clic) {
           /* FOTO=carpeta guarda como se ve el cartel antes de tocarlo. */
           if (process.env.FOTO) {
@@ -357,7 +407,10 @@ async function main() {
       const nav = navs[0];
       const fb = est.find((e) => /fallback/.test(e.cls));
       chk(!navs.some((n) => n.t < 24000), 'NO lo manda a WhatsApp como si estuviera registrado (antes: a los 3.800 ms)');
-      chk(!!fb && fb.t >= 24500 && fb.t <= 27000, 'a los 25 s ofrece mandarlo igual: ' + (fb ? fb.t + ' ms · "' + fb.tit + '"' : 'no aparecio'));
+      const _fb = _umbrales.fallback;
+      chk(!!fb && fb.t >= _fb - 1500 && fb.t <= _fb + 2500,
+          'a los ' + Math.round(_fb / 1000) + ' s ofrece mandarlo igual: ' +
+          (fb ? fb.t + ' ms · "' + fb.tit + '"' : 'no aparecio'));
       chk(!!fb && fb.btn && fb.btn.h >= 44, 'el boton de WhatsApp se puede tocar (' + (fb && fb.btn ? fb.btn.h + 'px de alto' : '-') + ')');
       chk(!!fb && fb.btn && fb.btn.top >= 0 && fb.btn.bottom <= fb.vh, 'y entra en la pantalla');
       chk(!!fb && fb.scrollW <= fb.vw, 'sin desbordar a lo ancho');
@@ -385,7 +438,19 @@ async function main() {
       chk(txt.indexOf('(ref. ' + refDe(coid) + ')') >= 0, 'y la referencia (' + refDe(coid) + '), la que cruza con Log Pedidos');
       chk(!sinEmoji4(txt).length, 'tambien sin emoji de 4 bytes (' + (sinEmoji4(txt).join(' ') || 'ninguno') + ')');
       chk(beacons().some((b) => b.coid === coid && b.t >= clic), 'antes de irse dispara un ultimo beacon con ese pedido');
-      chk(maxEnVuelo <= 1, 'nunca dos POST del pedido esperando a la vez (' + maxEnVuelo + ')');
+      /* No se mide `maxEnVuelo`: el contador no sabe de abortos, y la tienda
+         corta cada intento a los 30 s antes de reintentar. Al alargar la
+         ventana de 30 a 51 s aparecieron 2 "en vuelo" que en realidad son el
+         abortado y su reintento — que es exactamente lo que tiene que pasar.
+
+         Lo que si puede saber el test, y es lo que importa, es que no salgan
+         dos POST del mismo pedido pisandose: cada uno tiene que arrancar
+         despues de que el anterior se haya dado por perdido. */
+      const _mios = fetches().filter((f) => f.coid === coid).map((f) => f.t).sort((a, b) => a - b);
+      const _muyJuntos = _mios.filter((t, i) => i > 0 && t - _mios[i - 1] < 29000);
+      chk(!_muyJuntos.length,
+          'los reintentos no se pisan: ' + _mios.length + ' POST, el mas cercano a ' +
+          (_mios.length > 1 ? Math.round(Math.min.apply(null, _mios.slice(1).map((t, i) => t - _mios[i])) / 1000) + ' s' : '—'));
       const pend = await pendientes();
       chk(!!pend[coid], 'sin confirmar, queda en la cola para reintentar cuando vuelva la señal');
     }
@@ -417,10 +482,12 @@ async function main() {
     if (correr('tarde27')) {
       console.log('\n' + DIM + '== confirma a los 27 s, con el fallback ya en pantalla ==' + RST);
       modo = 'tarde27'; await prepararPedido();
-      const est = await enviarYMirar(31000);
+      const est = await enviarYMirar((await umbrales()).ventana + 14000);
       const nav = navs[0];
-      chk(est.some((e) => /fallback/.test(e.cls)), 'a los 25 s ofrecio mandarlo por WhatsApp');
-      chk(!!nav && nav.t >= 27000, 'no se fue sin que nadie tocara nada antes de la confirmacion (' + (nav ? nav.t : '-') + ' ms)');
+      chk(est.some((e) => /fallback/.test(e.cls)),
+          'a los ' + Math.round(_umbrales.fallback / 1000) + ' s ofrecio mandarlo por WhatsApp');
+      chk(!!nav && nav.t >= _umbrales.fallback + 2000,
+          'no se fue sin que nadie tocara nada antes de la confirmacion (' + (nav ? nav.t : '-') + ' ms)');
       chk(!!nav && textoWA(nav.url).indexOf('no llegó a confirmar') < 0, 'y al confirmar sigue solo, con el mensaje NORMAL');
     }
 

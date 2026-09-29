@@ -33,6 +33,14 @@ const CHROMES = [
   'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
 ];
 const dormir = (ms) => new Promise((s) => setTimeout(s, ms));
+/* El telefono se compara por los 10 digitos del numero local, no como texto:
+   desde el 29/9/2026 la tienda lo guarda como `5491155667788` (el formato que
+   necesita WATI) y antes quedaba como el cliente lo escribia. Lo que identifica
+   a la persona son los 10 ultimos, no la forma de escribirlos. */
+const mismoTel = (a, b) => {
+  const d = (x) => String(x || '').replace(/\D/g, '').replace(/^54/, '').replace(/^9/, '').slice(-10);
+  return !!d(a) && d(a) === d(b);
+};
 
 /* El cliente de la prueba. Nombre y teléfono inventados: este repo es público.
    `bp` es el Barrio Privado (hoy hay uno solo) y `barrio` el Sub Barrio, que se
@@ -268,7 +276,7 @@ const LEER_FORM = `(function(){
     await dormir(500);
     ch(!!CLI.barrio, 'el desplegable de sub-barrio se lleno al elegir el barrio privado', CLI.barrio);
     const lleno = JSON.parse(await ev(LEER_FORM));
-    ch(lleno.nombre === CLI.nombre && lleno.tel === CLI.tel && lleno.bp === CLI.bp
+    ch(lleno.nombre === CLI.nombre && mismoTel(lleno.tel, CLI.tel) && lleno.bp === CLI.bp
        && lleno.barrio === CLI.barrio && lleno.lote === CLI.lote && !!lleno.dia && !!lleno.pago,
        'quedo completo antes de mandar', JSON.stringify(lleno).slice(0, 170));
 
@@ -279,7 +287,7 @@ const LEER_FORM = `(function(){
     ch(trasEnviar.guardado.zona === true, 'y tambien los de la zona');
     ch(trasEnviar.guardado.maleu_zone === 'estancias', 'la zona queda guardada', trasEnviar.guardado.maleu_zone);
     const guardado = JSON.parse(await ev("localStorage.getItem('maleu_cliente_pg')"));
-    ch(guardado && guardado.nombre === CLI.nombre && guardado.telefono === CLI.tel && guardado.lote === CLI.lote,
+    ch(guardado && guardado.nombre === CLI.nombre && mismoTel(guardado.telefono, CLI.tel) && guardado.lote === CLI.lote,
        'lo guardado es lo que el cliente escribio', JSON.stringify(guardado));
     await cerrar();
 
@@ -297,7 +305,7 @@ const LEER_FORM = `(function(){
     await ev('goToForm()'); await dormir(700);
     const v2 = JSON.parse(await ev(LEER_FORM));
     ch(v2.nombre === CLI.nombre, 'el nombre vuelve solo', JSON.stringify(v2.nombre));
-    ch(v2.tel === CLI.tel, 'el telefono vuelve solo', JSON.stringify(v2.tel));
+    ch(mismoTel(v2.tel, CLI.tel), 'el telefono vuelve solo', JSON.stringify(v2.tel));
     ch(v2.bp === CLI.bp, 'el barrio privado vuelve solo', JSON.stringify(v2.bp));
     ch(v2.barrio === CLI.barrio, 'el sub-barrio vuelve solo', JSON.stringify(v2.barrio));
     ch(v2.lote === CLI.lote, 'el lote vuelve solo', JSON.stringify(v2.lote));
@@ -368,7 +376,7 @@ const LEER_FORM = `(function(){
     await ev('goToForm()'); await dormir(700);
     const v3 = JSON.parse(await ev(LEER_FORM));
     ch(v3.nombre === CLI.nombre, 'el nombre vuelve al elegir la zona en el modal', JSON.stringify(v3.nombre));
-    ch(v3.tel === CLI.tel, 'el telefono tambien', JSON.stringify(v3.tel));
+    ch(mismoTel(v3.tel, CLI.tel), 'el telefono tambien', JSON.stringify(v3.tel));
     ch(v3.bp === CLI.bp && v3.barrio === CLI.barrio && v3.lote === CLI.lote, 'y la direccion tambien',
        JSON.stringify({ bp: v3.bp, barrio: v3.barrio, lote: v3.lote }));
     await cerrar();
@@ -391,7 +399,7 @@ const LEER_FORM = `(function(){
     await ev(ELEGIR_ZONA_FECHA);
     await ev('goToForm()'); await dormir(700);
     const v4 = JSON.parse(await ev(LEER_FORM));
-    ch(v4.nombre === CLI.nombre && v4.tel === CLI.tel, 'despues de reelegir la zona los datos siguen ahi',
+    ch(v4.nombre === CLI.nombre && mismoTel(v4.tel, CLI.tel), 'despues de reelegir la zona los datos siguen ahi',
        JSON.stringify({ nombre: v4.nombre, tel: v4.tel }));
     ch(v4.bp === CLI.bp && v4.barrio === CLI.barrio && v4.lote === CLI.lote, 'y la direccion no se perdio',
        JSON.stringify({ bp: v4.bp, barrio: v4.barrio, lote: v4.lote }));
@@ -441,7 +449,7 @@ const LEER_FORM = `(function(){
     await dormir(400);
     const sinMandar = JSON.parse(await ev(`localStorage.getItem('maleu_cliente_pg') || 'null'`));
     ch(!!sinMandar, 'se guardo sin haber mandado ningun pedido');
-    ch(sinMandar && sinMandar.nombre === CLI.nombre && sinMandar.telefono === CLI.tel,
+    ch(sinMandar && sinMandar.nombre === CLI.nombre && mismoTel(sinMandar.telefono, CLI.tel),
        'con el nombre y el telefono', JSON.stringify(sinMandar && { n: sinMandar.nombre, t: sinMandar.telefono }));
     ch(sinMandar && sinMandar.lote === CLI.lote && sinMandar.barrio === CLI.barrio,
        'y con la direccion entera', JSON.stringify(sinMandar && { b: sinMandar.barrio, l: sinMandar.lote }));
@@ -453,7 +461,7 @@ const LEER_FORM = `(function(){
     await ev(ELEGIR_ZONA_FECHA);
     await ev('goToForm()'); await dormir(700);
     const v5 = JSON.parse(await ev(LEER_FORM));
-    ch(v5.nombre === CLI.nombre && v5.tel === CLI.tel, 'nombre y telefono',
+    ch(v5.nombre === CLI.nombre && mismoTel(v5.tel, CLI.tel), 'nombre y telefono',
        JSON.stringify({ nombre: v5.nombre, tel: v5.tel }));
     ch(v5.bp === CLI.bp && v5.barrio === CLI.barrio && v5.lote === CLI.lote, 'barrio, sub-barrio y lote',
        JSON.stringify({ bp: v5.bp, barrio: v5.barrio, lote: v5.lote }));

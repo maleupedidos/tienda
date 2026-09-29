@@ -2831,7 +2831,7 @@ es la version bonita del bug que costo el pedido de $84.600 el 10/9.
 
 ### La red: `node _tools/verificar-checkout.js [ancho]`
 
-**96 chequeos**, verdes a 390 y 1440px, con el reloj congelado el lunes
+**108 chequeos**, verdes a 390 y 1440px, con el reloj congelado el lunes
 14/9/2026: un solo paso a la vista y el indicador marcandolo; "Continuar"
 frenando lo incompleto con el foco donde falta; el boton de comprar solo en el 3;
 volver sin perder lo escrito; no poder saltar a un paso que no se alcanzo; las
@@ -3059,7 +3059,7 @@ en el historial y el "atras" no vuelve a caer en ella.
 > Efecto de paso: el chequeo que decia "3 POST al backend" ahora dice **1**, que
 > es lo que la tienda garantiza de verdad.
 
-La red del checkout paso a **96 chequeos** y se probo al reves con **trece bugs
+La red del checkout paso a **108 chequeos** y se probo al reves con **trece bugs
 reinyectados de a uno** —los ocho de la mañana mas el formulario apareciendo
 abajo, la URL que no cambia, "Volver" agregando al historial, el "atras" que no
 cierra y el scroll que no vuelve—: **los trece se agarran**.
@@ -3091,6 +3091,123 @@ El orden que tiene que cumplirse, de atras para adelante:
 > hace el bloque L de `verificar-checkout.js`, reproduciendo el caso exacto:
 > 20 en el carrito, 4 en el freezer, elegir la fecha con tope. Reinyectado el
 > 9500, da **MAL** en ese chequeo y solo en ese.
+
+## El telefono se completa con estructura (29/9/2026, a la noche)
+
+Tadeo, despues de que el cierre en la tienda funcionara de punta a punta:
+*"puede pasar que el cliente haya puesto mal o quiso abreviar su numero y se
+olvida del codigo de area. Si no, no les va a llegar y LES PUEDE LLEGAR A UNA
+PERSONA EQUIVOCADA Y DESCONOCIDA"*.
+
+> [!danger] La validacion vieja era ">= 8 digitos", o sea casi nada
+> Y en la planilla se ve el resultado: hay telefonos guardados como
+> **`1554668949`** —el 15 de la telefonia vieja adelante, que a WhatsApp no
+> llega— y otros de 10 digitos sin area. Mientras el pedido terminaba en
+> WhatsApp daba igual, porque el cliente escribia el primero; **desde que la
+> confirmacion sale sola, el numero mal escrito manda el pedido de una persona
+> al telefono de otra.**
+
+**La estructura.** En Argentina, area + abonado son **siempre 10 digitos**:
+
+    11  + 36887500  = 10      CABA y GBA
+    230 + 4421234   = 10      Pilar, Del Viso
+    348 + 4471234   = 10      Escobar, Garin
+
+Eso es lo que permite validar de verdad **sin una tabla de todas las areas del
+pais**: se elige el area de una lista y se exige que el total sea 10.
+
+    WhatsApp
+    [ +54 9 ]  [ 11 v ]  [ 3688 7500 ]
+    ✓ +54 9 11 36887500
+
+Debajo, un renglon que dice como va quedando: el numero armado cuando esta
+completo, o *"te faltan 4 numeros"* / *"te sobran 4"* mientras no.
+
+> [!important] `f-telefono` sigue existiendo, oculto, y SIGUE SIENDO UNA ENTRADA
+> Lo arma `_telArmar()`, asi que `enviarPedido`, `guardarDatosCliente`,
+> `checkSaldoCliente` y `updateWhatsappCta` lo leen por id como siempre.
+>
+> Pero ademas `_telLocal()` lo toma como **respaldo** cuando los visibles estan
+> vacios, porque hay tres cosas que lo escriben y ninguna es un test:
+> `loadClientData` con el numero de una compra anterior, el autocompletado del
+> navegador, y cualquier codigo que todavia no sepa de los dos campos nuevos.
+> Ignorarlo seria tirar un numero bueno.
+>
+> **No debilita la validacion**: el hidden no tiene interfaz, asi que el cliente
+> no puede escribir ahi, y lo que sale del respaldo pasa por el mismo filtro de
+> 10 digitos. Un telefono corto guardado de antes se rechaza igual.
+
+**Lo que se guarda cambio de forma**: ahora es `5491136887500` (el formato que
+necesita WATI) en vez de lo que el cliente hubiera tipeado. Los guardados con
+el formato viejo se reparten bien igual — `_telPoner` acepta `5491136887500`,
+`11 3688-7500` y `1554668949`, que son las tres formas que hay en la planilla.
+
+### Los tiempos, calibrados contra la medicion (no a ojo)
+
+Tadeo: *"sigue tardando demasiado el boton. Aparece la descripcion fea esa de
+esta tardando demasiado"*. Backend midio **326 pedidos** de `Log Pedidos`
+restando los dos timestamps —no la columna "Tardo (min)", que viene redondeada
+de a 6 segundos y con eso un p50 de 9 s y uno de 14 s se ven igual:
+
+| | |
+|---|---|
+| p50 | **13 s** |
+| p75 | 21 s |
+| p90 | **59 s** |
+| p95 | 128 s |
+| **Pasan de 8 s** | **292 de 326 — el 90%** |
+
+> [!danger] El cartel de "la conexion esta lenta" salia en 9 de cada 10 pedidos
+> No avisaba de una excepcion: avisaba de lo normal. Un aviso que salta siempre
+> deja de leerse, y encima asusta justo cuando el cliente acaba de apretar para
+> pagar.
+
+| | antes | ahora | por que |
+|---|---|---|---|
+| `SEND_LENTO_MS` | 8 s | **25 s** | arriba del p75 (21 s, todavia normal) |
+| `SEND_FALLBACK_MS` | 25 s | **45 s** | a los 25 le ofrecia WhatsApp a 1 de cada 4 pedidos que iban a entrar bien |
+| la curva de la barra | 90% a los ~8 s | **calibrada a 13 s** | llegaba al 87% y se quedaba clavada diez segundos |
+
+> [!warning] Si el tiempo baja, estos numeros bajan con el
+> La distancia entre 13 s (p50) y 59 s (p90) **huele a cola de Apps Script, no
+> a trabajo**. Backend va a instrumentar `doPost` para saber el reparto: si son
+> Telegram y WATI, se pueden mover a un trigger diferido; si es cola, ningun
+> umbral la arregla. **Cuando eso cambie hay que volver a medir y recalibrar**,
+> no dejar estos numeros holgados para siempre.
+
+> [!important] Las redes LEEN los umbrales de `app.js`, no los repiten
+> `verificar-envio` y `verificar-vigilante` los tenian escritos a mano y
+> quedaron en rojo sobre una tienda que hacia lo correcto. Ahora salen de
+> `/var SEND_(LENTO|FALLBACK)_MS = (\d+)/` sobre el archivo servido, y las
+> ventanas de espera tambien: un fallback a los 45 s no se puede medir mirando
+> durante 30.
+
+> [!note] Un chequeo quedo DADO VUELTA, y es el control del cambio
+> `verificar-envio` exigia que un backend que tarda 12 s disparara el aviso.
+> Con el umbral nuevo lo correcto es que **no diga nada**: 12 s es lo normal.
+> Ahora el chequeo pide el silencio.
+>
+> Y aparecio algo que antes no pasaba: **45 s es mas que el tope de 30 s por
+> intento**, asi que cuando sale el cartel la tienda ya abandono el primer POST
+> y esta en el segundo. El escenario "confirma con el cartel en pantalla" tuvo
+> que reflejarlo: el primer POST cuelga y el segundo contesta 18 s despues.
+
+### Las dos salidas que faltaban
+
+**1. "Volver a la tienda" no volvia a la tienda.** Cerraba el overlay del
+pedido y dejaba al cliente **en el checkout**, que desde esta tarde es una
+vista que tapa la pantalla y seguia abierta atras — mirando un formulario de un
+pedido que ya no existe, con el carrito vacio. Ahora cierra las dos cosas y
+sube al principio: despues de comprar, la tienda arranca de arriba.
+
+**2. La tercera opcion del cartel de recorte.** Tadeo: *"asi como me aparecio
+la opcion de pedir para el viernes, faltaria la opcion de volver al catalogo y
+completar con otras cosas"*. Las otras dos lo dejaban adentro del checkout —una
+mueve la fecha, la otra se conforma—; faltaba la del que dice *"ok, entendi,
+pero dejame llenar el pedido con otra cosa"*, **que es la que mas vende de las
+tres**. `recorteAlCatalogo()` cierra el cartel y el checkout **sin mover la
+fecha**: el cliente ya dijo que la queria, y el catalogo se topea solo contra
+el stock de ese dia.
 
 ## Lo que NO está acá
 

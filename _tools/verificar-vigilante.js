@@ -44,7 +44,17 @@ const RED = '\x1b[31m', VER = '\x1b[32m', DIM = '\x1b[2m', RST = '\x1b[0m';
    (10 s) y deja margen para ver la diferencia contra los 25 s del fallback. */
 const GUARDADO_MS = 9000;
 const TOPE_CONFIRMACION_MS = 16000;  // si tarda mas, el vigilante no esta haciendo su trabajo
-const FALLBACK_MS = 25000;           // SEND_FALLBACK_MS de app.js
+/* SE LEE de app.js, no se copia. Estaba fijo en 25000 y el 29/9/2026 el
+   umbral se recalibro a 45 s contra la medicion real (p50 13 s, p90 59 s):
+   el test se quedo esperando 25 y reporto que el cartel no aparecia, sobre una
+   tienda que lo muestra cuando corresponde. */
+const FALLBACK_MS = (function () {
+  try {
+    const m = /var SEND_FALLBACK_MS = (\d+)/.exec(
+      require('fs').readFileSync(require('path').join(RAIZ, 'app.js'), 'utf8'));
+    return m ? Number(m[1]) : 45000;
+  } catch (e) { return 45000; }
+})();
 
 const CHROMES = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',

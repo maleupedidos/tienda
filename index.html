@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=32916a6a" />
+  <link rel="stylesheet" href="styles.css?v=0c25a873" />
   <script>
     // Forzar inicio arriba en cada carga (incluye refresh, back-forward cache de iOS).
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
@@ -572,9 +572,37 @@
       </div>
 
       <div class="field-group">
-        <label for="f-telefono">WhatsApp / Teléfono</label>
-        <input type="tel" id="f-telefono" placeholder="11 5555 5555" autocomplete="tel" onblur="validateOnBlur('telefono');checkSaldoCliente()">
-        <span class="field-error" id="err-telefono">⚠ Completá tu número</span>
+        <label for="f-tel-num">WhatsApp</label>
+        <!-- EL TELEFONO VA CON ESTRUCTURA (29/9/2026)
+
+             Antes era un campo libre validado con ">= 8 digitos", o sea casi
+             nada, y por ahi entraron numeros con el 15 viejo adelante y otros
+             sin codigo de area. Con el cierre en la tienda eso dejo de ser un
+             detalle: la confirmacion sale por WhatsApp al numero que escribio
+             el cliente, y si esta mal la lee un desconocido.
+
+             `f-telefono` sigue existiendo, oculto, y lo arma _telArmar(): todo
+             lo que lo lee por id sigue funcionando sin enterarse. -->
+        <div class="tel-fila">
+          <span class="tel-pais" aria-hidden="true">+54&nbsp;9</span>
+          <div class="select-wrapper tel-area-wrap">
+            <select id="f-tel-area" aria-label="C&oacute;digo de &aacute;rea" onchange="_telAreaCambio()">
+              <option value="11">11</option>
+              <option value="230">230</option>
+              <option value="348">348</option>
+              <option value="__otro__">Otro</option>
+            </select>
+          </div>
+          <input type="tel" id="f-tel-otro" class="tel-otro" inputmode="numeric" maxlength="4"
+                 placeholder="&Aacute;rea" aria-label="Otro c&oacute;digo de &aacute;rea" hidden
+                 oninput="_telArmar()" onblur="validateOnBlur('telefono')">
+          <input type="tel" id="f-tel-num" class="tel-num" inputmode="numeric" maxlength="12"
+                 placeholder="3688 7500" autocomplete="tel-national"
+                 oninput="_telArmar()" onblur="validateOnBlur('telefono');checkSaldoCliente()">
+        </div>
+        <small class="tel-hint" id="tel-hint">Sin el 15 y sin el 0. Ah&iacute; te mandamos la confirmaci&oacute;n.</small>
+        <input type="hidden" id="f-telefono" />
+        <span class="field-error" id="err-telefono">&#9888; Complet&aacute; tu n&uacute;mero de WhatsApp</span>
         <!-- Banner saldo a favor (auto-detectado por teléfono) -->
         <div id="saldoFavorBanner" style="display:none;margin-top:10px;padding:12px 14px;background:linear-gradient(135deg,#FFF8E1 0%,#FFECB3 100%);border:2px solid #F9A825;border-radius:10px;font-size:13px;line-height:1.4">
           <div style="font-weight:700;color:#5D4037;font-size:14px;margin-bottom:4px">Tenés saldo a favor</div>
@@ -767,6 +795,6 @@
   </div>
 </div>
 
-<script src="app.js?v=7321404b"></script>
+<script src="app.js?v=17dec9cb"></script>
 </body>
 </html>

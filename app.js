@@ -3585,7 +3585,16 @@ function _avisarRecorte(recortes) {
     html += '<p class="fecha-modal-txt">Si los querés todos, <strong>para ' + nueva +
               ' los tenemos completos</strong>.</p>' +
             '<button class="fecha-modal-si" type="button" onclick="recorteMover()">Pedir todo ' + aNueva + '</button>' +
-            '<button class="fecha-modal-no" type="button" onclick="recorteNo()">Seguir con lo que hay para ' + cuando + '</button>';
+            '<button class="fecha-modal-no" type="button" onclick="recorteNo()">Seguir con lo que hay para ' + cuando + '</button>' +
+            /* LA TERCERA SALIDA (29/9/2026). Tadeo: "asi como me aparecio la
+               opcion de pedir para el viernes, faltaria la opcion de volver al
+               catalogo y completar con otras cosas".
+
+               Las otras dos lo dejan adentro del checkout: una mueve la fecha
+               y la otra se conforma con lo que hay. Faltaba la del que dice
+               "ok, entendi, pero entonces dejame llenar el pedido con otra
+               cosa" — que es la que mas vende de las tres. */
+            '<button class="fecha-modal-no recorte-volver" type="button" onclick="recorteAlCatalogo()">Volver al cat\u00e1logo y agregar otra cosa</button>';
   } else {
     html += '<button class="fecha-modal-si" type="button" onclick="recorteNo()">Seguir comprando</button>';
   }
@@ -3611,6 +3620,16 @@ function _cerrarRecorte() {
   _recortePend = null;
   return o;
 }
+/* Cerrar el cartel Y el checkout, para volver al catalogo con el carrito como
+   quedo. La fecha elegida NO se mueve: el cliente dijo que la queria, y lo que
+   pidio fue seguir comprando para ESE dia — el catalogo ya se topea solo
+   contra el stock de esa fecha. */
+function recorteAlCatalogo() {
+  recorteNo();
+  cerrarCheckout();
+  _track('recorte_al_catalogo', { zone: currentZone });
+}
+
 function recorteNo() {
   _cerrarRecorte();
   _track('recorte_stock_no', { zone: currentZone });
@@ -5183,6 +5202,128 @@ function selectDayPicker(el) {
 /* ── VALIDACIÓN ── */
 function showError(fId, eId) { const f=$id(fId), e=$id(eId); if(f)f.classList.add('error'); if(e)e.classList.add('visible'); }
 function clearError(fId, eId) { const f=$id(fId), e=$id(eId); if(f)f.classList.remove('error'); if(e)e.classList.remove('visible'); }
+/* ══ EL TELEFONO ════════════════════════════════════════════════════════
+
+   En Argentina, codigo de area + abonado son SIEMPRE 10 digitos:
+
+       11  + 36887500  = 10     CABA y Gran Buenos Aires
+       230 + 4421234   = 10     Pilar, Del Viso
+       348 + 4471234   = 10     Escobar, Garin
+
+   Eso es lo que deja validar de verdad sin una tabla de todas las areas del
+   pais: se elige el area de una lista y se exige que el total sea 10. La
+   validacion vieja era ">= 8 digitos", y por ahi entraron numeros con el 15
+   viejo adelante que a WhatsApp no llegan.
+
+   Lo que viaja es `f-telefono`, oculto: **54 9 + los 10 digitos**, sin
+   espacios ni signos. Es el formato que necesita WATI y el unico que no se
+   puede malinterpretar. */
+var TEL_LARGO = 10;
+
+function _telArea() {
+  var sel = $id('f-tel-area');
+  if (!sel) return '';
+  if (sel.value === '__otro__') {
+    var o = $id('f-tel-otro');
+    return o ? String(o.value || '').replace(/\D/g, '') : '';
+  }
+  return sel.value;
+}
+
+/* El numero local completo, solo digitos. Se le saca el 15 y el 0 que la gente
+   escribe por costumbre: son de la telefonia fija vieja y a WhatsApp no
+   llegan. Que el cliente los ponga no es un error suyo — es lo que dice su
+   agenda. */
+function _telLocal() {
+  var n = $id('f-tel-num');
+  var abonado = n ? String(n.value || '').replace(/\D/g, '') : '';
+  abonado = abonado.replace(/^15/, '');
+  var area = _telArea().replace(/^0/, '');
+  if (abonado) return area + abonado;
+
+  /* RESPALDO: el campo de siempre. Hay tres cosas que lo escriben y ninguna
+     es el cliente — `loadClientData` con el numero de una compra anterior, el
+     autocompletado del navegador, y cualquier codigo que todavia no sepa de
+     los dos campos nuevos. Ignorarlo seria tirar un numero bueno.
+
+     NO DEBILITA NADA: el hidden no tiene interfaz, asi que el cliente no puede
+     escribir ahi, y lo que sale de aca pasa por el mismo filtro de 10 digitos
+     que todo lo demas. Un telefono corto guardado de antes se rechaza igual. */
+  var h = $id('f-telefono');
+  var d = h ? String(h.value || '').replace(/\D/g, '') : '';
+  d = d.replace(/^54/, '').replace(/^9/, '');
+  if (d.length === TEL_LARGO) return d;
+  /* Un `11 15 5503 8905` guardado a la vieja: 12 digitos con el 15 en el
+     medio. Se le saca y queda bien. */
+  var m = /^(\d{2,4})15(\d{6,8})$/.exec(d);
+  if (m && (m[1] + m[2]).length === TEL_LARGO) return m[1] + m[2];
+  return '';
+}
+
+function _telArmar() {
+  var local = _telLocal();
+  var h = $id('f-telefono');
+  /* Solo se pisa el hidden cuando el cliente escribio en los campos visibles.
+     Si no, un `_telArmar()` disparado por otra cosa le borraria el numero que
+     acaba de poner `loadClientData`. */
+  var nEl = $id('f-tel-num');
+  var escribio = !!(nEl && String(nEl.value || '').replace(/\D/g, ''));
+  if (h && escribio) h.value = local.length === TEL_LARGO ? '549' + local : '';
+  var hint = $id('tel-hint');
+  if (hint) {
+    if (!local) hint.textContent = 'Sin el 15 y sin el 0. Ah\u00ed te mandamos la confirmaci\u00f3n.';
+    else if (local.length === TEL_LARGO) hint.textContent = '\u2713 +54 9 ' + _telArea() + ' ' + local.slice(_telArea().length);
+    else hint.textContent = 'Te faltan ' + (TEL_LARGO - local.length) + ' n\u00fameros'
+       + (local.length > TEL_LARGO ? '' : '');
+    if (local.length > TEL_LARGO) hint.textContent = 'Te sobran ' + (local.length - TEL_LARGO) + ' n\u00fameros';
+  }
+  updateWhatsappCta();
+}
+
+function _telAreaCambio() {
+  var sel = $id('f-tel-area'), otro = $id('f-tel-otro'), num = $id('f-tel-num');
+  var esOtro = sel && sel.value === '__otro__';
+  if (otro) { otro.hidden = !esOtro; if (esOtro) { try { otro.focus(); } catch (e) {} } }
+  /* El ejemplo cambia con el area, porque la cantidad de numeros cambia: con
+     11 son 8 y con 230 son 7. Un placeholder fijo ensenia el largo equivocado. */
+  if (num) {
+    var a = _telArea();
+    num.placeholder = a === '11' ? '3688 7500' : (a ? '442 1234' : 'Tu n\u00famero');
+  }
+  _telArmar();
+}
+
+/* Poner un numero guardado en los campos visibles. Acepta cualquier forma en
+   la que haya quedado escrito antes —`5491136887500`, `11 3688-7500`,
+   `1554668949`— porque en la planilla estan las tres. */
+function _telPoner(valor) {
+  var d = String(valor || '').replace(/\D/g, '');
+  d = d.replace(/^54/, '').replace(/^9/, '');
+  if (!d) return;
+  var sel = $id('f-tel-area'), otro = $id('f-tel-otro'), num = $id('f-tel-num');
+  if (!sel || !num) return;
+  var areas = ['230', '348', '11'];   // los de 3 primero: 11 es prefijo de nada
+  var area = '';
+  for (var i = 0; i < areas.length; i++) {
+    if (d.indexOf(areas[i]) === 0 && d.length - areas[i].length + areas[i].length === TEL_LARGO) { area = areas[i]; break; }
+  }
+  if (area) {
+    sel.value = area;
+    if (otro) otro.hidden = true;
+  } else if (d.length === TEL_LARGO) {
+    /* Un area que no esta en la lista: se usa "Otro" con los 2 a 4 primeros.
+       Se toman 3, que es lo mas comun fuera del 11, y el cliente corrige. */
+    sel.value = '__otro__';
+    if (otro) { otro.hidden = false; otro.value = d.slice(0, 3); }
+    area = d.slice(0, 3);
+  } else {
+    return;   // no se puede repartir con confianza: mejor dejarlo vacio
+  }
+  num.value = d.slice(area.length);
+  _telAreaCambio();
+}
+
+
 function validateOnBlur(campo) {
   if (campo==='nombre') { $id('f-nombre').value.trim() ? clearError('f-nombre','err-nombre') : showError('f-nombre','err-nombre'); }
   if (campo==='barrioPrivado') { $id('f-barrio-privado').value ? clearError('f-barrio-privado','err-barrio-privado') : showError('f-barrio-privado','err-barrio-privado'); }
@@ -5193,7 +5334,14 @@ function validateOnBlur(campo) {
   if (campo==='club') { $id('f-club').value ? clearError('f-club','err-club') : showError('f-club','err-club'); }
   if (campo==='deporte') { $id('f-deporte').value ? clearError('f-deporte','err-deporte') : showError('f-deporte','err-deporte'); }
   if (campo==='grupo') { $id('f-grupo').value ? clearError('f-grupo','err-grupo') : showError('f-grupo','err-grupo'); }
-  if (campo==='telefono') { $id('f-telefono').value.replace(/\D/g,'').length >= 8 ? clearError('f-telefono','err-telefono') : showError('f-telefono','err-telefono'); }
+  if (campo==='telefono') {
+    /* El error se marca sobre el campo que el cliente toca, no sobre el hidden:
+       un `.error` en un input oculto no se ve, y el cliente no sabria que
+       corregir. */
+    var _tn = $id('f-tel-num');
+    if (_telLocal().length === TEL_LARGO) { clearError('f-tel-num','err-telefono'); if (_tn) _tn.classList.remove('error'); }
+    else { showError('f-tel-num','err-telefono'); }
+  }
   if (campo==='dia') {
     var dpRoot = $id('day-picker');
     if ($id('f-dia').value) {
@@ -5442,7 +5590,22 @@ function setSendLoaderDone(info) {
 
   var btn = $id('send-done-btn');
   if (btn) {
-    btn.onclick = function () { hideSendLoader(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    /* CIERRA TAMBIEN EL CHECKOUT. Hasta hoy alcanzaba con sacar el overlay
+       porque el formulario era una seccion mas del catalogo; desde que es una
+       vista que tapa la pantalla, cerrar solo el overlay dejaba al cliente
+       mirando el formulario de un pedido que ya no existe, con el carrito
+       vacio. Lo reporto Tadeo: "el boton de volver a la tienda NO me esta
+       dirigiendo a la tienda de inicio".
+
+       Y va `top: 0`: despues de comprar, la tienda arranca de arriba. Volver
+       al lugar del catalogo donde estaba armando un pedido que ya mando no
+       tiene sentido — ese pedido termino. */
+    btn.onclick = function () {
+      hideSendLoader();
+      cerrarCheckout();
+      _coScrollPrevio = 0;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
     btn.textContent = 'Volver a la tienda';
     try { btn.focus({ preventScroll: true }); } catch (e) {}
   }
@@ -5557,8 +5720,8 @@ function _coFaltaEnPaso(n, callado) {
       if (!($id('f-lote-pilar').value || '').trim()) mal('f-lote-pilar', 'err-lote-pilar');
     }
 
-    bien('f-telefono', 'err-telefono');
-    if (($id('f-telefono').value || '').replace(/\D/g, '').length < 8) mal('f-telefono', 'err-telefono');
+    bien('f-tel-num', 'err-telefono');
+    if (_telLocal().length !== TEL_LARGO) mal('f-tel-num', 'err-telefono');
     return primero;
   }
 
@@ -5794,7 +5957,12 @@ function _coBarraArrancar() {
   _coBarraT = setInterval(function () {
     var ahora = (window.performance && performance.now) ? performance.now() : t0;
     var seg = (ahora - t0) / 1000;
-    _coBarraPoner(Math.min(90, Math.max(4, 90 * (1 - Math.exp(-seg / 3.4)))));
+    /* La constante sale del p50 medido: 13 s, no los ~8 con los que nacio.
+       Con 3.4 la barra llegaba al 87% a los 8 s y despues se quedaba clavada
+       casi diez segundos, que se siente peor que una barra lenta. Con 5.6
+       llega al 90% recien pasando los 13 s, que es cuando de verdad suele
+       confirmar. Sigue sin llegar al final sola: eso no cambia. */
+    _coBarraPoner(Math.min(90, Math.max(4, 90 * (1 - Math.exp(-seg / 5.6)))));
   }, 400);
 }
 
@@ -5879,7 +6047,7 @@ function enviarPedido() {
     if (!lote) { showError('f-lote-pilar','err-lote-pilar'); if(!primerInvalido) primerInvalido=$id('f-lote-pilar'); }
   }
 
-  if ($id('f-telefono').value.replace(/\D/g,'').length < 8) { showError('f-telefono','err-telefono'); if(!primerInvalido) primerInvalido=$id('f-telefono'); }
+  if (_telLocal().length !== TEL_LARGO) { showError('f-tel-num','err-telefono'); if(!primerInvalido) primerInvalido=$id('f-tel-num'); }
   if (!dia) {
     showError('f-dia','err-dia');
     var _dpRoot = $id('day-picker');
@@ -6462,8 +6630,25 @@ function _tryBeaconOnly(postData) {
 var MALEU_RETRY_DELAYS = [2000, 4000, 8000, 15000, 30000, 60000, 120000, 300000, 900000]; // ms
 var MALEU_MAX_TRIES = MALEU_RETRY_DELAYS.length + 1;  // despues espera al proximo evento
 var MALEU_FETCH_TIMEOUT_MS = 30000;
-var SEND_LENTO_MS = 8000;       // "la conexion esta lenta"
-var SEND_FALLBACK_MS = 25000;   // se ofrece mandarlo por WhatsApp sin confirmar
+/* CALIBRADOS CONTRA LA MEDICION REAL (29/9/2026), no a ojo. Backend midio
+   326 pedidos de `Log Pedidos` restando los dos timestamps:
+
+       p50 13 s · p75 21 s · p90 59 s · p95 128 s
+
+   Con el umbral viejo de 8 s, el cartel de "la conexion esta lenta" salia en
+   292 de 326 pedidos — EL 90%. No avisaba de una excepcion: avisaba de lo
+   normal, y un aviso que salta 9 de cada 10 veces deja de leerse. Peor: asusta
+   justo cuando el cliente acaba de apretar para pagar.
+
+   25 s queda arriba del p75 (21 s, todavia normal) y abajo del p90. El
+   fallback pasa de 25 a 45: a los 25 le estaba ofreciendo "mandalo por
+   WhatsApp" a uno de cada cuatro pedidos que iban a entrar bien solos.
+
+   SI ESTOS NUMEROS BAJAN, ESTOS DOS BAJAN CON ELLOS. La distancia entre 13 s y
+   59 s huele a cola de Apps Script y no a trabajo; si Backend la achica, hay
+   que volver a medir y recalibrar en vez de dejarlos holgados para siempre. */
+var SEND_LENTO_MS = 25000;      // "la conexion esta lenta" — arriba del p75
+var SEND_FALLBACK_MS = 45000;   // se ofrece mandarlo por WhatsApp sin confirmar
 
 // ── SIGNATURE-BASED IDEMPOTENCY (21/06/26) ────────────────────────────
 // Si el cliente aprieta 'Pedir por WhatsApp' 2 veces con el MISMO pedido
@@ -6789,11 +6974,11 @@ function updateWhatsappCta() {
   if (cartCount() === 0) { setState('', '', 'Último paso: tocá para enviar tu pedido'); return; }
   // Campos comunes salvo pago: nombre, teléfono, fecha de entrega
   const nombre = ($id('f-nombre') && $id('f-nombre').value || '').trim();
-  const telDigits = ($id('f-telefono') && $id('f-telefono').value || '').replace(/\D/g,'');
+  const telDigits = _telLocal();
   const fechaIso = $id('f-dia-fecha') ? $id('f-dia-fecha').value : '';
   const dia = $id('f-dia') ? $id('f-dia').value : '';
   const pagoSel = document.querySelector('input[name="pago"]:checked');
-  const otherCompleto = !!nombre && telDigits.length >= 8 && !!(fechaIso || dia);
+  const otherCompleto = !!nombre && telDigits.length === TEL_LARGO && !!(fechaIso || dia);
   if (!otherCompleto) { setState('', '', 'Último paso: tocá para enviar tu pedido'); return; }
   // Campos específicos por zona (los revisamos aparte del pago para poder
   // detectar el caso "solo falta pago").
@@ -7477,11 +7662,13 @@ function loadClientData() {
       if (global) {
         _ponerSiVacio('f-nombre', global.nombre);
         _ponerSiVacio('f-telefono', global.telefono);
+        if (!$id('f-tel-num').value) _telPoner(global.telefono);
       }
       return;
     }
     _ponerSiVacio('f-nombre', saved.nombre);
     _ponerSiVacio('f-telefono', saved.telefono);
+    if (!$id('f-tel-num').value) _telPoner(saved.telefono);
     setTimeout(_pintarSaludo, 0);   // despues de que se completen los de abajo
     if (currentZone === 'estancias') {
       if (_ponerSiVacio('f-barrio-privado', saved.barrioPrivado)) filtrarSubBarrios(true);

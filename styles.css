@@ -2351,3 +2351,25 @@ body.busqueda-activa #ultimo-section { display: none !important; }
 /* Sin uso desde el 29/9: el checkout ya no se despliega abajo del catalogo.
    La regla queda por si alguna pagina vieja todavia trae el markup. */
 .form-section.collapsed .form-wrap { display: none; }
+/* ══ EL TELEFONO, CON ESTRUCTURA (29/9/2026) ════════════════════════════ */
+.tel-fila { display: flex; align-items: stretch; gap: .4rem; }
+.tel-pais {
+  display: flex; align-items: center;
+  padding: 0 .6rem;
+  border: 1px solid #E0D5C8; border-radius: 10px;
+  background: #F7F2EC; color: #6b5a52;
+  font-size: .95rem; font-weight: 600; white-space: nowrap;
+}
+.tel-area-wrap { flex: 0 0 5.4rem; }
+.tel-area-wrap select { width: 100%; }
+.tel-otro { flex: 0 0 4.6rem; min-width: 0; }
+.tel-otro[hidden] { display: none !important; }
+.tel-num { flex: 1 1 auto; min-width: 0; }
+.tel-hint { display: block; margin-top: .3rem; font-size: .76rem; color: #8a7a70; }
+
+/* A 340px la fila de cuatro piezas no entra: el prefijo se va a su propio
+   renglon antes que apretar el campo donde el cliente escribe. */
+@media (max-width: 360px) {
+  .tel-area-wrap { flex: 0 0 4.8rem; }
+  .tel-pais { padding: 0 .45rem; font-size: .88rem; }
+}
