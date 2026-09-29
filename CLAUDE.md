@@ -2831,7 +2831,7 @@ es la version bonita del bug que costo el pedido de $84.600 el 10/9.
 
 ### La red: `node _tools/verificar-checkout.js [ancho]`
 
-**65 chequeos**, verdes a 390 y 1440px, con el reloj congelado el lunes
+**74 chequeos**, verdes a 390 y 1440px, con el reloj congelado el lunes
 14/9/2026: un solo paso a la vista y el indicador marcandolo; "Continuar"
 frenando lo incompleto con el foco donde falta; el boton de comprar solo en el 3;
 volver sin perder lo escrito; no poder saltar a un paso que no se alcanzo; las
@@ -2859,6 +2859,73 @@ arrancando en el 1, la barra llenandose sola y el total sin seguir al pago—:
 > reserva, vendedor, pedido, sugerencias, descuento, paneles y llamadas. El unico
 > rojo que queda es el de `verificar-ultimo-pedido` ("dice la carne que llevo"),
 > **preexistente y medido contra HEAD: falla igual**.
+
+### La confirmacion ocupa la pantalla (29/9/2026, a la tarde)
+
+Tadeo, despues de probar el cierre con `?cierre=1`: *"funciono el flujo! eso es
+lo importante... me gustaria que cuando se realiza la compra, que adentro de la
+misma tienda, no salga un cartel como estos, sino mas bien un html completo con
+todo el detalle del pedido, ocupando toda la pantalla, y que tenga la opcion de
+volver a la tienda, o la opcion de que tiene duda con el pedido"*.
+
+| | antes | ahora |
+|---|---|---|
+| la confirmacion | un modal de 380px sobre fondo oscuro | **la pantalla entera**, fondo claro |
+| el detalle | un renglon del `<dl>` con saltos de linea adentro | **una lista**, un producto por renglon con su precio |
+| volver | un boton que decia «Listo» | **«Volver a la tienda»** |
+| la duda | un link chiquito al pie, del tamanio de la letra chica | **un boton de 48px** |
+
+**Solo en el estado `done`.** Mientras el pedido se registra sigue siendo el
+cartel, y eso es correcto: ahi todavia se puede volver atras. `hideSendLoader`
+saca la clase `pantalla` — sin eso, el proximo *"Registrando tu pedido…"*
+saldria a pantalla completa sobre fondo claro, que es la cara del pedido YA
+cerrado, y diria que termino algo que recien empieza.
+
+> [!danger] El circulo del check quedo ovalado, y no lo dijo ningun numero
+> La regla que centra el contenido (`.send-card > * { max-width:520px; width:100% }`)
+> le pego tambien al `.send-loader`, que es **cuadrado de 84px**: quedo un ovalo
+> de 84x72. Y despues de arreglarle el ancho seguia en 84x72, porque el card es
+> una columna flex y le comia el alto — hizo falta `flex: 0 0 84px`.
+>
+> **Se vio en la captura de pantalla, no en una medicion.** Es la tercera vez
+> que pasa en este repo: los carteles de stock del 10/9, la segunda barra de
+> hoy a la mañana, y esto. Ahora el test lo mide (`loaderW === loaderH`).
+
+### Dos textos y un logo
+
+- **El cartel de zona** decia *"Entregamos en Estancias, Pilar y alrededores"*.
+  Ahora dice **"Envios a Zona Norte"**: mas corto y no se queda viejo cada vez
+  que entra un barrio.
+- **El pie** decia **MALEU** en mayusculas. Ahora es el logo —`logo-maleu-blanco.png`,
+  la version blanca, que es la que corresponde sobre el marron—. **El archivo ya
+  estaba en el repo y sellado en `IMG_V` desde el 7/9, sin que lo usara ninguna
+  pantalla.** Va con `width`/`height` y `aspect-ratio` para no mover nada
+  mientras baja: el CLS de la carga esta en 0 y tiene que seguir ahi.
+
+> [!warning] `index.html` ya no nombra al dueño, y conviene que siga asi
+> `verificar-paginas.js` pasó de **9 a 13** problemas con los comentarios que se
+> agregaron hoy: el archivo se publica entero en maleu.com.ar, comentarios
+> incluidos. Se reescribieron como *"pedido del 29/9/2026"*; el porque completo
+> vive en este archivo, que **no** se publica.
+>
+> Los **9 de `ruleta.html` son preexistentes** y Tadeo dijo que no importan. Lo
+> que no puede pasar es que el numero crezca: una red que siempre da rojo deja
+> de mirarse, y entonces no sirve para nada.
+
+> [!note] Pendiente medido, y NO es de la tienda: el pedido tarda 7-9 s
+> Tadeo: *"el boton de realizar la compra tardo unos buenos segundos"*. Medido
+> contra produccion, **el piso de Apps Script es 0,3 s** (tres `GET stock_full`
+> con `t` aleatorio: 0,406 · 0,291 · 0,277). O sea que **los segundos no son de
+> la plataforma**: estan adentro de `doPost`.
+>
+> Ojo que esto **corrige lo que decian los dos CLAUDE.md**: el de Maleu habla de
+> «~4 s cada una» y el de la tienda de «como minimo ~5 s». Con este numero, eso
+> quedo viejo.
+>
+> Se le paso a Backend con dos preguntas: que hay entre que se escribe la fila y
+> el `return` (los avisos y la confirmacion podrian ir despues), y si el LOCK de
+> `doPost` se puede acotar a la escritura. **Del lado de la tienda no hay nada
+> que achicar**: sale un solo POST, sin reintentos, y el test lo exige.
 
 ### Lo que falta para prender `CIERRE_EN_LA_TIENDA`
 

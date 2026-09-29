@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=bbc6311b" />
+  <link rel="stylesheet" href="styles.css?v=aaca3803" />
   <script>
     // Forzar inicio arriba en cada carga (incluye refresh, back-forward cache de iOS).
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
@@ -142,7 +142,7 @@
     <div class="loc-step" id="loc-step-zone">
       <img src="img/logo-icono.png?v=d8163724" alt="Maleu" />
       <h2>Env&iacute;o a domicilio</h2>
-      <!-- Sin "y el envio": Tadeo lo saco de la lista el 28/9/2026 y este
+      <!-- Sin "y el envio": salio de la lista el 28/9/2026 y este
            subtitulo seguia prometiendolo. Ese dia se corrigio el otro paso
            (el de mas abajo) y este quedo. -->
       <p>Decinos d&oacute;nde est&aacute;s y te mostramos los d&iacute;as de entrega.</p>
@@ -161,7 +161,7 @@
     <div class="loc-step" id="loc-step-barrio" style="display:none">
       <img src="img/logo-icono.png?v=d8163724" alt="Maleu" />
       <h2>¿En qué zona de Pilar estás?</h2>
-      <!-- No nombra el envio: Tadeo lo saco de la lista el 28/9/2026
+      <!-- No nombra el envio: salio de la lista el 28/9/2026
            ("sacaria el envio, solo mostraria los dias de entrega") y el
            subtitulo se quedo prometiendolo. El envio se ve en el carrito. -->
       <p>Así te mostramos los días de entrega de tu barrio.</p>
@@ -293,7 +293,7 @@
      invitacion, no una pared. Se ve solo mientras la zona es provisoria; lo
      prende y apaga _updateZonaCta() desde applyZone(). (23/9/2026) -->
 <button type="button" class="zona-cta" id="zona-cta" onclick="showZoneModal('cartel')" hidden>
-  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg><span class="zona-cta-txt">Entregamos en Estancias, Pilar y alrededores</span>
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg><span class="zona-cta-txt">Env&iacute;os a Zona Norte</span>
   <span class="zona-cta-btn">Elegí tu zona</span>
 </button>
 
@@ -402,7 +402,7 @@
     <div class="form-grid">
       <!-- EL CHECKOUT EN TRES PASOS (29/9/2026)
       
-           Tadeo: "la etapa de completar sus datos, despues la parte de pago,
+           Pedido del 29/9/2026: "la etapa de completar sus datos, despues la parte de pago,
            despues la parte de dia de entrega, y un boton de Realizar Compra".
            Hasta hoy era UNA pantalla larga: pago, direccion, telefono, dia,
            cumpleanios y boton, todo junto.
@@ -676,7 +676,12 @@
 
 <!-- FOOTER -->
 <footer>
-  <div class="footer-brand">MALEU</div>
+  <!-- EL LOGO, no la palabra en mayusculas (pedido del 29/9/2026). El
+       archivo ya estaba en el repo y sellado en IMG_V desde el 7/9, sin que lo
+       usara ninguna pantalla: es la version blanca, que es la que corresponde
+       sobre el marron del pie. Lleva width y height para que no mueva nada
+       mientras baja — el CLS de la carga esta en 0 y tiene que seguir ahi. -->
+  <img class="footer-logo" src="img/logo-maleu-blanco.png?v=0327ed85" alt="Maleu" width="620" height="120" />
   <p class="footer-tag">Rico y listo en minutos.</p>
   <div class="footer-cols" style="text-align:center;justify-items:center;">
     <div class="footer-col">
@@ -724,10 +729,18 @@
          `setSendLoaderDone`; los renglones van por `textContent` porque la
          direccion y el detalle salen de lo que escribio el cliente. -->
     <div class="send-done">
+      <!-- EL COMPROBANTE (29/9/2026). Lo llena setSendLoaderDone: la lista de
+           productos, la entrega, la direccion y el total. -->
+      <ul class="send-done-items" id="send-done-items"></ul>
       <dl class="send-done-datos" id="send-done-datos"></dl>
       <div class="send-done-pago" id="send-done-pago" hidden></div>
-      <button type="button" class="send-done-btn" id="send-done-btn">Listo</button>
-      <p class="send-done-duda">&#191;Alguna duda con tu pedido? <a href="#" id="send-done-wa" rel="noopener">Escribinos por WhatsApp</a></p>
+      <div class="send-done-acciones">
+        <button type="button" class="send-done-btn" id="send-done-btn">Volver a la tienda</button>
+        <!-- La duda es un BOTON y no un renglon de texto: hasta hoy era un link
+             chiquito al pie, del tamanio de la letra chica. Alguien con un
+             problema con su pedido tiene que poder escribirnos sin buscar. -->
+        <a class="send-done-duda-btn" id="send-done-wa" rel="noopener" target="_blank">&#191;Ten&eacute;s una duda con tu pedido? Escribinos</a>
+      </div>
     </div>
     <!-- LA BARRA. Era indeterminada —un bloque del 35% deslizandose en loop,
          que se movia igual a los 2 s que a los 40— y ahora dice cuanto falta.
@@ -738,6 +751,6 @@
   </div>
 </div>
 
-<script src="app.js?v=478328d1"></script>
+<script src="app.js?v=0334de98"></script>
 </body>
 </html>

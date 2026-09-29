@@ -460,6 +460,11 @@ async function main() {
     await dormir(300);
     await ev('(function () { var c = document.querySelector("#day-picker .dp-cell.available"); if (c) c.click(); })()');
     await dormir(300);
+    /* Tres productos distintos: la lista del comprobante se mide por renglon,
+       y con uno solo un bug que los pise a todos pasaria igual. */
+    await ev('(function () { var ps = getActiveProducts().filter(function (x) { return !esPorPeso(x); }).slice(0, 3);' +
+      ' ps.forEach(function (p) { addToCart(String(p.id)); }); })()');
+    await dormir(300);
     const urlAntes = await ev('location.href');
     await ev('enviarPedido()');
     await dormir(900);
@@ -479,6 +484,44 @@ async function main() {
     chk(fin.url === urlAntes, 'Y NO SE FUE A WHATSAPP: sigue en la tienda');
     chk(!escapados.some((x) => /wa\.me|whatsapp/.test(x)),
         'ni lo intento por atras', escapados.join(' | ') || 'nada');
+
+    /* La confirmacion ocupa la pantalla, no es un cartel (29/9/2026). */
+    const pant = JSON.parse(await ev('JSON.stringify((function () {' +
+      ' var ov = document.getElementById("send-overlay");' +
+      ' var card = ov.querySelector(".send-card");' +
+      ' var r = card.getBoundingClientRect();' +
+      ' var lo = card.querySelector(".send-loader").getBoundingClientRect();' +
+      ' var btn = document.getElementById("send-done-btn");' +
+      ' var wa = document.getElementById("send-done-wa");' +
+      ' return { clase: ov.className, ancho: Math.round(r.width), alto: Math.round(r.height),' +
+      '   viewW: window.innerWidth, viewH: window.innerHeight,' +
+      '   loaderW: Math.round(lo.width), loaderH: Math.round(lo.height),' +
+      '   items: document.querySelectorAll("#send-done-items li").length,' +
+      '   btn: btn ? btn.textContent.trim() : "", btnAlto: btn ? Math.round(btn.getBoundingClientRect().height) : 0,' +
+      '   wa: wa ? wa.textContent.trim() : "", waHref: wa ? wa.getAttribute("href") : "",' +
+      '   waAlto: wa ? Math.round(wa.getBoundingClientRect().height) : 0 };' +
+      '})())'));
+    chk(/pantalla/.test(pant.clase), 'la confirmacion ocupa la pantalla, no es un cartel', pant.clase);
+    chk(pant.ancho === pant.viewW, 'la tarjeta va de borde a borde', pant.ancho + ' de ' + pant.viewW);
+    chk(pant.alto >= pant.viewH, 'y cubre el alto entero', pant.alto + ' >= ' + pant.viewH);
+    /* El circulo del check es CUADRADO. Con `width:100%` heredado quedaba un
+       ovalo de 84x72, y eso no lo dice ningun numero de la pagina: se vio en
+       una captura. */
+    chk(pant.loaderW === pant.loaderH, 'el circulo del check es redondo, no un ovalo',
+        pant.loaderW + 'x' + pant.loaderH);
+    chk(pant.items === 3, 'los productos van uno por renglon', String(pant.items));
+    chk(/volver a la tienda/i.test(pant.btn), 'hay un boton para volver a la tienda', '"' + pant.btn + '"');
+    chk(/duda/i.test(pant.wa) && /wa\.me/.test(pant.waHref),
+        'y otro para escribirnos si tiene una duda', '"' + pant.wa + '"');
+    chk(pant.btnAlto >= 44 && pant.waAlto >= 44,
+        'los dos se pueden tocar (44px minimo)', pant.btnAlto + ' y ' + pant.waAlto);
+
+    /* Y al volver, el overlay deja de ser pantalla: el proximo "Registrando tu
+       pedido..." tiene que salir como cartel, no como un pedido ya cerrado. */
+    await ev('document.getElementById("send-done-btn").click()');
+    await dormir(300);
+    chk(!(await ev('document.getElementById("send-overlay").classList.contains("pantalla")')),
+        'al volver a la tienda, el overlay deja de ser pantalla completa');
 
     const postsDelCierre = await ev('window.__posts.length');
     chk(postsDelCierre === 1, 'y salio UN solo POST, no una cadena de reintentos', String(postsDelCierre));

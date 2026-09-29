@@ -472,6 +472,12 @@ async function main() {
           done: !!(card && card.classList.contains('done')),
           titulo: (document.getElementById('send-title')||{}).textContent || '',
           filas: filas,
+          /* El detalle dejo de ser una fila del <dl> el 29/9/2026: ahora es una
+             lista, un producto por renglon. Ver "la confirmacion a pantalla
+             completa" en el CLAUDE.md. */
+          items: [].map.call(document.querySelectorAll('#send-done-items li'), function (li) {
+            return li.textContent || '';
+          }),
           aliasVisible: !!(pago && !pago.hidden),
           aliasTxt: pago ? pago.textContent : '',
           copiar: !!(pago && pago.querySelector('button')),
@@ -486,12 +492,15 @@ async function main() {
       chk(/999/.test(pant.titulo), 'con el N de pedido que devolvio el ERP: "' + pant.titulo + '"');
 
       const k = pant.filas.map((f) => f.k).join(',');
-      chk(/Entrega/.test(k) && /Direccion|Dirección/.test(k) && /Pedido/.test(k) && /Total/.test(k),
-          'con entrega, direccion, detalle y total (' + k + ')');
+      chk(/Entrega/.test(k) && /Direccion|Dirección/.test(k) && /Total/.test(k),
+          'con entrega, direccion y total (' + k + ')');
       const dir = (pant.filas.find((f) => /Direcc/.test(f.k)) || {}).v || '';
       chk(/Lote 123/.test(dir), 'la direccion es la que cargo el cliente: "' + dir + '"');
-      const det = (pant.filas.find((f) => /Pedido/.test(f.k)) || {}).v || '';
-      chk(det.length > 3 && !/[*_\u2022]/.test(det), 'el detalle va limpio, sin el formato de WhatsApp: "' + det.slice(0, 48) + '"');
+      /* El detalle salio del <dl> el 29/9/2026: ahora es una lista, un
+         producto por renglon. El dato sigue, cambio donde vive. */
+      const det = (pant.items || []).join(' | ');
+      chk(pant.items.length > 0 && !/[*_\u2022]/.test(det),
+          'el detalle va limpio y por renglon: "' + det.slice(0, 48) + '"');
       const tot = (pant.filas.find((f) => /Total/.test(f.k)) || {}).v || '';
       chk(/\$/.test(tot) && /Transferencia/.test(tot), 'el total dice cuanto y como paga: "' + tot + '"');
 

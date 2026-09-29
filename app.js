@@ -5370,12 +5370,42 @@ function setSendLoaderDone(info) {
   if (t) t.textContent = info.n ? 'Pedido #' + info.n + ' confirmado' : 'Pedido confirmado';
   if (sub) sub.textContent = 'Te mandamos la confirmación por WhatsApp.';
 
+  /* A PANTALLA COMPLETA. Solo en `done`: mientras el pedido se registra sigue
+     siendo el cartel, que es lo correcto — ahi todavia se puede volver. */
+  ov.classList.add('pantalla');
+  if (t) t.classList.add('send-title-done');
+
+  /* Los productos, uno por renglon. `info.detalle` viene como el texto del
+     WhatsApp, una linea por item: "2 Pizza Margarita — $23.000". Se parte por
+     ese guion largo, que es el separador que arma `prodLines`, y si alguna
+     linea no lo trae se muestra entera en vez de perderse. */
+  var ul = $id('send-done-items');
+  if (ul) {
+    ul.innerHTML = '';
+    var lineas = String(info.detalle || '').split('\n').filter(function (x) { return x.trim(); });
+    lineas.forEach(function (linea) {
+      var li = document.createElement('li');
+      var corte = linea.lastIndexOf(' \u2014 ');
+      if (corte > 0) {
+        var izq = document.createElement('span');
+        izq.textContent = linea.slice(0, corte).trim();
+        var der = document.createElement('span');
+        der.className = 'sdi-precio';
+        der.textContent = linea.slice(corte + 3).trim();
+        li.appendChild(izq); li.appendChild(der);
+      } else {
+        li.textContent = linea.trim();
+      }
+      ul.appendChild(li);
+    });
+    ul.hidden = !lineas.length;
+  }
+
   var dl = $id('send-done-datos');
   if (dl) {
     dl.innerHTML = '';
     _sendDoneFila(dl, 'Entrega', info.entrega);
     _sendDoneFila(dl, 'Dirección', info.direccion);
-    _sendDoneFila(dl, 'Pedido', info.detalle);
     _sendDoneFila(dl, 'Total', info.total, 'send-done-total');
   }
 
@@ -5415,6 +5445,7 @@ function setSendLoaderDone(info) {
   var btn = $id('send-done-btn');
   if (btn) {
     btn.onclick = function () { hideSendLoader(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    btn.textContent = 'Volver a la tienda';
     try { btn.focus({ preventScroll: true }); } catch (e) {}
   }
 }
@@ -5446,6 +5477,13 @@ function _copiarViejo(texto, btn, ok) {
 
 function hideSendLoader() {
   _coBarraParar();
+  /* Devolver el overlay a modal. Si no, el proximo "Registrando tu pedido..."
+     saldria a pantalla completa sobre fondo claro, que es la pantalla del
+     pedido YA cerrado — diria que termino algo que recien empieza. */
+  var _ovp = $id('send-overlay');
+  if (_ovp) _ovp.classList.remove('pantalla');
+  var _tp = $id('send-title');
+  if (_tp) _tp.classList.remove('send-title-done');
   var ov = $id('send-overlay');
   if (!ov) return;
   ov.classList.remove('active');
