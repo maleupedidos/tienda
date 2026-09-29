@@ -4908,6 +4908,7 @@ function updateUI() {
   if (appliedCoupon) _renderCouponApplied();
   // "Agregar lo mismo" dice si todavia falta algo: depende del carrito.
   _pintarUltimoPie();
+  coPintarTotal();
 }
 
 function updateFormSummary() {
@@ -5015,6 +5016,7 @@ function goToForm() {
   _track('begin_checkout', { value: cartTotal(), zone: currentZone, items: cartCount() });
   const section = $id('form-section');
   if (section) section.classList.remove('collapsed');
+  coArranque();
   /* El dia de la fecha elegida, marcado en el formulario (12/9/2026). Un
      cliente que vuelve con la fecha guardada y vigente NO pasa por el modal,
      que es el unico que la marcaba: entraba desde el carrito y el dia estaba
@@ -5232,6 +5234,7 @@ function filtrarSubBarrios(keepValue) {
      · .fallback — a los 25 s sin confirmacion: se ofrece mandarlo igual por
                    WhatsApp, con un mensaje que dice que no quedo registrado */
 function showSendLoader() {
+  _coBarraArrancar();
   var ov = $id('send-overlay');
   if (!ov) return;
   var card = ov.querySelector('.send-card');
@@ -5246,6 +5249,7 @@ function showSendLoader() {
   _fondoQuieto('envio', true);
 }
 function setSendLoaderSuccess() {
+  _coBarraTerminar();
   var ov = $id('send-overlay');
   if (!ov) return;
   var card = ov.querySelector('.send-card');
@@ -5319,6 +5323,7 @@ function _sendDoneFila(dl, etiqueta, valor, clase) {
 }
 
 function setSendLoaderDone(info) {
+  _coBarraTerminar();
   var ov = $id('send-overlay');
   if (!ov) return;
   var card = ov.querySelector('.send-card');
@@ -5406,6 +5411,7 @@ function _copiarViejo(texto, btn, ok) {
 }
 
 function hideSendLoader() {
+  _coBarraParar();
   var ov = $id('send-overlay');
   if (!ov) return;
   ov.classList.remove('active');
@@ -5416,6 +5422,249 @@ function hideSendLoader() {
 }
 
 /* ── ENVIAR PEDIDO ── */
+/* ══ EL CHECKOUT EN TRES PASOS (29/9/2026) ═══════════════════════════════
+
+   Tadeo: "la etapa de completar sus datos, despues la parte de pago, despues
+   la parte de dia de entrega, y un boton de Realizar Compra".
+
+   Se miro frizata.com, que fue la referencia que puso el: su "Terminar
+   compra" abre un muro de email y contraseña, sin salida de invitado. Eso NO
+   se copio, y es a proposito — el 28/9 se decidio no hacer cuentas, y meter
+   un registro justo antes de pagar deshace las cuatro pantallas que se le
+   sacaron a la entrada el 23/9.
+
+   LOS TRES PASOS VIVEN EN EL DOM TODO EL TIEMPO y se tapan con [hidden]. Es
+   lo que deja que `enviarPedido` lea los campos por id sin enterarse de nada,
+   que lo escrito sobreviva al ir y volver, y que el calendario no se repinte.
+
+   NO HAY UNA SEGUNDA VALIDACION. Las condiciones de _coFaltaEnPaso son las
+   mismas de `enviarPedido`, que sigue siendo la ultima puerta y no se toco.
+   Que esten escritas dos veces es el riesgo conocido de este repo —dos formas
+   de hacer lo mismo se despegan—, asi que `verificar-checkout.js` vacia cada
+   campo obligatorio de a uno y exige que LAS DOS lo frenen. */
+
+var coPaso = 1;
+var CO_ULTIMO = 3;
+
+/* El primer campo que falta en ese paso, o null. Con `callado` no marca los
+   errores: sirve para PREGUNTAR si el paso esta completo (el que vuelve y ya
+   tiene sus datos) sin pintarle la pantalla de rojo a alguien que todavia no
+   toco nada. */
+function _coFaltaEnPaso(n, callado) {
+  var primero = null;
+  function mal(id, errId) {
+    if (!callado) showError(id, errId);
+    if (!primero) primero = $id(id);
+  }
+  function bien(id, errId) { if (!callado) clearError(id, errId); }
+
+  if (n === 1) {
+    bien('f-nombre', 'err-nombre');
+    if (!($id('f-nombre').value || '').trim()) mal('f-nombre', 'err-nombre');
+
+    if (currentZone === 'estancias') {
+      bien('f-barrio-privado', 'err-barrio-privado');
+      bien('f-barrio', 'err-barrio');
+      bien('f-lote', 'err-lote');
+      var bp = $id('f-barrio-privado').value;
+      if (!bp) mal('f-barrio-privado', 'err-barrio-privado');
+      /* Estancias del Rio no tiene sub barrios: se entrega por lote. Pedirle
+         uno seria frenarlo por un campo que su barrio ni muestra. */
+      if (bp === 'Estancias del Pilar' && !$id('f-barrio').value) mal('f-barrio', 'err-barrio');
+      if (!($id('f-lote').value || '').trim()) mal('f-lote', 'err-lote');
+    } else if (currentZone === 'clubes') {
+      bien('f-club', 'err-club'); bien('f-deporte', 'err-deporte'); bien('f-grupo', 'err-grupo');
+      if (!$id('f-club').value) mal('f-club', 'err-club');
+      if (!$id('f-deporte').value) mal('f-deporte', 'err-deporte');
+      if (!$id('f-grupo').value) mal('f-grupo', 'err-grupo');
+    } else {
+      bien('f-pilar-barrio', 'err-pilar-barrio');
+      bien('f-direccion', 'err-direccion');
+      bien('f-lote-pilar', 'err-lote-pilar');
+      var pil = $id('f-pilar-barrio').value;
+      if (!pil) mal('f-pilar-barrio', 'err-pilar-barrio');
+      else if (pil === '__otro__' && !($id('f-direccion').value || '').trim()) mal('f-direccion', 'err-direccion');
+      if (!($id('f-lote-pilar').value || '').trim()) mal('f-lote-pilar', 'err-lote-pilar');
+    }
+
+    bien('f-telefono', 'err-telefono');
+    if (($id('f-telefono').value || '').replace(/\D/g, '').length < 8) mal('f-telefono', 'err-telefono');
+    return primero;
+  }
+
+  if (n === 2) {
+    var errPago = $id('err-pago');
+    if (errPago && !callado) errPago.classList.remove('visible');
+    if (!document.querySelector('input[name="pago"]:checked')) {
+      if (errPago && !callado) errPago.classList.add('visible');
+      return $id('pago-group');
+    }
+    return null;
+  }
+
+  if (n === 3) {
+    var dp = $id('day-picker');
+    if (!callado) { clearError('f-dia', 'err-dia'); if (dp) dp.classList.remove('error'); }
+    if (!$id('f-dia').value) {
+      if (!callado) { showError('f-dia', 'err-dia'); if (dp) dp.classList.add('error'); }
+      return dp || $id('f-dia');
+    }
+    return null;
+  }
+  return null;
+}
+
+/* Llevar el foco al campo que falta, no solo la vista. Es la misma regla que
+   `enviarPedido` aprendio el 11/9: sin foco, la pagina te deja al lado del
+   campo y hay que tocarlo a mano, con el teclado cerrado. */
+function _coEnfocar(el) {
+  if (!el) return;
+  try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+  var ctl = /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(el.tagName)
+    ? el : el.querySelector('input,select,textarea,button');
+  if (ctl) { try { ctl.focus({ preventScroll: true }); } catch (e) { try { ctl.focus(); } catch (e2) {} } }
+}
+
+function coPintar() {
+  for (var i = 1; i <= CO_ULTIMO; i++) {
+    var caja = document.querySelector('.co-paso[data-co-paso="' + i + '"]');
+    if (caja) caja.hidden = (i !== coPaso);
+    var punto = document.querySelector('.co-punto[data-co-punto="' + i + '"]');
+    if (punto) {
+      punto.classList.toggle('activo', i === coPaso);
+      punto.classList.toggle('hecho', i < coPaso);
+    }
+  }
+  var nav = $id('co-nav'), volver = $id('co-volver'), seguir = $id('co-seguir');
+  if (nav) nav.hidden = false;
+  coPintarTotal();
+  if (volver) volver.hidden = (coPaso === 1);
+  if (seguir) seguir.hidden = (coPaso === CO_ULTIMO);
+  /* El boton de comprar SOLO en el ultimo paso. Dejarlo a la vista desde el
+     paso 1 es no tener pasos: se toca, cae en la validacion de enviarPedido
+     y vuelve a ser la pantalla larga de antes. */
+  var cta = $id('whatsapp-cta-wrap');
+  if (cta) cta.hidden = (coPaso !== CO_ULTIMO);
+  var nota = document.querySelector('.form-note');
+  if (nota) nota.hidden = (coPaso !== CO_ULTIMO);
+}
+
+/* El renglon de total de la nav. Sale de LA MISMA cuenta que el carrito y el
+   WhatsApp —`subtotal - getTotalDiscount() + getShipping() - getSaldoAFavor()`,
+   copiada de updateUI— y no de una propia: dos formas de sumar el mismo
+   pedido se despegan, y lo que se despega aca es la plata.
+
+   Cuelga del final de `updateUI`, que es por donde pasa TODO cambio del
+   carrito, del medio de pago y del cupon (onPagoChange la llama). Colgarlo de
+   los call sites es como los botones dejaron de andar el 10/9. */
+function coPintarTotal() {
+  var caja = $id('co-total');
+  if (!caja) return;
+  if (!cartCount()) { caja.hidden = true; return; }
+  var t, aprox = false;
+  try {
+    t = Math.round(cartTotal() - getTotalDiscount() + getShipping() - getSaldoAFavor());
+    aprox = hayReservaEnCarrito();
+  } catch (e) { caja.hidden = true; return; }
+  caja.hidden = false;
+  caja.innerHTML = '';
+  var izq = document.createElement('span');
+  izq.textContent = aprox ? 'Total aprox.' : 'Total';
+  if (aprox) {
+    /* Con carne reservada la pieza se pesa al llegar, asi que este numero
+       todavia no es el final. Lo dicen igual el carrito y el resumen: que un
+       lugar prometa un total cerrado y otro no seria peor que no decirlo. */
+    var nota = document.createElement('span');
+    nota.className = 'co-total-aprox';
+    nota.textContent = 'La carne se pesa al llegar';
+    izq.appendChild(nota);
+  }
+  var der = document.createElement('b');
+  der.textContent = '$' + t.toLocaleString('es-AR');
+  caja.appendChild(izq); caja.appendChild(der);
+}
+
+function coIr(n, opts) {
+  n = Math.max(1, Math.min(CO_ULTIMO, n));
+  var cambio = (n !== coPaso);
+  coPaso = n;
+  coPintar();
+  if (!(opts && opts.sinScroll)) {
+    var t = $id('co-pasos') || $id('form-title');
+    if (t) _smoothScrollToEl(t, { instant: true });
+  }
+  if (cambio) _track('checkout_paso', { paso: n, zone: currentZone });
+}
+
+function coSeguir() {
+  var falta = _coFaltaEnPaso(coPaso);
+  if (falta) { _coEnfocar(falta); return; }
+  if (coPaso < CO_ULTIMO) coIr(coPaso + 1);
+}
+
+function coVolver() { if (coPaso > 1) coIr(coPaso - 1); }
+
+/* Al abrir el formulario. El que ya nos compro tiene sus datos cargados desde
+   el 11/9, asi que no vuelve a ver esa pantalla: arranca en el pago.
+
+   Se pregunta con la MISMA funcion que valida y en modo callado, asi que no
+   puede saltear un paso que despues lo frenaria, ni le pinta de rojo un
+   formulario que todavia no toco. */
+function coArranque() {
+  coPaso = 1;
+  if (!_coFaltaEnPaso(1, true)) coPaso = 2;
+  coPintar();
+}
+
+/* Volver a un paso ya cerrado tocando su punto. Hacia adelante no: saltearse
+   el 1 deja el pedido sin direccion. Se engancha una sola vez. */
+document.addEventListener('click', function (ev) {
+  var p = ev.target && ev.target.closest && ev.target.closest('.co-punto');
+  if (!p || !p.classList.contains('hecho')) return;
+  coIr(+p.getAttribute('data-co-punto'));
+});
+
+/* ── LA BARRA DEL ENVIO ──
+   Tadeo: "que se vaya como cargando hasta llegar a toda la barra y que salte
+   un Ya esta hecho el pedido", como Mercado Pago.
+
+   NO LLEGA AL FINAL SOLA, y es lo unico que importa de este bloque. Se acerca
+   a 90 con una curva que se va frenando —rapido al principio, casi quieta
+   despues de los ~8 s que tarda el POST medido— y el tramo que falta lo
+   completa la confirmacion del ERP. Una barra que se llena por su cuenta y
+   despues espera es la version bonita del bug que costo el pedido de $84.600
+   el 10/9: decia "listo" cuando no habia llegado nada. */
+var _coBarraT = null;
+
+function _coBarraPoner(pct) {
+  var fill = $id('send-barra-fill'), caja = $id('send-barra');
+  if (fill) fill.style.width = pct + '%';
+  if (caja) caja.setAttribute('aria-valuenow', String(Math.round(pct)));
+}
+
+function _coBarraArrancar() {
+  var caja = $id('send-barra');
+  if (caja) caja.hidden = false;
+  _coBarraPoner(4);
+  /* EL RELOJ MONOTONO, NO EL DE PARED. Date.now() contesta "que hora es", que
+     no es la misma pregunta que "cuanto paso": salta si el sistema ajusta la
+     hora, y las redes de este repo congelan Date a proposito para poder probar
+     un domingo un martes. Con Date.now() la barra se quedaba clavada en 4%
+     adentro de cualquiera de esos tests, y en produccion andaba — el peor tipo
+     de bug. Lo agarro verificar-checkout.js en su primera corrida.
+     performance.now() mide duracion, que es lo que hace falta aca. */
+  var t0 = (window.performance && performance.now) ? performance.now() : 0;
+  clearInterval(_coBarraT);
+  _coBarraT = setInterval(function () {
+    var ahora = (window.performance && performance.now) ? performance.now() : t0;
+    var seg = (ahora - t0) / 1000;
+    _coBarraPoner(Math.min(90, Math.max(4, 90 * (1 - Math.exp(-seg / 3.4)))));
+  }, 400);
+}
+
+function _coBarraTerminar() { clearInterval(_coBarraT); _coBarraT = null; _coBarraPoner(100); }
+function _coBarraParar() { clearInterval(_coBarraT); _coBarraT = null; _coBarraPoner(0); }
+
 function enviarPedido() {
   if (_enviando) return;
   if (!currentZone) { showZoneModal('enviar'); return; }
@@ -5503,6 +5752,13 @@ function enviarPedido() {
   }
   if (!pagoEl) { $id('err-pago').classList.add('visible'); if(!primerInvalido) primerInvalido=$id('pago-group'); }
   if (primerInvalido) {
+    /* Si el campo que falta vive en un paso que no se ve, primero hay que ir
+       a ese paso: sin esto se scrollea a un display:none y el cliente ve el
+       formulario quieto, sin ninguna pista de que le falta algo. Se resuelve
+       aca, en el unico lugar por el que pasan todos los campos, y no en cada
+       uno de los diez `primerInvalido=` de arriba. */
+    var _cajaPaso = primerInvalido.closest && primerInvalido.closest('.co-paso');
+    if (_cajaPaso && _cajaPaso.hidden) coIr(+_cajaPaso.getAttribute('data-co-paso'), { sinScroll: true });
     primerInvalido.scrollIntoView({behavior:'smooth',block:'center'});
     /* Y ademas el FOCO, que faltaba: sin el, la pagina te lleva hasta el campo
        que falta y ahi te suelta — hay que tocarlo a mano para poder escribir,
@@ -6440,6 +6696,7 @@ function updateWhatsappCta() {
 function expandForm() {
   const section = $id('form-section');
   if (section) section.classList.remove('collapsed');
+  coArranque();
   updatePagoHint();
   // Asegurar que la fecha elegida en el modal welcome quede seleccionada
   // en el day-picker del form (por si algún re-render la limpió antes).

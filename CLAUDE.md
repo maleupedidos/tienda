@@ -2758,6 +2758,132 @@ tienda de antes da **4 rojos**. Cero POST.
 > · **Verificado**: los 34 precios del documento de Joaco coinciden uno por uno
 >   con los de la tienda. Esta calculado sobre precios reales.
 
+## El checkout en tres pasos (29/9/2026)
+
+Tadeo, con el template de Meta recien aprobado: *"la etapa de completar sus
+datos, despues la parte de pago, despues la parte de dia de entrega, y un boton
+de Realizar Compra que se vaya como cargando hasta llegar a toda la barra... como
+en Mercado Pago"*. Y: *"copialo identico a Frizata"*.
+
+| | antes | ahora |
+|---|---|---|
+| el formulario | **una pantalla larga**: pago, direccion, telefono, dia, cumpleanios y boton | **tres pasos** con indicador |
+| el orden | el pago primero | **datos - pago - entrega** |
+| el que vuelve | veia todo igual | **arranca en el pago**: sus datos ya estan |
+| el boton de comprar | a la vista desde el principio | **solo en el paso 3** |
+| el total | solo en el resumen de arriba, que se va de pantalla | **un renglon fijo**, en los tres pasos |
+| la barra del envio | **indeterminada**: un bloque deslizandose en loop | **dice cuanto falta** |
+
+> [!danger] Frizata NO se copio identico, y es a proposito
+> Se recorrio frizata.com hasta "Terminar compra": ahi abre un muro de **email y
+> contraseña, sin salida de invitado** (buscado: no hay "continuar sin
+> registrarme"). Copiarlo seria poner un registro justo antes de pagar —
+> **exactamente lo que Tadeo descarto el 28/9**— y deshace las cuatro pantallas
+> que se le sacaron a la entrada el 23/9.
+>
+> Frizata puede: el 100% de su venta es online y su cliente ya la conoce. El de
+> Maleu entra por un link de WhatsApp de su vecina.
+
+> [!important] El pago paso de primero a segundo, y la razon vieja habia caducado
+> El comentario que estaba ahi decia: *"para que el cliente vea el 10% de efectivo
+> antes de tipear cupon"*. **El campo de cupon manual ya no existe** — verificado,
+> cero ocurrencias de `f-cupon` en las 11 paginas. Se saco con la ruleta.
+
+> [!danger] NO hay una segunda validacion, y esto es lo que mas cuida la red
+> `enviarPedido` **no se toco**: sigue siendo la ultima puerta. Lo que se agrego
+> es `_coFaltaEnPaso(n, callado)`, con **las mismas condiciones**, para frenar
+> antes. Que esten escritas dos veces es el riesgo conocido de este repo —dos
+> formas de hacer lo mismo se despegan—, asi que el bloque D de
+> `verificar-checkout.js` **vacia cada campo obligatorio de a uno y exige que
+> LAS DOS lo frenen**, con su control: que con todo completo ninguna frene.
+
+> [!warning] Si falta un campo de OTRO paso, `enviarPedido` lleva a ese paso
+> Sin eso le hace `scrollIntoView` a un `display:none`: el cliente ve el
+> formulario quieto, sin ninguna pista de que le falta algo. Se resuelve en el
+> unico lugar por el que pasan todos los campos —el `if (primerInvalido)`— y no
+> en los diez `primerInvalido=` de arriba.
+
+> [!important] Los tres pasos viven en el DOM todo el tiempo
+> Se tapan con `[hidden]`. Es lo que deja que `enviarPedido` lea los campos por
+> id sin enterarse de en que paso estan, que lo escrito sobreviva al ir y volver,
+> y que el calendario no se repinte. **No se movio ni un id ni un onclick.**
+
+### La barra: no llega al final sola
+
+Avanza hacia el 90% con una curva que se va frenando —rapido al principio, casi
+quieta pasados los ~8 s que tarda el POST medido— y **el ultimo tramo lo completa
+la confirmacion del ERP**. Una barra que se llena por su cuenta y despues espera
+es la version bonita del bug que costo el pedido de $84.600 el 10/9.
+
+> [!danger] Habia UNA BARRA YA PUESTA, y era indeterminada
+> `.send-progress`: un bloque del 35% deslizandose en loop infinito, que se movia
+> igual a los 2 s que a los 40. La primera version de esto agrego **una segunda
+> barra** tres centimetros mas arriba. Se vio en una captura, no en un numero.
+> Hoy hay una sola: se convirtio esa en determinada, y el test exige que sea una.
+
+> [!danger] La barra mide con `performance.now()`, NO con `Date.now()`
+> `Date.now()` contesta *"que hora es"*, que no es la misma pregunta que
+> *"cuanto paso"*: salta si el sistema ajusta la hora, y **las redes de este repo
+> congelan `Date` a proposito** para poder probar un domingo un martes. Con
+> `Date.now()` la barra se quedaba clavada en 4% adentro de cualquiera de esos
+> tests **y en produccion andaba bien** — el peor tipo de bug. Lo agarro
+> `verificar-checkout.js` en su primera corrida.
+
+### La red: `node _tools/verificar-checkout.js [ancho]`
+
+**51 chequeos**, verdes a 390 y 1440px, con el reloj congelado el lunes
+14/9/2026: un solo paso a la vista y el indicador marcandolo; "Continuar"
+frenando lo incompleto con el foco donde falta; el boton de comprar solo en el 3;
+volver sin perder lo escrito; no poder saltar a un paso que no se alcanzo; las
+dos validaciones frenando los mismos campos; `enviarPedido` llevando al paso
+escondido; el que vuelve arrancando en el pago; el total siguiendo al medio de
+pago y saliendo de la misma cuenta que el carrito; y la barra.
+
+Probada al reves con **ocho bugs reinyectados de a uno** —el boton de comprar a
+la vista desde el paso 1, "Continuar" sin validar, volver borrando lo escrito,
+saltar a un paso no alcanzado, `enviarPedido` sin llevar al paso, el que vuelve
+arrancando en el 1, la barra llenandose sola y el total sin seguir al pago—:
+**los ocho se agarran.**
+
+> [!warning] `verificar-entrada.js` tocaba el calendario apenas abria el formulario
+> Ese calendario ahora vive en el paso 3, asi que el toque le caia a un elemento
+> de alto 0 y el test se cortaba. **Medido contra HEAD limpio antes de tocarlo**:
+> ahi daba 67 ok / 0 mal, o sea que el rojo era mio. Se le agrego el recorrido de
+> los pasos, como hace una persona. Es el mismo arreglo que se les hizo a cinco
+> redes el 23/9. Si aparece otra que falla por esto, el bloque a copiar esta ahi.
+>
+> Las otras doce redes que se corrieron pasaron sin tocarlas: formulario,
+> datos-cliente (36 ok, se le fue el rojo preexistente), envio, zonas, sin-stock,
+> reserva, vendedor, pedido, sugerencias, descuento, paneles y llamadas. El unico
+> rojo que queda es el de `verificar-ultimo-pedido` ("dice la carne que llevo"),
+> **preexistente y medido contra HEAD: falla igual**.
+
+### Lo que falta para prender `CIERRE_EN_LA_TIENDA`
+
+El template **`confirmacion_pedido_tienda` esta APROBADO** y Backend ya lo cargo
+en `Config_Maleu` -> `CONFIRMACION_WA_TEMPLATE` (29/9/2026).
+
+> [!danger] Falta el paso que ningun codigo puede hacer: verlo en un celular
+> El cuerpo del template es **posicional** (`{{1}}..{{6}}`), pero WATI lleva
+> aparte una lista `customParams` con el **nombre** de cada hueco, y ahi declara
+> los seis que manda el backend. **Mirar el cuerpo no alcanza para saber como se
+> llena un template de WATI**: hay que mirar `customParams[].paramName`.
+>
+> Y WATI los declara **en un orden distinto al del cuerpo**. Si mapea por nombre,
+> perfecto; si mapeara por orden, el cliente leeria *"¡Gracias Viernes 02/10!"*.
+> Eso no lo puede verificar ningun codigo: **lo tiene que ver Tadeo en su
+> telefono**. Recien despues se prende el interruptor.
+
+Cuando se prenda, ademas: el boton verde `.whatsapp-btn` deja de ser de WhatsApp
+y pasa a **"Realizar mi compra"** en el naranja de la marca, y la `.form-note`
+—que hoy dice *"te llevamos a WhatsApp con el detalle"*— cambia.
+
+### De paso, un texto que habia quedado a medias
+
+El subtitulo del paso de direccion decia *"te mostramos los dias de entrega **y
+el envio**"*. Tadeo saco el envio de la lista el 28/9 y ese dia se corrigio **el
+otro** subtitulo, no este. Prometia algo que la pantalla ya no muestra.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

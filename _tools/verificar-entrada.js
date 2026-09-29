@@ -389,6 +389,29 @@ async function main() {
     await dormir(900);
     chk(!(await ev('document.getElementById("cart-sidebar").classList.contains("open")')),
         'el carrito se cierra al ir al formulario');
+
+    /* EL CALENDARIO VIVE EN EL PASO 3 (29/9/2026). Antes de esto el formulario
+       era una sola pantalla y se tocaba el dia de entrada; ahora hay que
+       recorrer los pasos, que es lo que hace una persona. Si esto se saltea,
+       el toque le cae a un elemento de alto 0 y el test se corta. */
+    chk(await ev('window.coPaso === 1'), 'el formulario abre en el paso 1: tus datos');
+    await ev('(function () {' +
+      'var set = function (id, v) { var e = document.getElementById(id); if (!e) return;' +
+      '  e.value = v; e.dispatchEvent(new Event("change", { bubbles: true }));' +
+      '  e.dispatchEvent(new Event("blur", { bubbles: true })); };' +
+      'set("f-nombre", "Prueba Entrada");' +
+      'set("f-barrio-privado", "Estancias del Pilar");' +
+      'var sub = document.getElementById("f-barrio");' +
+      'if (sub) { var o = Array.prototype.filter.call(sub.options, function (x) { return x.value && !x.hidden; })[0];' +
+      '  if (o) { sub.value = o.value; sub.dispatchEvent(new Event("change", { bubbles: true })); } }' +
+      'set("f-lote", "289"); set("f-telefono", "1155667788");' +
+      'coSeguir();' +
+      'var ef = document.getElementById("pago-ef"); if (ef) ef.click();' +
+      'coSeguir();' +
+    '})()');
+    await dormir(400);
+    chk(await ev('window.coPaso === 3'), 'completando datos y pago se llega al paso 3: la entrega');
+
     chk(await ev('document.querySelectorAll("#day-picker .dp-cell.available").length > 0'),
         'el formulario tiene su calendario');
     chk(await ev('!document.getElementById("f-dia").value'),

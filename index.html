@@ -142,7 +142,10 @@
     <div class="loc-step" id="loc-step-zone">
       <img src="img/logo-icono.png?v=d8163724" alt="Maleu" />
       <h2>Env&iacute;o a domicilio</h2>
-      <p>Decinos d&oacute;nde est&aacute;s y te mostramos los d&iacute;as de entrega y el env&iacute;o.</p>
+      <!-- Sin "y el envio": Tadeo lo saco de la lista el 28/9/2026 y este
+           subtitulo seguia prometiendolo. Ese dia se corrigio el otro paso
+           (el de mas abajo) y este quedo. -->
+      <p>Decinos d&oacute;nde est&aacute;s y te mostramos los d&iacute;as de entrega.</p>
       <!-- UN CAMPO, NO CUATRO PANTALLAS (28/9/2026). Antes esto preguntaba
            "¿sos de Estancias, de Pilar o de un club?", que es como organizamos
            nosotros el reparto. Ahora se pregunta lo unico que el cliente sabe:
@@ -397,39 +400,31 @@
     </div>
 
     <div class="form-grid">
-      <!-- MÉTODO DE PAGO arriba: para que el cliente vea primero el 10% de efectivo
-           antes de tipear cupón. Si elige efectivo, el descuento ya se aplica al resumen. -->
-      <fieldset id="pago-group" class="pago-fieldset">
-        <legend class="pago-label">Método de pago</legend>
-        <div class="radio-row">
-          <div class="radio-opt">
-            <input type="radio" id="pago-ef" name="pago" value="Efectivo" onchange="onPagoChange()">
-            <label for="pago-ef">
-              <strong>Efectivo</strong>
-              <small>Lo pagás al recibir el pedido</small>
-            </label>
-          </div>
-          <div class="radio-opt">
-            <input type="radio" id="pago-tr" name="pago" value="Transferencia" onchange="onPagoChange()">
-            <label for="pago-tr">
-              <strong>Transferencia</strong>
-              <small>Transferís al alias desde tu app después de mandar el pedido</small>
-            </label>
-          </div>
-        </div>
-        <div class="mp-alias hidden" id="mp-alias">
-          <div class="mp-alias-titulo">Transferí a cualquiera de las dos:</div>
-          <!-- Las filas las dibuja _pintarAliasMaleu() desde ALIAS_MALEU: una
-               sola lista para la pantalla y para el WhatsApp. -->
-          <div id="mp-alias-lista"></div>
-          <small class="mp-alias-hint">Copiá el alias, mandá el pedido con el botón verde, y transferí desde tu app o home banking.</small>
-        </div>
-        <p class="mp-alias-vendedor-note hidden" id="mp-alias-vendedor-note" style="font-size:.82rem;color:#1565c0;margin-top:.4rem;font-weight:600;background:#e3f2fd;border:1px solid #bbdefb;border-radius:8px;padding:.55rem .7rem;"></p>
-        <span class="pago-error" id="err-pago">⚠ Elegí un método de pago</span>
-        <p class="pago-hint" id="pago-hint" style="font-size:.8rem;color:#2e7d32;margin-top:.4rem;font-weight:600;display:none;">Pagando en efectivo tenés 10% OFF</p>
-      </fieldset>
-
-
+      <!-- EL CHECKOUT EN TRES PASOS (29/9/2026)
+      
+           Tadeo: "la etapa de completar sus datos, despues la parte de pago,
+           despues la parte de dia de entrega, y un boton de Realizar Compra".
+           Hasta hoy era UNA pantalla larga: pago, direccion, telefono, dia,
+           cumpleanios y boton, todo junto.
+      
+           EL PAGO ESTABA PRIMERO Y AHORA ES EL PASO 2. El comentario que
+           estaba aca decia por que: "para que el cliente vea el 10% de
+           efectivo antes de tipear cupon". Esa razon CADUCO — el campo de
+           cupon manual se saco de la tienda y hoy no existe en ninguna de
+           las 11 paginas (verificado: cero ocurrencias de f-cupon).
+      
+           NO se movio ni un id ni un onclick: enviarPedido, validateOnBlur,
+           applyZone y updateFormVisibility buscan por id, asi que encuentran
+           todo donde estaba. Lo unico que cambio es en que caja vive cada
+           grupo y cual de esas cajas se ve. -->
+      <ol class="co-pasos" id="co-pasos">
+        <li class="co-punto" data-co-punto="1"><span class="co-n">1</span><span class="co-t">Tus datos</span></li>
+        <li class="co-punto" data-co-punto="2"><span class="co-n">2</span><span class="co-t">Pago</span></li>
+        <li class="co-punto" data-co-punto="3"><span class="co-n">3</span><span class="co-t">Entrega</span></li>
+      </ol>
+      
+      <div class="co-paso" data-co-paso="1">
+        <p class="co-paso-tit">Tus datos</p>
       <div class="field-group">
         <label for="f-nombre">Nombre y apellido</label>
         <input type="text" id="f-nombre" placeholder="Ej: Ana García" autocomplete="name" onblur="validateOnBlur('nombre')">
@@ -570,6 +565,43 @@
           <div style="color:#5D4037">De tu compra anterior te quedaron <strong id="saldoFavorMonto">$0</strong>. Se aplica automáticamente al total de este pedido.</div>
         </div>
       </div>
+      </div>
+      
+      <div class="co-paso" data-co-paso="2" hidden>
+        <p class="co-paso-tit">¿Cómo lo pagás?</p>
+      <fieldset id="pago-group" class="pago-fieldset">
+        <legend class="pago-label solo-voz">Método de pago</legend>
+        <div class="radio-row">
+          <div class="radio-opt">
+            <input type="radio" id="pago-ef" name="pago" value="Efectivo" onchange="onPagoChange()">
+            <label for="pago-ef">
+              <strong>Efectivo</strong>
+              <small>Lo pagás al recibir el pedido</small>
+            </label>
+          </div>
+          <div class="radio-opt">
+            <input type="radio" id="pago-tr" name="pago" value="Transferencia" onchange="onPagoChange()">
+            <label for="pago-tr">
+              <strong>Transferencia</strong>
+              <small>Transferís al alias desde tu app después de mandar el pedido</small>
+            </label>
+          </div>
+        </div>
+        <div class="mp-alias hidden" id="mp-alias">
+          <div class="mp-alias-titulo">Transferí a cualquiera de las dos:</div>
+          <!-- Las filas las dibuja _pintarAliasMaleu() desde ALIAS_MALEU: una
+               sola lista para la pantalla y para el WhatsApp. -->
+          <div id="mp-alias-lista"></div>
+          <small class="mp-alias-hint">Copiá el alias, mandá el pedido con el botón verde, y transferí desde tu app o home banking.</small>
+        </div>
+        <p class="mp-alias-vendedor-note hidden" id="mp-alias-vendedor-note" style="font-size:.82rem;color:#1565c0;margin-top:.4rem;font-weight:600;background:#e3f2fd;border:1px solid #bbdefb;border-radius:8px;padding:.55rem .7rem;"></p>
+        <span class="pago-error" id="err-pago">⚠ Elegí un método de pago</span>
+        <p class="pago-hint" id="pago-hint" style="font-size:.8rem;color:#2e7d32;margin-top:.4rem;font-weight:600;display:none;">Pagando en efectivo tenés 10% OFF</p>
+      </fieldset>
+      </div>
+      
+      <div class="co-paso" data-co-paso="3" hidden>
+        <p class="co-paso-tit">¿Cuándo te lo llevamos?</p>
       <div class="field-group">
         <label>Día de entrega</label>
         <div id="day-picker" class="day-picker" role="group" aria-label="Seleccionar día de entrega"></div>
@@ -609,7 +641,14 @@
           <button type="button" class="cumple-edit-btn" onclick="cumpleEditar()">Cambiar</button>
         </div>
       </div>
+      </div>
+      
+      
     </div>
+
+    <!-- El total, antes de la nota y del boton: hay que poder verlo sin
+         apretar nada. Debajo del CTA no se ve en el momento que importa. -->
+    <div class="co-total" id="co-total" hidden></div>
 
     <p class="form-note">Al tocar el botón registramos tu pedido y te llevamos a WhatsApp con el detalle, listo para mandárnoslo.</p>
     <div class="whatsapp-cta-wrap" id="whatsapp-cta-wrap">
@@ -621,6 +660,14 @@
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
         Pedir por WhatsApp
       </button>
+    </div>
+    <!-- La nav vive DEBAJO del boton de comprar, no arriba. En los pasos 1 y 2
+         ese boton esta escondido, asi que la nav igual queda pegada al
+         formulario; en el 3, "Volver" queda donde corresponde: despues de la
+         accion principal y no antes de ella. -->
+    <div class="co-nav" id="co-nav" hidden>
+      <button type="button" class="co-volver" id="co-volver" onclick="coVolver()" hidden>Volver</button>
+      <button type="button" class="co-seguir" id="co-seguir" onclick="coSeguir()">Continuar</button>
     </div>
   </form>
 </section>
@@ -680,7 +727,12 @@
       <button type="button" class="send-done-btn" id="send-done-btn">Listo</button>
       <p class="send-done-duda">&#191;Alguna duda con tu pedido? <a href="#" id="send-done-wa" rel="noopener">Escribinos por WhatsApp</a></p>
     </div>
-    <div class="send-progress"><div class="send-progress-bar"></div></div>
+    <!-- LA BARRA. Era indeterminada —un bloque del 35% deslizandose en loop,
+         que se movia igual a los 2 s que a los 40— y ahora dice cuanto falta.
+         Se llena sola hasta el 90% en los ~8 s que tarda el POST medido, y el
+         ultimo tramo lo completa la confirmacion del ERP: ver _coBarraArrancar
+         en app.js. -->
+    <div class="send-progress" id="send-barra" role="progressbar" aria-label="Registrando tu pedido" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="send-progress-bar" id="send-barra-fill"></div></div>
   </div>
 </div>
 

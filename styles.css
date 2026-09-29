@@ -752,17 +752,26 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
   overflow: hidden;
   position: relative;
 }
+/* Determinada desde el 29/9/2026: el ancho lo maneja _coBarraArrancar. Antes
+   era `animation: sendProgress infinite` con un bloque del 35% yendo y
+   viniendo, que no distingue un pedido de 2 s de uno de 40. */
 .send-progress-bar {
-  position: absolute;
+  position: absolute; left: 0;
   height: 100%;
-  width: 35%;
+  width: 0%;
   background: linear-gradient(90deg, var(--orange), #FFA15E);
   border-radius: 50px;
-  animation: sendProgress 1.5s cubic-bezier(.55, 0, .55, 1) infinite;
+  transition: width .4s linear;
 }
-@keyframes sendProgress {
-  0%   { left: -35%; }
-  100% { left: 100%; }
+.send-card.success .send-progress-bar,
+.send-card.done .send-progress-bar { background: #2e7d32; }
+/* Con el cartel de los 25 s o con el pedido cerrado, la barra ya no dice nada:
+   lo que falta no es tiempo. */
+.send-card.fallback .send-progress,
+.send-card.done .send-progress { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .send-progress-bar { transition: none; }
 }
 
 /* Estado éxito */
@@ -2115,3 +2124,107 @@ body.busqueda-activa #ultimo-section { display: none !important; }
   font-weight:700; cursor:pointer; margin-top:.3rem; }
 .cat-wa:hover { background:#1FB855; }
 .cat-ppto-pie { font-size:.78rem; color:#8a7d76; line-height:1.5; margin-top:.7rem; }
+
+/* ══ EL CHECKOUT EN TRES PASOS (29/9/2026) ══════════════════════════════
+   Tus datos -> Pago -> Entrega. Antes era una pantalla larga con todo junto.
+
+   Los tres pasos viven en el DOM todo el tiempo y se tapan con [hidden]: el
+   que esta atras conserva lo escrito, y `enviarPedido` lee los campos por id
+   sin enterarse de en que paso estan. Un paso que se destruye y se vuelve a
+   crear perderia lo tipeado y obligaria a repintar el calendario. */
+
+.co-pasos {
+  display: flex; align-items: flex-start; justify-content: center;
+  gap: 0; margin: 0 0 1.4rem; padding: 0; list-style: none;
+}
+.co-punto {
+  flex: 1 1 0; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; gap: .3rem;
+  position: relative;
+  text-align: center;
+}
+/* La linea que une los puntos. Va DETRAS del numero (z-index) y arranca del
+   centro del anterior, asi que el primero no la lleva. */
+.co-punto + .co-punto::before {
+  content: ''; position: absolute;
+  top: 13px; right: 50%; left: -50%;
+  height: 2px; background: #EADFD3;
+}
+.co-punto.hecho + .co-punto::before,
+.co-punto.activo::before { background: var(--orange); }
+.co-n {
+  position: relative; z-index: 1;
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .82rem; font-weight: 700;
+  background: #fff; color: #A8968B;
+  border: 2px solid #EADFD3;
+  transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+.co-t { font-size: .72rem; color: #A8968B; font-weight: 600; line-height: 1.2; }
+.co-punto.activo .co-n { background: var(--orange); border-color: var(--orange); color: #fff; }
+.co-punto.activo .co-t { color: var(--brown); }
+.co-punto.hecho .co-n { background: #fff; border-color: var(--orange); color: var(--orange); }
+.co-punto.hecho .co-t { color: #6b5a52; }
+/* El paso ya cerrado dice check en vez de su numero: el numero solo importa
+   mientras falta llegar. */
+.co-punto.hecho .co-n { font-size: 0; }
+.co-punto.hecho .co-n::after { content: '\2713'; font-size: .9rem; line-height: 1; }
+
+/* Un paso cerrado se puede tocar para volver a el. El que todavia no se
+   alcanzo, no: saltearse el paso 1 dejaria el pedido sin direccion. */
+.co-punto.hecho { cursor: pointer; }
+
+.co-paso[hidden] { display: none !important; }
+.co-paso-tit {
+  font-size: 1.02rem; font-weight: 700; color: var(--brown);
+  margin: 0 0 .9rem;
+}
+
+.co-nav { display: flex; gap: .7rem; margin-top: 1.3rem; align-items: center; }
+.co-nav[hidden] { display: none !important; }
+.co-volver {
+  flex: 0 0 auto;
+  min-height: 48px; padding: 0 1.1rem;
+  background: none; border: none;
+  font-family: var(--font); font-size: .92rem; font-weight: 600;
+  color: #6b5a52; cursor: pointer;
+}
+.co-volver[hidden] { display: none !important; }
+.co-seguir {
+  flex: 1 1 auto;
+  min-height: 48px; padding: 0 1.2rem;
+  background: var(--orange); color: #fff;
+  border: none; border-radius: 12px;
+  font-family: var(--font); font-size: 1rem; font-weight: 700;
+  cursor: pointer;
+  transition: background .18s ease;
+}
+.co-seguir:hover { background: var(--hover-orange); }
+.co-seguir[hidden] { display: none !important; }
+
+/* A 360px los tres titulos entran igual; por debajo se cae el texto y quedan
+   los numeros, que ya dicen en cual va. */
+@media (max-width: 340px) {
+  .co-t { display: none; }
+}
+/* El total, visible en los tres pasos. El resumen completo esta arriba del
+   formulario y se va de pantalla apenas empezas a completar: este renglon es
+   lo unico que hace falta ver mientras tanto. */
+.co-total {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: .6rem; margin-top: 1.2rem; padding-top: .9rem;
+  border-top: 1px solid #EFE6DD;
+  font-size: .92rem; color: #6b5a52;
+}
+.co-total[hidden] { display: none !important; }
+.co-total b { font-size: 1.15rem; font-weight: 700; color: var(--brown); }
+.co-total-aprox { font-size: .74rem; color: #A8968B; display: block; font-weight: 400; }
+
+/* Se ve solo con lector de pantalla. Un fieldset sin legend no dice de que es
+   el grupo, pero mostrarlo repetiria el titulo del paso. */
+.solo-voz {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+}
