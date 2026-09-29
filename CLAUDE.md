@@ -1984,10 +1984,12 @@ tiene cupón y sin esto no dejaría rastro.
 
 > [!danger] Un cliente que YA le compra a un vendedor puede girar la ruleta igual
 > `ruletaGirar` no le da premio a quien ya compró, y eso es lo que hace segura toda esta
-> regla: **el cupón sólo existe para alguien que nunca nos compró**. Pero el cruce
-> (`LEADS_HOJAS_CRUCE_`) mira **Home, Pilar y Clubes — no `Red`**. O sea que un cliente de
-> Rufo no figura como cliente, gira, gana, y con esta regla su próximo pedido dejaría de ser
-> de Rufo. Es la misma injusticia dada vuelta. Agregar `Red` al cruce es de Backend.
+> regla: **el cupón sólo existe para alguien que nunca nos compró**. El cruce
+> (`LEADS_HOJAS_CRUCE_`) miraba **Home, Pilar y Clubes — no `Red`** hasta el 23/9/2026: un
+> cliente de Rufo no figuraba como cliente, giraba, ganaba, y con esta regla su próximo
+> pedido dejaba de ser de Rufo. **RESUELTO** por Backend ese mismo día (commit `7f52cd5`,
+> publicado en @730): hoy el objeto incluye `'Red': 1`. Verificado el 29/9 contra el
+> `Code.js` publicado.
 
 ### La red: `node _tools/verificar-vendedor.js [ancho]`
 
@@ -2745,10 +2747,7 @@ tienda de antes da **4 rojos**. Cero POST.
 > quitar el anterior con `Page.removeScriptToEvaluateOnNewDocument`.
 
 > [!important] Que falta, y no es de la tienda
-> · **Los cupones `MARCOS10` / `FINI10` / `RUFO10` no existen todavia**: hoy el
->   backend responde *"Codigo no encontrado"*. Crearlos es decidir el descuento
->   que ve el cliente, y eso lo define Tadeo.
-> · La **tabla de monto por producto x nivel** (34 x 3), el **nivel mensual con
+> · La **tabla de monto por producto x nivel** (29 x 3), el **nivel mensual con
 >   recalculo retroactivo** y el **bono de $15.000** son del ERP. La hoja
 >   `Vendedores` tiene **una sola** columna "Comisión %": no alcanza.
 > · **La politica todavia no esta aprobada.** Comparado con el 17% de hoy sube
@@ -2758,6 +2757,41 @@ tienda de antes da **4 rojos**. Cero POST.
 >   mucha carne o torta en su mix va a cobrar bastante menos.
 > · **Verificado**: los 34 precios del documento de Joaco coinciden uno por uno
 >   con los de la tienda. Esta calculado sobre precios reales.
+
+> [!important] LOS TRES CUPONES EXISTEN Y DAN 10% (verificado el 29/9/2026, 19:10)
+> Acá decía que no existían y que el descuento estaba pendiente de Tadeo. **Es falso
+> desde el 28/9**: Backend los creó en la hoja `Cupones` (filas 51-53) y contestan por
+> el endpoint de producción:
+>
+> ```
+> MARCOS10 -> ok:true · PCT 10 · TODO · stack:false · vendedor:"marcos"
+> FINI10   -> ok:true · PCT 10 · TODO · stack:false · vendedor:"fini"
+> RUFO10   -> ok:true · PCT 10 · TODO · stack:false · vendedor:"rufo"
+> ```
+>
+> Sin vencimiento, segmento *"Red - codigo de vendedor"*. O sea que el descuento ya
+> está decidido y el camino funciona de punta a punta.
+
+> [!danger] Pero EN EL BARRIO DE UN VENDEDOR el código no descuenta nada
+> `cuponValeEnEstaZona()` es `false` con `currentZone === 'pilar' && _pilarBarrioIsRed()`,
+> porque los pedidos de la hoja `Red` van sin descuentos y el ERP los recalcularía: el
+> cliente vería un total y la planilla guardaría otro. Está medido en el escenario 7 de
+> `verificar-vendedor.js` — *"pero NO descuenta"* y *"se dice por qué, en vez de dar cero
+> callado"*.
+>
+> **Y la atribución SÍ viaja igual**: `_vendedorQueTrajo()` lee el `localStorage` y no
+> mira la zona, así que el pedido lleva `vendedorTrajo` lo mismo. El bono se puede
+> pagar; lo que no llega es el 10%.
+>
+> | el cliente usa MARCOS10 y vive en | descuento | atribución |
+> |---|---|---|
+> | Estancias, o Pilar que entrega Maleu | **10%** | Marcos |
+> | un barrio con vendedor (El Lucero, Manzanares…) | **0%**, dicho en pantalla | **Marcos igual** |
+>
+> **Es el caso central de la política nueva y hay que decidirlo, no arreglarlo al
+> pasar**: el vendedor camina SU barrio, y ahí su código no tiene gancho. Cambiarlo
+> pide las dos puntas — que el ERP acepte descuento en la hoja `Red` — y le baja el
+> margen a esa venta. Es de Tadeo.
 
 ## El checkout en tres pasos (29/9/2026)
 
