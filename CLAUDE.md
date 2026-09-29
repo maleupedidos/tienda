@@ -2320,14 +2320,15 @@ viernes"** — que repone las cantidades originales y mueve la entrega.
 > pedido…", fijate si quedó abierto `#recorte-modal` y cerralo con
 > `recorteNo()`.
 
-## El pedido se cierra en la tienda — APAGADO hasta que Meta apruebe (28/9/2026)
+## El pedido se cierra en la tienda — PRENDIDO el 29/9/2026
 
 Reunión de equipo del 28/9. Tadeo: *"no es real y profesional que el pedido de
 un cliente lo dirija al WhatsApp… debemos tener una tienda online común y
 corriente como cualquiera. Que el pedido termine en la tienda"*.
 
-**La pantalla está hecha, medida y publicada, con `CIERRE_EN_LA_TIENDA = false`.**
-Con el interruptor apagado la tienda se comporta exactamente como antes.
+**Nació apagado el 28/9 y se prendió el 29/9 a las 18:40**, cuando las tres
+condiciones que esperaba estuvieron cumplidas y verificadas. Lo que sigue son
+las razones por las que esperó — valen como historia, no como estado.
 
 > [!danger] Prenderlo solo rompe DOS cosas
 > **1. El aviso a nosotros.** El ERP no avisaba de un pedido nuevo por ningún
@@ -2927,60 +2928,104 @@ cerrado, y diria que termino algo que recien empieza.
 > `doPost` se puede acotar a la escritura. **Del lado de la tienda no hay nada
 > que achicar**: sale un solo POST, sin reintentos, y el test lo exige.
 
-### Lo que falta para prender `CIERRE_EN_LA_TIENDA`
+### Se prendió el 29/9/2026 a las 18:40
 
-El template **`confirmacion_pedido_tienda` esta APROBADO** y Backend ya lo cargo
-en `Config_Maleu` -> `CONFIRMACION_WA_TEMPLATE` (29/9/2026).
+Las tres condiciones estaban, y la tercera es la que ningún código podía dar
+por cumplida:
 
-> [!danger] Falta el paso que ningun codigo puede hacer: verlo en un celular
+| | |
+|---|---|
+| el aviso a nosotros | `_avisarPedidoTienda_` + Telegram al grupo «Pedidos Maleu» (28/9) |
+| el template de UTILITY | `confirmacion_pedido_tienda`, **aprobado por Meta** y cargado por Backend en `Config_Maleu` -> `CONFIRMACION_WA_TEMPLATE` (29/9) |
+| **verlo en un celular** | Tadeo hizo **dos pedidos de verdad** con el flujo nuevo el 29/9 y vio llegar la confirmación a su teléfono, más el aviso de Telegram. Los dos los canceló la sesión Backend |
+
+> [!important] Por qué el tercero no era ceremonia
 > El cuerpo del template es **posicional** (`{{1}}..{{6}}`), pero WATI lleva
-> aparte una lista `customParams` con el **nombre** de cada hueco, y ahi declara
-> los seis que manda el backend. **Mirar el cuerpo no alcanza para saber como se
-> llena un template de WATI**: hay que mirar `customParams[].paramName`.
->
-> Y WATI los declara **en un orden distinto al del cuerpo**. Si mapea por nombre,
-> perfecto; si mapeara por orden, el cliente leeria *"¡Gracias Viernes 02/10!"*.
-> Eso no lo puede verificar ningun codigo: **lo tiene que ver Tadeo en su
-> telefono**. Recien despues se prende el interruptor.
+> aparte una lista `customParams` con el **nombre** de cada hueco, y los declara
+> **en un orden distinto al del cuerpo**. Si mapea por nombre, perfecto; si
+> mapeara por orden, el cliente leería *"¡Gracias Viernes 02/10!"*. Mirar el
+> cuerpo no alcanza: eso solo se ve en la pantalla de un teléfono.
 
-### `?cierre=1`: verlo sin prenderlo para todos
+**Y se fue `?cierre=1`**, el parámetro que existía para probarlo sin prenderlo
+para todos. Un parámetro muerto se lee como si hiciera algo. Si aparece un link
+viejo con `?cierre=1`, hoy no hace nada: el flujo es ese para todo el mundo.
 
-Tadeo, recorriendo el flujo publicado: *"me sigue apareciendo como punto final
-el boton de wpp"*. Es lo esperado con el interruptor apagado, **pero lo dejaba
-en un circulo**: para prenderlo hay que ver llegar la confirmacion al celular, y
-para que llegue hay que hacer un pedido con el flujo nuevo.
-
-**`https://maleu.com.ar/?cierre=1` prende el cierre solo para quien tenga el
-link.** El pedido entra de verdad al ERP y la confirmacion sale por el template
-— eso no es un efecto colateral, **es justo la prueba que falta hacer**.
-
-> [!important] No es `?autopedido=1`, que se elimino el 8/9 y por otro motivo
-> Aquel abria una **segunda pantalla para cargar pedidos**, en paralelo a la del
-> ERP y sin sus controles. Este no agrega pantalla ni camino: es el **mismo
-> flujo** que va a ver todo el mundo, unos dias antes. Se borra el dia que se
-> prenda el interruptor, junto con el interruptor.
-
-Con el cierre prendido —por el parametro o por el interruptor— `_pintarBotonFinal()`
-cambia **tres cosas**, porque un boton verde con el logo de WhatsApp promete un
-chat que ya no se abre:
-
-| | apagado | prendido |
+| | antes | ahora |
 |---|---|---|
-| el boton | «Pedir por WhatsApp», verde `#25D366`, con logo | **«Realizar mi compra»**, naranja de marca, sin logo |
-| la nota | *"te llevamos a WhatsApp con el detalle"* | *"te mandamos la confirmacion por WhatsApp"* |
+| el botón | «Pedir por WhatsApp», verde `#25D366`, con logo | **«Realizar mi compra»**, naranja de marca, sin logo |
+| la nota | *"te llevamos a WhatsApp con el detalle"* | *"te mandamos la confirmación por WhatsApp"* |
 | al confirmar | salta a `wa.me` | **se queda en la tienda**: «Pedido #N confirmado» |
+| la confirmación | la escribía el cliente al caer en el chat | **la manda el ERP** por el template |
 
-> [!note] Dos faltas de ortografia que veia el cliente, encontradas mirando la pantalla
-> *"Te mandamos la confirmacion"* y el renglon **DIRECCION** de la pantalla de
-> cierre, las dos sin tilde. No las encontro ningun test —ninguno las miraba—
-> sino la captura del flujo andando. Es la misma leccion del 10/9 con los
-> carteles de stock: **mira la pantalla, no solo los numeros.**
+> [!important] El salto a `wa.me` sobrevive en dos lugares, los dos a propósito
+> · **El fallback de los 45 s**, donde la web no pudo confirmar y el cliente
+>   todavía necesita escribirnos él. Ese mensaje es el único que sigue vivo, y
+>   es el que lleva la referencia para cruzar con `Log Pedidos`.
+> · **El CONTROL de `verificar-envio`**, que apaga el interruptor desde la
+>   página para probar que el mismo pedido **sí** se iría a WhatsApp. Sin ese
+>   control, *"no fue a WhatsApp"* probaría que el pedido no salió.
+>
+> Por eso `CIERRE_EN_LA_TIENDA = false` sigue siendo un valor posible y el
+> `msgNormal` sigue armándose, aunque hoy no le llegue a nadie.
+
+#### El agujero que destapó el cambio: la reserva de carne en efectivo
+
+> [!danger] "Aprox. $148.088" sin decir cuándo deja de ser aprox.
+> Con carne reservada el total no es el final — la pieza se pesa cuando llega —
+> y eso la tienda lo dice en el carrito, en el resumen y en el total del
+> checkout. Lo que lo cerraba era el mensaje de WhatsApp: *"la carne reservada me
+> la confirman cuando llegue (viernes 18/9)"*. **Con el pedido terminándose en
+> la tienda, ese mensaje ya no existe.**
+>
+> En la pantalla de cierre la nota colgaba del **alias**, y **en efectivo no hay
+> alias**: el bloque entero quedaba escondido. Hoy la nota sale igual, con la
+> fecha (`cuandoRes`), sin importar cómo paga.
+
+> [!warning] Y al arreglarlo apareció el patrón de siempre
+> Un `else` colgado del alias **volvía a esconder el bloque dos líneas después
+> de pintarlo**. Es el mismo modo de falla que la franja del 10% el 23/9, que
+> `updateUI()` reencendía después de que `updatePromoBar()` la apagara. Ahora es
+> `pago.hidden = !pago.firstChild`: escondido solo si no quedó nada adentro.
+
+#### Las redes: once chequeos medían el DESTINO y no el hecho
+
+Cinco redes usaban **la navegación a `wa.me`** como señal de *"el pedido se dio
+por confirmado"*, porque el pedido terminaba ahí. Hoy la señal es la pantalla de
+cierre (`.send-card.done`). Lo que esos escenarios miden —**tiempos y
+reintentos**— no cambió: cambió de dónde sale el instante. Por eso hay **un solo
+helper nuevo**, `cerroEn(est)`, y no once parches.
+
+| red | cómo quedó |
+|---|---|
+| `verificar-envio` | **52 ok**. `ok6` perdió los 5 chequeos del texto del mensaje normal: hoy no le llega a nadie. El que sigue vivo es el del fallback, medido en el escenario "nunca" |
+| `verificar-checkout` | **107 ok**. El bloque J corre **sin parámetro**, como el cliente |
+| `verificar-reserva` | **75 ok**. Los cuatro chequeos del mensaje pasaron a la pantalla, y uno encontró el agujero de arriba |
+| `verificar-vigilante` | confirma preguntando, y cierra en la tienda |
+| `verificar-formulario` | con el POST cortado, la pantalla queda esperando y no navega |
+
+> [!important] El control del bloque J cambió de forma, no se borró
+> Antes era *"sin el parámetro el interruptor está apagado"*. Con el interruptor
+> prendido eso ya no existe, y sin control leer «Realizar mi compra» probaría
+> solamente que alguien lo escribió en el `index.html`. Ahora el control es al
+> revés: **el HTML de fábrica todavía trae el botón de WhatsApp** y en pantalla
+> quedó el otro — o sea que lo cambia el código.
+
+En verde sin tocarlas: `pedido`, `zonas`, `vendedor`, `descuento`, `entrada`
+(69), `sin-stock`, `datos-cliente`, `cupon-vendedor`, `sugerencias`,
+`carga-carne`, `piezas`, `catering`, `hero`, `horario`, `llamadas` (410).
+
+> [!note] Dos rojos preexistentes, medidos contra HEAD limpio (`RAIZ=`)
+> `verificar-ultimo-pedido` (*"dice la carne que llevó"*) y `verificar-franja`
+> (*"cualquier otro día están como siempre"*, intermitente). Los 9 de
+> `verificar-paginas` son los comentarios con el nombre de Tadeo en
+> `ruleta.html`, y **no crecieron**.
 
 ### De paso, un texto que habia quedado a medias
 
 El subtitulo del paso de direccion decia *"te mostramos los dias de entrega **y
 el envio**"*. Tadeo saco el envio de la lista el 28/9 y ese dia se corrigio **el
 otro** subtitulo, no este. Prometia algo que la pantalla ya no muestra.
+
 
 ## El checkout es su propia pantalla, con su URL (29/9/2026, a la tarde)
 
