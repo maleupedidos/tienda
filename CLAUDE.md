@@ -2831,13 +2831,15 @@ es la version bonita del bug que costo el pedido de $84.600 el 10/9.
 
 ### La red: `node _tools/verificar-checkout.js [ancho]`
 
-**51 chequeos**, verdes a 390 y 1440px, con el reloj congelado el lunes
+**65 chequeos**, verdes a 390 y 1440px, con el reloj congelado el lunes
 14/9/2026: un solo paso a la vista y el indicador marcandolo; "Continuar"
 frenando lo incompleto con el foco donde falta; el boton de comprar solo en el 3;
 volver sin perder lo escrito; no poder saltar a un paso que no se alcanzo; las
 dos validaciones frenando los mismos campos; `enviarPedido` llevando al paso
 escondido; el que vuelve arrancando en el pago; el total siguiendo al medio de
-pago y saliendo de la misma cuenta que el carrito; y la barra.
+pago y saliendo de la misma cuenta que el carrito; la barra; y el cierre
+completo con `?cierre=1`, hasta la pantalla de «Pedido #N confirmado», con el
+control de que sin el parametro el boton sigue siendo el de WhatsApp.
 
 Probada al reves con **ocho bugs reinyectados de a uno** —el boton de comprar a
 la vista desde el paso 1, "Continuar" sin validar, volver borrando lo escrito,
@@ -2874,9 +2876,38 @@ en `Config_Maleu` -> `CONFIRMACION_WA_TEMPLATE` (29/9/2026).
 > Eso no lo puede verificar ningun codigo: **lo tiene que ver Tadeo en su
 > telefono**. Recien despues se prende el interruptor.
 
-Cuando se prenda, ademas: el boton verde `.whatsapp-btn` deja de ser de WhatsApp
-y pasa a **"Realizar mi compra"** en el naranja de la marca, y la `.form-note`
-—que hoy dice *"te llevamos a WhatsApp con el detalle"*— cambia.
+### `?cierre=1`: verlo sin prenderlo para todos
+
+Tadeo, recorriendo el flujo publicado: *"me sigue apareciendo como punto final
+el boton de wpp"*. Es lo esperado con el interruptor apagado, **pero lo dejaba
+en un circulo**: para prenderlo hay que ver llegar la confirmacion al celular, y
+para que llegue hay que hacer un pedido con el flujo nuevo.
+
+**`https://maleu.com.ar/?cierre=1` prende el cierre solo para quien tenga el
+link.** El pedido entra de verdad al ERP y la confirmacion sale por el template
+— eso no es un efecto colateral, **es justo la prueba que falta hacer**.
+
+> [!important] No es `?autopedido=1`, que se elimino el 8/9 y por otro motivo
+> Aquel abria una **segunda pantalla para cargar pedidos**, en paralelo a la del
+> ERP y sin sus controles. Este no agrega pantalla ni camino: es el **mismo
+> flujo** que va a ver todo el mundo, unos dias antes. Se borra el dia que se
+> prenda el interruptor, junto con el interruptor.
+
+Con el cierre prendido —por el parametro o por el interruptor— `_pintarBotonFinal()`
+cambia **tres cosas**, porque un boton verde con el logo de WhatsApp promete un
+chat que ya no se abre:
+
+| | apagado | prendido |
+|---|---|---|
+| el boton | «Pedir por WhatsApp», verde `#25D366`, con logo | **«Realizar mi compra»**, naranja de marca, sin logo |
+| la nota | *"te llevamos a WhatsApp con el detalle"* | *"te mandamos la confirmacion por WhatsApp"* |
+| al confirmar | salta a `wa.me` | **se queda en la tienda**: «Pedido #N confirmado» |
+
+> [!note] Dos faltas de ortografia que veia el cliente, encontradas mirando la pantalla
+> *"Te mandamos la confirmacion"* y el renglon **DIRECCION** de la pantalla de
+> cierre, las dos sin tilde. No las encontro ningun test —ninguno las miraba—
+> sino la captura del flujo andando. Es la misma leccion del 10/9 con los
+> carteles de stock: **mira la pantalla, no solo los numeros.**
 
 ### De paso, un texto que habia quedado a medias
 

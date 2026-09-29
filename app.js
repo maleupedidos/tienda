@@ -5308,6 +5308,40 @@ function setSendLoaderFallback(alTocar) {
    tocar. Cuando se prenda, este bloque y la rama de `_irAWhatsApp` se borran. */
 var CIERRE_EN_LA_TIENDA = false;
 
+/* PARA PROBARLO SIN PRENDERLO PARA TODOS: `?cierre=1`.
+
+   Tadeo, recorriendo el flujo el 29/9/2026: "me sigue apareciendo como punto
+   final el boton de wpp". Es lo esperado con el interruptor en false, pero lo
+   deja en un circulo — para prenderlo hay que ver llegar la confirmacion al
+   celular, y para que llegue hay que hacer un pedido con el flujo nuevo.
+
+   EL PEDIDO ENTRA DE VERDAD al ERP y la confirmacion sale por el template.
+   Eso no es un efecto colateral: es justo la prueba que falta hacer.
+
+   No es como `?autopedido=1`, que se elimino el 8/9 por abrir una segunda
+   pantalla para cargar pedidos en paralelo a la del ERP. Aca no hay pantalla
+   nueva ni camino nuevo: es el MISMO flujo que va a ver todo el mundo cuando
+   se prenda el interruptor, unos dias antes. Se borra el dia que se prenda,
+   junto con el interruptor. */
+try { if (/[?&]cierre=1/.test(location.search)) CIERRE_EN_LA_TIENDA = true; } catch (e) {}
+
+/* El boton final y su nota. Con el cierre en la tienda el pedido NO va a
+   WhatsApp, asi que el boton no puede seguir diciendo que si: ni el texto, ni
+   el logo, ni el verde. Se pinta una vez al arrancar —el interruptor no cambia
+   en el medio— y el texto va por textContent. */
+function _pintarBotonFinal() {
+  var b = $id('btn-final');
+  if (b && CIERRE_EN_LA_TIENDA) {
+    b.classList.add('en-la-tienda');
+    b.innerHTML = '';
+    b.textContent = 'Realizar mi compra';
+  }
+  var n = $id('form-note');
+  if (n && CIERRE_EN_LA_TIENDA) {
+    n.textContent = 'Al tocar el bot\u00f3n registramos tu pedido y te mandamos la confirmaci\u00f3n por WhatsApp.';
+  }
+}
+
 /* La pantalla de pedido cerrado. Los renglones van por `textContent` y no
    concatenados al HTML: la direccion y el detalle salen de lo que escribio el
    cliente, que es la misma razon por la que los chips de barrio no se arman
@@ -5334,13 +5368,13 @@ function setSendLoaderDone(info) {
      Es lo que convierte "mandaste un mensaje" en "tenes un pedido". Si por lo
      que sea no vino, el pedido esta igual: no se inventa ninguno. */
   if (t) t.textContent = info.n ? 'Pedido #' + info.n + ' confirmado' : 'Pedido confirmado';
-  if (sub) sub.textContent = 'Te mandamos la confirmacion por WhatsApp.';
+  if (sub) sub.textContent = 'Te mandamos la confirmación por WhatsApp.';
 
   var dl = $id('send-done-datos');
   if (dl) {
     dl.innerHTML = '';
     _sendDoneFila(dl, 'Entrega', info.entrega);
-    _sendDoneFila(dl, 'Direccion', info.direccion);
+    _sendDoneFila(dl, 'Dirección', info.direccion);
     _sendDoneFila(dl, 'Pedido', info.detalle);
     _sendDoneFila(dl, 'Total', info.total, 'send-done-total');
   }
@@ -6261,7 +6295,7 @@ function enviarPedido() {
         if (!_pintada) {
           setSendLoaderSuccess();
           var _t = $id('send-sub');
-          if (_t) _t.textContent = 'Te mandamos la confirmacion por WhatsApp.';
+          if (_t) _t.textContent = 'Te mandamos la confirmación por WhatsApp.';
           setTimeout(function () { hideSendLoader(); window.scrollTo({ top: 0, behavior: 'smooth' }); }, 2600);
         }
         return;
@@ -7607,6 +7641,7 @@ function agregarLoMismo(sufijo) {
 
 /* ── INIT ── */
 renderCatalog();   // repinta tambien el nav y los tiles
+_pintarBotonFinal();
 updateCatNavTop();
 window.addEventListener('resize', updateCatNavTop);
 

@@ -412,6 +412,83 @@ async function main() {
     chk(await ev('document.getElementById("f-nombre").value') === 'Ana Volvio',
         'y ahi estan sus datos, cargados solos');
 
+    /* ── J. EL CIERRE EN LA TIENDA, CON `?cierre=1` ──────────────────
+       El interruptor esta apagado para todo el mundo. `?cierre=1` lo prende
+       solo para quien tenga el link, que es como Tadeo pudo ver el flujo
+       nuevo antes de prenderlo. El dia que se prenda, este bloque pasa a
+       correr sin el parametro y el parametro se borra. */
+    console.log('\n' + DIM + '== Con ?cierre=1 el pedido termina en la tienda ==' + RST);
+    chk(await ev('CIERRE_EN_LA_TIENDA === false'),
+        'CONTROL: sin el parametro el interruptor esta apagado');
+    const btnWa = await ev('JSON.stringify({ txt: document.getElementById("btn-final").textContent.trim(),' +
+      ' logo: !!document.getElementById("btn-final").querySelector("svg"),' +
+      ' cls: document.getElementById("btn-final").className })');
+    chk(/WhatsApp/.test(btnWa) && /"logo":true/.test(btnWa),
+        'y el boton sigue siendo el de WhatsApp, con su logo');
+
+    nav++;
+    await cli.enviar('Page.navigate', { url: 'http://127.0.0.1:' + PUERTO + '/index.html?cierre=1&n=' + nav +
+      '&semilla=' + encodeURIComponent(JSON.stringify(SEMILLA)) });
+    await esperar("typeof PRODUCTOS !== 'undefined' && typeof coPaso !== 'undefined'", 15000);
+    await esperar('Object.keys(stockMap).length > 5', 12000);
+    await dormir(400);
+    chk(await ev('CIERRE_EN_LA_TIENDA === true'), 'con ?cierre=1 el interruptor se prende');
+    const btnCi = JSON.parse(await ev('JSON.stringify({ txt: document.getElementById("btn-final").textContent.trim(),' +
+      ' logo: !!document.getElementById("btn-final").querySelector("svg"),' +
+      ' verde: getComputedStyle(document.getElementById("btn-final")).backgroundColor,' +
+      ' nota: document.getElementById("form-note").textContent })'));
+    chk(!/WhatsApp/.test(btnCi.txt) && /compra/i.test(btnCi.txt),
+        'el boton deja de ser de WhatsApp', '"' + btnCi.txt + '"');
+    chk(btnCi.logo === false, 'y se va el logo: el pedido ya no se manda por ahi');
+    chk(!/37, 211, 102/.test(btnCi.verde), 'ni el verde de WhatsApp', btnCi.verde);
+    chk(/confirmaci/i.test(btnCi.nota) && !/te llevamos a WhatsApp/i.test(btnCi.nota),
+        'y la nota ya no promete que lo lleva a WhatsApp');
+
+    /* El backend contesta que si a los 2 s. Es la unica forma de ver la
+       pantalla de cierre sin que salga un pedido de verdad. */
+    await ev('(function () { var of = window.fetch;' +
+      ' window.fetch = function (u, o) {' +
+      '   if (o && String(o.method || "").toUpperCase() === "POST" && String(u).indexOf("script.google") >= 0) {' +
+      '     window.__posts.push({ body: String(o.body || "") });' +
+      '     return new Promise(function (r) { setTimeout(function () {' +
+      '       r(new Response(JSON.stringify({ ok: true, n: 947 }), { status: 200, headers: { "Content-Type": "application/json" } })); }, 2000); });' +
+      '   }' +
+      '   return of.apply(this, arguments); }; })()');
+    await alFormulario();
+    await ev(LLENAR_DATOS);
+    await ev('coSeguir(); document.getElementById("pago-tr").click(); coSeguir()');
+    await dormir(300);
+    await ev('(function () { var c = document.querySelector("#day-picker .dp-cell.available"); if (c) c.click(); })()');
+    await dormir(300);
+    const urlAntes = await ev('location.href');
+    await ev('enviarPedido()');
+    await dormir(900);
+    chk(await ev('document.getElementById("send-title").textContent') === 'Registrando tu pedido…',
+        'al tocar, la pantalla dice que lo esta registrando');
+    await dormir(3000);
+    const fin = JSON.parse(await ev('JSON.stringify({' +
+      ' titulo: document.getElementById("send-title").textContent,' +
+      ' cls: document.querySelector(".send-card").className,' +
+      ' datos: document.getElementById("send-done-datos").textContent,' +
+      ' url: location.href })'));
+    chk(/947/.test(fin.titulo) && /confirmado/i.test(fin.titulo),
+        'y al confirmar el ERP lo dice con su numero', '"' + fin.titulo + '"');
+    chk(/done/.test(fin.cls), 'la tarjeta pasa al estado de pedido cerrado', fin.cls);
+    chk(/Entrega/.test(fin.datos) && /Dirección/.test(fin.datos) && /Total/.test(fin.datos),
+        'con la entrega, la direccion y el total, bien escritos');
+    chk(fin.url === urlAntes, 'Y NO SE FUE A WHATSAPP: sigue en la tienda');
+    chk(!escapados.some((x) => /wa\.me|whatsapp/.test(x)),
+        'ni lo intento por atras', escapados.join(' | ') || 'nada');
+
+    const postsDelCierre = await ev('window.__posts.length');
+    chk(postsDelCierre === 1, 'y salio UN solo POST, no una cadena de reintentos', String(postsDelCierre));
+
+    /* Vuelta al estado normal para el bloque de la barra. Ojo: esto navega, y
+       con la navegacion se va `window.__posts`. Por eso el conteo del cierre
+       se lee ARRIBA y el chequeo final mira los escapados por CDP, que son
+       los que de verdad habrian llegado a Apps Script. */
+    await abrir();
+
     /* ── H. LA BARRA NO LLEGA AL FINAL SOLA ──────────────────────── */
     console.log('\n' + DIM + '== La barra dice la verdad: no se llena sola ==' + RST);
     await ev('showSendLoader()');
@@ -436,9 +513,13 @@ async function main() {
 
     /* ── I. NADA SALIO HACIA AFUERA ──────────────────────────────── */
     console.log('\n' + DIM + '== Nada salio hacia afuera ==' + RST);
+    /* El bloque J manda un pedido a proposito contra el backend simulado, asi
+       que ese POST esta contado y es el unico que puede haber. Lo que no puede
+       haber es uno que se ESCAPE por CDP hacia Apps Script de verdad. */
     const posts = await ev('window.__posts.length');
-    chk(posts === 0 && escapados.length === 0,
-        'ningun POST al backend', posts + ' adentro, ' + escapados.length + ' por CDP');
+    chk(escapados.length === 0,
+        'nada llego a Apps Script de verdad',
+        escapados.length + ' escapados por CDP' + (posts ? ', ' + posts + ' sin leer' : ''));
     const errores = await ev('JSON.stringify(window.__err)');
     chk(errores === '[]', 'y ningun error de JS en todo el recorrido', errores);
 
