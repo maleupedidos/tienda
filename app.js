@@ -1839,6 +1839,45 @@ function _origenNuestro() {
 }
 function _esNuestro() { return !!_origenNuestro(); }
 
+/* ── EL CLIENTE QUE TRAJO UN VENDEDOR (28/9/2026) ──
+
+   La politica de Red que armo Joaco le da a cada vendedor un codigo propio
+   (MARCOS10) con 10% off en la primera compra, y de ahi sale su bono de
+   $15.000 cuando ese cliente vuelve a comprar dentro de 60 dias. Para que eso
+   exista, el pedido tiene que decir QUIEN lo trajo.
+
+   Son dos cosas distintas y no se pueden mezclar:
+     · `_esNuestro()`      lo trajo Maleu (la ruleta, un QR, una campania)
+                           => NO lo atiende un vendedor  (regla del 24/9)
+     · `_vendedorQueTrajo()` lo trajo ESE vendedor
+                           => la venta es suya, la traiga el barrio o no
+
+   NO se toca el ruteo por barrio. Un cliente del barrio de Rufo que usa
+   MARCOS10 sigue yendo a la hoja de Rufo, y el pedido viaja diciendo que lo
+   trajo Marcos: a quien se le paga lo decide el ERP, que es donde vive la
+   liquidacion. Decidirlo aca seria repartir plata de otros desde el navegador
+   del cliente. */
+var ORIGEN_VENDEDOR = 'maleu_vendedor_trajo';
+
+function _guardarVendedorQueTrajo(usuario, cupon) {
+  try {
+    if (!usuario) return;
+    /* El primero que lo trajo es el que vale, igual que con el origen
+       nuestro: si el cliente vuelve con otro codigo, sigue siendo del que lo
+       consiguio. */
+    if (localStorage.getItem(ORIGEN_VENDEDOR)) return;
+    localStorage.setItem(ORIGEN_VENDEDOR, JSON.stringify({
+      v: String(usuario).trim().toLowerCase(), cupon: cupon || '', t: Date.now()
+    }));
+  } catch (e) {}
+}
+function _vendedorQueTrajo() {
+  try {
+    var o = JSON.parse(localStorage.getItem(ORIGEN_VENDEDOR) || 'null');
+    return (o && o.v) ? o : null;
+  } catch (e) { return null; }
+}
+
 /* Un link nuestro marca al cliente como nuestro (24/9/2026). Son los mismos
    tres parametros que ya usan los QR de la ruleta:
      o = folleto | colegio | evento | meta   (de donde salio)
@@ -5742,6 +5781,12 @@ function enviarPedido() {
      los campos que no conoce, asi que esto no rompe nada mientras no lo lea. */
   var _org = _origenNuestroTexto();
   if (_org) postData.origenDetalle = _org;
+  /* Y si lo trajo un vendedor, su usuario. El ERP ya tenia donde anotarlo
+     (`redTrajoCliente`: Vendedor / Maleu / vacio) y vacio NO es Vendedor: sin
+     esto un pedido no le paga a nadie. Lo que faltaba no era el concepto,
+     era que la tienda pudiera escribirlo sola. */
+  var _vt = _vendedorQueTrajo();
+  if (_vt) { postData.vendedorTrajo = _vt.v; postData.cuponVendedor = _vt.cupon || ''; }
   // Metadata de combos (trazabilidad). El backend ignora campos que no conoce;
   // queda listo para cuando el Panel desglose el combo desde la receta.
   if (combosPayload.length) {
@@ -8137,10 +8182,16 @@ function _premioActivo() {
      encontro el dia anterior a Los Robles, leyendo el pedido de Backend.
 
      El filtro no es decoracion: lo que llega por la URL se manda al backend a
-     validar, y aceptar cualquier cosa seria pegarle con lo que escriba
-     cualquiera. El codigo escrito a mano tiene su propia puerta (applyCoupon),
-     que es donde corresponde que se pueda probar cualquier cosa. */
-  if (!/^RUL(?:ETA)?-[A-Z0-9]{4,}$/.test(cod)) return;
+     validar. Pero desde el 28/9/2026 es POR FORMA y no por prefijo, y el
+     cambio no es cosmetico:
+
+     · un prefijo no defiende de nada — el que quiera probar codigos manda
+       RUL-AAAA, RUL-AAAB. El que decide si un cupon vale es el backend;
+     · y dejaba afuera TODO lo demas EN SILENCIO. Un cliente real entro con
+       `?cupon=EMPA20`, pago $18.000 sin su descuento y sin un cartel que le
+       dijera por que (24/9/2026). Lo mismo le pasaria a MARCOS10, que es la
+       base entera de la politica nueva de los vendedores. */
+  if (!/^[A-Z0-9][A-Z0-9-]{2,23}$/.test(cod)) return;
   fetch(APPS_SCRIPT_URL + '?action=validarCupon&codigo=' + encodeURIComponent(cod) + '&t=' + Date.now(), { cache: 'no-store' })
     .then(function (r) { return r.json(); })
     .then(function (d) {
@@ -8150,13 +8201,31 @@ function _premioActivo() {
         return;
       }
       if (appliedCoupon && appliedCoupon.tipo !== 'REGALO') return;   // no pisa otro cupon
-      /* Un cupon `RUL-…` VALIDADO POR EL BACKEND quiere decir que esta persona
-         giro la ruleta, o sea que la trajimos nosotros. Se marca aca y no al
-         leer la URL a proposito: un codigo tipeado a mano no le puede sacar un
-         cliente a un vendedor. (24/9/2026) */
-      var _eraNuestro = _esNuestro();
-      _guardarOrigenNuestro({ o: 'ruleta', d: '', r: '', cupon: d.codigo, t: Date.now() });
-      if (!_eraNuestro) _repintarPorOrigen();
+      /* QUIEN TRAJO A ESTE CLIENTE. Se decide con lo que dice el backend, no
+         al leer la URL: un codigo tipeado a mano no le puede sacar un cliente
+         a un vendedor. (24/9/2026, ampliado el 28/9)
+
+         `d.vendedor` viaja SOLO cuando el backend lo valido contra la hoja
+         `Vendedores` —un usuario mal tipeado o dado de baja no lo trae—, asi
+         que si esta, es confiable y no hace falta revalidarlo.
+
+         OJO CON EL `else`, que es la trampa de este bloque: un cupon de
+         vendedor que no llego a validar TAMBIEN viene sin el campo, y ahi
+         marcar "lo trajo Maleu" seria justo el bug que este codigo vino a
+         evitar — le sacaria el cliente al vendedor por un error de planilla.
+         Por eso la rama de "es nuestro" la dispara que el codigo sea DE LA
+         RULETA, no la ausencia de `vendedor`. Lo levanto Backend al publicar
+         el contrato (@726). */
+      if (d.vendedor) {
+        _guardarVendedorQueTrajo(d.vendedor, d.codigo);
+      } else if (/^RUL(?:ETA)?-/.test(String(d.codigo || cod))) {
+        var _eraNuestro = _esNuestro();
+        _guardarOrigenNuestro({ o: 'ruleta', d: '', r: '', cupon: d.codigo, t: Date.now() });
+        if (!_eraNuestro) _repintarPorOrigen();
+      }
+      /* Un cupon de campania (EMPA20) no cae en ninguna de las dos: descuenta
+         y no toca de quien es el cliente. Le habla a gente que YA nos conoce,
+         y adentro de esa base estan los clientes de los vendedores. */
       appliedCoupon = { codigo: d.codigo, tipo: d.tipo, valor: d.valor, scope: d.scope, mensaje: d.mensaje, stack: !!d.stack, minimo: Number(d.minimo) || 0 };
       try { updateUI(); } catch (e) {}
       if (q) toast('🎁 Tu premio quedó cargado: ' + (d.mensaje || d.codigo), 3500);

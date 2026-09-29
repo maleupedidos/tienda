@@ -2677,6 +2677,87 @@ Contra la tienda de antes da **5 rojos**.
 | un **🥩** en el resumen del formulario | del rediseño del 23/9 quedó ese suelto. Es de 4 bytes, de los que se ven rotos en uno de cada cuatro celulares |
 | la chapita **"Nuevo"** en los cortes de carne | lleva puesta desde el 10/9. **Es de Tadeo decidir cuándo sacarla**: es la única chapita que hace que un cliente frecuente vuelva a mirar el catálogo, y gastada deja de significar algo |
 
+## El codigo del vendedor le deja el cliente A EL (28/9/2026)
+
+Joaco rehizo la politica de ganancias de la Red (artifact *"Maleu Red: tu
+negocio"*): se muere el 17% y pasa a ser un **monto fijo por unidad segun el
+nivel del mes** (Inicial / Intermedio / Top, por venta mensual acumulada, y al
+subir de nivel **se recalcula el mes entero**), mas los $3.000 de envio, las
+propinas, y un **bono de $15.000** por cada cliente nuevo que entro con el
+codigo del vendedor y hace su 2da compra dentro de 60 dias.
+
+Ese bono se apoya en una sola cosa: que el pedido diga **quien trajo al
+cliente**. Y eso no funcionaba.
+
+> [!danger] Un codigo MARCOS10 no entraba, y salia en silencio
+> El filtro del link era `/^RUL(?:ETA)?-[A-Z0-9]{4,}$/` y cualquier otra cosa
+> salia con `return` **sin avisar**: ni descuento, ni aviso, ni registro. Es el
+> mismo bug que el 24/9 dejo a un cliente real pagando **$18.000 sin su
+> descuento** con `?cupon=EMPA20`.
+>
+> Hoy el filtro es **por forma** (`/^[A-Z0-9][A-Z0-9-]{2,23}$/`) y no por
+> prefijo. Un prefijo no defiende de nada —quien quiera probar codigos manda
+> `RUL-AAAA`, `RUL-AAAB`— y el que decide si un cupon vale es el backend.
+
+**El contrato con Backend (@726):** `validarCupon` devuelve `vendedor` —el
+`Usuario` de la hoja `Vendedores`— **solo cuando valida contra esa hoja**. Un
+usuario mal tipeado o dado de baja no lo trae. O sea que si esta, es confiable.
+
+> [!danger] La trampa esta en el `else`, y la levanto Backend
+> Cuando la validacion no matchea, **el descuento sale igual** (un error de
+> planilla no le puede costar el descuento al cliente). Entonces un codigo de
+> vendedor que no valido **tambien llega sin el campo**, y escribir
+> `if (d.vendedor) delVendedor() else deMaleu()` seria marcar "lo trajo Maleu"
+> a un cliente que trajo el vendedor — **le sacaria la venta por un error de
+> planilla**, que es justo lo que este codigo vino a evitar.
+>
+> Por eso la rama de *"es nuestro"* la dispara que el codigo **sea de la
+> ruleta**, no la ausencia de `vendedor`.
+
+| el cliente entra con | descuento | quien lo trajo |
+|---|---|---|
+| `MARCOS10` con `vendedor` | si | **el vendedor** |
+| `MARCOS10` sin `vendedor` (fallo la validacion) | **si** | nadie — no se inventa ni se le quita |
+| `RULETA-K3P9` | si | **Maleu** (regla del 24/9) |
+| `EMPA20`, campaña de WATI | **si** — antes ni entraba | nadie: le habla a la base que **ya** nos conoce, con los clientes de los vendedores adentro |
+
+**No se toca el ruteo por barrio.** Un cliente del barrio de Rufo que usa
+`MARCOS10` sigue yendo a la hoja de Rufo, y el pedido viaja diciendo que lo
+trajo Marcos (`vendedorTrajo`). **A quien se le paga lo decide el ERP**, que es
+donde vive la liquidacion: resolverlo en el navegador del cliente seria repartir
+plata de otros desde ahi. Que gane el codigo o el barrio lo decide Tadeo.
+
+**El primero que lo trajo es el que vale**: si vuelve con el codigo de otro,
+sigue siendo del que lo consiguio. Misma regla que `_guardarOrigenNuestro`.
+
+### La red: `node _tools/verificar-cupon-vendedor.js [ancho]`
+
+**17 chequeos** con el backend simulado: el codigo del vendedor, **el caso sin
+`vendedor`** (que el descuento salga y que NO se marque nuestro), la ruleta, la
+campaña, que no se pise al primero, y que una basura no se consulte. Contra la
+tienda de antes da **4 rojos**. Cero POST.
+
+> [!warning] Los scripts de `addScriptToEvaluateOnNewDocument` SE ACUMULAN
+> El `localStorage.clear()` de una visita seguia corriendo en las siguientes,
+> asi que *"el primero que lo trajo no se pisa"* medía sobre un storage recien
+> borrado: **daba rojo culpando a la tienda de algo que hacia bien**. Hay que
+> quitar el anterior con `Page.removeScriptToEvaluateOnNewDocument`.
+
+> [!important] Que falta, y no es de la tienda
+> · **Los cupones `MARCOS10` / `FINI10` / `RUFO10` no existen todavia**: hoy el
+>   backend responde *"Codigo no encontrado"*. Crearlos es decidir el descuento
+>   que ve el cliente, y eso lo define Tadeo.
+> · La **tabla de monto por producto x nivel** (34 x 3), el **nivel mensual con
+>   recalculo retroactivo** y el **bono de $15.000** son del ERP. La hoja
+>   `Vendedores` tiene **una sola** columna "Comisión %": no alcanza.
+> · **La politica todavia no esta aprobada.** Comparado con el 17% de hoy sube
+>   en pizzas, packs y tartas (+8% a +18%) y baja fuerte en lo caro de margen
+>   fino: tortas **-83%**, entraña **-74%**, lomo **-73%**, brie y langostinos
+>   **-68%**. En el "pedido tipo" de $92.000 da parecido, pero un vendedor con
+>   mucha carne o torta en su mix va a cobrar bastante menos.
+> · **Verificado**: los 34 precios del documento de Joaco coinciden uno por uno
+>   con los de la tienda. Esta calculado sobre precios reales.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en
