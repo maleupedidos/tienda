@@ -263,6 +263,73 @@ async function main() {
       ' total: (document.getElementById("co-total").textContent || "").trim()' +
       '})'));
 
+    /* ── K. EL CHECKOUT ES SU PROPIA VISTA, CON SU URL ───────────────
+       Pedido del 29/9/2026: "que como primera pantalla el cliente pueda
+       scrollear el catalogo e ir pidiendo el carrito; una vez que confirma
+       que ya esta, recien ahi pasamos a un nuevo html". */
+    console.log('\n' + DIM + '== La primera pantalla es el catalogo, nada mas (' + ANCHO + 'px) ==' + RST);
+    await abrir();
+    await ev('(function () { var p = getActiveProducts().filter(function (x) { return !esPorPeso(x); })[0]; addToCart(String(p.id)); })()');
+    await dormir(400);
+    chk(await ev('cartCount() > 0'), 'hay algo en el carrito');
+    /* EL CONTROL DE TODO ESTE BLOQUE: hasta el 29/9 bastaba con tener algo en
+       el carrito para que el formulario apareciera desplegado abajo. */
+    chk(await ev('document.getElementById("form-section").hidden === true'),
+        'y AUN ASI el formulario no aparece abajo del catalogo');
+    chk(await ev('!document.querySelector(".form-expand-btn")'),
+        'ni el boton viejo de "Completar datos y pedir"');
+
+    const urlCatalogo = await ev('location.pathname');
+    await ev('window.scrollTo(0, 600)');
+    await dormir(200);
+    const scrollPrevio = await ev('Math.round(window.pageYOffset)');
+    await ev('abrirCheckout()');
+    await dormir(500);
+    const vista = JSON.parse(await ev('JSON.stringify((function () {' +
+      ' var s = document.getElementById("form-section");' +
+      ' var r = s.getBoundingClientRect();' +
+      ' return { url: location.pathname, oculto: s.hidden, pos: getComputedStyle(s).position,' +
+      '   w: Math.round(r.width), h: Math.round(r.height), vw: window.innerWidth, vh: window.innerHeight,' +
+      '   volver: !!document.querySelector(".co-cerrar"),' +
+      '   fondo: document.body.classList.contains("modal-open"),' +
+      '   tocable: Math.round((document.querySelector(".co-cerrar") || {getBoundingClientRect:function(){return{height:0};}}).getBoundingClientRect().height) };' +
+      '})())'));
+    chk(vista.oculto === false && vista.pos === 'fixed', 'el checkout se abre como vista propia', vista.pos);
+    chk(vista.w === vista.vw && vista.h >= vista.vh, 'y tapa la pantalla entera',
+        vista.w + 'x' + vista.h + ' sobre ' + vista.vw + 'x' + vista.vh);
+    chk(/checkout/.test(vista.url), 'la URL dice /checkout, como en cualquier tienda seria', vista.url);
+    chk(vista.volver && vista.tocable >= 44, 'hay un "Volver al catalogo" tocable', vista.tocable + 'px');
+    chk(vista.fondo === true, 'y el catalogo de atras no se scrollea');
+
+    /* EL BOTON "ATRAS" DEL TELEFONO. Es lo unico bueno que tenia partir la
+       tienda en dos archivos, y se consigue con pushState. */
+    await cli.enviar('Page.navigateToHistoryEntry', {
+      entryId: (await cli.enviar('Page.getNavigationHistory')).entries.slice(-2)[0].id });
+    await dormir(600);
+    const trasAtras = JSON.parse(await ev('JSON.stringify({' +
+      ' url: location.pathname, oculto: document.getElementById("form-section").hidden,' +
+      ' carrito: cartCount(), fondo: document.body.classList.contains("modal-open"),' +
+      ' scroll: Math.round(window.pageYOffset) })'));
+    chk(trasAtras.oculto === true, 'el "atras" del telefono cierra el checkout');
+    chk(trasAtras.url === urlCatalogo, 'y devuelve la URL del catalogo', trasAtras.url);
+    chk(trasAtras.carrito > 0, 'sin perder el carrito', String(trasAtras.carrito));
+    chk(trasAtras.fondo === false, 'y el catalogo vuelve a scrollear');
+    chk(Math.abs(trasAtras.scroll - scrollPrevio) < 60,
+        'y vuelve donde estaba mirando', trasAtras.scroll + ' vs ' + scrollPrevio);
+
+    /* "Volver al catalogo" NO puede agregar una entrada al historial: si no,
+       el cliente tendria que tocar "atras" dos veces para salir. */
+    await ev('abrirCheckout()');
+    await dormir(400);
+    const hAntes = await ev('history.length');
+    await ev('document.querySelector(".co-cerrar").click()');
+    await dormir(500);
+    chk(await ev('document.getElementById("form-section").hidden === true'),
+        '"Volver al catalogo" tambien lo cierra');
+    chk(await ev('location.pathname') === urlCatalogo, 'y devuelve la URL', await ev('location.pathname'));
+    chk((await ev('history.length')) === hAntes,
+        'sin agregar una vuelta al historial: se sale con UN solo "atras"');
+
     /* ── A. UN SOLO PASO A LA VISTA ──────────────────────────────── */
     console.log('\n' + DIM + '== El formulario abre en el paso 1, y solo se ve ese (' + ANCHO + 'px) ==' + RST);
     await abrir();

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Maleu</title>
+<meta name="robots" content="noindex" />
+<!--
+  ESTA PAGINA EXISTE POR DOS MOTIVOS (29/9/2026)
+
+  1. HASTA HOY, CUALQUIER URL EQUIVOCADA DE maleu.com.ar MOSTRABA LA PAGINA DE
+     ERROR DE GITHUB, con su logo y su tipografia. Medido: `/loquesea` y
+     `/checkout` devolvian "Page not found · GitHub Pages". Para una tienda con
+     QR impresos y links viejos circulando por WhatsApp, eso es mandar al
+     cliente a un sitio que no parece Maleu.
+
+  2. Habilita que el checkout tenga su propia URL. GitHub Pages sirve archivos,
+     no rutas: `/checkout` no es un archivo y por eso daba 404. Esta pagina lo
+     atrapa y lo devuelve a la tienda diciendole adonde iba, que es la tecnica
+     estandar para una tienda de una sola pagina servida por GitHub Pages.
+
+  Se redirige con `location.replace` y no con `href`: asi esta pagina NO queda
+  en el historial y el boton "atras" del telefono no vuelve a caer en el error.
+-->
+<style>
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         background:#FAFAFA; color:#331C1C; font-family:'Montserrat',system-ui,sans-serif; text-align:center; padding:1.5rem; }
+  p { font-size:.95rem; color:#6b5a52; }
+</style>
+</head>
+<body>
+<script>
+  (function () {
+    /* La ruta que el cliente quiso abrir, para que la tienda sepa adonde iba.
+       Solo se pasa el NOMBRE de la ruta, nada de lo que venga escrito en la
+       URL: lo unico que la tienda hace con esto es abrir el checkout o no. */
+    var ruta = '';
+    try { ruta = (location.pathname || '').replace(/^\/+|\/+$/g, '').toLowerCase(); } catch (e) {}
+    var destino = '/';
+    if (ruta === 'checkout') destino = '/?ir=checkout';
+    try { location.replace(destino); } catch (e) { location.href = destino; }
+  })();
+</script>
+<p>Te estamos llevando a la tienda&hellip;<br /><a href="/">Ir a maleu.com.ar</a></p>
+</body>
+</html>

@@ -5014,9 +5014,7 @@ function goToForm() {
   if (_pedirZonaAntes(function () { goToForm(); }, 'formulario')) return;
   toggleCart();
   _track('begin_checkout', { value: cartTotal(), zone: currentZone, items: cartCount() });
-  const section = $id('form-section');
-  if (section) section.classList.remove('collapsed');
-  coArranque();
+  abrirCheckout();
   /* El dia de la fecha elegida, marcado en el formulario (12/9/2026). Un
      cliente que vuelve con la fecha guardada y vigente NO pasa por el modal,
      que es el unico que la marcaba: entraba desde el carrito y el dia estaba
@@ -5675,6 +5673,72 @@ function coSeguir() {
 }
 
 function coVolver() { if (coPaso > 1) coIr(coPaso - 1); }
+
+/* ══ ABRIR Y CERRAR EL CHECKOUT (29/9/2026) ═════════════════════════════
+
+   Es una vista que tapa la pantalla, no una URL aparte. Lo unico bueno que
+   tenia partir la tienda en dos archivos —que el boton "atras" del telefono
+   vuelva al catalogo— se consigue con history.pushState.
+
+   El estado se marca con `{co:1}`: al cerrar se llama a history.back() solo si
+   la entrada la puso este codigo. Sin esa marca, cerrar desde el boton haria
+   retroceder a la pagina ANTERIOR a la tienda — el cliente se iria de Maleu
+   creyendo que volvia al catalogo. */
+var _coEnHistoria = false;
+
+function abrirCheckout() {
+  var sec = $id('form-section');
+  if (!sec || !sec.hidden) return;
+  if (_pedirZonaAntes(function () { abrirCheckout(); }, 'checkout')) return;
+  /* Lo que se estaba mirando, para devolverlo al volver. El catalogo queda
+     quieto atras y no se pierde el lugar. */
+  _coScrollPrevio = window.pageYOffset || 0;
+  sec.hidden = false;
+  _fondoQuieto('checkout', true);
+  coArranque();
+  sec.scrollTop = 0;
+  /* LA URL CAMBIA A /checkout, como en cualquier tienda seria. No se recarga
+     nada —la tienda sigue siendo un solo archivo—, pero Analytics lo cuenta
+     como pantalla, el "atras" del telefono vuelve al catalogo, y se puede
+     medir cuantos llegan aca y no compran.
+
+     Los parametros que venian en la URL (`?cierre=1`, `?cupon=`, `?r=`) se
+     conservan: son los que hacen que el link de un vendedor o una prueba
+     sigan valiendo despues de entrar al checkout. */
+  try {
+    history.pushState({ co: 1 }, '', '/checkout' + (location.search || ''));
+    _coEnHistoria = true;
+  } catch (e) { _coEnHistoria = false; }
+  _track('checkout_abierto', { zone: currentZone, items: cartCount(), value: cartTotal() });
+  /* Analytics lo ve como una pantalla mas, que es lo que permite armar el
+     embudo: ver_catalogo -> checkout_abierto -> purchase. */
+  try { if (typeof gtag === 'function') gtag('event', 'page_view', { page_path: '/checkout', page_title: 'Checkout' }); } catch (e) {}
+}
+
+var _coScrollPrevio = 0;
+
+/* `porAtras` lo pone el popstate: ahi la entrada del historial YA se fue y
+   llamar a history.back() de nuevo sacaria al cliente de la tienda. */
+function cerrarCheckout(porAtras) {
+  var sec = $id('form-section');
+  if (!sec || sec.hidden) return;
+  sec.hidden = true;
+  _fondoQuieto('checkout', false);
+  if (!porAtras && _coEnHistoria) { _coEnHistoria = false; try { history.back(); } catch (e) {} }
+  /* Si el pushState no llego a entrar (navegador viejo, o se entro por
+     ?ir=checkout despues de una recarga) la URL igual tiene que volver a la
+     tienda: dejarla en /checkout con el catalogo a la vista seria mentir. */
+  else if (!porAtras) { try { history.replaceState({}, '', '/' + (location.search || '')); } catch (e) {} }
+  if (porAtras) _coEnHistoria = false;
+  /* `auto` y no `smooth`: el catalogo acaba de volver a aparecer y una
+     animacion desde arriba de todo se ve como un salto. */
+  try { window.scrollTo({ top: _coScrollPrevio, behavior: 'auto' }); } catch (e) { window.scrollTo(0, _coScrollPrevio); }
+}
+
+window.addEventListener('popstate', function (ev) {
+  var sec = $id('form-section');
+  if (sec && !sec.hidden) cerrarCheckout(true);
+});
 
 /* Al abrir el formulario. El que ya nos compro tiene sus datos cargados desde
    el 11/9, asi que no vuelve a ver esa pantalla: arranca en el pago.
@@ -6697,11 +6761,11 @@ function toast(msg, duration) { const el=$id('toast'); el.textContent=msg; el.cl
 function updateFormVisibility() {
   const section = $id('form-section');
   if (!section) return;
-  if (cartCount() > 0) {
-    section.classList.remove('collapsed');
-    // Mostrar hint de descuento si no eligió pago aún
-    updatePagoHint();
-  }
+  /* YA NO SE ABRE SOLO (29/9/2026). Hasta hoy, con algo en el carrito el
+     formulario aparecia desplegado abajo del catalogo, y eso es justo lo que
+     se vino a sacar: la primera pantalla es el catalogo y nada mas. Se entra
+     desde el carrito o desde la barra de abajo. */
+  if (cartCount() > 0) updatePagoHint();
   updateWhatsappCta();
 }
 
@@ -6765,10 +6829,10 @@ function updateWhatsappCta() {
   // Todo listo — el hint clásico verde.
   setState('ready', '', 'Último paso: tocá para enviar tu pedido');
 }
+/* Alias de abrirCheckout: lo llaman los tests y algun camino viejo. La logica
+   vive en un solo lugar. */
 function expandForm() {
-  const section = $id('form-section');
-  if (section) section.classList.remove('collapsed');
-  coArranque();
+  abrirCheckout();
   updatePagoHint();
   // Asegurar que la fecha elegida en el modal welcome quede seleccionada
   // en el day-picker del form (por si algún re-render la limpió antes).
@@ -7679,6 +7743,18 @@ function agregarLoMismo(sufijo) {
 
 /* ── INIT ── */
 renderCatalog();   // repinta tambien el nav y los tiles
+/* EL QUE RECARGA ESTANDO EN /checkout vuelve por 404.html, que lo manda a
+   `/?ir=checkout`. Se retoma ahi mismo en vez de dejarlo en el catalogo
+   preguntandose que paso con su pedido — el carrito y sus datos siguen
+   guardados, asi que no perdio nada.
+
+   Va en un setTimeout porque el checkout necesita la zona ya aplicada, y eso
+   pasa unas lineas mas abajo en este mismo bloque de arranque. */
+try {
+  if (/[?&]ir=checkout/.test(location.search) && cartCount() > 0) {
+    setTimeout(function () { abrirCheckout(); }, 0);
+  }
+} catch (e) {}
 _pintarBotonFinal();
 updateCatNavTop();
 window.addEventListener('resize', updateCatNavTop);

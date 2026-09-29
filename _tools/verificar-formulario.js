@@ -136,16 +136,29 @@ async function main() {
     cli.on((m) => {
       if (m.method === 'Network.requestWillBeSent') {
         const r = m.params.request;
-        if (r.method === 'POST') posts.push(r.url);
+        /* SOLO los que van al backend. Contar cualquier POST hacia que un
+           page_view de Analytics —que tambien es POST— se leyera como "el
+           pedido salio", y el chequeo daba rojo sobre un formulario que
+           estaba frenando bien. */
+        if (r.method === 'POST' && /script\.google/.test(r.url)) posts.push(r.url);
         if (m.params.type === 'Document' && /whatsapp|wa\.me/.test(r.url)) navegaciones.push(r.url);
       }
     });
 
     /* El POST del pedido NO puede llegar a la planilla: se responde con un ok
        falso. Y se corta la navegacion a WhatsApp para poder seguir midiendo. */
-    await cli.enviar('Fetch.enable', { patterns: [{ urlPattern: '*script.google.com*' }, { urlPattern: '*whatsapp*' }, { urlPattern: '*wa.me*' }] });
+    /* Analytics y Meta, cortados: si no, cada corrida de este test le suma
+       visitas falsas a las metricas reales desde 127.0.0.1. */
+    await cli.enviar('Fetch.enable', { patterns: [{ urlPattern: '*script.google.com*' },
+      { urlPattern: '*whatsapp*' }, { urlPattern: '*wa.me*' },
+      { urlPattern: '*googletagmanager*' }, { urlPattern: '*google-analytics*' },
+      { urlPattern: '*facebook*' }] });
     cli.on(async (m) => {
       if (m.method !== 'Fetch.requestPaused') return;
+      if (/googletagmanager|google-analytics|facebook/.test(m.params.request.url)) {
+        try { await cli.enviar('Fetch.failRequest', { requestId: m.params.requestId, errorReason: 'BlockedByClient' }); } catch (e) {}
+        return;
+      }
       try {
         await cli.enviar('Fetch.fulfillRequest', {
           requestId: m.params.requestId, responseCode: 200,

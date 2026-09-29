@@ -471,10 +471,11 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 /* ── REPEAT BLOCK ── */
 
 /* ── FORM ── */
-.form-section { max-width:600px; margin:0 auto 3rem; padding:0 1rem; scroll-margin-top:120px; }
+/* .form-section se redefine mas abajo: desde el 29/9/2026 es una vista que
+   tapa la pantalla, no una seccion del catalogo. */
 #form-title { scroll-margin-top:130px; }
-.form-section.collapsed .form-wrap { display:none; }
-.form-section.collapsed .form-expand-btn { display:block; }
+
+
 .form-expand-btn { display:none; width:100%; padding:.9rem; background:var(--cream); color:var(--brown); border:none; border-radius:12px; font-family:var(--font); font-weight:700; font-size:.9rem; cursor:pointer; }
 .form-wrap { background:#fff; border:1px solid #f0f0f0; border-radius:16px; padding:1.5rem; }
 .section-heading { font-size:1.2rem; font-weight:700; margin-bottom:.3rem; }
@@ -2296,3 +2297,45 @@ body.busqueda-activa #ultimo-section { display: none !important; }
   display: flex; align-items: center; justify-content: center;
 }
 .send-done-duda-btn:hover { background: #FBF7F1; }
+/* ══ EL CHECKOUT COMO VISTA PROPIA (29/9/2026) ══════════════════════════
+   Antes era una <section> mas del catalogo, que aparecia abajo apenas habia
+   algo en el carrito. Ahora tapa la pantalla y se entra a pedido. */
+.form-section {
+  position: fixed; inset: 0; z-index: 9500;
+  background: var(--white);
+  overflow-y: auto; overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  /* El dedo tiene que poder scrollear ACA aunque _fondoQuieto apague
+     touch-action en todo el documento. */
+  touch-action: pan-y;
+  max-width: none; margin: 0;
+  padding: 0 1rem calc(3rem + env(safe-area-inset-bottom, 0px));
+  animation: coEntra .22s ease-out;
+}
+.form-section[hidden] { display: none !important; }
+@keyframes coEntra { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .form-section { animation: none; } }
+
+.form-section .form-wrap { max-width: 600px; margin: 0 auto; }
+
+/* La barra de arriba: pegada, para que "volver" este siempre a mano aunque el
+   formulario sea largo. */
+.co-barra-top {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--white);
+  margin: 0 -1rem 0;
+  padding: env(safe-area-inset-top, 0px) 1rem 0;
+  border-bottom: 1px solid #F0E8DE;
+}
+.co-cerrar {
+  display: flex; align-items: center; gap: .35rem;
+  min-height: 48px; padding: 0 .4rem 0 0;
+  background: none; border: none;
+  font-family: var(--font); font-size: .92rem; font-weight: 600;
+  color: var(--brown); cursor: pointer;
+}
+.co-cerrar svg { width: 20px; height: 20px; }
+
+/* Sin uso desde el 29/9: el checkout ya no se despliega abajo del catalogo.
+   La regla queda por si alguna pagina vieja todavia trae el markup. */
+.form-section.collapsed .form-wrap { display: none; }

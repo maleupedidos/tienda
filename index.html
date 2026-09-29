@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=aaca3803" />
+  <link rel="stylesheet" href="styles.css?v=47e63588" />
   <script>
     // Forzar inicio arriba en cada carga (incluye refresh, back-forward cache de iOS).
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
@@ -383,8 +383,24 @@
 </aside>
 
 <!-- FORMULARIO -->
-<section class="form-section collapsed" id="form-section">
-  <button class="form-expand-btn" onclick="expandForm()">Completar datos y pedir</button>
+<!-- EL CHECKOUT, SU PROPIA VISTA (29/9/2026)
+
+     Pedido del 29/9: "que como primera pantalla el cliente pueda scrollear el
+     catalogo e ir pidiendo el carrito; una vez que confirma que ya esta, recien
+     ahi pasamos a un nuevo html... que no aparezca abajo para completar sus
+     datos en la misma pantalla".
+
+     TAPA LA PANTALLA y no es una URL aparte: la tienda es un solo archivo, y
+     partirla duplicaria el catalogo, el carrito y el stock. Lo unico bueno de
+     la otra opcion —el boton "atras" del telefono— se consigue con
+     history.pushState. Ver abrirCheckout() en app.js. -->
+<section class="form-section" id="form-section" hidden>
+  <div class="co-barra-top">
+    <button type="button" class="co-cerrar" onclick="cerrarCheckout()" aria-label="Volver al catalogo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+      <span>Volver al cat&aacute;logo</span>
+    </button>
+  </div>
   <form class="form-wrap" onsubmit="event.preventDefault(); enviarPedido();">
     <h2 class="section-heading" id="form-title">Completá tu pedido</h2>
     <p class="section-sub">Revisá el resumen y completá tus datos.</p>
@@ -751,6 +767,6 @@
   </div>
 </div>
 
-<script src="app.js?v=0334de98"></script>
+<script src="app.js?v=7321404b"></script>
 </body>
 </html>

@@ -2831,7 +2831,7 @@ es la version bonita del bug que costo el pedido de $84.600 el 10/9.
 
 ### La red: `node _tools/verificar-checkout.js [ancho]`
 
-**74 chequeos**, verdes a 390 y 1440px, con el reloj congelado el lunes
+**90 chequeos**, verdes a 390 y 1440px, con el reloj congelado el lunes
 14/9/2026: un solo paso a la vista y el indicador marcandolo; "Continuar"
 frenando lo incompleto con el foco donde falta; el boton de comprar solo en el 3;
 volver sin perder lo escrito; no poder saltar a un paso que no se alcanzo; las
@@ -2981,6 +2981,88 @@ chat que ya no se abre:
 El subtitulo del paso de direccion decia *"te mostramos los dias de entrega **y
 el envio**"*. Tadeo saco el envio de la lista el 28/9 y ese dia se corrigio **el
 otro** subtitulo, no este. Prometia algo que la pantalla ya no muestra.
+
+## El checkout es su propia pantalla, con su URL (29/9/2026, a la tarde)
+
+Tadeo: *"me gustaria que como primera pantalla el cliente pueda scrollear el
+catalogo e ir pidiendo el carrito; una vez que confirma que ya esta, recien ahi
+pasamos a un nuevo html... que no aparezca abajo para completar sus datos en la
+misma pantalla"*.
+
+Y cuando le pregunte si prefería una pagina aparte o que tapara la pantalla, lo
+devolvio bien devuelto: *"¿una empresa que tiene tienda online se maneja con
+paginas aparte o todo en una? te lo pregunto porque acordate que yo no soy
+ningun mago"*. **La pregunta estaba mal planteada de mi lado**: las dos cosas no
+se oponen. Una tienda seria tiene el checkout con **su propia URL** —sirve para
+medir el embudo, para que ande el "atras" y para que Analytics lo cuente como
+pantalla— **y eso no exige un archivo aparte**: Frizata es un solo archivo y su
+URL va cambiando igual.
+
+| | antes | ahora |
+|---|---|---|
+| la primera pantalla | catalogo **y el formulario desplegado abajo** apenas habia algo en el carrito | **solo el catalogo** |
+| el checkout | una `<section>` mas de la pagina | **tapa la pantalla**, `position:fixed` |
+| la URL | siempre la misma | **`maleu.com.ar/checkout`** |
+| el "atras" del telefono | no hacia nada | **vuelve al catalogo**, donde estabas mirando |
+| entrar | aparecia solo | desde el carrito o desde la barra de abajo |
+
+> [!important] La URL cambia con `pushState`: NO se recarga nada
+> La tienda sigue siendo un solo archivo. Partirla en dos duplicaria el
+> catalogo, el carrito, el stock y las piezas de carne — y cada copia se
+> despegaria de la otra, que es como se rompen las cosas en este repo.
+
+> [!danger] `cerrarCheckout()` distingue quien lo cerro, y no es un detalle
+> El estado se marca con `{co:1}`. Al cerrar desde el boton se llama a
+> `history.back()`; al cerrar **por el popstate** no, porque ahi la entrada ya
+> se fue y un `back()` de mas **sacaria al cliente de la tienda** creyendo que
+> volvia al catalogo.
+>
+> Y el boton **no puede** hacer `pushState`: si no, el cliente tendria que
+> tocar "atras" dos veces para salir. El test lo mide (`history.length` no
+> crece).
+
+### `404.html`: la tienda no tenia y mostraba la pagina de error de GitHub
+
+> [!danger] Medido antes de tocar nada: `/loquesea` devolvia "Page not found · GitHub Pages"
+> Con su logo y su tipografia. **Para una tienda con QR impresos y links viejos
+> circulando por WhatsApp, eso es mandar al cliente a un sitio que no parece
+> Maleu.** Ya pasaba antes de este cambio; lo que lo destapo fue querer usar
+> `/checkout`.
+
+GitHub Pages sirve **archivos, no rutas**: `/checkout` no es un archivo y por eso
+daba 404. El `404.html` nuevo lo atrapa y lo devuelve a `/?ir=checkout`, que la
+tienda retoma sola. Cualquier otra ruta equivocada va a la tienda a secas.
+
+Redirige con **`location.replace` y no `href`**: asi la pagina de error no queda
+en el historial y el "atras" no vuelve a caer en ella.
+
+> [!warning] Pendiente que esto destapo: EL CARRITO NO SOBREVIVE A UNA RECARGA
+> `cart` es `let cart = {}` — vive en memoria y **no se guarda en ningun lado**.
+> Verificado. O sea que quien recarga la tienda con el carrito lleno lo pierde,
+> y eso **ya pasaba antes** de tener una URL propia.
+>
+> No lo empeora este cambio (recargar siempre lo perdio), pero lo vuelve mas
+> facil de encontrar. **Es lo proximo que hay que hacer**: guardar `cart`,
+> `comboCart` y `piezaCart` y restaurarlos conciliando con el stock — la
+> conciliacion ya existe (`_ensureCartFitsDate`, `_piezasConciliarCarrito`).
+
+### Lo que aparecio de paso
+
+> [!danger] `verificar-formulario.js` contaba CUALQUIER POST como "el pedido salio"
+> `abrirCheckout()` manda un `page_view` a Analytics, que es un POST, y el test
+> lo leyo como un pedido escapado: rojo sobre un formulario que frenaba
+> perfecto. Ahora cuenta solo los que van a `script.google`, y de paso **bloquea
+> Analytics y Meta** — cada corrida le estaba sumando visitas falsas a las
+> metricas reales desde 127.0.0.1, que es lo que el CLAUDE.md anoto el 13/9 y
+> esta era una de las redes que faltaban.
+>
+> Efecto de paso: el chequeo que decia "3 POST al backend" ahora dice **1**, que
+> es lo que la tienda garantiza de verdad.
+
+La red del checkout paso a **90 chequeos** y se probo al reves con **trece bugs
+reinyectados de a uno** —los ocho de la mañana mas el formulario apareciendo
+abajo, la URL que no cambia, "Volver" agregando al historial, el "atras" que no
+cierra y el scroll que no vuelve—: **los trece se agarran**.
 
 ## Lo que NO está acá
 
