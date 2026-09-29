@@ -330,6 +330,51 @@ async function main() {
     chk((await ev('history.length')) === hAntes,
         'sin agregar una vuelta al historial: se sale con UN solo "atras"');
 
+    /* ── L. LOS CARTELES SE VEN POR ENCIMA DEL CHECKOUT ──────────────
+       Lo encontro Tadeo probando en produccion: puso 20 sorrentinos para el
+       miercoles, la tienda le dejo 4 y NO LE DIJO NADA. El cartel existia y
+       se disparaba; lo que pasaba es que el checkout nacio en z-index 9500 y
+       el cartel vive en 1000, asi que salia DETRAS de esta pantalla.
+
+       Un cartel tapado no tira ningun error ni cambia ningun numero: el
+       carrito se recorta igual y todo "funciona". Por eso hay que medir el
+       orden de las capas, y no solo que el cartel se dibuje. */
+    console.log('\n' + DIM + '== Un cartel abierto DESDE el checkout se ve por encima ==' + RST);
+    await abrir();
+    await ev('(function () {' +
+      ' var p = getActiveProducts().filter(function (x) { return !esPorPeso(x); })[0];' +
+      ' addToCart(String(p.id));' +
+      /* 20 pedidos con 4 en el freezer: el caso exacto que reporto Tadeo. */
+      ' stockMap[p.id] = 4; cart[p.id] = 20; updateUI(); })()');
+    await dormir(300);
+    await ev('abrirCheckout()');
+    await dormir(400);
+    await ev(LLENAR_DATOS);
+    await ev('coSeguir(); document.getElementById("pago-ef").click(); coSeguir()');
+    await dormir(400);
+    const antesRec = await ev('cart[Object.keys(cart)[0]]');
+    await ev('(function () {' +
+      ' var c = [].filter.call(document.querySelectorAll("#day-picker .dp-cell.available"), function (x) {' +
+      '   return getStockMode(x.getAttribute("data-fecha")) !== "ilimitado"; })[0];' +
+      ' if (c) c.click(); })()');
+    await dormir(800);
+    const rec = JSON.parse(await ev('JSON.stringify((function () {' +
+      ' var ov = document.getElementById("recorte-modal");' +
+      ' var co = document.getElementById("form-section");' +
+      ' return { hay: !!ov, visible: ov ? getComputedStyle(ov).display !== "none" : false,' +
+      '   zc: ov ? Number(getComputedStyle(ov).zIndex) || 0 : -1,' +
+      '   zk: Number(getComputedStyle(co).zIndex) || 0,' +
+      '   txt: ov ? (ov.innerText || "").replace(/\\s+/g, " ").trim() : "",' +
+      '   qty: cart[Object.keys(cart)[0]] }; })())'));
+    chk(antesRec === 20, 'el carrito tenia 20 antes de elegir el dia', String(antesRec));
+    chk(rec.qty < antesRec, 'y la tienda lo recorta al stock de esa fecha', antesRec + ' -> ' + rec.qty);
+    chk(rec.hay && rec.visible, 'SE LO DICE con un cartel, no en silencio');
+    chk(rec.zc > rec.zk, 'y ese cartel queda POR ENCIMA del checkout',
+        'cartel ' + rec.zc + ' vs checkout ' + rec.zk);
+    chk(/pediste 20/.test(rec.txt), 'dice cuanto pidio y cuanto queda',
+        rec.txt.slice(0, 70));
+    chk(/Pedir todo al/.test(rec.txt), 'y le ofrece la fecha en la que si estan todos');
+
     /* ── A. UN SOLO PASO A LA VISTA ──────────────────────────────── */
     console.log('\n' + DIM + '== El formulario abre en el paso 1, y solo se ve ese (' + ANCHO + 'px) ==' + RST);
     await abrir();

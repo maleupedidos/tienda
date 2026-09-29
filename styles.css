@@ -2301,7 +2301,19 @@ body.busqueda-activa #ultimo-section { display: none !important; }
    Antes era una <section> mas del catalogo, que aparecia abajo apenas habia
    algo en el carrito. Ahora tapa la pantalla y se entra a pedido. */
 .form-section {
-  position: fixed; inset: 0; z-index: 9500;
+  position: fixed; inset: 0;
+  /* Z-INDEX 300, NO 9500. Nacio en 9500 y tapaba los carteles que se abren
+     DESDE el checkout: el de recorte de stock y el de cambiar la fecha usan
+     .combo-modal-overlay, que esta en 1000. Resultado medido: un pedido de 20
+     sorrentinos para una fecha con 4 en el freezer se recortaba a 4 EN
+     SILENCIO — el cartel salia, pero detras de esta pantalla.
+
+     El orden que tiene que cumplirse, de atras para adelante:
+       catalogo < carrito (200) < CHECKOUT (300) < los carteles (1000)
+                < el modal de zona (9999) < la pantalla de envio (99999)
+     Lo mide verificar-checkout.js: el cartel de recorte tiene que quedar por
+     ENCIMA, y el chequeo lee el z-index de los dos. */
+  z-index: 300;
   background: var(--white);
   overflow-y: auto; overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;

@@ -2831,7 +2831,7 @@ es la version bonita del bug que costo el pedido de $84.600 el 10/9.
 
 ### La red: `node _tools/verificar-checkout.js [ancho]`
 
-**90 chequeos**, verdes a 390 y 1440px, con el reloj congelado el lunes
+**96 chequeos**, verdes a 390 y 1440px, con el reloj congelado el lunes
 14/9/2026: un solo paso a la vista y el indicador marcandolo; "Continuar"
 frenando lo incompleto con el foco donde falta; el boton de comprar solo en el 3;
 volver sin perder lo escrito; no poder saltar a un paso que no se alcanzo; las
@@ -3059,10 +3059,38 @@ en el historial y el "atras" no vuelve a caer en ella.
 > Efecto de paso: el chequeo que decia "3 POST al backend" ahora dice **1**, que
 > es lo que la tienda garantiza de verdad.
 
-La red del checkout paso a **90 chequeos** y se probo al reves con **trece bugs
+La red del checkout paso a **96 chequeos** y se probo al reves con **trece bugs
 reinyectados de a uno** —los ocho de la mañana mas el formulario apareciendo
 abajo, la URL que no cambia, "Volver" agregando al historial, el "atras" que no
 cierra y el scroll que no vuelve—: **los trece se agarran**.
+
+### El checkout tapaba los carteles que el mismo abre (29/9/2026, a la noche)
+
+> [!danger] Un pedido de 20 se recortaba a 4 EN SILENCIO
+> Lo encontro Tadeo probando en produccion: *"me puse 20 paquetes de sorrentinos
+> para manana miercoles... automaticamente se me puso cuatro unidades. Al cliente
+> nunca se le dijo nada. Ni se le pregunto si quiere seguir. No hubo ninguna
+> notificacion"*.
+>
+> **El cartel existia desde el 28/9 y SI se disparaba.** Lo que pasaba es que el
+> checkout nacio con `z-index: 9500` y los carteles viven en `1000`
+> (`.combo-modal-overlay`): salia detras de la pantalla del checkout.
+
+El orden que tiene que cumplirse, de atras para adelante:
+
+    catalogo  <  carrito (200)  <  CHECKOUT (300)  <  los carteles (1000)
+              <  modal de zona (9999)  <  pantalla de envio (99999)
+
+> [!important] Medir que el cartel SE DIBUJE no alcanza: hay que medir el orden
+> Con el bug puesto, el chequeo *"SE LO DICE con un cartel"* **pasaba igual** —
+> el cartel esta en el DOM y su `display` no es `none`, solo esta tapado. Un
+> cartel invisible no tira ningun error y no cambia ningun numero: el carrito se
+> recorta lo mismo y todo *"funciona"*.
+>
+> Lo unico que lo delata es comparar los dos `z-index`, y eso es lo que ahora
+> hace el bloque L de `verificar-checkout.js`, reproduciendo el caso exacto:
+> 20 en el carrito, 4 en el freezer, elegir la fecha con tope. Reinyectado el
+> 9500, da **MAL** en ese chequeo y solo en ese.
 
 ## Lo que NO está acá
 
