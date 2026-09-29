@@ -4986,10 +4986,17 @@ function updateFormSummary() {
   }
   /* El premio existe pero en este barrio no se puede usar. Decirlo es lo unico
      honesto: el cliente lo cargo desde el link y lo vio aplicado hasta que
-     eligio su barrio. (24/9/2026) */
+     eligio su barrio. (24/9/2026)
+
+     EL TEXTO SE REESCRIBIO EL 29/9/2026, la noche antes de que los tres
+     vendedores empiecen a repartir su codigo. Decia "en un barrio con vendedor
+     no se puede usar", que esta escrito desde adentro: el vecino de El Lucero
+     no sabe que vive en "un barrio con vendedor", y suena a que le negamos
+     algo. Y va a ser el renglon mas visto de esta semana, porque TODOS los
+     vecinos de los tres vendedores caen aca. */
   if (appliedCoupon && !cuponValeEnEstaZona()) {
     html += '<div class="summary-line discount-line" style="color:#8a3b00"><span>' + appliedCoupon.codigo
-      + ' · en un barrio con vendedor no se puede usar</span><span>—</span></div>';
+      + ' · no aplica en tu zona de entrega</span><span>—</span></div>';
   }
   /* El premio de la ruleta (22/9/2026): no descuenta plata, se suma al pedido.
      Si tiene minimo y no llega, dice cuanto falta. */

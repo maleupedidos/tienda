@@ -429,7 +429,11 @@ async function main() {
       ' resumen: (document.getElementById("form-summary") || {}).textContent || "" })'));
     chk(red.cod === 'RULETA-OK01' && red.esRed === true, 'sin la marca, el barrio vuelve a ser el de Rufo con el cupon cargado', JSON.stringify({ cod: red.cod, red: red.esRed }));
     chk(red.vale === false && red.desc === 0, 'pero NO descuenta: Red va sin descuentos', JSON.stringify({ vale: red.vale, desc: red.desc }));
-    chk(/no se puede usar/i.test(red.resumen), 'y se dice por que, en vez de dar cero callado', red.resumen.slice(0, 90));
+    /* Se pide que LO DIGA, no la frase exacta: el texto se reescribio el
+       29/9/2026 y un chequeo atado a la redaccion frena el copy sin que la
+       plata haya cambiado. */
+    chk(/no (aplica|se puede usar)/i.test(red.resumen) && red.resumen.indexOf('RULETA-OK01') >= 0,
+        'y se dice por que, nombrando el cupon, en vez de dar cero callado', red.resumen.slice(0, 90));
 
     /* ── 8. NADA SALIO ─────────────────────────────────────────────── */
     console.log('\n' + DIM + '== Nada salio hacia afuera ==' + RST);
