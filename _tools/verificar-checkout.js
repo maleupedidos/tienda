@@ -597,27 +597,32 @@ async function main() {
     chk(await ev('document.getElementById("f-nombre").value') === 'Ana Volvio',
         'y ahi estan sus datos, cargados solos');
 
-    /* ── J. EL CIERRE EN LA TIENDA, CON `?cierre=1` ──────────────────
-       El interruptor esta apagado para todo el mundo. `?cierre=1` lo prende
-       solo para quien tenga el link, que es como Tadeo pudo ver el flujo
-       nuevo antes de prenderlo. El dia que se prenda, este bloque pasa a
-       correr sin el parametro y el parametro se borra. */
-    console.log('\n' + DIM + '== Con ?cierre=1 el pedido termina en la tienda ==' + RST);
-    chk(await ev('CIERRE_EN_LA_TIENDA === false'),
-        'CONTROL: sin el parametro el interruptor esta apagado');
-    const btnWa = await ev('JSON.stringify({ txt: document.getElementById("btn-final").textContent.trim(),' +
-      ' logo: !!document.getElementById("btn-final").querySelector("svg"),' +
-      ' cls: document.getElementById("btn-final").className })');
-    chk(/WhatsApp/.test(btnWa) && /"logo":true/.test(btnWa),
-        'y el boton sigue siendo el de WhatsApp, con su logo');
+    /* ── J. EL PEDIDO TERMINA EN LA TIENDA ───────────────────────
+       Este bloque corria con `?cierre=1` mientras el interruptor estaba
+       apagado. Desde que se prendio (29/9/2026) corre sin parametro, que
+       es como entra el cliente, y el parametro ya no existe: uno muerto se
+       lee como si hiciera algo.
+
+       EL CONTROL cambio de forma. Antes era "sin el parametro esta
+       apagado"; ahora es que el HTML de fabrica TRAE el boton de WhatsApp
+       y en pantalla quedo el otro: o sea que lo cambia el codigo, no el
+       markup. Sin ese control, leer "Realizar mi compra" probaria
+       unicamente que alguien lo escribio en el index. */
+    console.log('\n' + DIM + '== El pedido termina en la tienda ==' + RST);
+    chk(await ev('CIERRE_EN_LA_TIENDA === true'), 'el interruptor esta prendido');
+    const _htmlDeFabrica = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
+    /* El `<svg>` del logo mide 1,5 KB, asi que no se mide por cercania: se
+       pide la clase en el boton y el texto en el archivo. */
+    chk(/class="whatsapp-btn" id="btn-final"/.test(_htmlDeFabrica) &&
+        _htmlDeFabrica.indexOf('Pedir por WhatsApp') >= 0,
+        'CONTROL: el HTML de fabrica todavia trae el boton de WhatsApp');
 
     nav++;
-    await cli.enviar('Page.navigate', { url: 'http://127.0.0.1:' + PUERTO + '/index.html?cierre=1&n=' + nav +
+    await cli.enviar('Page.navigate', { url: 'http://127.0.0.1:' + PUERTO + '/index.html?n=' + nav +
       '&semilla=' + encodeURIComponent(JSON.stringify(SEMILLA)) });
     await esperar("typeof PRODUCTOS !== 'undefined' && typeof coPaso !== 'undefined'", 15000);
     await esperar('Object.keys(stockMap).length > 5', 12000);
     await dormir(400);
-    chk(await ev('CIERRE_EN_LA_TIENDA === true'), 'con ?cierre=1 el interruptor se prende');
     const btnCi = JSON.parse(await ev('JSON.stringify({ txt: document.getElementById("btn-final").textContent.trim(),' +
       ' logo: !!document.getElementById("btn-final").querySelector("svg"),' +
       ' verde: getComputedStyle(document.getElementById("btn-final")).backgroundColor,' +

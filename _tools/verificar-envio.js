@@ -319,6 +319,14 @@ async function main() {
     }
     /* searchParams ya decodifica: decodificar otra vez rompe con el '%' de "10% OFF". */
     const textoWA = (u) => { try { return new URL(u).searchParams.get('text') || ''; } catch (e) { return ''; } };
+    /* CUANDO EL PEDIDO SE DA POR CONFIRMADO (29/9/2026).
+       Hasta ese dia la señal era la navegacion a wa.me, porque el pedido
+       terminaba ahi. Desde que `CIERRE_EN_LA_TIENDA` esta prendido, el pedido
+       confirmado se queda en la tienda: la señal es la pantalla de cierre
+       (`.send-card.done`, "Pedido #N confirmado"). Los escenarios de abajo
+       miden TIEMPOS y REINTENTOS, no el destino, asi que lo unico que cambia
+       es de donde sale el instante. */
+    const cerroEn = (est) => est.find((e) => /\bdone\b/.test(e.cls) && !/Registrando/.test(e.tit)) || null;
     /* Los caracteres fuera del plano basico (codepoint > U+FFFF): son los emoji
        que en algunos celulares llegan a WhatsApp como U+FFFD. */
     const sinEmoji4 = (s) => Array.from(String(s)).filter((c) => c.codePointAt(0) > 0xFFFF).map((c) => 'U+' + c.codePointAt(0).toString(16).toUpperCase());
@@ -343,19 +351,16 @@ async function main() {
       const nav = navs[0];
       const antes = est.filter((e) => e.t < 5500);
       chk(antes.length > 3 && antes.every((e) => e.activo && /Registrando/.test(e.tit)), 'mientras espera dice "Registrando tu pedido" (' + (antes[0] ? antes[0].tit : '-') + ')');
-      chk(!!nav && nav.t >= 6000, 'a WhatsApp recien DESPUES de la confirmacion: ' + (nav ? nav.t + ' ms' : 'no fue') + ' (antes: 3.800 ms sin confirmar)');
-      chk(!!nav && nav.t <= 9500, 'y sin demora de mas despues de confirmar (' + (nav ? nav.t : '-') + ' ms)');
-      chk(est.some((e) => /success/.test(e.cls) && /registrado/i.test(e.tit)), 'antes de irse muestra "¡Pedido registrado!"');
+      /* El destino cambio el 29/9/2026 (ver `cerroEn`): lo que este escenario
+         mide sigue siendo el TIEMPO — que no se de por registrado antes de que
+         el ERP conteste, que es como se perdio el pedido de $84.600 el 10/9. */
+      const cerro = cerroEn(est);
+      chk(!!cerro && cerro.t >= 6000, 'se da por registrado recien DESPUES de la confirmacion: ' + (cerro ? cerro.t + ' ms' : 'no cerro') + ' (antes: 3.800 ms sin confirmar)');
+      chk(!!cerro && cerro.t <= 9500, 'y sin demora de mas despues de confirmar (' + (cerro ? cerro.t : '-') + ' ms)');
+      chk(!!cerro && /confirmado/i.test(cerro.tit), 'con el N que devolvio el ERP: "' + (cerro ? cerro.tit : '-') + '"');
+      chk(navs.length === 0, 'y NO lo manda a WhatsApp: el pedido termina en la tienda (' + navs.length + ' navegaciones)');
       chk(fetches().length === 1 && beacons().length === 0, 'un solo POST al backend (' + fetches().length + ' fetch, ' + beacons().length + ' beacon) — antes eran 3 y hasta 18');
-      const txt = nav ? textoWA(nav.url) : '';
       const coid = (fetches()[0] || {}).coid || '';
-      chk(/^Hola! Quiero hacer un pedido:/.test(txt), 'la primera linea del mensaje no cambio');
-      chk(/\nEntrega: [^\n]*\d\d\/\d\d/.test(txt), 'el mensaje dice el dia de entrega: ' + ((txt.match(/Entrega:[^\n]*/) || [''])[0]));
-      /* 12/9/2026: la referencia ("_Pedido web · G4ZDJ_") salio del mensaje
-         normal — un normal solo sale con el pedido confirmado, no hay que cruzar nada. */
-      chk(txt.indexOf(refDe(coid)) < 0 && txt.indexOf('Pedido web') < 0, 'sin la referencia del pedido: confirmado no hace falta cruzar nada');
-      chk(!sinEmoji4(txt).length, 'sin emoji de 4 bytes: en algunos celulares llegan como "�" (' + (sinEmoji4(txt).join(' ') || 'ninguno') + ')');
-      chk(txt.indexOf('no llegó a confirmar') < 0 && txt.indexOf('Prueba Envio') < 0, 'confirmado: sin aviso y sin repetir los datos del cliente');
       const pend = await pendientes();
       chk(!pend[coid], 'confirmado, sale de la cola de pendientes');
     }
@@ -382,8 +387,9 @@ async function main() {
       chk(!_avisoLento,
           'tardando 12 s —lo normal— NO le dice que la conexion esta lenta (umbral: ' +
           Math.round(_lento / 1000) + ' s)' + (_avisoLento ? ' · dijo "' + _avisoLento.sub + '"' : ''));
-      chk(!!nav && nav.t >= 12000, 'espera la confirmacion: a WhatsApp a los ' + (nav ? nav.t : '-') + ' ms');
-      chk(!!nav && textoWA(nav.url).indexOf('no llegó a confirmar') < 0, 'con el mensaje normal');
+      const _cerro12 = cerroEn(est);
+      chk(!!_cerro12 && _cerro12.t >= 12000, 'espera la confirmacion: cierra a los ' + (_cerro12 ? _cerro12.t : '-') + ' ms');
+      chk(!!_cerro12 && !est.some((e) => /fallback/.test(e.cls)), 'por el camino normal: nunca le ofrecio mandarlo a mano');
       chk(fetches().length === 1, 'y sin reintentar mientras espera (' + fetches().length + ' POST)');
     }
 
@@ -459,23 +465,25 @@ async function main() {
     if (correr('error2')) {
       console.log('\n' + DIM + '== el backend contesta {ok:false} dos veces ==' + RST);
       modo = 'error2'; await prepararPedido();
-      await enviarYMirar(15000);
-      const nav = navs[0], f = fetches();
+      const est = await enviarYMirar(15000);
+      const f = fetches();
       chk(f.length === 3, 'reintenta hasta que confirma (' + f.length + ' POST)');
       chk(f.length >= 3 && f[1].t - f[0].t >= 2500 && f[2].t - f[1].t >= 4500, 'con espera entre intentos (' + f.map((x) => x.t).join(' / ') + ' ms)');
       chk(new Set(f.map((x) => x.coid)).size === 1, 'siempre el mismo clientOrderId: el backend no puede duplicarlo');
       chk(maxEnVuelo <= 1, 'y nunca dos a la vez (' + maxEnVuelo + ')');
-      chk(!!nav && textoWA(nav.url).indexOf('no llegó a confirmar') < 0, 'confirmado al tercero: mensaje normal a los ' + (nav ? nav.t : '-') + ' ms');
+      const _c3 = cerroEn(est);
+      chk(!!_c3, 'confirmado al tercero: cierra en la tienda a los ' + (_c3 ? _c3.t : '-') + ' ms');
     }
 
     // ── red2 ─────────────────────────────────────────────────────────────
     if (correr('red2')) {
       console.log('\n' + DIM + '== dos fallas de red y despues anda ==' + RST);
       modo = 'red2'; await prepararPedido();
-      await enviarYMirar(15000);
-      const nav = navs[0], f = fetches();
+      const est = await enviarYMirar(15000);
+      const f = fetches();
       chk(f.length === 3 && maxEnVuelo <= 1, 'reintenta de a uno (' + f.length + ' POST, maximo ' + maxEnVuelo + ' a la vez)');
-      chk(!!nav && textoWA(nav.url).indexOf('no llegó a confirmar') < 0, 'y cuando anda, mensaje normal (' + (nav ? nav.t : '-') + ' ms)');
+      const _cr = cerroEn(est);
+      chk(!!_cr, 'y cuando anda, el pedido cierra en la tienda (' + (_cr ? _cr.t : '-') + ' ms)');
     }
 
     // ── tarde27 ──────────────────────────────────────────────────────────
@@ -486,9 +494,14 @@ async function main() {
       const nav = navs[0];
       chk(est.some((e) => /fallback/.test(e.cls)),
           'a los ' + Math.round(_umbrales.fallback / 1000) + ' s ofrecio mandarlo por WhatsApp');
-      chk(!!nav && nav.t >= _umbrales.fallback + 2000,
-          'no se fue sin que nadie tocara nada antes de la confirmacion (' + (nav ? nav.t : '-') + ' ms)');
-      chk(!!nav && textoWA(nav.url).indexOf('no llegó a confirmar') < 0, 'y al confirmar sigue solo, con el mensaje NORMAL');
+      /* Con el cartel puesto, el cliente NO toca nada. Lo que tiene que pasar
+         es que la confirmacion tardia lo cierre sola y por el camino normal.
+         Antes se mediía por la navegacion a wa.me; desde el 29/9 el pedido
+         confirmado se queda en la tienda (ver `cerroEn`). */
+      const _ct = cerroEn(est);
+      chk(!!_ct && _ct.t >= _umbrales.fallback,
+          'lo cierra sola despues del cartel, sin que nadie toque nada (' + (_ct ? _ct.t : '-') + ' ms)');
+      chk(navs.length === 0, 'y sin mandarlo a WhatsApp (' + navs.length + ' navegaciones)');
     }
 
     // ── cierre ───────────────────────────────────────────────────────────
@@ -508,11 +521,13 @@ async function main() {
       modo = 'cierre';
 
       /* EL CONTROL, PRIMERO. Sin esto, "no fue a WhatsApp" no prueba nada:
-         probaria que el pedido no salio. Con el interruptor apagado el mismo
-         pedido TIENE que irse a wa.me, que es como se comporta hoy. */
+         probaria que el pedido no salio. Se APAGA el interruptor desde la
+         pagina —al reves de lo que hacia hasta el 29/9, cuando venia apagado
+         de fabrica— y el mismo pedido TIENE que irse a wa.me. */
       await prepararPedido();
+      await ev('CIERRE_EN_LA_TIENDA = false');
       await enviarYMirar(9000);
-      chk(navs.length === 1, 'CONTROL con el interruptor apagado: el pedido se va a WhatsApp como hasta hoy (' + navs.length + ' veces)');
+      chk(navs.length === 1, 'CONTROL con el interruptor apagado: el pedido se va a WhatsApp (' + navs.length + ' veces)');
 
       await prepararPedido();
       /* Pago por transferencia: es el unico caso que muestra el alias, que es

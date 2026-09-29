@@ -256,7 +256,12 @@ async function main() {
     await ev("enviarPedido();");
     await dormir(3000);
     chk(posts.length > 0, 'con todo completo SI sale el pedido (' + posts.length + ' POST al backend)');
-    chk(navegaciones.length > 0, 'y lleva al cliente a WhatsApp con el pedido armado');
+    /* El pedido ya no termina en WhatsApp (29/9/2026): con el POST cortado
+       nunca llega confirmacion, asi que lo que corresponde ver es que la
+       pantalla quede esperando — y que NO se lo lleve a ningun lado. */
+    chk(navegaciones.length === 0, 'y no lo manda a WhatsApp: el pedido se cierra en la tienda (' + navegaciones.length + ')');
+    chk(await ev("!!document.querySelector('#send-overlay.active')"),
+        'la pantalla de envio queda puesta mientras espera al ERP');
 
   } finally {
     try { proc.kill(); } catch (e) {}

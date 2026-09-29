@@ -401,13 +401,31 @@ async function main() {
       chk(Number(ped.descuento) === Math.round(esp.sub * 0.1) && Math.abs(ped.total - (esp.sub - esp.desc)) < 2, 'el 10% en efectivo incluye la carne estimada (' + ped.descuento + ' de ' + esp.sub + ', total ' + ped.total + ')');
     }
     await esperar('false', 2500);
-    const wa = whatsapps.length ? decodeURIComponent(whatsapps[whatsapps.length - 1].split('text=')[1] || '') : '';
-    chk(!!wa, 'el ERP confirma y sale el WhatsApp');
-    chk(/^Hola! Quiero hacer un pedido:/.test(wa), 'con la primera linea de siempre');
-    chk(/Vac[ií]o\s+—\s+reserva de 1,5 kg · aprox\. \$/.test(wa), 'el vacio dice "reserva de 1,5 kg · aprox."');
-    chk(/\*Total: \$[\d.]+\* \(aprox\.\)/.test(wa), 'el total dice "(aprox.)"');
-    chk(/La carne reservada me la confirman cuando llegue \(viernes 18\/9\)\./.test(wa), 'y que la carne se confirma cuando llegue');
-    chk(![...wa].some((c) => c.codePointAt(0) > 0xFFFF), 'sin emoji de 4 bytes');
+    /* EL PEDIDO TERMINA EN LA TIENDA (29/9/2026). Hasta ese dia esto se leia
+       en el mensaje de WhatsApp; hoy el cliente confirmado no va a WhatsApp,
+       asi que lo que hay que mirar es la pantalla de cierre. Lo que se cuida
+       es lo mismo: que el total se vea APROXIMADO y que diga cuando se
+       confirma — con carne reservada, prometer un numero cerrado es mentir. */
+    const cie = JSON.parse(await ev('(function () {' +
+      ' var ov = document.getElementById("send-overlay");' +
+      ' var card = ov ? ov.querySelector(".send-card") : null;' +
+      ' var filas = [].map.call(document.querySelectorAll("#send-done-datos > div"), function (f) {' +
+      '   return ((f.querySelector("dt") || {}).textContent || "") + "=" + ((f.querySelector("dd") || {}).textContent || ""); });' +
+      ' var pago = document.getElementById("send-done-pago");' +
+      ' return JSON.stringify({' +
+      '   done: !!(card && card.classList.contains("done")),' +
+      '   titulo: (document.getElementById("send-title") || {}).textContent || "",' +
+      '   items: (document.getElementById("send-done-items") || {}).textContent || "",' +
+      '   filas: filas.join(" | "),' +
+      '   pago: pago && !pago.hidden ? pago.textContent : "" }); })()'));
+    chk(cie.done && /confirmado/i.test(cie.titulo), 'el ERP confirma y queda la pantalla de cierre ("' + cie.titulo + '")');
+    chk(whatsapps.length === 0, 'sin mandarlo a WhatsApp: el pedido termina aca');
+    chk(/Vac[ií]o[\s\S]{0,40}reserva de 1,5 kg/.test(cie.items), 'el vacio dice "reserva de 1,5 kg" (' + cie.items.replace(/\s+/g, ' ').slice(0, 80) + ')');
+    chk(/Total=Aprox\. \$/.test(cie.filas), 'el total se muestra como aproximado (' + (cie.filas.match(/Total=[^|]*/) || [''])[0] + ')');
+    chk(/pesemos la carne \(viernes 18\/9\)/.test(cie.pago),
+        'y dice cuando se confirma, tambien pagando en efectivo ("' + cie.pago.slice(0, 70) + '")');
+    const _pant = cie.titulo + cie.items + cie.filas + cie.pago;
+    chk(![..._pant].some((c) => c.codePointAt(0) > 0xFFFF), 'sin emoji de 4 bytes');
 
     /* ── 5. UNA FECHA ANTES DE QUE LLEGUE ─────────────────────────────── */
     console.log('\n' + DIM + '== Una fecha antes de que llegue la carne ==' + RST);

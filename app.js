@@ -5426,50 +5426,35 @@ function setSendLoaderFallback(alTocar) {
   var fb = $id('send-wa-btn');
   if (fb) fb.onclick = function () { fb.onclick = null; alTocar(); };
 }
-/* ═════════════ EL PEDIDO SE CIERRA EN LA TIENDA (28/9/2026) ═════════════
+/* ═════ EL PEDIDO SE CIERRA EN LA TIENDA — PRENDIDO EL 29/9/2026 ═════
 
    Reunion de equipo del 28/9. Tadeo: "no es real y profesional que el pedido
    de un cliente lo dirija al WhatsApp... debemos tener una tienda online comun
    y corriente como cualquiera. Que el pedido termine en la tienda."
 
-   PRENDER ESTO ROMPE DOS COSAS SI SE HACE SOLO, Y POR ESO ESTA APAGADO:
+   Nacio APAGADO el 28/9 porque prenderlo solo rompia dos cosas. Las dos
+   estaban resueltas y verificadas cuando se prendio:
 
-   1. El ERP no avisaba de un pedido nuevo por ningun lado — el aviso ERA el
-      mensaje del cliente. Backend lo resolvio el mismo dia
-      (`_avisarPedidoTienda_`).
-   2. La confirmacion que el cliente recibe hoy sale como MENSAJE DE SESION, y
-      es legitima solo porque el cliente acaba de escribirnos: al mandarlo a
-      wa.me se abre la ventana de 24 h de Meta. Sin ese salto, Meta la rechaza
-      y el cliente deja de recibir su confirmacion EN SILENCIO — el mismo modo
-      de falla que cuando murio el workspace de n8n el 31/8. Hace falta un
-      template de UTILITY aprobado, y ninguno de los 50 de la cuenta sirve:
-      son todos de MARKETING.
+   1. EL AVISO A NOSOTROS. El ERP no avisaba de un pedido nuevo por ningun
+      lado — el aviso ERA el mensaje del cliente. Backend lo resolvio el mismo
+      dia (`_avisarPedidoTienda_`), y desde el 28/9 sale por Telegram al grupo
+      "Pedidos Maleu", que es donde se ve un viernes a las nueve de la noche.
+   2. LA CONFIRMACION AL CLIENTE. Sin el salto a wa.me la ventana de 24 h de
+      Meta no se abre y un mensaje de sesion se rechaza EN SILENCIO. Hacia
+      falta un template de UTILITY aprobado: `confirmacion_pedido_tienda`, que
+      Meta aprobo el 29/9 y Backend cargo en `Config_Maleu` ->
+      `CONFIRMACION_WA_TEMPLATE`.
 
-   O SEA QUE ESTO SE PRENDE CUANDO `CONFIRMACION_WA_TEMPLATE` ESTE CARGADO EN
-   `Config_Maleu` Y SE HAYA VISTO LLEGAR UN MENSAJE DE PRUEBA EN UN CELULAR.
-   No antes. Apagado, la tienda se comporta exactamente como hasta hoy.
+   Y EL PASO QUE NINGUN CODIGO PODIA HACER: Tadeo hizo dos pedidos de verdad
+   con el flujo nuevo (29/9) y vio llegar la confirmacion a su celular, mas el
+   aviso de Telegram. Recien ahi se prendio. Los dos pedidos de prueba los
+   cancelo la sesion Backend.
 
-   Es un interruptor de una sola vez y no una palanca de las de "por hoy": se
-   prende el dia que la dependencia de afuera esta lista, y no se vuelve a
-   tocar. Cuando se prenda, este bloque y la rama de `_irAWhatsApp` se borran. */
-var CIERRE_EN_LA_TIENDA = false;
-
-/* PARA PROBARLO SIN PRENDERLO PARA TODOS: `?cierre=1`.
-
-   Tadeo, recorriendo el flujo el 29/9/2026: "me sigue apareciendo como punto
-   final el boton de wpp". Es lo esperado con el interruptor en false, pero lo
-   deja en un circulo — para prenderlo hay que ver llegar la confirmacion al
-   celular, y para que llegue hay que hacer un pedido con el flujo nuevo.
-
-   EL PEDIDO ENTRA DE VERDAD al ERP y la confirmacion sale por el template.
-   Eso no es un efecto colateral: es justo la prueba que falta hacer.
-
-   No es como `?autopedido=1`, que se elimino el 8/9 por abrir una segunda
-   pantalla para cargar pedidos en paralelo a la del ERP. Aca no hay pantalla
-   nueva ni camino nuevo: es el MISMO flujo que va a ver todo el mundo cuando
-   se prenda el interruptor, unos dias antes. Se borra el dia que se prenda,
-   junto con el interruptor. */
-try { if (/[?&]cierre=1/.test(location.search)) CIERRE_EN_LA_TIENDA = true; } catch (e) {}
+   Queda `false` como valor posible por una sola razon: `verificar-envio.js` lo
+   apaga desde la pagina para medir el CONTROL —que el mismo pedido, con el
+   interruptor apagado, SI se va a WhatsApp—. Sin ese control, "no fue a
+   WhatsApp" probaria que el pedido no salio. */
+var CIERRE_EN_LA_TIENDA = true;
 
 /* El boton final y su nota. Con el cierre en la tienda el pedido NO va a
    WhatsApp, asi que el boton no puede seguir diciendo que si: ni el texto, ni
@@ -5560,11 +5545,22 @@ function setSendLoaderDone(info) {
   var pago = $id('send-done-pago');
   if (pago) {
     pago.innerHTML = '';
+    /* CON CARNE RESERVADA Y EN EFECTIVO no hay alias, y hasta el 29/9/2026
+       este bloque entero quedaba escondido: el cliente leia "Aprox." sin que
+       nadie le dijera cuando deja de serlo. */
+    if (info.aprox && !(info.alias && info.alias.length)) {
+      pago.hidden = false;
+      var pRes = document.createElement('p');
+      pRes.textContent = 'Te confirmamos el total cuando pesemos la carne' +
+        (info.cuandoRes ? ' (' + info.cuandoRes + ')' : '') + '.';
+      pago.appendChild(pRes);
+    }
     if (info.alias && info.alias.length) {
       pago.hidden = false;
       var p0 = document.createElement('p');
       p0.textContent = info.aprox
-        ? 'Te confirmamos el total cuando pesemos la carne. Transferi recien ahi:'
+        ? 'Te confirmamos el total cuando pesemos la carne' +
+          (info.cuandoRes ? ' (' + info.cuandoRes + ')' : '') + '. Transferí recién ahí:'
         : (info.alias.length > 1 ? 'Para transferir, a cualquiera de las dos:' : 'Para transferir:');
       pago.appendChild(p0);
       info.alias.forEach(function (c) {
@@ -5579,9 +5575,12 @@ function setSendLoaderDone(info) {
         fila.appendChild(txt); fila.appendChild(btn);
         pago.appendChild(fila);
       });
-    } else {
-      pago.hidden = true;
     }
+    /* Escondido solo si no quedo NADA adentro. Con un `else` colgado del
+       alias, la nota de la reserva en efectivo se pintaba y se volvia a tapar
+       dos lineas despues — el mismo modo de falla que la franja del 10% el
+       23/9, que `updateUI` reencendia despues de apagarla. */
+    pago.hidden = !pago.firstChild;
   }
 
   var wa = $id('send-done-wa');
@@ -6517,6 +6516,12 @@ function enviarPedido() {
       total: (_hayRes ? 'Aprox. $' : '$') + Math.round(total).toLocaleString('es-AR') +
              ' \u00b7 ' + (pagoEl.value === 'Efectivo' ? 'Efectivo' : 'Transferencia'),
       aprox: !!_hayRes,
+      /* CUANDO se confirma ese total. Hasta el 29/9/2026 esto lo decia el
+         mensaje de WhatsApp ("me la confirman cuando llegue"); con el pedido
+         cerrandose en la tienda, el que reserva carne y paga EN EFECTIVO se
+         quedaba leyendo "Aprox. $28.500" sin saber cuando deja de ser aprox.
+         La nota del alias solo salia por transferencia. */
+      cuandoRes: _hayRes ? _diaYFecha(reservaLlega()) : '',
       alias: alias,
       wa: waTarget
     };
@@ -6541,10 +6546,11 @@ function enviarPedido() {
     clearTimeout(tLento); clearTimeout(tFallback);
     if (confirmado) {
       if (waBtn) waBtn.innerHTML = '✓ Pedido registrado';
-      /* EL PEDIDO TERMINA ACA. Ver `CIERRE_EN_LA_TIENDA` arriba: apagado hasta
-         que exista el template de UTILITY, porque sin el salto a WhatsApp la
-         ventana de 24 h de Meta no se abre y el cliente se queda sin su
-         confirmacion, en silencio. */
+      /* EL PEDIDO TERMINA ACA (29/9/2026). Ver `CIERRE_EN_LA_TIENDA` arriba.
+         La confirmacion se la manda el ERP por el template de UTILITY; la
+         rama de abajo —el salto a wa.me— queda para el CONTROL del test y
+         para el fallback de los 45 s, que es el unico camino en el que el
+         cliente todavia necesita escribirnos el. */
       if (CIERRE_EN_LA_TIENDA) {
         /* SI ARMAR LA PANTALLA FALLA, EL PEDIDO SE CIERRA IGUAL.
 

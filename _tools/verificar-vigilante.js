@@ -306,14 +306,16 @@ async function correr(cli, entraA, esperaMs) {
         'pregunta varias veces mientras espera, no una sola', a.preguntas);
     chk((a.preguntas || [])[0] !== undefined && a.preguntas[0] < 8000,
         'la primera pregunta sale enseguida, no a los 25 s', (a.preguntas || [])[0]);
-    /* `wa.me/<num>?text=` redirige a `api.whatsapp.com/send/`: el destino que
-       queda en la barra es el segundo, no el que escribe app.js. */
-    chk(/wa\.me|whatsapp\.com/.test(String(a.destino || '')),
-        'y se lo lleva a WhatsApp', a.destino && a.destino.slice(0, 60));
-    chk(String(a.destino || '').indexOf('confirmaci') < 0
-        && String(a.destino || '').indexOf('%E2%9A%A0') < 0,
-        'con el mensaje NORMAL: sin el "no me aparecio la confirmacion"',
-        decodeURIComponent(String(a.destino || '')).slice(-120));
+    /* EL PEDIDO TERMINA EN LA TIENDA (29/9/2026). Hasta ese dia aca se
+       media que el vigilante lo mandara a `wa.me`; hoy la confirmacion,
+       venga del POST o de la pregunta, lo deja en la pantalla de cierre. */
+    chk(!/wa\.me|whatsapp\.com/.test(String(a.destino || '')),
+        'y NO se lo lleva a WhatsApp: el pedido cierra en la tienda',
+        a.destino && a.destino.slice(0, 60));
+    var _pa = {};
+    try { _pa = JSON.parse(a.fallback || '{}'); } catch (e) {}
+    chk(/confirmado/i.test(String(_pa.titulo || '')),
+        'y queda la pantalla de pedido confirmado', _pa.titulo);
 
     /* El hijo de una reinyeccion se saltea este escenario: tarda 31 s y lo que
        tiene que probar la reinyeccion es el escenario 1. */
