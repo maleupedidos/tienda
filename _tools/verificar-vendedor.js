@@ -63,17 +63,23 @@ const STOCK = {};
 ABBRS.forEach((a) => { STOCK[a] = { f: 50, p: 50 }; });
 const PIEZAS = { CVa: [{ id: 'VAC-01', kg: 1.064 }, { id: 'VAC-02', kg: 1.241 }] };
 
-/* Rufo con Manzanares es el caso que planteo Tadeo, con nombre y apellido. */
+/* Rufo con Manzanares es el caso que planteo Tadeo, con nombre y apellido.
+
+   LOS ALIAS VAN CARGADOS a proposito: los tres vendedores reales tienen el suyo
+   en la col "Alias MP" de la hoja Vendedores, y con el fixture en '' el bug que
+   el 30/9/2026 se vino a cerrar —mostrarle al cliente el alias personal del
+   vendedor en vez de maleump/maleubru— no seria reproducible. Son inventados:
+   este repo es publico. */
 const VENDEDORES = { vendedores: [
-  { nombre: 'Rufo', wa: '5491100000003', alias: '',
+  { nombre: 'Rufo', wa: '5491100000003', alias: 'alias.rufo.prueba',
     barrios: ['Manzanares', 'San Francisco', 'La Escondida', 'Manzanares Chico', 'Cerrillos', 'CUBA Fátima'] },
-  { nombre: 'Marcos', wa: '5491100000001', alias: '',
+  { nombre: 'Marcos', wa: '5491100000001', alias: 'alias.marcos.prueba',
     barrios: ['Tortugas y alrededores', 'El Lucero', 'Los Tacos', 'Villa Bertha', 'Azzurra'] },
   /* EL CUARTO VENDEDOR: su zona NO esta en BARRIOS_PILAR_MODAL, que es la
      situacion de cualquier vendedor que arranca — entra a la hoja `Vendedores` y
      nadie toca el codigo. El nombre va generico a proposito: el caso es "un
      vendedor nuevo", no una persona, y asi el test no envejece. */
-  { nombre: 'Vendedor Nuevo', wa: '5491100000004', alias: '',
+  { nombre: 'Vendedor Nuevo', wa: '5491100000004', alias: 'alias.nuevo.prueba',
     barrios: ['Zona Nueva', 'Barrio Nuevo Uno', 'Barrio Nuevo Dos'] },
 ] };
 
@@ -448,6 +454,100 @@ async function main() {
        plata haya cambiado. */
     chk(/no (aplica|se puede usar)/i.test(red.resumen) && red.resumen.indexOf('RULETA-OK01') >= 0,
         'y se dice por que, nombrando el cupon, en vez de dar cero callado', red.resumen.slice(0, 90));
+
+    /* ── 10. LOS BARRIOS DEL MODAL Y EL ALIAS (30/9/2026) ─────────────
+       Tadeo, mirando la lista: "sacá tortugas y alrededores y ayres y
+       alrededores. Ayres del Pilar ya está como opción, y deberías agregar
+       Tortugas Country". Y: "los ingresos en transferencia pasan por maleump o
+       maleubru". */
+    console.log('\n' + DIM + '== 10. La lista de barrios ==' + RST);
+    await abrir({});
+    await ev('(function(){ if (typeof showZoneModal === "function") showZoneModal("chip"); })()');
+    await dormir(400);
+    const lista = JSON.parse(await ev('(function () {' +
+      'var i = document.getElementById("dir-input");' +
+      'if (i) { i.value = ""; if (typeof dirBuscar === "function") dirBuscar(); }' +
+      'var ops = [].slice.call(document.querySelectorAll("#dir-lista .dir-op"));' +
+      'return JSON.stringify(ops.map(function (o) {' +
+      '  var t = o.querySelector(".dir-op-nom") || o;' +
+      '  return t.textContent.replace(/[\\s\\u00a0]+/g, " ").trim(); }));' +
+      '})()'));
+    const hay = (txt) => lista.some(function (x) { return x.indexOf(txt) === 0; });
+    chk(lista.length > 5, 'CONTROL: la lista trae barrios', lista.length + ' opciones');
+    chk(!hay('Tortugas y alrededores'), 'NO ofrece "Tortugas y alrededores": no es un barrio, es nuestra zona');
+    chk(!hay('Ayres y alrededores'), 'NO ofrece "Ayres y alrededores", por lo mismo');
+    chk(hay('Tortugas Country'), 'SI ofrece "Tortugas Country"');
+    chk(hay('Ayres del Pilar'), 'y "Ayres del Pilar", que ya estaba');
+    chk(hay('Manzanares'), 'y "Manzanares", que es un barrio de verdad aunque se llame como su zona');
+
+    console.log('\n' + DIM + '== 10b. Tortugas Country: en el codigo, NO en la planilla ==' + RST);
+    /* El caso real del 30/9: el barrio se agrego a BARRIOS_PILAR_MODAL y la col
+       "Barrios" de la hoja Vendedores todavia no lo tenia. Sin el respaldo por
+       zona de `_vendedorDeBarrio`, la pantalla decia "lo atiende Marcos"
+       (viernes, sin carne, envio $3.000) y el pedido se iba a la hoja Pilar: la
+       venta de Marcos, cobrada por nosotros, sin que nadie se entere. */
+    const enPlanilla = await ev('!!barrioToVendedor["tortugas country"]');
+    chk(enPlanilla === false,
+        'CONTROL: la planilla simulada NO conoce "Tortugas Country"');
+    /* Se elige por el buscador, como una persona: escribir y tocar el resultado.
+       Esta red no tenia helper para eso porque sembraba el barrio en el
+       localStorage — y aca lo que se quiere medir es justamente el camino del
+       buscador, que es por donde entra un barrio que la planilla no conoce. */
+    await ev('(function(){ var i = document.getElementById("dir-input");' +
+             ' if (i) { i.value = "Tortugas Country"; if (typeof dirBuscar === "function") dirBuscar(); } })()');
+    await dormir(300);
+    const tocoTC = await ev('(function(){ var o = document.querySelector("#dir-lista .dir-op");' +
+                            ' if (!o) return false; o.click(); return true; })()');
+    await dormir(900);
+    chk(tocoTC === true, 'CONTROL: se pudo elegir "Tortugas Country" en el buscador');
+    const tc = await estado();
+    chk(tc.esRed === true, 'igual lo atiende un vendedor', JSON.stringify({ esRed: tc.esRed }));
+    chk(tc.carne === 0 && tc.envio === 3000, 'con sus reglas: sin carne y envio $3.000',
+        JSON.stringify({ carne: tc.carne, envio: tc.envio }));
+    /* SE MANDA EL PEDIDO Y SE MIRA A QUE HOJA VA. Preguntarle a
+       `_vendedorDeBarrio()` directo no sirve como control: reinyectando el bug
+       en el call site de `enviarPedido`, la funcion sigue contestando bien y el
+       chequeo daba verde sobre un pedido que se iba a la hoja equivocada. Lo que
+       cuida la plata es el canal del POST. */
+    await mandar();
+    const pedTC = (await ultimoPost()) || {};
+    chk(pedTC.canal === 'Red',
+        'y su PEDIDO se va a la hoja Red, no a Pilar', 'canal: ' + (pedTC.canal || 'ninguno'));
+    chk(String(pedTC.vendedor || '').indexOf('Marcos') === 0,
+        'a nombre de Marcos', 'vendedor: ' + (pedTC.vendedor || '-'));
+    chk(pedTC.barrioPrivado === 'Tortugas Country',
+        'con el barrio que eligio el cliente, no el nombre de la zona',
+        'barrio: ' + (pedTC.barrioPrivado || '-'));
+
+    console.log('\n' + DIM + '== 10c. El alias: siempre el de Maleu ==' + RST);
+    /* Con EL LUCERO, que la planilla si conoce. Con "Tortugas Country" el
+       desplegable del formulario no tiene esa opcion —se llena desde la
+       planilla— y `_barrioPilarTieneVendedor()` devuelve null: el bug viejo no
+       se activaba y este bloque daba verde sin medir nada. */
+    await abrir({
+      maleu_zone: 'pilar',
+      maleu_pilar_zona: { val: 'Tortugas y alrededores', nombre: 'Tortugas y alrededores', ts: 1 },
+      maleu_pilar_barrio: { val: 'El Lucero', nombre: 'El Lucero', ts: 1 },
+    });
+    chk(await ev('!!_barrioPilarTieneVendedor()'),
+        'CONTROL: el formulario reconoce el barrio como de vendedor');
+    await ev('(function(){ var t = document.querySelector("input[name=pago][value=Transferencia]");' +
+      ' if (t) { t.checked = true; t.dispatchEvent(new Event("change", {bubbles:true})); } })()');
+    await dormir(400);
+    const al = JSON.parse(await ev('(function () {' +
+      'var caja = document.getElementById("mp-alias");' +
+      'var nota = document.getElementById("mp-alias-vendedor-note");' +
+      'var vis = function (e) { return !!(e && !e.classList.contains("hidden") && getComputedStyle(e).display !== "none"); };' +
+      'return JSON.stringify({ cajaMaleu: vis(caja), txtMaleu: caja ? caja.textContent : "",' +
+      '  notaVendedor: vis(nota), alias: ALIAS_MALEU.map(function (c) { return c.alias; }),' +
+      '  delVendedor: (barrioToVendedor["el lucero"] || {}).alias || "" });' +
+      '})()'));
+    chk(al.cajaMaleu === true, 'en un barrio con vendedor se ve la caja de alias de Maleu');
+    chk(/maleump/.test(al.txtMaleu) && /maleubru/.test(al.txtMaleu),
+        'con maleump y maleubru', al.txtMaleu.replace(/[\s\u00a0]+/g, ' ').slice(0, 70));
+    chk(al.delVendedor && al.txtMaleu.indexOf(al.delVendedor) < 0,
+        'y NO el alias personal del vendedor', 'el suyo es ' + al.delVendedor);
+    chk(al.notaVendedor === false, 'el cartel con el alias del vendedor no se muestra mas');
 
     /* ── 9. UN VENDEDOR NUEVO, QUE SOLO EXISTE EN LA PLANILLA ─────────
        El caso del cuarto vendedor. Su zona no esta escrita en

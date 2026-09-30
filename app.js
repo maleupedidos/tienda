@@ -1730,8 +1730,8 @@ const BARRIOS_PILAR_MODAL = [
     val: 'Tortugas y alrededores',
     nombre: 'Tortugas y alrededores',
     isRed: true, badge: 'Marcos',
-    subBarrios: 'El Lucero · Los Tacos · Villa Bertha · Azzurra',
-    subBarriosList: ['El Lucero', 'Los Tacos', 'Villa Bertha', 'Azzurra']
+    subBarrios: 'Tortugas Country · El Lucero · Los Tacos · Villa Bertha · Azzurra',
+    subBarriosList: ['Tortugas Country', 'El Lucero', 'Los Tacos', 'Villa Bertha', 'Azzurra']
   },
   {
     val: 'Ayres y alrededores',
@@ -1744,8 +1744,12 @@ const BARRIOS_PILAR_MODAL = [
     val: 'Manzanares',
     nombre: 'Manzanares',
     isRed: true, badge: 'Rufo',
-    subBarrios: 'San Francisco · La Escondida · Manzanares Chico · Cerrillos · CUBA Fátima',
-    subBarriosList: ['San Francisco', 'La Escondida', 'Manzanares Chico', 'Cerrillos', 'CUBA Fátima']
+    subBarrios: 'Manzanares · San Francisco · La Escondida · Manzanares Chico · Cerrillos · CUBA Fátima',
+    /* "Manzanares" va en su propia lista porque es un barrio DE VERDAD y no solo
+       el nombre que le pusimos a la zona: la gente dice "vivo en Manzanares".
+       Con "Tortugas y alrededores" y "Ayres y alrededores" no pasa — nadie vive
+       ahi—, y por eso esos dos no estan y este si. */
+    subBarriosList: ['Manzanares', 'San Francisco', 'La Escondida', 'Manzanares Chico', 'Cerrillos', 'CUBA Fátima']
   },
   {
     val: '__otro__',
@@ -1791,6 +1795,43 @@ function _getPilarZonaActual() {
   if (v && v.zonaCanon) {
     for (i = 0; i < BARRIOS_PILAR_MODAL.length; i++) {
       if (BARRIOS_PILAR_MODAL[i].val === v.zonaCanon) return BARRIOS_PILAR_MODAL[i];
+    }
+  }
+  return null;
+}
+
+/* EL VENDEDOR DE UN BARRIO, con el mismo respaldo que `_pilarBarrioIsRed()`.
+
+   Mirar solo `barrioToVendedor[barrio]` alcanzaba mientras cada barrio elegible
+   estuviera en la col "Barrios" de la hoja Vendedores. Dejo de alcanzar el
+   30/9/2026, al agregar "Tortugas Country" al codigo: ese barrio no esta en la
+   planilla, asi que `_pilarBarrioIsRed()` decia "lo atiende un vendedor" por la
+   zona canonica y el pedido se iba igual a la hoja Pilar. **La pantalla decia una
+   cosa y la planilla guardaba otra**, que es la peor forma de perder una venta:
+   nadie se entera.
+
+   Las dos preguntas —"¿lo atiende un vendedor?" y "¿cual?"— tienen que estar de
+   acuerdo, asi que ahora comparten el respaldo: la ZONA elegida
+   (`selectedPilarZona`), que la escribe el buscador y no depende de ninguna
+   respuesta del servidor.
+
+   NO REEMPLAZA a tener el barrio en la planilla: el barrio exacto es lo que se
+   guarda en la fila, y con el respaldo se guarda el nombre de la zona. Es una
+   red, no la forma correcta de cargar un vendedor. */
+function _vendedorDeBarrio(barrio) {
+  if (!barrio) return null;
+  var directo = barrioToVendedor[String(barrio).toLowerCase()];
+  if (directo) return directo;
+  /* Respaldo: la zona canonica. Se busca un barrio de la planilla que tenga esa
+     zona, y se devuelve su vendedor con el barrio que el cliente eligio. */
+  var zona = _getPilarZonaActual();
+  if (!zona || !zona.isRed) return null;
+  var claves = Object.keys(barrioToVendedor || {});
+  for (var i = 0; i < claves.length; i++) {
+    var v = barrioToVendedor[claves[i]];
+    if (v && v.zonaCanon && _dirNorm(v.zonaCanon) === _dirNorm(zona.val)) {
+      return { nombre: v.nombre, wa: v.wa, alias: v.alias || '', partido: v.partido,
+               localidad: v.localidad, barrio: barrio, zonaCanon: v.zonaCanon };
     }
   }
   return null;
@@ -3105,10 +3146,21 @@ function _dirDestinos() {
     });
   });
   /* Los que llegan de la planilla y todavia no estan en la lista de arriba.
-     Asi un barrio nuevo de un vendedor se busca sin tocar el codigo. */
+     Asi un barrio nuevo de un vendedor se busca sin tocar el codigo.
+
+     MENOS LA ZONA CANONICA (30/9/2026). La col "Barrios" de la hoja Vendedores
+     arranca con la zona —"Tortugas y alrededores", "Ayres y alrededores"— y eso
+     no es una direccion: es como agrupamos NOSOTROS el reparto. Nadie vive en
+     "Ayres y alrededores", y al cliente de El Lucero no le dice nada. Tadeo, al
+     ver la lista: "sacá tortugas y alrededores y ayres y alrededores".
+
+     Un barrio que ademas se llama como su zona —Manzanares— sigue apareciendo,
+     porque esta escrito en su propio `subBarriosList` unas lineas mas arriba.
+     Esa diferencia no se puede deducir de los datos: hay que declararla. */
   Object.keys(barrioToVendedor || {}).forEach(function (k) {
     var v = barrioToVendedor[k];
     if (!v || !v.barrio) return;
+    if (v.zonaCanon && _dirNorm(v.barrio) === _dirNorm(v.zonaCanon)) return;
     var ya = out.some(function (d) { return _dirNorm(d.txt) === _dirNorm(v.barrio); });
     if (ya) return;
     var zc = v.zonaCanon || '__otro__';
@@ -6380,7 +6432,7 @@ function enviarPedido() {
   // Detectar si barrio tiene vendedor asignado (Pilar + barrio match)
   let vendedorMatch = null;
   if (currentZone === 'pilar' && direccion) {
-    vendedorMatch = barrioToVendedor[direccion.toLowerCase()] || null;
+    vendedorMatch = _vendedorDeBarrio(direccion);
     /* Con carne, un barrio escrito a mano en "Otra zona" no se manda al
        vendedor aunque coincida con uno suyo: el pedido iria a la hoja Red, que
        no tiene columnas de carne, y los kilos no se guardarian. Lo entrega
@@ -6424,20 +6476,15 @@ function enviarPedido() {
      Entre el total y el alias va el dia de entrega, que se arma mas abajo. */
   var aliasLines = [];
   if (pagoEl.value === 'Transferencia') {
-    if (!vendedorMatch) {
-      /* Las dos cuentas de Maleu: el cliente transfiere a la que le quede
-         comoda. Van con el banco adelante porque el alias solo no dice a que
-         app entrar. */
-      aliasLines.push('');
-      aliasLines.push(_hayRes ? 'Para transferir cuando me confirmen el total:'
-        : ALIAS_MALEU.length > 1 ? 'Para transferir, cualquiera de las dos:' : 'alias:');
-      ALIAS_MALEU.forEach(function (c) {
-        aliasLines.push('\u2022 ' + c.banco + ': *' + c.alias + '*');
-      });
-    } else if (vendedorMatch.alias) {
-      aliasLines.push('');
-      aliasLines.push('alias: *' + vendedorMatch.alias + '*');
-    }
+    /* Las cuentas de Maleu, haya vendedor o no (30/9/2026). Van con el banco
+       adelante porque el alias solo no dice a que app entrar. */
+    var _alias = _aliasParaTransferir();
+    aliasLines.push('');
+    aliasLines.push(_hayRes ? 'Para transferir cuando me confirmen el total:'
+      : _alias.length > 1 ? 'Para transferir, cualquiera de las dos:' : 'alias:');
+    _alias.forEach(function (c) {
+      aliasLines.push('\u2022 ' + (c.banco ? c.banco + ': ' : '') + '*' + c.alias + '*');
+    });
   }
 
   // Registrar en Google Sheets — los combos se EXPANDEN a sus productos reales
@@ -6697,11 +6744,7 @@ function enviarPedido() {
       .map(function (l) { return l.replace(/[*_]/g, '').replace(/^[\u2022\s]+/, '').replace(/\s{2,}/g, ' ').trim(); })
       .filter(Boolean)
       .join('\n');
-    var alias = [];
-    if (pagoEl.value === 'Transferencia') {
-      if (!vendedorMatch) alias = ALIAS_MALEU.slice();
-      else if (vendedorMatch.alias) alias = [{ banco: '', alias: vendedorMatch.alias }];
-    }
+    var alias = pagoEl.value === 'Transferencia' ? _aliasParaTransferir() : [];
     return {
       n: (resp && resp.n) || '',
       entrega: entregaStr,
@@ -8610,9 +8653,27 @@ const ALIAS_MALEU = [
   { banco: 'Brubank',      alias: 'maleubru' }
 ];
 
-// Los alias de Maleu central. Si el barrio (Pilar) tiene vendedor Red
-// asignado (ej: Marcos Bottcher en El Lucero/Los Tacos), el cobro va al vendedor
-// y el alias de Maleu no aplica — el vendedor le pasa el suyo al confirmar.
+/* ¿A QUE ALIAS TRANSFIERE EL CLIENTE? (30/9/2026)
+
+   Siempre a los de Maleu. Tadeo: "los ingresos en transferencia pasan por
+   maleump o maleubru".
+
+   Hasta hoy, en un barrio con vendedor la tienda mostraba el alias PERSONAL del
+   vendedor, que llega en la col `Alias` de la hoja Vendedores. O sea que esa
+   plata entraba a la cuenta de otra persona y despues habia que reconciliarla.
+   El efectivo NO cambia: ese se lo sigue pagando al vendedor en la mano.
+
+   Es UNA pregunta y estaba contestada en TRES lugares —el cartel del formulario,
+   la pantalla de cierre y el mensaje de WhatsApp del fallback—, que es como se
+   despegan las cosas en este repo. Ahora los tres preguntan aca. Si algun dia se
+   quiere volver al alias del vendedor para alguna zona, es esta funcion y nada
+   mas.
+
+   `vendedorMatch.alias` se sigue recibiendo de la planilla y no se toca: el ERP
+   lo usa para liquidar. Lo unico que cambio es que no se le muestra al cliente. */
+function _aliasParaTransferir() {
+  return ALIAS_MALEU.slice();
+}
 function _barrioPilarTieneVendedor() {
   if (currentZone !== 'pilar') return null;
   var sel = $id('f-pilar-barrio');
@@ -8626,31 +8687,15 @@ function onPagoChange() {
   const alias = $id('mp-alias');
   const aliasNote = $id('mp-alias-vendedor-note');
   const esTransfer = sel && sel.value === 'Transferencia';
-  const vendedor = _barrioPilarTieneVendedor();
-  // Alias maleu (bloque azul con "maleump" + botón Copiar): se muestra cuando el
-  // cliente elige transferencia y NO hay vendedor Red (Home, Pilar 'Otra zona',
-  // o vendedor Red sin alias propio cargado).
-  var mostrarAliasMaleu = esTransfer && (!vendedor || !vendedor.alias);
-  if (mostrarAliasMaleu) { _pintarAliasMaleu(); alias.classList.remove('hidden'); }
+  /* Las cuentas de Maleu SIEMPRE, haya vendedor o no (30/9/2026). Hasta hoy, en
+     un barrio con vendedor este bloque se escondia y en su lugar salia el cartel
+     con el alias personal del vendedor. */
+  if (esTransfer) { _pintarAliasMaleu(); alias.classList.remove('hidden'); }
   else { alias.classList.add('hidden'); }
-  if (aliasNote) {
-    if (esTransfer && vendedor) {
-      var nombreCorto = (vendedor.nombre || '').split(' ')[0];
-      if (vendedor.alias) {
-        // Vendedor tiene alias cargado — se lo mostramos directo con botón Copiar.
-        aliasNote.innerHTML =
-          '<div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap">' +
-            '<span>Alias de ' + nombreCorto + ': <strong>' + vendedor.alias + '</strong></span>' +
-            '<button type="button" onclick="copyVendedorAlias(\'' + vendedor.alias.replace(/\'/g, "\\'") + '\',\'' + nombreCorto + '\')" style="background:#E67C0E;color:#fff;border:none;border-radius:6px;padding:.3rem .7rem;font-family:var(--font);font-size:.75rem;font-weight:700;cursor:pointer">Copiar</button>' +
-          '</div>';
-      } else {
-        aliasNote.textContent = nombreCorto + ' te va a pasar el alias al confirmar tu pedido.';
-      }
-      aliasNote.classList.remove('hidden');
-    } else {
-      aliasNote.classList.add('hidden');
-    }
-  }
+  /* El cartel con el alias personal del vendedor no va mas: queda escondido
+     siempre. El elemento sobrevive porque `applyZone()` tambien lo esconde al
+     cambiar de zona, y borrarlo del HTML es otro cambio. */
+  if (aliasNote) aliasNote.classList.add('hidden');
   // Hint de descuento: mostrar solo cuando NO eligió efectivo
   updatePagoHint();
   updateUI();
@@ -8662,7 +8707,12 @@ function onPagoChange() {
 function _pintarAliasMaleu() {
   var cont = $id('mp-alias-lista');
   if (!cont) return;
-  cont.innerHTML = ALIAS_MALEU.map(function (c) {
+  /* Por `_aliasParaTransferir()` y no por ALIAS_MALEU directo: esta caja es el
+     CUARTO lugar que contesta "¿a que alias transfiere el cliente?", y se quedo
+     afuera de la unificacion del 30/9/2026 a la mañana. Lo delato el control del
+     test: con el bug reinyectado —devolver el alias del vendedor— las otras tres
+     pantallas cambiaban y esta no, asi que el chequeo daba verde. */
+  cont.innerHTML = _aliasParaTransferir().map(function (c) {
     return '<div class="mp-alias-row">' +
       '<span><span class="mp-alias-banco">' + c.banco + '</span> <strong>' + c.alias + '</strong></span>' +
       '<button type="button" class="mp-copy-btn" onclick="copyAlias(\'' + c.alias + '\')">Copiar</button>' +
@@ -8700,12 +8750,22 @@ function _copiarTexto(texto, alCopiar) {
   fallo();
 }
 function copyAlias(a) {
-  var alias = a || ALIAS_MALEU[0].alias;
+  /* El fallback tambien por la funcion: es el quinto lugar y si se queda
+     leyendo ALIAS_MALEU directo, el dia que la funcion cambie este copia
+     otra cosa que la que dice la pantalla. */
+  var alias = a || (_aliasParaTransferir()[0] || {}).alias || '';
   _copiarTexto(alias, function () { toast('✓ Alias copiado: ' + alias, 2000); });
 }
-function copyVendedorAlias(alias, nombreCorto) {
-  _copiarTexto(alias, function () { toast('✓ Alias de ' + nombreCorto + ' copiado: ' + alias, 2000); });
-}
+/* `copyVendedorAlias` se BORRO el 30/9/2026, junto con el cartel que la
+   llamaba: copiar el alias de un vendedor es justo lo que ese cambio vino a
+   sacar. Esta en el historial de git si alguna vez hace falta.
+
+   Se borro en vez de dejarla comentada, y no es una cuestion de prolijidad:
+   comentar un bloque de codigo con barra-asterisco desincroniza al analizador de
+   `verificar-llamadas.js`, y a partir de ahi los strings dejan de reconocerse
+   como strings. Sintoma medido ese dia: dos "llamadas a algo que no existe"
+   —`_wireCtaRefresh()` y `not()`, este ultimo de un `:not()` adentro de un
+   selector— sobre codigo que nadie habia tocado. */
 
 updateShippingBar();
 

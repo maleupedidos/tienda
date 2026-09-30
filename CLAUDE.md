@@ -3291,6 +3291,142 @@ tres**. `recorteAlCatalogo()` cierra el cartel y el checkout **sin mover la
 fecha**: el cliente ya dijo que la queria, y el catalogo se topea solo contra
 el stock de ese dia.
 
+## La transferencia va a Maleu, no al alias del vendedor (30/9/2026)
+
+Tadeo, mirando la tienda: *"siguen apareciendo los alias de los vendedores. Dijimos que
+los ingresos en transferencia pasan por maleump o maleubru"*.
+
+Hasta esa mañana, un cliente de un barrio con vendedor veía el **alias personal** del
+vendedor —el que está en la col `Alias MP` de la hoja `Vendedores`— y le transfería a él.
+
+| | antes | ahora |
+|---|---|---|
+| transferencia en un barrio con vendedor | el alias del vendedor | **maleump / maleubru** |
+| efectivo | se lo paga al vendedor en la mano | **igual, no cambia** |
+| la col `Alias MP` | la tienda la mostraba | se sigue recibiendo, **no se muestra** |
+
+> [!important] Es UNA pregunta, y estaba contestada en CINCO lugares
+> *"¿A qué alias transfiere el cliente?"* vivía en el cartel del formulario, la caja de
+> alias, la pantalla de cierre, el mensaje de WhatsApp del fallback y el fallback de
+> `copyAlias`. Ahora todos preguntan `_aliasParaTransferir()`. Si algún día se quiere
+> volver al alias del vendedor para alguna zona, es esa función y nada más.
+
+> [!danger] Y encontré dos de esos cinco recién por el control del test
+> Después de "unificar", reinyecté el bug —devolver el alias del vendedor— y el test
+> **pasó en verde**: la caja del formulario (`_pintarAliasMaleu`) seguía leyendo
+> `ALIAS_MALEU` directo, así que no cambiaba con el bug puesto. Lo mismo el fallback de
+> `copyAlias`. O sea que "lo resolví en la raíz" era falso y el chequeo lo demostró.
+>
+> **Un cambio que dice unificar no está unificado hasta que el control lo prueba.**
+
+**Lo que NO cambió, y lo midió Backend:** el Portal Red del ERP **nunca** le mostró el
+alias del vendedor al cliente. Le pedí que lo cambiara dando por hecho que sí, y me
+corrigió con la medición: ese `aliasMp` va a la notificación interna al WhatsApp de
+Tadeo, para que sepa de quién es el pedido. Lo que sí falta ahí es que el portal tenga
+**dónde** decirle al cliente a dónde transferir — pantalla nueva, decisión de Tadeo.
+
+> [!warning] Consecuencia operativa, abierta al 30/9/2026
+> Con la transferencia entrando a Maleu, al vendedor hay que **liquidarle** su comisión
+> más los $3.000 del envío en vez de que los descuente de lo que cobró. Backend y yo
+> acordamos no tocar la liquidación hasta que Tadeo vuelva de las reuniones con la
+> respuesta de por qué **55 de 106 pedidos de la Red entraron sin envío**: cambiarla
+> ahora sería construir sobre un supuesto que él está yendo a verificar.
+
+## Los barrios del modal son barrios, no nuestras zonas (30/9/2026)
+
+Tadeo, mirando la lista: *"sacá tortugas y alrededores y ayres y alrededores. Ayres del
+Pilar ya está como opción, y deberías agregar Tortugas Country"*.
+
+Esos dos aparecían porque `_dirDestinos` agrega los barrios que llegan de la planilla y
+no están en la lista del código — y **la primera entrada de la col `Barrios` de cada
+vendedor es su zona canónica**. Nadie vive en "Ayres y alrededores": es como agrupamos
+nosotros el reparto.
+
+- La zona canónica dejó de ser un destino elegible (`_dirNorm(v.barrio) === _dirNorm(v.zonaCanon)`).
+- **Manzanares se escribió en su propio `subBarriosList`**, porque es un barrio de verdad
+  además de dar nombre a la zona. Esa diferencia no se deduce de los datos: hay que declararla.
+- **Tortugas Country** entró al `subBarriosList` de Tortugas.
+
+> [!danger] Agregar un barrio al código sin agregarlo a la planilla le saca la venta al vendedor
+> `_pilarBarrioIsRed()` tiene cuatro defensas y decía *"lo atiende un vendedor"* por la
+> zona canónica — viernes, sin carne, envío $3.000. Pero **`vendedorMatch` tenía una
+> sola**: `barrioToVendedor[barrio]`, que sale de la col `Barrios`. Con "Tortugas Country"
+> en el código y no en la planilla, **la pantalla decía una cosa y el pedido se iba a la
+> hoja `Pilar`**: la venta de Marcos, cobrada por nosotros, sin que nadie se entere.
+>
+> Las dos preguntas —*"¿lo atiende un vendedor?"* y *"¿cuál?"*— tienen que estar de
+> acuerdo, así que ahora comparten el respaldo por zona (`_vendedorDeBarrio`).
+>
+> **Igual se cargó en la planilla** (`Vendedores!D2`, con el OK de Tadeo): el respaldo es
+> una red, no la forma correcta de dar de alta un barrio.
+
+> [!important] La hoja `Vendedores` tiene cache de 30 minutos — lo midió Backend
+> `vendedores` está en `LECTURAS_CACHEABLES` con `LECTURAS_SEG = 1800`, y **editar la hoja
+> a mano no invalida nada**: la invalidación cuelga de las escrituras que pasan por el
+> backend. Por eso `action=vendedores` seguía devolviendo el valor viejo después de
+> escribir. La salida es **`?action=vendedores&fresh=1`**, que saltea la copia y guarda la
+> nueva.
+>
+> **Vale para dar de alta un vendedor:** después de cargar su fila hay que pegarle una vez
+> a `&fresh=1` o la tienda puede no verlo por media hora.
+
+### Los chequeos: escenario 10 de `verificar-vendedor.js` (73 en total)
+
+La lista sin las dos zonas y con los tres barrios; **el pedido de "Tortugas Country"
+yéndose a la hoja Red a nombre de Marcos**; y el alias de Maleu en un barrio con vendedor,
+con su control de que el vendedor simulado **sí tiene alias cargado** — con el fixture en
+`''` el bug no era reproducible y el chequeo pasaba por la razón equivocada.
+
+Tres bugs reinyectados de a uno: **los tres se agarran** (2, 1 y 3 rojos).
+
+> [!danger] Dos de esos tres pasaron en verde primero, y las dos veces era el chequeo
+> · **El de Tortugas Country llamaba a `_vendedorDeBarrio()` directo.** Con el bug puesto
+>   en el call site de `enviarPedido`, la función seguía contestando bien. Lo que cuida la
+>   plata no es que la función conteste: es **a qué hoja se va el pedido**. Ahora se manda
+>   el pedido y se mira el canal del POST.
+> · **El del alias usaba "Tortugas Country"**, que no está en el desplegable del formulario
+>   —se llena desde la planilla— así que `_barrioPilarTieneVendedor()` daba null y el bug
+>   no se activaba. Se mide con El Lucero.
+
+> [!note] Y el helper para mandar un pedido ya existía en esa red
+> Escribí uno nuevo (`armarYEnviar`) y no funcionaba: le faltaba el recorrido del checkout,
+> que desde el 29/9 es su propia pantalla. `mandar()` y `ultimoPost()` ya estaban ahí, ya
+> lo resolvían y ya estaban probados por el escenario 1. Se borró el mío.
+
+## `verificar-llamadas.js` no entendía las expresiones regulares (30/9/2026)
+
+> [!danger] Su resultado dependía de cuántas comillas tuviera un comentario
+> `limpiar()` vaciaba comentarios y strings, pero no literales de regex. En
+> `b.val.replace(/'/g, "…")` tomaba la comilla de adentro de la regex como apertura de
+> string, y **desde ahí todo el resto del archivo quedaba analizado con la paridad
+> corrida**. Medido: pasaba en la línea 2900 y pasaba **igual en HEAD**, desde hacía
+> tiempo.
+>
+> El síntoma es traicionero porque no es estable: lo que decide de qué lado cae cada
+> string es cuántas comillas haya después. Apareció al tocar `app.js` como dos "llamadas a
+> algo que no existe" —`_wireCtaRefresh()` y un `not()` que venía de un `:not()` adentro de
+> un selector— **sobre código que nadie había tocado**. Y lo que importa es la otra
+> dirección: podía estar **tapando una llamada muerta de verdad**.
+
+Ahora `limpiar()` reconoce regex: una barra abre una sólo si lo anterior no puede terminar
+una expresión (después de un identificador, un número, `)` o `]` es una división), respeta
+las clases `[...]` y vuelve a código ante un salto de línea, para no arrastrar el error
+hasta el final si se equivocó.
+
+**Y de paso salió otro que ese desfasaje venía tapando:** `function foo(` se contaba como
+una llamada. Importa para las funciones que se declaran y se invocan en el acto
+—`(function foo() {…})()`—, cuyo nombre nunca llega a `existe` porque esa regex pide que
+`function` arranque la línea. Se excluye igual que `set`/`get`.
+
+**405 llamadas, todas existen**, con y sin los cambios del día. Probado al revés con dos
+botones muertos reinyectados —uno en un `onclick` del HTML y otro en `app.js`—: **los dos
+se agarran**.
+
+> [!warning] Comentar un bloque de código con `/* */` rompe este análisis
+> Un comentario de bloque no anida: si el código comentado trae otro `/* */` adentro, el
+> primer cierre interno termina el comentario y el resto queda como código suelto.
+> **Se borra, no se comenta** — el historial de git es para eso.
+
 ## Los tres rojos que quedaban: cero (29/9/2026, a la noche)
 
 Al terminar la noche del 29/9 las **32 redes están en verde**, salvo los 9 problemas de

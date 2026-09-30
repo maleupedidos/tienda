@@ -2,6 +2,12 @@
 /**
  * Corta si la tienda llama a una funcion que no existe.
  *
+ * Su `limpiar()` vacia comentarios, strings Y expresiones regulares. Lo ultimo
+ * se agrego el 30/9/2026: sin eso, una regex con una comilla adentro —como
+ * `replace(/'/g, "…")`— corria la paridad de todo el resto del archivo, y el
+ * resultado de esta red pasaba a depender de cuantas comillas tuviera un
+ * comentario. Podia inventar llamadas muertas o tapar una de verdad.
+ *
  * POR QUE EXISTE. El 10/9/2026, escribiendo la venta de carne por pieza,
  * llame a `updateCart()` de memoria. Esa funcion NO EXISTE en este archivo: la
  * que actualiza el carrito se llama `updateUI()`.
@@ -57,14 +63,55 @@ function limpiar(txt) {
   let out = '';
   let i = 0;
   const n = txt.length;
-  let modo = 'codigo';   // codigo | linea | bloque | ' | " | `
+  let modo = 'codigo';   // codigo | linea | bloque | regex | ' | " | `
+  /* Dentro de una clase de caracteres —[^/]— la barra NO cierra la regex. */
+  let enClase = false;
+  /* LAS EXPRESIONES REGULARES TAMBIEN SE VACIAN (30/9/2026).
+
+     Sin esto, `b.val.replace(/'/g, "…")` abria un string con la comilla de
+     adentro de la regex, y **desde ahi todo el resto del archivo quedaba
+     analizado con la paridad corrida**. Medido ese dia: pasaba en la linea 2900
+     y pasaba igual desde mucho antes. El sintoma es traicionero porque no es
+     estable — lo que decide de que lado cae cada string es cuantas comillas
+     haya despues—, asi que la red podia inventar llamadas muertas (salieron
+     `_wireCtaRefresh()` y un `not()` que venia de un `:not()` adentro de un
+     selector) o, mucho peor, TAPAR una de verdad.
+
+     Una barra abre regex solo si lo de antes no puede terminar una expresion:
+     despues de un identificador, un numero, `)` o `]` es una division. */
+  const abreRegex = () => {
+    let j = out.length - 1;
+    while (j >= 0 && /\s/.test(out[j])) j--;
+    if (j < 0) return true;
+    const p = out[j];
+    if (/[A-Za-z0-9_$)\]]/.test(p)) {
+      /* `return /re/` y `typeof`/`case` si abren, aunque terminen en letra. */
+      const palabra = out.slice(Math.max(0, j - 9), j + 1).match(/[A-Za-z_$][\w$]*$/);
+      return !!palabra && ['return', 'typeof', 'case', 'in', 'of', 'delete', 'void', 'instanceof']
+        .indexOf(palabra[0]) >= 0;
+    }
+    return true;
+  };
   while (i < n) {
     const c = txt[i], d = txt[i + 1];
     if (modo === 'codigo') {
       if (c === '/' && d === '/') { modo = 'linea'; out += '  '; i += 2; continue; }
       if (c === '/' && d === '*') { modo = 'bloque'; out += '  '; i += 2; continue; }
+      if (c === '/' && abreRegex()) { modo = 'regex'; enClase = false; out += ' '; i++; continue; }
       if (c === "'" || c === '"' || c === '`') { modo = c; out += ' '; i++; continue; }
       out += c; i++; continue;
+    }
+    if (modo === 'regex') {
+      if (c === '\\') { out += '  '; i += 2; continue; }
+      if (c === '[') { enClase = true; out += ' '; i++; continue; }
+      if (c === ']') { enClase = false; out += ' '; i++; continue; }
+      /* Una regex no puede tener un salto de linea sin escapar: si aparece uno,
+         lo que se abrio no era una regex. Se vuelve a codigo para no arrastrar
+         el error hasta el final del archivo, que es justo lo que se vino a
+         arreglar. */
+      if (c === '\n') { modo = 'codigo'; enClase = false; out += '\n'; i++; continue; }
+      if (c === '/' && !enClase) { modo = 'codigo'; out += ' '; i++; continue; }
+      out += ' '; i++; continue;
     }
     if (modo === 'linea') {
       if (c === '\n') { modo = 'codigo'; out += '\n'; i++; continue; }
@@ -135,6 +182,12 @@ codigo.split('\n').forEach((linea, i) => {
        invocacion. Se miran las letras de antes para distinguirlos. */
     const antes = linea.slice(0, m.index + m[1].length);
     if (/(?:^|[^\w$])(?:set|get)\s+$/.test(antes)) continue;
+    /* `function foo(` es una DECLARACION, no una invocacion. Importa para las
+       funciones que se declaran y se llaman en el acto —`(function foo() {…})()`—,
+       cuyo nombre nunca llega a `existe` porque esa regex pide que `function`
+       arranque la linea. Salio a la luz el 30/9/2026, al arreglar el analizador
+       de regex: el desfasaje que ese bug producia lo venia tapando. */
+    if (/(?:^|[^\w$])function\s+$/.test(antes)) continue;
     if (!llamadas.has(m[2])) llamadas.set(m[2], i + 1);
   }
 });
