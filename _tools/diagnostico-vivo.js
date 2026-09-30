@@ -241,8 +241,18 @@ async function main() {
 
     /* ── 4) el estado con la zona puesta ── */
     console.log('\n' + DIM + '  con la zona elegida:' + RST);
-    await esperar('Object.keys(stockMap || {}).length > 0', 20000);
-    await esperar("typeof piezasEstado !== 'undefined' && piezasEstado !== 'cargando'", 20000);
+    /* CUANTO TARDA EL BACKEND, medido. El margen es de 40 s a proposito: el 30/9
+       a las 00:42 esta herramienta reporto "0 productos" con 20 s de espera, y
+       medido a mano el `stock_full` habia tardado 12,9 s — contra los 0,3 s que
+       son el piso de la plataforma. O sea que "no contesto" y "tardo 13 s" son
+       dos cosas distintas y el numero es lo unico que las separa. Con un margen
+       corto, esta herramienta convierte una lentitud en un falso "esta caido". */
+    const t1 = Date.now();
+    const vinoStock = await esperar('Object.keys(stockMap || {}).length > 0', 40000);
+    const msStock = Date.now() - t1;
+    const t2 = Date.now();
+    const vinoPiezas = await esperar("typeof piezasEstado !== 'undefined' && piezasEstado !== 'cargando'", 40000);
+    const msPiezas = Date.now() - t2;
     const dos = await leer(`JSON.stringify({
       zona: currentZone, provisoria: !!window.zonaProvisoria,
       activos: getActiveProducts().length,
@@ -266,11 +276,19 @@ async function main() {
     })`, 'con la zona elegida');
     linea('zona', dos.zona + (dos.provisoria ? ' (todavia provisoria)' : ''), dos.provisoria ? 'mal' : 'ok');
     linea('productos de la zona', String(dos.activos), dos.activos > 10 ? 'ok' : 'aviso');
-    linea('stock del ERP', dos.stock + ' productos · ' + dos.sinStock + ' en cero',
-      dos.stock > 20 ? 'ok' : 'mal');
+    linea('stock del ERP', dos.stock + ' productos · ' + dos.sinStock + ' en cero' +
+      (vinoStock ? ' · tardo ' + (msStock / 1000).toFixed(1) + ' s' : ' · NO CONTESTO en 40 s'),
+      dos.stock > 20 ? (msStock > 8000 ? 'aviso' : 'ok') : 'mal');
     linea('piezas de carne', dos.piezasEstado + ' · ' + dos.piezas + ' piezas en ' +
-      dos.cortes.length + ' cortes' + (dos.reserva ? ' · reserva llega ' + dos.reserva : ''),
-      dos.piezasEstado === 'sin-datos' ? 'mal' : 'ok');
+      dos.cortes.length + ' cortes' + (dos.reserva ? ' · reserva llega ' + dos.reserva : '') +
+      (vinoPiezas ? ' · tardo ' + (msPiezas / 1000).toFixed(1) + ' s' : ' · NO CONTESTO en 40 s'),
+      dos.piezasEstado === 'sin-datos' ? 'mal' : (msPiezas > 8000 ? 'aviso' : 'ok'));
+    /* El piso de Apps Script medido el 29/9/2026 con tres GET fue de 0,3 s. Un
+       stock que tarda mas de 8 s no es la plataforma: es algo adentro de
+       `doPost`/`doGet`, que es lo que Backend esta instrumentando. */
+    if (msStock > 8000 || msPiezas > 8000) {
+      console.log('   ' + AMA + '   el backend esta lento: el piso de Apps Script medido es 0,3 s' + RST);
+    }
     linea('cards "Sin stock"', String(dos.sinStockCards), 'dato');
     linea('proximas entregas', (dos.fechas || []).join(' · ') || 'NINGUNA',
       (dos.fechas || []).length ? 'ok' : 'mal');
