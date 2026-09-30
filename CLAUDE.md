@@ -2597,8 +2597,11 @@ carne.
 > culpable nombrado. Un rojo que aparece una de cada tres corridas por algo que
 > no es del hero deja de mirarse, y entonces no sirve para nada.
 >
-> **Queda abierto**: se arregla reservando el alto de la grilla de categorías
-> antes de llenarla, igual que se hizo con el carrusel. Es un trabajo aparte.
+> **RESUELTO ese mismo día**, reservando el alto de la grilla antes de llenarla,
+> igual que el carrusel: ver «La grilla de categorías reserva su lugar», más
+> abajo. Este aviso decía "queda abierto" y quedó contradiciendo a la sección que
+> lo cerró — dos partes del mismo documento diciendo cosas distintas hacen perder
+> más tiempo que no haber escrito ninguna.
 
 ## La tienda vendía entregas cuyo reparto ya había salido (28/9/2026)
 
