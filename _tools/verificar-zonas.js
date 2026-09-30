@@ -326,12 +326,27 @@ async function main() {
     const norm = (t) => String(t || '').toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
     const nombres = ops.map((o) => o.n).filter((n) => n && !/no encuentro|no est/i.test(n));
-    const ordenado = nombres.slice().sort((a, b) => (norm(a) < norm(b) ? -1 : (norm(a) > norm(b) ? 1 : 0)));
-    const primerDesorden = nombres.findIndex((n, i) => n !== ordenado[i]);
-    chk(primerDesorden === -1,
-        'la lista entera va de la A a la Z',
-        primerDesorden === -1 ? nombres.length + ' destinos'
-          : 'se corta en "' + nombres[primerDesorden] + '" (esperaba "' + ordenado[primerDesorden] + '")');
+    /* AGRUPADA POR ZONA Y A-Z ADENTRO (30/9/2026, a la tarde). El A-Z global
+       duro unas horas: Tadeo lo vio con los 34 de Tigre sumados y arriba de
+       todo le quedaban Ayres del Pilar, Azzurra y Cerrillos, con Estancias del
+       Pilar —la mayor parte de su venta— septimo. Una persona reconoce su zona
+       antes que su barrio.
+
+       El orden se mide contando cuantas veces el nombre "vuelve para atras":
+       tiene que pasar exactamente una vez por cada cambio de zona, y ninguna
+       mas. Asi el chequeo no depende de cuantas zonas haya. */
+    const grupos = JSON.parse(await ev('JSON.stringify([].map.call(' +
+      'document.querySelectorAll("#dir-lista .dir-grupo"), function (h) { return h.textContent.trim(); }))'));
+    let cortes = 0;
+    for (let i = 1; i < nombres.length; i++) {
+      if (norm(nombres[i]) < norm(nombres[i - 1])) cortes++;
+    }
+    chk(grupos.length >= 2 && cortes === grupos.length - 1,
+        'va agrupada por zona y de la A a la Z adentro de cada una',
+        grupos.join(' | ') + ' · ' + cortes + ' cortes de orden');
+    chk(grupos[0] === 'Estancias' && nombres[0] === 'Estancias del Pilar',
+        'y Estancias va primero, que es de donde sale la mayor parte de la venta',
+        nombres.slice(0, 2).join(' | '));
     /* CONTROL: que el orden no sea A-Z por casualidad de tener pocos. */
     chk(nombres.length >= 15, 'CONTROL: hay bastantes barrios como para que el orden importe',
         nombres.length + ' destinos');

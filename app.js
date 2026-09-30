@@ -3277,13 +3277,14 @@ function _setClubesDefaultDate() {
 /* Los destinos que el buscador conoce. `txt` es lo que el cliente escribe. */
 function _dirDestinos() {
   var out = [
-    { txt: 'Estancias del Pilar', zona: 'estancias' },
-    { txt: 'Estancias del R\u00edo', zona: 'estancias', privado: 'Estancias del R\u00edo' }
+    { txt: 'Estancias del Pilar', zona: 'estancias', grupo: 'Estancias' },
+    { txt: 'Estancias del R\u00edo', zona: 'estancias', privado: 'Estancias del R\u00edo', grupo: 'Estancias' }
   ];
   BARRIOS_PILAR_MODAL.forEach(function (b) {
     if (_barrioOculto(b.val)) return;
     (b.subBarriosList || []).forEach(function (sub) {
-      out.push({ txt: sub, zona: 'pilar', pz: b.val, pzNombre: b.nombre, sub: sub });
+      out.push({ txt: sub, zona: 'pilar', pz: b.val, pzNombre: b.nombre, sub: sub,
+                 grupo: b.region || 'Pilar' });
     });
   });
   /* Los que llegan de la planilla y todavia no estan en la lista de arriba.
@@ -3306,25 +3307,35 @@ function _dirDestinos() {
     if (ya) return;
     var zc = v.zonaCanon || '__otro__';
     var zona = BARRIOS_PILAR_MODAL.filter(function (b) { return b.val === zc; })[0];
-    out.push({ txt: v.barrio, zona: 'pilar', pz: zc, pzNombre: (zona && zona.nombre) || zc, sub: v.barrio });
+    out.push({ txt: v.barrio, zona: 'pilar', pz: zc, pzNombre: (zona && zona.nombre) || zc, sub: v.barrio,
+               grupo: (zona && zona.region) || 'Pilar' });
   });
-  /* DE LA A A LA Z (30/9/2026). Pedido de Tadeo al sumar los 34 de Tigre: con
-     55 destinos, el orden en que estan declarados en el codigo no es un orden
-     para nadie. Ordenar por el texto normalizado y no con localeCompare a
-     secas hace que "Ángeles" caiga en la A y no despues de la Z, y que "El
-     Golf" y "El Yacht" queden juntos. */
+  /* POR ZONA, Y DE LA A A LA Z ADENTRO DE CADA UNA (30/9/2026).
+
+     La primera version ordenaba A-Z a secas, y Tadeo lo vio en la tienda: con
+     los 34 de Tigre sumados, arriba de todo quedaban "Ayres del Pilar",
+     "Azzurra" y "Cerrillos", y Estancias del Pilar —de donde sale la mayor
+     parte de la venta— caia septimo, enterrado entre barrios de vendedores.
+
+     Una persona reconoce su ZONA antes que su barrio, asi que el grupo es lo
+     que la orienta y el A-Z es lo que la deja encontrar adentro. Estancias va
+     primero porque es el mercado principal; el resto, por el orden en que se
+     fueron sumando.
+
+     Se ordena por el texto normalizado y no con localeCompare a secas: asi
+     "Ángeles" cae en la A y no despues de la Z. */
+  var ORDEN = ['Estancias', 'Pilar', 'Tigre'];
+  var pos = function (g) {
+    var i = ORDEN.indexOf(g || 'Pilar');
+    return i === -1 ? ORDEN.length : i;   // un grupo nuevo va al final, no arriba
+  };
   out.sort(function (a, b) {
+    var ga = pos(a.grupo), gb = pos(b.grupo);
+    if (ga !== gb) return ga - gb;
     var x = _dirNorm(a.txt), y = _dirNorm(b.txt);
     return x < y ? -1 : (x > y ? 1 : 0);
   });
   return out;
-}
-
-/* La inicial con la que se agrupa en la lista. Los numeros y cualquier cosa
-   rara caen juntos en "#" en vez de inventar una letra. */
-function _dirInicial(txt) {
-  var c = _dirNorm(txt).charAt(0).toUpperCase();
-  return (c >= 'A' && c <= 'Z') ? c : '#';
 }
 
 /* Sin acentos y en minuscula: quien escribe "rio" tiene que encontrar "R\u00edo". */
@@ -3352,21 +3363,21 @@ function dirBuscar() {
   if (!inp || !lista) return;
   var res = _dirCoinciden(inp.value);
   lista.innerHTML = '';
-  /* LOS SEPARADORES DE LETRA van SOLO con la lista completa (30/9/2026).
-     Buscando, el orden deja de ser alfabetico —los que EMPIEZAN con lo escrito
-     van primero— asi que una "A" arriba de un resultado que salio por otra
-     letra mentiria. Con 55 barrios la lista sin buscar es la que hay que poder
-     recorrer con el dedo; la lista filtrada ya es corta. */
-  var conLetras = !_dirNorm(inp.value);
-  var letraAnterior = '';
+  /* LOS ENCABEZADOS DE ZONA van SOLO con la lista completa (30/9/2026).
+     Buscando, el orden deja de ser el de la lista —los que EMPIEZAN con lo
+     escrito van primero— asi que un encabezado arriba de un resultado de otra
+     zona mentiria. Con 57 barrios, la lista sin buscar es la que hay que poder
+     recorrer con el dedo; la filtrada ya es corta. */
+  var conGrupos = !_dirNorm(inp.value);
+  var grupoAnterior = '';
   res.forEach(function (d, i) {
-    if (conLetras) {
-      var ini = _dirInicial(d.txt);
-      if (ini !== letraAnterior) {
-        letraAnterior = ini;
+    if (conGrupos) {
+      var g = d.grupo || 'Pilar';
+      if (g !== grupoAnterior) {
+        grupoAnterior = g;
         var h = document.createElement('div');
-        h.className = 'dir-letra';
-        h.textContent = ini;
+        h.className = 'dir-grupo';
+        h.textContent = g;
         /* No es un boton y no se puede tocar: es un rotulo. */
         h.setAttribute('aria-hidden', 'true');
         lista.appendChild(h);
@@ -3417,12 +3428,12 @@ function _dirResumen(d) {
      entrega viernes y sabado, y el buscador es donde el cliente lo lee ANTES
      de elegir su barrio. Si dijera "los viernes" para todos, el sabado que la
      tienda si le va a ofrecer despues seria una sorpresa. */
-  if (zona.isRed) {
-    var dias = _diasEnPalabras(_diasDeZonaRed(zona));
-    /* "A coordinar" cuando la zona no declara hora, que es el caso de todas
-       las de Pilar y Tigre: prometer "19 a 21" donde no lo sabemos es peor. */
-    return 'Entregas ' + dias + ' a coordinar';
-  }
+  /* Este renglon habla de DIAS y nada mas. El horario ("a coordinar") sale en
+     el calendario, que es donde el cliente elige. Es la misma decision que
+     tomo Tadeo el 28/9 con el envio: "sacaria el envio, solo mostraria los
+     dias de entrega" — lo que sobra acá es lo primero que lee alguien que
+     todavia no miro un producto. */
+  if (zona.isRed) return 'Entregas ' + _diasEnPalabras(_diasDeZonaRed(zona));
   return 'Entregas mi\u00e9rcoles y viernes';
 }
 

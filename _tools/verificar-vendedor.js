@@ -586,23 +586,39 @@ async function main() {
     /* El orden alfabetico, que es lo que pidio Tadeo al sumar los 34. */
     const soloNom = conFede.filter(function (n) { return n && !/no encuentro|no est/i.test(n); });
     const nz = (t) => String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
-    const ordenTg = soloNom.slice().sort(function (a, b) { return nz(a) < nz(b) ? -1 : (nz(a) > nz(b) ? 1 : 0); });
-    chk(soloNom.every(function (n, i) { return n === ordenTg[i]; }),
-        'y toda la lista va de la A a la Z');
+    /* A-Z ADENTRO DE CADA ZONA. Global ya no: Estancias va primero aunque
+       empiece con E. Se mide que cada tramo este ordenado, o sea que el nombre
+       nunca "vuelve para atras" salvo justo donde cambia de zona — y esos
+       saltos tienen que ser exactamente 2 (Estancias->Pilar y Pilar->Tigre). */
+    var saltos = 0;
+    for (var _i = 1; _i < soloNom.length; _i++) {
+      if (nz(soloNom[_i]) < nz(soloNom[_i - 1])) saltos++;
+    }
+    chk(saltos === 2, 'y adentro de cada zona va de la A a la Z',
+        saltos + ' cortes de orden (esperaba 2, uno por cambio de zona)');
 
-    /* El separador de letra: con 40+ barrios es lo que la hace recorrible. */
-    const letras = JSON.parse(await ev('JSON.stringify([].map.call(' +
-      'document.querySelectorAll("#dir-lista .dir-letra"), function (h) { return h.textContent.trim(); }))'));
-    chk(letras.length >= 5 && letras.join('') === letras.slice().sort().join(''),
-        'con separadores de letra, en orden', letras.join(' '));
+    /* LOS ENCABEZADOS DE ZONA (30/9/2026). Tadeo vio la primera version, con
+       A-Z a secas, y arriba de todo le quedaban Ayres del Pilar, Azzurra y
+       Cerrillos: Estancias del Pilar, que es la mayor parte de su venta, caia
+       septimo. Una persona reconoce su zona antes que su barrio. */
+    const grupos = JSON.parse(await ev('JSON.stringify([].map.call(' +
+      'document.querySelectorAll("#dir-lista .dir-grupo"), function (h) { return h.textContent.trim(); }))'));
+    chk(grupos.join(' | ') === 'Estancias | Pilar | Tigre',
+        'la lista va agrupada por zona, con Estancias primero', grupos.join(' | '));
 
-    /* Y buscando NO van separadores: ahi el orden deja de ser alfabetico
+    /* Y el A-Z es ADENTRO de cada grupo, no global: si fuera global, Altamira
+       (Tigre) estaria antes que Estancias del Pilar. */
+    chk(soloNom[0] === 'Estancias del Pilar',
+        'el primero de la lista es Estancias del Pilar, no el primero del abecedario',
+        soloNom.slice(0, 3).join(' | '));
+
+    /* Y buscando NO van encabezados: ahi el orden deja de ser el de la lista
        porque los que EMPIEZAN con lo escrito van primero. */
     await ev('(function(){ var i = document.getElementById("dir-input");' +
       ' i.value = "san"; if (typeof dirBuscar === "function") dirBuscar(); })()');
     await dormir(200);
-    const letrasBusc = Number(await ev('document.querySelectorAll("#dir-lista .dir-letra").length'));
-    chk(letrasBusc === 0, 'buscando no hay separadores: el orden ya no es alfabetico', String(letrasBusc));
+    const gruposBusc = Number(await ev('document.querySelectorAll("#dir-lista .dir-grupo").length'));
+    chk(gruposBusc === 0, 'buscando no hay encabezados: el orden ya no es el de la lista', String(gruposBusc));
 
     console.log('\n' + DIM + '   y el pedido de Tigre va a la hoja Red:' + RST);
     await abrir({
