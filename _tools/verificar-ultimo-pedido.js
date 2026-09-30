@@ -161,7 +161,15 @@ const PREP = '(function () {' +
   '  var u = String(url);' +
   '  if (opts && String(opts.method || "").toUpperCase() === "POST" && u.indexOf("script.google") >= 0) { window.__post++; return new Promise(function () {}); }' +
   '  if (u.indexOf("action=stock_full") >= 0) return json(' + JSON.stringify(STOCK) + ');' +
-  '  if (u.indexOf("action=piezas_full") >= 0) return json(' + JSON.stringify(PIEZAS) + ');' +
+  /* `&fallapiezas=1` hace FALLAR el inventario, que es la unica forma de que la
+     categoria Carnes no se dibuje. Un inventario VACIO no sirve: desde el
+     11/9/2026 `vacio` y `sin-datos` son dos estados distintos, y con el vacio
+     los cinco cortes se muestran con "Sin stock" — o sea que Carnes esta igual.
+     Lo dijo este control en su primera corrida, exigiendo lo contrario. */
+  '  if (u.indexOf("action=piezas_full") >= 0) {' +
+  '    if (/[?&]fallapiezas=1/.test(location.search)) return Promise.reject(new Error("sin red"));' +
+  '    return json(' + JSON.stringify(PIEZAS) + ');' +
+  '  }' +
   '  if (u.indexOf("script.google") >= 0) return json({ ok: true });' +
   '  return orig.apply(this, arguments);' +
   '};' +
@@ -238,8 +246,8 @@ async function main() {
       await dormir(250);
       return pos;
     };
-    const abrir = async (semilla, zona) => {
-      await cli.enviar('Page.navigate', { url: 'http://127.0.0.1:' + PUERTO + '/index.html?s=' + semilla + '&t=' + Date.now() });
+    const abrir = async (semilla, zona, extra) => {
+      await cli.enviar('Page.navigate', { url: 'http://127.0.0.1:' + PUERTO + '/index.html?s=' + semilla + '&t=' + Date.now() + (extra || '') });
       if (!(await esperar("typeof PRODUCTOS !== 'undefined' && !!document.getElementById('loc-step-zone')", 15000))) {
         throw new Error('la tienda no arranco');
       }
@@ -402,6 +410,38 @@ async function main() {
     const carne = JSON.parse(await ev('(function () { var s = document.getElementById("cat-carnes"); if (!s) return "null";' +
       'var r = s.getBoundingClientRect(); return JSON.stringify({ top: Math.round(r.top), alto: window.innerHeight }); })()'));
     chk(carne && carne.top >= -5 && carne.top < carne.alto / 2, 'el boton de la carne lleva a Carnes (' + (carne ? carne.top : 'sin seccion') + 'px)');
+
+    /* SIN NINGUN CORTE A LA VISTA: se dice que llevo carne, y NO se ofrece ir.
+       Un boton que lleva a una seccion que no existe no hace nada, y "un boton
+       que no hace nada es peor que no tener boton: el cliente concluye que la
+       tienda esta rota" (el comentario de `getCategoriasVisibles`).
+
+       Y el renglon tiene que nombrar LOS DOS cortes aunque hoy no haya ninguno:
+       lo que llevo la vez pasada es su historia, no depende del freezer de hoy.
+       Resolverlo contra `getActiveProducts()` le comia los cortes sin piezas —
+       con piezas solo de Vacio, el que llevo Vacio y Entraña leia "Vacio". */
+    console.log('\n' + DIM + '== Sin carne hoy: se dice lo que llevo, sin ofrecer ir ==' + RST);
+    await abrir('v2', 'estancias', '&fallapiezas=1');
+    await esperar("typeof piezasEstado !== 'undefined' && piezasEstado === 'sin-datos'", 12000);
+    await dormir(500);
+    const sinC = JSON.parse(await ev('JSON.stringify({' +
+      ' pie: (document.getElementById("ultimo-pie") || {}).textContent || "",' +
+      ' btn: !!document.querySelector("#ultimo-section .ultimo-carne-btn"),' +
+      ' catCarnes: !!document.getElementById("cat-carnes") })'));
+    chk(/También llevaste carne: Vacío y Entraña\./.test(sinC.pie),
+        'nombra los DOS cortes que llevo, aunque hoy no haya ninguno',
+        sinC.pie.replace(/\s+/g, ' ').slice(0, 90));
+    chk(await ev("piezasEstado === 'sin-datos'"),
+        'CONTROL: no se pudo traer el inventario (sin-datos, no vacio)',
+        await ev('piezasEstado'));
+    chk(sinC.catCarnes === false, 'y por lo tanto la categoria Carnes no esta a la vista');
+    chk(sinC.btn === false, 'y por eso no se ofrece "Elegir las piezas de hoy"');
+    /* Y se devuelve el estado: los escenarios que siguen cuentan con la carne a
+       la vista, y sin esto el siguiente se rompia buscando un boton que este
+       escenario habia hecho desaparecer a proposito. */
+    await abrir('v2', 'estancias');
+    await esperar("typeof piezasEstado !== 'undefined' && piezasEstado !== 'cargando'", 12000);
+    await dormir(400);
 
     /* ── 5. EL BUSCADOR ─────────────────────────────────────────────── */
     await ev('(function () { var i = document.getElementById("buscador-input") || document.querySelector(".buscador input"); i.value = "tarta"; i.dispatchEvent(new Event("input", { bubbles: true })); })()');

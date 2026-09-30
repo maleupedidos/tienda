@@ -69,6 +69,12 @@ const VENDEDORES = { vendedores: [
     barrios: ['Manzanares', 'San Francisco', 'La Escondida', 'Manzanares Chico', 'Cerrillos', 'CUBA Fátima'] },
   { nombre: 'Marcos', wa: '5491100000001', alias: '',
     barrios: ['Tortugas y alrededores', 'El Lucero', 'Los Tacos', 'Villa Bertha', 'Azzurra'] },
+  /* EL CUARTO VENDEDOR: su zona NO esta en BARRIOS_PILAR_MODAL, que es la
+     situacion de cualquier vendedor que arranca — entra a la hoja `Vendedores` y
+     nadie toca el codigo. El nombre va generico a proposito: el caso es "un
+     vendedor nuevo", no una persona, y asi el test no envejece. */
+  { nombre: 'Vendedor Nuevo', wa: '5491100000004', alias: '',
+    barrios: ['Zona Nueva', 'Barrio Nuevo Uno', 'Barrio Nuevo Dos'] },
 ] };
 
 /* El premio de la ruleta, como lo emite Backend desde el 24/9/2026:
@@ -164,7 +170,15 @@ const PREP = '(function () {' +
   '  if (opts && String(opts.method || "").toUpperCase() === "POST" && u.indexOf("script.google") >= 0) { window.__posts.push({ body: String(opts.body || "") }); return new Promise(function () {}); }' +
   '  if (u.indexOf("action=stock_full") >= 0) return json(' + JSON.stringify(STOCK) + ');' +
   '  if (u.indexOf("action=piezas_full") >= 0) return json(' + JSON.stringify(PIEZAS) + ');' +
-  '  if (u.indexOf("action=vendedores") >= 0) return json(' + JSON.stringify(VENDEDORES) + ');' +
+  /* `&demoraVend=` retrasa SOLO esta respuesta. Es la unica forma de medir la
+     ventana en que `barrioToVendedor` todavia esta vacio: sin demora contesta al
+     instante y esa ventana no existe en el test, pero en produccion dura los
+     segundos que tarda Apps Script. */
+  '  if (u.indexOf("action=vendedores") >= 0) {' +
+  '    var dv = /[?&]demoraVend=(\\d+)/.exec(location.search);' +
+  '    var rv = ' + JSON.stringify(VENDEDORES) + ';' +
+  '    return dv ? new Promise(function (ok) { setTimeout(function () { ok(json(rv)); }, +dv[1]); }) : json(rv);' +
+  '  }' +
   '  if (u.indexOf("action=validarCupon") >= 0) {' +
   '    if (/RULETA-OK01/.test(u)) return json(' + JSON.stringify(CUPON_RULETA) + ');' +
   '    if (/RUL-OK01/.test(u)) return json(' + JSON.stringify(CUPON_OK) + ');' +
@@ -434,6 +448,81 @@ async function main() {
        plata haya cambiado. */
     chk(/no (aplica|se puede usar)/i.test(red.resumen) && red.resumen.indexOf('RULETA-OK01') >= 0,
         'y se dice por que, nombrando el cupon, en vez de dar cero callado', red.resumen.slice(0, 90));
+
+    /* ── 9. UN VENDEDOR NUEVO, QUE SOLO EXISTE EN LA PLANILLA ─────────
+       El caso del cuarto vendedor. Su zona no esta escrita en
+       BARRIOS_PILAR_MODAL, asi que las defensas 2 y 3 de `_pilarBarrioIsRed()`
+       no lo reconocen: la 2 mira la lista del codigo y la 3 su zona canonica
+       contra esa misma lista. Queda la 1 (el barrio en `barrioToVendedor`), que
+       necesita que la planilla haya contestado — y la 4, la copia. */
+    console.log('\n' + DIM + '== 9. Un vendedor nuevo, solo en la hoja Vendedores ==' + RST);
+    await abrir({
+      maleu_zone: 'pilar',
+      maleu_pilar_zona: { val: 'Zona Nueva', nombre: 'Zona Nueva', ts: 1 },
+      maleu_pilar_barrio: { val: 'Barrio Nuevo Uno', nombre: 'Barrio Nuevo Uno', ts: 1 },
+    });
+    const vn = await estado();
+    chk(vn.esRed === true, 'su barrio lo atiende EL, no Maleu', JSON.stringify({ esRed: vn.esRed }));
+    chk(vn.entregaMaleu === false, 'y por lo tanto no lo entrega Maleu');
+    chk(vn.carne === 0, 'sin carne: la hoja Red no tiene columnas de kilos', String(vn.carne));
+    chk(vn.dias.length > 0 && vn.dias.every(function (d) { return /Vier/i.test(d); }),
+        'solo viernes, como los otros tres', vn.dias.join(' · '));
+    chk(vn.envio === 3000, 'y el envio de $3.000, que se queda el vendedor', String(vn.envio));
+    const enElCodigo = await ev('BARRIOS_PILAR_MODAL.some(function (b) { return b.val === "Zona Nueva"; })');
+    chk(enElCodigo === false,
+        'CONTROL: su zona NO esta en BARRIOS_PILAR_MODAL, o sea que esto no lo resuelve la lista del codigo');
+
+    /* LA VENTANA: el cliente que VUELVE, antes de que conteste la planilla.
+       `barrioToVendedor` esta vacio hasta que llega `action=vendedores`, y su
+       barrio ya viene guardado del localStorage. Sin la copia de la ultima
+       visita, ahi se le ofrece carne y miercoles, y su pedido se va a la hoja
+       Pilar: la venta del vendedor, cobrada por nosotros. */
+    console.log('\n' + DIM + '   la ventana de los primeros segundos (el que vuelve):' + RST);
+    nav++;
+    await cli.enviar('Page.navigate', { url: 'http://127.0.0.1:' + PUERTO + '/index.html?n=' + nav +
+      '&demoraVend=4000&semilla=' + encodeURIComponent(JSON.stringify({
+        maleu_zone: 'pilar',
+        maleu_pilar_zona: { val: 'Zona Nueva', nombre: 'Zona Nueva', ts: 1 },
+        maleu_pilar_barrio: { val: 'Barrio Nuevo Uno', nombre: 'Barrio Nuevo Uno', ts: 1 },
+        maleu_vendedores: { ts: Date.now(), vendedores: VENDEDORES.vendedores },
+      })) });
+    await esperar("typeof PRODUCTOS !== 'undefined' && typeof _pilarBarrioIsRed === 'function'", 15000);
+    await dormir(400);
+    const ventana = JSON.parse(await ev('JSON.stringify({' +
+      ' llego: Object.keys(barrioToVendedor || {}).length,' +
+      ' esRed: _pilarBarrioIsRed(), entregaMaleu: _pilarEntregaMaleu(),' +
+      ' carne: document.querySelectorAll(".carne-card").length })'));
+    chk(ventana.llego > 0,
+        'la copia de la ultima visita se lee al arrancar', 'barrios conocidos: ' + ventana.llego);
+    chk(ventana.esRed === true,
+        'y su barrio YA es de vendedor, sin esperar a la planilla', JSON.stringify({ esRed: ventana.esRed }));
+    chk(ventana.carne === 0, 'asi que no se le ofrece carne en esa ventana', String(ventana.carne));
+
+    /* EL CONTROL, y sin el los tres de arriba no probarian nada: SIN la copia,
+       en esa misma ventana el barrio pasa por "no es de vendedor". Es el agujero
+       que la copia cierra, medido en vez de supuesto. */
+    console.log('\n' + DIM + '   CONTROL: lo mismo pero SIN la copia guardada:' + RST);
+    nav++;
+    await cli.enviar('Page.navigate', { url: 'http://127.0.0.1:' + PUERTO + '/index.html?n=' + nav +
+      '&demoraVend=4000&semilla=' + encodeURIComponent(JSON.stringify({
+        maleu_zone: 'pilar',
+        maleu_pilar_zona: { val: 'Zona Nueva', nombre: 'Zona Nueva', ts: 1 },
+        maleu_pilar_barrio: { val: 'Barrio Nuevo Uno', nombre: 'Barrio Nuevo Uno', ts: 1 },
+      })) });
+    await esperar("typeof PRODUCTOS !== 'undefined' && typeof _pilarBarrioIsRed === 'function'", 15000);
+    await dormir(400);
+    const sinCopia = JSON.parse(await ev('JSON.stringify({' +
+      ' llego: Object.keys(barrioToVendedor || {}).length, esRed: _pilarBarrioIsRed() })'));
+    chk(sinCopia.llego === 0 && sinCopia.esRed === false,
+        'sin copia SI se abre el agujero, o sea que lo de arriba lo cierra la copia',
+        JSON.stringify(sinCopia));
+    /* Y que igual se corrige cuando la planilla contesta: la copia acelera, no
+       reemplaza. */
+    await esperar('Object.keys(barrioToVendedor || {}).length > 0', 10000);
+    await dormir(400);
+    const yaLlego = JSON.parse(await ev('JSON.stringify({ esRed: _pilarBarrioIsRed() })'));
+    chk(yaLlego.esRed === true,
+        'y cuando la planilla contesta se corrige solo', JSON.stringify(yaLlego));
 
     /* ── 8. NADA SALIO ─────────────────────────────────────────────── */
     console.log('\n' + DIM + '== Nada salio hacia afuera ==' + RST);

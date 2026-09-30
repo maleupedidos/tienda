@@ -19,7 +19,8 @@
  * B. la tienda con ?cupon=RUL-XXXX
  *    · lo valida, lo guarda en el celular y saca el ?cupon= de la URL
  *    · el resumen del pedido lo muestra "de regalo" y el pedido lo manda
- *    · el WhatsApp dice el premio
+ *    · la pantalla de cierre dice el premio (hasta el 29/9/2026 lo decia el
+ *      WhatsApp, que con el pedido cerrandose en la tienda ya no le llega a nadie)
  *    · con minimo sin alcanzar: dice cuanto falta, NO lo manda y lo conserva
  *
  * Sale con codigo 1 si algo falla.
@@ -164,6 +165,14 @@ async function main() {
     const evS = async (e) => { try { return await ev(e); } catch (x) { return null; } };
     const lsDelOrigen = async (k) => { await cli.enviar('Page.navigate', { url: base + '/__vacio' }); await dormir(500); return ev(`localStorage.getItem(${JSON.stringify(k)})`); };
     const esperar = async (e, ms) => { for (let t = 0; t < ms; t += 100) { if (await evS(e)) return true; await dormir(100); } return false; };
+    /* LA SENAL DE QUE EL PEDIDO SE CERRO, y ya no es la navegacion a wa.me: desde
+       el 29/9/2026 el pedido termina en la tienda. Lo que este test mide del
+       final —que el premio se diga y que un premio sin minimo alcanzado no se
+       gaste— no cambio; cambio de donde sale el instante. */
+    const esperarCierre = async (ms) => await esperar(
+      "!!document.querySelector('.send-card.done')", ms || 15000);
+    const pantallaCierre = async () => await ev(
+      "(document.querySelector('.send-card.done') || {}).textContent || ''");
     const tipear = (id, v) => ev(`(function(){var e=document.getElementById('${id}');e.value=${JSON.stringify(v)};e.dispatchEvent(new Event('input',{bubbles:true}));return 1;})()`);
     /* Desde el 23/9/2026 girar son DOS pasos: el boton del formulario ARMA la
        rueda ("¡Listo! Quiero girar") y despues se tira con el dedo. El test no
@@ -397,12 +406,22 @@ async function main() {
     chk(/6 empanadas de regalo · RUL-AB12\s?de regalo/.test(res) && !/-\$0/.test(res), 'el resumen del pedido muestra el premio "de regalo" (sin un descuento de $0)', res);
     posts.length = 0; navs.length = 0;
     await ev('enviarPedido()');
-    await esperar(`false`, 0);
-    for (let t = 0; t < 12000 && !navs.length; t += 200) await dormir(200);
+    const cerro = await esperarCierre();
     const ped = posts.find((p) => !p.action) || {};
-    const wa = decodeURIComponent((navs[0] || '').replace(/^[^?]*\?text=/, ''));
     chk(ped.cupon === 'RUL-AB12', 'el pedido viaja con el código (el backend lo marca usado al guardarlo)', ped.cupon);
-    chk(/🎁 Premio de la ruleta \(RUL-AB12\): 6 empanadas de regalo/.test(wa), 'el WhatsApp dice el premio, así el que arma el pedido lo suma', wa.slice(0, 200));
+    chk(cerro, 'y el pedido se cierra en la tienda, sin pasar por WhatsApp');
+    /* EL PREMIO SE DICE EN LA CONFIRMACION. Hasta el 29/9/2026 esto lo medía en
+       el mensaje de WhatsApp —"así el que arma el pedido lo suma"—, y con el
+       pedido cerrandose en la tienda ese mensaje no le llega a nadie. Al
+       adaptarlo aparecio que la pantalla NO decia el premio: ni ahi, ni en el
+       detalle (un regalo no es un item del carrito), ni entre los seis
+       parametros del template de WATI. El que gano su premio no lo veia
+       confirmado en ningun lado. Se arreglo en app.js el mismo dia.
+       Se pide que lo DIGA, no la frase: el texto del premio lo escribe el
+       backend en la hoja Cupones. */
+    const pant = await pantallaCierre();
+    chk(/6 empanadas de regalo/.test(pant) && /RUL-AB12/.test(pant),
+        'y la pantalla de cierre le dice cual es su premio', String(pant).replace(/\s+/g, ' ').slice(0, 150));
     chk(await lsDelOrigen('maleu_cupon_premio') === null, 'usado el premio, se borra del celular');
 
     cupon = { ok: true, codigo: 'RUL-FR99', tipo: 'REGALO', valor: 0, scope: 'TODO', mensaje: 'Un Franui de regalo', stack: true, descuento: 0, pending: false, minimo: 50000 };
@@ -412,9 +431,15 @@ async function main() {
     chk(res2.tot < 50000 && /Un Franui de regalo · RUL-FR99\s?sumá \$38\.500/.test(res2.s), 'con mínimo de $50.000 sin alcanzar: dice cuánto falta', res2);
     posts.length = 0; navs.length = 0;
     await ev('enviarPedido()');
-    for (let t = 0; t < 12000 && !navs.length; t += 200) await dormir(200);
+    const cerro2 = await esperarCierre();
     const ped2 = posts.find((p) => !p.action) || {};
-    chk(navs.length && !ped2.cupon && !posts.some((p) => p.action === 'usarCupon'), 'y NO lo manda con el pedido (no se gasta)', { cupon: ped2.cupon, acciones: posts.map((p) => p.action || 'pedido') });
+    chk(cerro2 && !ped2.cupon && !posts.some((p) => p.action === 'usarCupon'), 'y NO lo manda con el pedido (no se gasta)', { cerro: cerro2, cupon: ped2.cupon, acciones: posts.map((p) => p.action || 'pedido') });
+    /* Y no se nombra un premio que no se aplico: decirle "tu premio" a alguien
+       que no llego al minimo es prometerle algo que no va a recibir. */
+    const pant2 = await pantallaCierre();
+    chk(!/Tu premio/i.test(pant2),
+        'ni la pantalla de cierre lo nombra, porque no se aplico',
+        String(pant2).replace(/\s+/g, ' ').slice(0, 120));
     chk(await lsDelOrigen('maleu_cupon_premio') === 'RUL-FR99', 'queda guardado en el celular para el próximo pedido');
 
     cupon = { ok: false, codigo: 'RUL-AB12', error: 'Este premio ya se usó' };

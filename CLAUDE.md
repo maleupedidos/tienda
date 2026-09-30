@@ -175,7 +175,7 @@ Los otros dos:
 
 | | |
 |---|---|
-| `node _tools/diagnostico-vivo.js` | recorre maleu.com.ar como una persona (elige zona en el modal) y reporta el estado interno |
+| `node _tools/diagnostico-vivo.js` | recorre maleu.com.ar como una persona (escribe su barrio en el buscador) y reporta que hay publicado: el `?v=`, el catalogo, el interruptor del cierre, el stock del ERP, las fechas de entrega y las excepciones. Solo lectura. **Reescrito el 29/9/2026**: lo de antes medía `?autopedido=1`, eliminado el 8/9 |
 
 **El `index.html` se sirve con `max-age=600`** (10 min), asi que un cambio tarda
 como mucho ese rato en verse: el navegador pide el index nuevo, ve un `?v=`
@@ -2893,7 +2893,8 @@ arrancando en el 1, la barra llenandose sola y el total sin seguir al pago—:
 > datos-cliente (36 ok, se le fue el rojo preexistente), envio, zonas, sin-stock,
 > reserva, vendedor, pedido, sugerencias, descuento, paneles y llamadas. El unico
 > rojo que queda es el de `verificar-ultimo-pedido` ("dice la carne que llevo"),
-> **preexistente y medido contra HEAD: falla igual**.
+> **preexistente y medido contra HEAD: falla igual**. **CERRADO esa misma noche, y
+> no era del test: la tienda perdia cortes** — ver la seccion mas abajo.
 
 ### La confirmacion ocupa la pantalla (29/9/2026, a la tarde)
 
@@ -3050,7 +3051,9 @@ En verde sin tocarlas: `pedido`, `zonas`, `vendedor`, `descuento`, `entrada`
 
 > [!note] Dos rojos preexistentes, medidos contra HEAD limpio (`RAIZ=`)
 > `verificar-ultimo-pedido` (*"dice la carne que llevó"*) y `verificar-franja`
-> (*"cualquier otro día están como siempre"*, intermitente). Los 9 de
+> (*"cualquier otro día están como siempre"*, intermitente). **El primero se cerró
+> esa misma noche y NO era del test**: ver «"También llevaste carne" perdía la
+> mitad». El de `verificar-franja` sigue abierto, medido contra HEAD limpio. Los 9 de
 > `verificar-paginas` son los comentarios con el nombre de Tadeo en
 > `ruleta.html`, y **no crecieron**.
 
@@ -3115,15 +3118,12 @@ tienda retoma sola. Cualquier otra ruta equivocada va a la tienda a secas.
 Redirige con **`location.replace` y no `href`**: asi la pagina de error no queda
 en el historial y el "atras" no vuelve a caer en ella.
 
-> [!warning] Pendiente que esto destapo: EL CARRITO NO SOBREVIVE A UNA RECARGA
-> `cart` es `let cart = {}` — vive en memoria y **no se guarda en ningun lado**.
-> Verificado. O sea que quien recarga la tienda con el carrito lleno lo pierde,
-> y eso **ya pasaba antes** de tener una URL propia.
->
-> No lo empeora este cambio (recargar siempre lo perdio), pero lo vuelve mas
-> facil de encontrar. **Es lo proximo que hay que hacer**: guardar `cart`,
-> `comboCart` y `piezaCart` y restaurarlos conciliando con el stock — la
-> conciliacion ya existe (`_ensureCartFitsDate`, `_piezasConciliarCarrito`).
+> [!important] Esto destapo que EL CARRITO NO SOBREVIVIA A UNA RECARGA — resuelto el 29/9/2026
+> `cart` era `let cart = {}`: vivia en memoria y no se guardaba en ningun lado,
+> asi que quien recargaba con el pedido armado lo perdia entero. **No lo abrio
+> este cambio** —recargar siempre lo perdio— pero darle URL propia al checkout lo
+> volvio facil de encontrar. Se cerro esa misma noche: ver **EL CARRITO SOBREVIVE
+> A UNA RECARGA**, mas abajo.
 
 ### Lo que aparecio de paso
 
@@ -3287,6 +3287,306 @@ pero dejame llenar el pedido con otra cosa"*, **que es la que mas vende de las
 tres**. `recorteAlCatalogo()` cierra el cartel y el checkout **sin mover la
 fecha**: el cliente ya dijo que la queria, y el catalogo se topea solo contra
 el stock de ese dia.
+
+## Los tres rojos que quedaban: cero (29/9/2026, a la noche)
+
+Al terminar la noche del 29/9 las **32 redes están en verde**, salvo los 9 problemas de
+`verificar-paginas` que son comentarios con el nombre de Tadeo en `ruleta.html` y que él
+dijo que no importan. Los tres rojos que estaban anotados como preexistentes se cerraron,
+y **dos de los tres eran de la tienda, no de los tests**:
+
+| el rojo | qué era |
+|---|---|
+| `verificar-ultimo-pedido` · *"dice la carne que llevó"* | **la tienda**: perdía los cortes que hoy no están a la vista |
+| `verificar-ruleta` · 2 chequeos | **la tienda**: el premio no se decía en ninguna parte (y los chequeos medían el WhatsApp, que ya no llega) |
+| `verificar-franja` · *"cualquier otro día están como siempre"* | **el test**: medía `#pago-hint` sin abrir el checkout |
+
+### El de la franja: un cartel que vive adentro del checkout
+
+`#pago-hint` está dentro del checkout, y desde el 29/9 a la tarde el checkout es **su
+propia pantalla** (`position: fixed`). Con el checkout cerrado ese cartel tiene
+`offsetParent === null`, así que se medía como escondido siempre.
+
+> [!danger] Y los otros tres chequeos de ese bloque pasaban por la razón equivocada
+> Los tres momentos que exigen que el cartel **no** hable del 10% (el día de la ruleta, y
+> esa noche hasta las 23:59) daban verde porque el cartel era invisible por otro motivo:
+> **con el cartel roto habrían dado verde igual**. Es la regla que este repo ya tiene
+> escrita dos veces — antes de exigir que algo no aparezca, hay que exigir que en el caso
+> anterior aparezca — y acá el único chequeo que lo exigía era justamente el que fallaba.
+>
+> Ahora el test abre el checkout y va al paso del pago antes de medir, así que los cuatro
+> momentos miden de verdad. **19 ok** a 390px.
+
+> [!important] Estuvo mudo tres días porque `chk` tiraba el tercer argumento
+> `const chk = (ok, t) => ...`: varios chequeos de esa red ya le pasaban un `extra` con
+> lo medido, y se descartaba. O sea que el rojo decía *"y cualquier otro día están como
+> siempre"* y nada más — no había con qué diagnosticarlo, y quedó anotado como
+> "intermitente" sin que nadie supiera qué medía. Con el `extra` impreso, la primera
+> corrida dijo `{"franja":true,"hint":false,...}` y el diagnóstico salió solo.
+>
+> **Un rojo mudo no se puede arreglar.** Si una red no imprime lo que midió, eso es lo
+> primero que hay que arreglar, antes del rojo.
+
+## "También llevaste carne" perdía la mitad (29/9/2026, a la noche)
+
+> [!danger] El rojo que llevaba dos días anotado como preexistente tenía razón
+> `verificar-ultimo-pedido` daba **1 mal** en *"dice la carne que llevó"* desde el
+> 29/9 a la tarde, y quedó escrito como preexistente sin medir por qué. Medido ahora:
+> **la tienda perdía cortes.**
+>
+> `_ultimoItems` resolvía la carne contra `getActiveProducts()`, que saca los cortes sin
+> piezas cuando hay piezas de otro corte. Con piezas sólo de Vacío, el cliente que había
+> llevado **Vacío y Entraña** leía *"También llevaste carne: Vacío"*.
+
+**Lo que llevó la vez pasada es su historia y no cambia con el freezer de hoy**: ahora
+sale de `PRODUCTOS`. Lo que sí se respeta es la zona — en un barrio con vendedor la carne
+no se vende, así que nombrarla sería ofrecer algo que ahí no existe.
+
+**Y el botón "Elegir las piezas de hoy" ahora sale sólo si la categoría Carnes está a la
+vista.** Sin eso lleva a una sección que no existe y no pasa nada: *"un botón que no hace
+nada es peor que no tener botón: el cliente concluye que la tienda está rota"* — el
+comentario por el que existe `getCategoriasVisibles`. Decirle **qué** llevó es cierto
+igual; ofrecerle **ir** sólo tiene sentido si hay adónde.
+
+La red pasó a **56 chequeos** con un escenario nuevo, y sus dos bugs reinyectados —la
+carne desde `activos`, y el botón sin guarda— **se agarran los dos**.
+
+> [!important] El control de ese escenario me corrigió en la primera corrida
+> Lo escribí con el inventario **vacío**, esperando que la categoría Carnes no estuviera.
+> Está: desde el 11/9/2026 `vacio` y `sin-datos` son dos estados distintos, y con el
+> vacío los cinco cortes se muestran diciendo "Sin stock". Para que Carnes no se dibuje,
+> el inventario tiene que **fallar**. El chequeo del control —*"no se pudo traer el
+> inventario (sin-datos, no vacío)"*— es el que lo dejó a la vista.
+
+> [!warning] Un escenario que apaga algo tiene que devolver el estado
+> El mío dejaba la página sin carne, y el escenario siguiente se rompía buscando un botón
+> que yo había hecho desaparecer a propósito (`Cannot read properties of null`). Se cierra
+> reabriendo normal al final. Si una red empieza a romperse en un escenario que no tocaste,
+> mirá qué dejó puesto el anterior.
+
+## El premio de la ruleta no se decía en ninguna parte (29/9/2026, a la noche)
+
+> [!danger] El que ganaba un premio no lo veía confirmado en ningún lado
+> Hasta el 29/9 el mensaje de WhatsApp cerraba con *"🎁 Premio de la ruleta
+> (RUL-AB12): 6 empanadas de regalo"*, y eso servía para dos cosas: que el cliente vea
+> que su premio se aplicó, y —dice el comentario del test que lo cuidaba— *"así el que
+> arma el pedido lo suma"*.
+>
+> Con el pedido cerrándose en la tienda, **ese mensaje ya no le llega a nadie**. Y el
+> premio no estaba en ningún otro lugar: no en la pantalla de cierre, no en `detalle`
+> (un regalo no es un item del carrito) y no entre los seis parámetros del template de
+> WATI (`nombre`, `pedido`, `entrega`, `direccion`, `detalle`, `total`).
+
+Es **el mismo agujero que el de la reserva de carne en efectivo**, del mismo día: algo
+que sólo se decía en el WhatsApp y se quedó sin lugar donde decirse cuando el WhatsApp
+dejó de existir. Ahora la pantalla de cierre lo dice, **primero y no al pie**: el que
+ganó algo entra a confirmar mirando si se lo aplicaron.
+
+    TU PREMIO     6 empanadas de regalo · RUL-AB12
+    ENTREGA       Viernes 02/10 · 19 a 21 hs
+    DIRECCIÓN     …
+    TOTAL         $46.500 · Transferencia
+
+Va por `_sendDoneFila`, o sea por `textContent`: el texto del premio lo escribe Backend
+en la hoja `Cupones`, así que viene de afuera del código. Y **no lleva caja propia** —con
+el naranja de marca alcanza—: otra caja en esa pantalla competiría con la del alias, que
+es la que el cliente necesita para pagar.
+
+> [!important] Y no se nombra un premio que no se aplicó
+> Un premio con mínimo sin alcanzar no viaja con el pedido (no se gasta) y **tampoco
+> aparece en la confirmación**: decirle "tu premio" a alguien que no llegó al mínimo es
+> prometerle algo que no va a recibir. `_premioActivo()` es la misma función que decide
+> las dos cosas, así que no pueden desacordarse.
+
+> [!important] Lo encontró adaptar dos chequeos, no buscarlo
+> `verificar-ruleta.js` daba **2 rojos** desde el cambio del cierre, los dos porque usaban
+> la navegación a `wa.me` como señal de *"el pedido se cerró"* — el mismo caso de los once
+> chequeos de cinco redes que se adaptaron ese día, que no se habían mirado acá. Al
+> cambiar la señal por la pantalla de cierre, el chequeo del premio siguió en rojo: y esa
+> vez **era la tienda**.
+>
+> Hoy son **37 ok**, con un chequeo que pide que el premio se diga (no la frase exacta: el
+> texto lo escribe Backend) y otro que exige que un premio no aplicado no se nombre.
+> Reinyectando el bug —`premio: null`— el primero da MAL y sólo ése.
+
+## Un vendedor nuevo entra sin tocar el código (29/9/2026, a la noche)
+
+Hasta esta noche, sumar un vendedor eran **dos pasos que tenían que salir juntos**: su
+fila en la hoja `Vendedores` y su zona escrita en `BARRIOS_PILAR_MODAL`. Si salía sólo
+la fila quedaba una ventana en la que la tienda conocía su barrio pero no sabía que era
+de vendedor. **Hoy alcanza con la fila.**
+
+> [!danger] El agujero, medido: las tres defensas no cubren a un vendedor nuevo
+> `_pilarBarrioIsRed()` contesta *"¿a este pedido lo atiende un vendedor?"*, y de ahí
+> cuelgan los días de entrega, el envío, el alias al que se transfiere, el tope de stock
+> y si se ofrece carne. Sus tres defensas son:
+>
+> | | mira | sirve para un vendedor nuevo |
+> |---|---|---|
+> | 1 | el barrio en `barrioToVendedor` | **sí, pero recién cuando contesta la planilla** |
+> | 2 | la lista `BARRIOS_PILAR_MODAL` | no: su zona no está escrita ahí |
+> | 3 | su zona canónica contra esa misma lista | **no, por lo mismo** |
+>
+> O sea que en los segundos que tarda `action=vendedores`, el cliente que **vuelve** —con
+> su barrio ya guardado en el navegador— pasaba por *"no es de vendedor"*: se le ofrecía
+> carne y miércoles, y si mandaba el pedido ahí **se iba a la hoja `Pilar` en vez de a la
+> `Red`**. La venta del vendedor, cobrada por nosotros. Es el mismo agujero que se cerró
+> el 28/9 para los tres de hoy (la defensa 3), reabierto para el cuarto.
+
+**La cuarta defensa: `maleu_vendedores` se lee al arrancar.** La clave ya se guardaba en
+cada visita y ya se usaba de respaldo cuando el fetch falla; lo único que faltaba era
+leerla **antes** de esperar la respuesta, que es donde está la ventana. Es el mismo
+patrón que la copia de piezas y la del carrito.
+
+**Vence a los 7 días**, holgado a propósito: la copia se reescribe en cada visita, así que
+sólo alcanza a alguien que no entró en una semana — y a ese la respuesta de ahora lo
+corrige a los segundos igual. El error que este plazo podría causar (decir que un barrio
+es de un vendedor que se fue) es mucho menos grave que el que evita.
+
+> [!important] De paso, el armado de `barrioToVendedor` estaba escrito DOS veces
+> Una copia en el camino feliz y otra en el `catch`. Ahora los tres caminos —la
+> respuesta, la copia al arrancar y la copia cuando el fetch falla— pasan por
+> `_vendedoresPoner(lista)`.
+
+**Su zona en `BARRIOS_PILAR_MODAL` sigue valiendo la pena, pero ya no es bloqueante.** Le
+da el nombre lindo de la zona, la chapita con su nombre y sus sub-barrios en el buscador
+desde la primera visita. Sin eso, el cliente lo encuentra igual —`_dirDestinos` agrega
+los barrios que llegan de la planilla— y su pedido cae en la hoja correcta.
+
+> [!note] El cliente NUEVO de ese vendedor queda cubierto solo
+> En su primera visita no tiene copia, pero tampoco puede elegir un barrio que la tienda
+> todavía no conoce: el buscador los saca de `barrioToVendedor`. Si escribe su barrio a
+> mano cae en "Otra zona de Pilar" y lo entrega Maleu — que es lo que la pantalla le
+> dijo, y la misma decisión que ya estaba tomada para los otros tres.
+
+**Lo prueba el escenario 9 de `node _tools/verificar-vendedor.js`** (55 chequeos en
+total): un cuarto vendedor cuya zona no está en el código, con su barrio yendo a la Red,
+sin carne, sólo viernes y con el envío de $3.000; después **la ventana**, con la
+respuesta de la planilla demorada 4 s, donde su barrio ya es de vendedor por la copia.
+
+> [!important] Y su control, sin el cual los tres chequeos de la ventana no probarían nada
+> La misma navegación **sin** la copia guardada: ahí `esRed` da **false** y el agujero se
+> ve. Después se espera a que conteste la planilla y se comprueba que se corrige solo —
+> la copia acelera, no reemplaza.
+
+## El carrito sobrevive a una recarga (29/9/2026, a la noche)
+
+Los tres carritos —`cart`, `comboCart` y `piezaCart`— eran `{}` en memoria. El que
+recargaba la tienda con el pedido armado lo perdía entero y sin un aviso. Y no hace
+falta que recargue a propósito: alcanza un "atrás" de más, o que el sistema cierre la
+pestaña de fondo para liberar memoria, que en un iPhone pasa todo el tiempo.
+
+| | antes | ahora |
+|---|---|---|
+| recargar con el pedido armado | **se perdía todo** | vuelve igual, con su total |
+| el combo con sus gustos | se perdía | vuelve con los gustos elegidos |
+| la pieza de carne | se perdía | vuelve, con su peso y su precio |
+| cuándo se ve | — | **al instante**, sin esperar al backend |
+
+Vive en `localStorage` (`maleu_carrito_v1`), no en el ERP, por lo mismo que "Lo que
+pediste la última vez": la tienda es pública y no tiene login, y un endpoint que
+devuelva el carrito de un teléfono sería una puerta a los datos de cualquiera.
+
+> [!important] Se guarda desde `updateUI()`, que es la raíz
+> Hay **treinta** lugares que tocan los tres carritos. Colgar el guardado de cada
+> uno es exactamente cómo los botones dejaron de andar el 10/9 y cómo los carteles
+> de stock se borraban solos: siempre falta uno. Todo cambio del carrito termina
+> repintándolo, o sea que termina en `updateUI()`.
+
+> [!warning] La copia se lee al arrancar a una variable, ANTES de `applyZone()`
+> `applyZone()` vacía los tres carritos, y en el arranque corre antes de que se los
+> pueda restaurar. Si la restauración leyera el `localStorage` en ese momento, el
+> arranque se pisaría su propia copia. Por eso `_cartLeerCopia()` se llama junto a
+> `_piezasLeerCopia()`, arriba de todo, y sólo deja lo leído en `_cartCopia`.
+
+**Vence a las 12 horas**, el mismo plazo que la copia de piezas y por el mismo motivo:
+adentro puede haber una pieza de carne que ya se vendió y cantidades armadas contra un
+freezer que cambió. Lo que aguanta más que eso no es un carrito, es un recuerdo.
+
+**Cada cosa vuelve sólo si todavía se puede pedir en esa zona.** Un producto que salió
+del catálogo, un combo dado de baja o —el que cuesta plata— **un corte de carne en un
+barrio con vendedor**: esos pedidos van a la hoja `Red`, que no tiene columnas de kilos,
+así que la carne se cobraría y no se guardaría en ningún lado.
+
+> [!important] El stock NO se chequea al restaurar, y no es un olvido
+> Cuando la restauración corre, `fetchStock` todavía no volvió. El tope lo aplica
+> `fetchStock` cuando llega, que ya recortaba el carrito. Es la misma división que con
+> las piezas: se dibujan de la copia y se concilian con `_piezasConciliarCarrito`
+> cuando llega el inventario de ahora.
+>
+> De paso, **ese aviso ahora dice qué y cuánto**. Decía *"Tu carrito fue ajustado al
+> stock disponible"* con la duración por default de 800 ms — el cliente veía 7 donde
+> había puesto 15 y no sabía si se había equivocado él. Es la lección del cartel de
+> recorte del 28/9 aplicada a este camino; queda como aviso y no como cartel, porque
+> esto corre solo cada 60 s y un cartel que pide una decisión saltando sin que el
+> cliente toque nada es peor que el problema.
+
+**Lo que no se guarda acá**: la zona (la escribe `setZone`), la fecha (`_loadSavedDate`)
+ni los datos del cliente (`guardarDatosCliente`). Cada cosa la sigue guardando quien ya
+la guardaba — dos formas de guardar el mismo dato es como se despegan las cosas acá.
+
+### La red: `node _tools/verificar-carrito.js [ancho]`
+
+**35 chequeos**, verdes a 390 y 1440px, con el reloj congelado el martes 15/9/2026:
+la recarga inmediata (productos, combo con gustos y pieza de carne, el total, el badge,
+la barra de abajo y la card mostrando su cantidad); una copia de 13 horas que no se usa
+—con su control de 11 horas, que sí—; una copia de otra zona; un producto que ya no
+existe; **la carne en un barrio con vendedor**; el cliente sin zona elegida; el vaciado;
+una copia rota; y cero POST.
+
+**Ninguna red podía ver esto**, y por una razón de método: todas abren un perfil de
+Chrome nuevo y navegan una vez, así que la segunda visita no existía. Es la misma razón
+por la que `verificar-datos-cliente.js` tuvo que nacer el 11/9. Acá se resuelve con el
+PREP: siembra el `localStorage` una sola vez por `n=`, así que volver a navegar a la
+misma URL es **una recarga de verdad**.
+
+Probada al revés con **siete bugs reinyectados de a uno** —sin vencimiento, sin mirar la
+zona, sin filtrar lo que la zona no vende, guardando con la zona provisoria, sin borrar
+la copia al vaciar, sin repintar, y sin guardar—: **los siete se agarran**. Contra la
+tienda de antes da **17 rojos**. Se corre con `RAIZ=<carpeta>`.
+
+> [!danger] Dos de los siete pasaron en verde primero, y las dos veces era el instrumento
+> **1. El badge se repintaba por casualidad.** Sacando el repintado de la restauración,
+> el numerito del carrito y la barra de abajo seguían bien: los vuelve a pintar
+> `_formObs`, un `IntersectionObserver` que observa el formulario para otra cosa y se
+> dispara solo al arrancar. Lo que queda mal son **las cards**: la del producto que está
+> en el carrito sigue diciendo "+ Agregar" con dos unidades adentro. O sea que el badge
+> no servía para medir el repintado, y está anotado en el código para que nadie saque esa
+> llamada creyéndola redundante.
+>
+> **2. El backend simulado contestaba más rápido que lo que se quería medir.** Con las
+> respuestas al instante, `fetchVendedores` repinta el catálogo a los pocos milisegundos
+> y tapa la falta. En producción Apps Script tarda segundos, y son esos segundos los que
+> el cliente pasa mirando su pedido: hay que ponerle demora (`&demora=1500`). **El
+> instrumento tiene que ser más lento que lo que mide, no más rápido.**
+>
+> **3. Y uno de los dos bugs no era alcanzable por el camino que lo medía.** El de la
+> zona provisoria pasaba porque con zona provisoria el carrito está *siempre* vacío —la
+> puerta del primer "+ Agregar" lo impide—, así que la rama del carrito vacío borraba
+> igual y la defensa no se ejercitaba nunca. El test le mete algo a la fuerza: esa
+> defensa cuida de un camino futuro que agregue antes de preguntar la zona.
+
+### `diagnostico-vivo.js` medía un caso que ya no existía
+
+Estaba listado como herramienta vigente y **daba rojos que no eran de la tienda**.
+Buscaba `?autopedido=1` (eliminado el 8/9/2026), `MODO_AUTOPEDIDO`, `_zonaPermite()` y
+un `#banner-autopedido` que no existen; elegía la zona tocando un botón del modal viejo
+—desde el 28/9 el modal es un buscador de dirección— y terminaba preguntando si cuatro
+sorrentinos estaban en Estancias, que se abrieron el 10/9/2026. **No estaba viejo: era
+el script de un problema resuelto tres veces.**
+
+Reescrito el 29/9/2026 para lo único que ninguna red local puede contestar: **cómo está
+lo que hay publicado ahora**. Entra a `maleu.com.ar` como una persona, escribe su barrio
+en el buscador, y reporta el `?v=` del `app.js` servido, cuántos productos y combos hay,
+si el cierre en la tienda está prendido, los umbrales del envío, la primera pantalla sin
+zona elegida, el stock y las piezas que devolvió el ERP, las próximas fechas de entrega
+y las excepciones de consola. Es **de sólo lectura**: corta todo POST por CDP y bloquea
+Analytics y Meta, para no sumarle una visita falsa a las métricas de verdad.
+
+Se corre con `node _tools/diagnostico-vivo.js`, y `URL=` / `BARRIO=` lo apuntan a otro
+lado. **No reemplaza a las redes** —ellas prueban casos que en producción no se pueden
+provocar— ni a `probar-cache.js`, que es el único que contesta si el navegador del
+cliente recibe el código de ahora.
 
 ## Lo que NO está acá
 

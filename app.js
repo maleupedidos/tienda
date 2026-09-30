@@ -1567,6 +1567,137 @@ let piezasEstado = 'cargando';
    copia porque la copia tambien la trae. */
 let reservaInfo = null;
 _piezasLeerCopia();
+
+/* EL CARRITO SOBREVIVE A UNA RECARGA (29/9/2026)
+
+   Hasta hoy los tres carritos vivian SOLO en memoria: el que recargaba la
+   tienda con el pedido armado lo perdia entero y sin un aviso. Quedo anotado
+   como pendiente ese mismo dia al darle URL propia al checkout, que es lo que
+   lo volvio facil de encontrar — pero el agujero no lo abrio eso: una recarga,
+   un "atras" de mas, o que el sistema cierre la pestaña de fondo para liberar
+   memoria, que en un iPhone pasa todo el tiempo.
+
+   Vive en el navegador y no en el ERP, por lo mismo que "Lo que pediste la
+   ultima vez": la tienda es publica y no tiene login, y un endpoint que
+   devuelva el carrito de un telefono seria una puerta a los datos de cualquiera
+   (ver LAS CUENTAS DE CLIENTE, 28/9/2026).
+
+   VENCE A LAS 12 HORAS, el mismo plazo que la copia de piezas y por el mismo
+   motivo: adentro puede haber una pieza de carne que ya se vendio y cantidades
+   armadas contra un freezer que cambio. Lo que aguanta mas que eso no es un
+   carrito, es un recuerdo.
+
+   Lo que NO guarda: la zona (la escribe `setZone`), la fecha (`_loadSavedDate`)
+   ni los datos del cliente (`guardarDatosCliente`). Cada cosa la sigue
+   guardando quien ya la guardaba — dos formas de guardar el mismo dato es como
+   se despegan las cosas en este repo. */
+var CARRITO_COPIA = 'maleu_carrito_v1';
+var CARRITO_COPIA_MS = 12 * 3600 * 1000;
+/* Lo leido al arrancar, aparte. `applyZone()` vacia los tres carritos y en el
+   arranque corre ANTES de que se los pueda restaurar: leer a una variable
+   primero es lo que evita que el arranque se pise su propia copia. */
+var _cartCopia = null;
+
+function _cartGuardar() {
+  try {
+    var vacio = !Object.keys(cart).length && !Object.keys(comboCart).length
+             && !Object.keys(piezaCart).length;
+    /* Con la zona provisoria no se guarda. El cliente todavia no dijo de donde
+       es, y la puerta del primer "+ Agregar" (`_pedirZonaAntes`) hace que no
+       pueda haber nada adentro; si hubiera, anotarlo seria guardar un carrito
+       de una zona que nunca eligio — el mismo motivo por el que `maleu_zone`
+       tampoco se escribe hasta que elige. */
+    if (vacio || zonaProvisoria || !currentZone) {
+      localStorage.removeItem(CARRITO_COPIA);
+      return;
+    }
+    localStorage.setItem(CARRITO_COPIA, JSON.stringify({
+      t: Date.now(), z: currentZone, c: cart, k: comboCart, p: piezaCart
+    }));
+  } catch (e) { /* sin lugar o bloqueado: el carrito sigue andando en memoria */ }
+}
+function _cartLeerCopia() {
+  try {
+    var c = JSON.parse(localStorage.getItem(CARRITO_COPIA) || 'null');
+    if (c && typeof c === 'object') _cartCopia = c;
+  } catch (e) { /* una copia rota se ignora: se arranca con el carrito vacio */ }
+}
+
+/* Se llama UNA vez, en el arranque, con la zona ya resuelta.
+
+   Cada cosa vuelve solo si TODAVIA se puede pedir en esta zona: un producto que
+   salio del catalogo, un combo dado de baja, o un corte de carne en un barrio
+   con vendedor no pueden volver al carrito. Ese ultimo es el que cuesta plata:
+   los pedidos de un barrio con vendedor van a la hoja `Red`, que no tiene
+   columnas de kilos, asi que la carne se cobraria y no se guardaria en ningun
+   lado (ver LA CARNE EN UN BARRIO CON VENDEDOR, 14/9/2026).
+
+   Lo que NO se chequea aca es el stock, y no es un olvido: cuando esto corre
+   `fetchStock` todavia no volvio — tarda unos segundos. El tope lo aplica el
+   propio `fetchStock` cuando llega, que ya recorta el carrito y lo avisa. Es la
+   misma division que con las piezas, que se dibujan de la copia y se concilian
+   con `_piezasConciliarCarrito` cuando llega el inventario de ahora. */
+function _cartRestaurar() {
+  var c = _cartCopia; _cartCopia = null;
+  if (!c || zonaProvisoria || !currentZone) return;
+  /* Otra zona: no se restaura. Es la misma regla que `applyZone()`, que vacia
+     el carrito al cambiar de zona porque el catalogo y los precios cambian. */
+  if (c.z !== currentZone) return;
+  if (!(Date.now() - Number(c.t) < CARRITO_COPIA_MS)) return;
+
+  var hubo = 0, fuera = 0;
+  var _sigueEnLaZona = function (id) {
+    var p = PROD_MAP[id];
+    return !!p && _enLaZona(id) && !_productoBloqueadoPorBarrio(p);
+  };
+
+  Object.keys(c.c || {}).forEach(function (id) {
+    var q = Math.floor(Number(c.c[id]));
+    if (!(q > 0)) return;
+    if (!_sigueEnLaZona(id)) { fuera++; return; }
+    cart[id] = q; hubo++;
+  });
+
+  Object.keys(c.k || {}).forEach(function (sig) {
+    var inst = c.k[sig];
+    var q = inst ? Math.floor(Number(inst.qty)) : 0;
+    if (!inst || !(q > 0)) return;
+    var vive = !!COMBO_MAP[inst.comboId] && getActiveCombos().some(function (x) {
+      return String(x.id) === String(inst.comboId);
+    });
+    if (!vive) { fuera++; return; }
+    comboCart[sig] = { comboId: inst.comboId, qty: q, comp: inst.comp, picks: inst.picks || [] };
+    hubo++;
+  });
+
+  Object.keys(c.p || {}).forEach(function (pid) {
+    var it = c.p[pid];
+    if (!it || !it.abbr || !(Number(it.precio) > 0) || !(Number(it.kg) > 0)) return;
+    var corte = _corteDe(it.abbr);
+    if (!corte || !_sigueEnLaZona(corte.id)) { fuera++; return; }
+    piezaCart[pid] = it; hubo++;
+  });
+
+  if (!hubo && !fuera) return;
+  /* El repintado completo del carrito y de las cards. Es el mismo que corre en
+     cualquier cambio de combo: escribir esas seis llamadas de nuevo aca serian
+     dos formas de hacer lo mismo.
+
+     NO PARECE HACER FALTA Y HACE FALTA. Sacandolo, el numerito del carrito y la
+     barra de abajo siguen bien —los repinta `_formObs`, el IntersectionObserver
+     del formulario, que se dispara solo al arrancar— asi que todo se ve
+     correcto. Lo que queda mal son las CARDS: la del producto que esta en el
+     carrito sigue diciendo "+ Agregar" con dos unidades adentro. Medido el
+     29/9/2026 reinyectando el bug: con el badge como chequeo, pasaba en verde. */
+  _afterComboChange();
+  updateStockDisplay();
+  if (fuera) {
+    toast('⚠️ ' + (fuera === 1
+      ? 'Un producto de tu pedido ya no está y salió del carrito'
+      : fuera + ' productos de tu pedido ya no están y salieron del carrito'), 5000);
+  }
+}
+_cartLeerCopia();
 /* El observer que resalta el chip de la categoria que estas mirando. Vive
    afuera para poder desconectar el anterior en cada repintado. */
 let _catObserver = null;
@@ -1695,6 +1826,67 @@ function _pilarEntregaMaleu() {
 function _barrioOculto(val) {
   return false;
 }
+
+/* ── LOS VENDEDORES DE LA ULTIMA VISITA (29/9/2026) ──────────────────────────
+
+   LA CUARTA DEFENSA de `_pilarBarrioIsRed()`, y la que cubre a un vendedor que
+   todavia no esta escrito en `BARRIOS_PILAR_MODAL`.
+
+   Las tres de esa funcion se quedan cortas para un vendedor NUEVO que entra solo
+   por la hoja `Vendedores`: las dos primeras miran el barrio en
+   `barrioToVendedor`, que llega recien con `action=vendedores` (unos segundos),
+   y la tercera mira su ZONA canonica contra la lista del codigo — donde un
+   vendedor nuevo no esta. En esa ventana, el cliente que VUELVE (con su barrio
+   ya guardado en `localStorage`) pasa por "no es de vendedor": se le ofrece
+   carne y miercoles, y si manda el pedido ahi, se va a la hoja Pilar en vez de a
+   la Red. Es la venta del vendedor, cobrada por nosotros — el mismo agujero que
+   se cerro el 28/9 para los tres de hoy, reabierto para el cuarto.
+
+   `maleu_vendedores` ya se guardaba en cada visita y ya se usaba de respaldo
+   cuando el fetch falla. Lo unico que faltaba era leerla AL ARRANCAR, que es
+   donde esta la ventana.
+
+   VENCE A LOS 7 DIAS, y el plazo es holgado a proposito: la copia se reescribe
+   en cada visita, asi que solo alcanza a alguien que no entro en una semana — y
+   a ese, igual, la respuesta de ahora lo corrige a los segundos. El error que
+   este plazo podria causar (decir que un barrio es de un vendedor que se fue) es
+   mucho menos grave que el que evita. */
+var VENDEDORES_COPIA = 'maleu_vendedores';
+var VENDEDORES_COPIA_MS = 7 * 24 * 3600 * 1000;
+
+function _vendedoresPoner(lista) {
+  vendedoresRed = lista || [];
+  barrioToVendedor = {};
+  vendedoresRed.forEach(function (v) {
+    /* Convencion de la col "Barrios" de la hoja Vendedores: el PRIMER item es
+       la ZONA canonica ("Tortugas y alrededores"). Los demas son sub-barrios,
+       que tambien matchean por retro-compatibilidad. */
+    var zonaCanon = (v.barrios || [])[0] || '';
+    (v.barrios || []).forEach(function (b) {
+      barrioToVendedor[String(b).toLowerCase()] = {
+        nombre: v.nombre, wa: v.wa, alias: v.alias || '', partido: v.partido,
+        localidad: v.localidad, barrio: b, zonaCanon: zonaCanon
+      };
+    });
+  });
+}
+function _vendedoresGuardarCopia(lista) {
+  try {
+    if (lista && lista.length) {
+      localStorage.setItem(VENDEDORES_COPIA, JSON.stringify({ ts: Date.now(), vendedores: lista }));
+    }
+  } catch (e) { /* sin lugar o bloqueado: se pide igual */ }
+}
+function _vendedoresLeerCopia() {
+  try {
+    var c = JSON.parse(localStorage.getItem(VENDEDORES_COPIA) || 'null');
+    if (!c || !Array.isArray(c.vendedores) || !c.vendedores.length) return false;
+    if (!(Date.now() - Number(c.ts) < VENDEDORES_COPIA_MS)) return false;
+    _vendedoresPoner(c.vendedores);
+    return true;
+  } catch (e) { return false; }
+}
+_vendedoresLeerCopia();
 
 /* Tope estricto de stock — depende de la fecha de entrega elegida.
    Solo aplica en zona Estancias (Pilar y Clubes nunca tienen tope).
@@ -2414,39 +2606,22 @@ function slugify(str) {
 
 /* ── VENDEDORES RED (Pilar) ── */
 function fetchVendedores() {
+  /* Los tres caminos que arman `barrioToVendedor` —la respuesta, la copia al
+     arrancar y la copia cuando el fetch falla— pasan por aca. Estaba escrito
+     dos veces; dos formas de armar el mismo mapa es como se despegan las cosas
+     en este repo. */
   fetch(APPS_SCRIPT_URL + '?action=vendedores', { cache: 'no-store' })
     .then(r => r.json())
     .then(d => {
-      vendedoresRed = d.vendedores || [];
-      barrioToVendedor = {};
-      vendedoresRed.forEach(v => {
-        // Convención Sheets Vendedores col "Barrios": el PRIMER item es la
-        // ZONA canonical ("Tortugas y alrededores", etc.). Los demás son sub-
-        // barrios que también matchean para retro-compatibilidad.
-        var zonaCanon = (v.barrios || [])[0] || '';
-        (v.barrios || []).forEach(b => {
-          barrioToVendedor[b.toLowerCase()] = { nombre: v.nombre, wa: v.wa, alias: v.alias || '', partido: v.partido, localidad: v.localidad, barrio: b, zonaCanon: zonaCanon };
-        });
-      });
-      try { localStorage.setItem('maleu_vendedores', JSON.stringify({ ts: Date.now(), vendedores: vendedoresRed })); } catch(e) {}
+      _vendedoresPoner(d.vendedores || []);
+      _vendedoresGuardarCopia(vendedoresRed);
       renderPilarBarrios();
     })
     .catch(function() {
-      // Fallback: usar cache si hay
-      try {
-        var cached = JSON.parse(localStorage.getItem('maleu_vendedores') || 'null');
-        if (cached && cached.vendedores) {
-          vendedoresRed = cached.vendedores;
-          barrioToVendedor = {};
-          vendedoresRed.forEach(v => {
-            var zonaCanon = (v.barrios || [])[0] || '';
-            (v.barrios || []).forEach(b => {
-              barrioToVendedor[b.toLowerCase()] = { nombre: v.nombre, wa: v.wa, alias: v.alias || '', partido: v.partido, localidad: v.localidad, barrio: b, zonaCanon: zonaCanon };
-            });
-          });
-          renderPilarBarrios();
-        }
-      } catch(e) {}
+      /* Sin respuesta, la copia de la ultima visita. No es un lujo: sin ella un
+         cliente de un vendedor pasaria por "no es de vendedor" todo el rato que
+         el backend este caido. */
+      if (_vendedoresLeerCopia()) renderPilarBarrios();
     });
 }
 function renderPilarBarrios() {
@@ -4928,6 +5103,12 @@ function updateUI() {
   // "Agregar lo mismo" dice si todavia falta algo: depende del carrito.
   _pintarUltimoPie();
   coPintarTotal();
+  /* La copia del carrito, para que sobreviva a una recarga. Cuelga de aca —la
+     raiz— y no de los treinta lugares que tocan `cart`, `comboCart` o
+     `piezaCart`: colgarlo de los call sites es como los botones dejaron de
+     andar el 10/9/2026 y como el stock se borraba solo, dos veces la misma
+     leccion. Todo cambio del carrito termina repintandolo, o sea aca. */
+  _cartGuardar();
 }
 
 function updateFormSummary() {
@@ -5542,6 +5723,15 @@ function setSendLoaderDone(info) {
   var dl = $id('send-done-datos');
   if (dl) {
     dl.innerHTML = '';
+    /* El premio va PRIMERO, y no al pie: el que gano algo en la ruleta entra a
+       confirmar mirando si se lo aplicaron. Se arma con textContent y no
+       concatenado al HTML: el texto del premio lo escribe el backend en la hoja
+       Cupones, o sea que viene de afuera del codigo. */
+    if (info.premio) {
+      _sendDoneFila(dl, 'Tu premio',
+        info.premio.texto + (info.premio.codigo ? ' \u00b7 ' + info.premio.codigo : ''),
+        'send-done-premio');
+    }
     _sendDoneFila(dl, 'Entrega', info.entrega);
     _sendDoneFila(dl, 'Dirección', info.direccion);
     _sendDoneFila(dl, 'Total', info.total, 'send-done-total');
@@ -6529,6 +6719,16 @@ function enviarPedido() {
          quedaba leyendo "Aprox. $28.500" sin saber cuando deja de ser aprox.
          La nota del alias solo salia por transferencia. */
       cuandoRes: _hayRes ? _diaYFecha(reservaLlega()) : '',
+      /* EL PREMIO DE LA RULETA. Hasta el 29/9/2026 esto lo decia el mensaje de
+         WhatsApp; con el pedido cerrandose en la tienda, ese mensaje no le llega
+         a nadie y el premio se quedaba sin lugar donde decirse — ni en la
+         pantalla, ni en `detalle` (un regalo no es un item del carrito), ni entre
+         los seis parametros del template. El que gano su premio no lo veia
+         confirmado en ninguna parte. Mismo agujero que el de la reserva de carne
+         en efectivo, del mismo dia. */
+      premio: _premioActivo()
+        ? { codigo: appliedCoupon.codigo, texto: appliedCoupon.mensaje || '' }
+        : null,
       alias: alias,
       wa: waTarget
     };
@@ -7321,17 +7521,33 @@ async function fetchStock() {
     const mode = getStockMode();
     if (mode === 'real' || mode === 'proyectado') {
       const capMap = mode === 'real' ? stockMap : stockProyectadoMap;
-      let ajustado = false;
+      var ajustes = [];
       Object.entries(cart).forEach(([id, qty]) => {
         const cap = capMap[id];
         if (cap !== undefined && qty > cap) {
           if (cap === 0) delete cart[id];
           else cart[id] = cap;
-          ajustado = true;
+          ajustes.push({ nombre: (PROD_MAP[id] && PROD_MAP[id].nombre) || 'Un producto', queda: cap });
           renderCardFooter(id);
         }
       });
-      if (ajustado) { updateUI(); toast('⚠️ Tu carrito fue ajustado al stock disponible'); }
+      /* Se dice QUE producto y CUANTO quedo. Decia "Tu carrito fue ajustado al
+         stock disponible", con la duracion por default de 800 ms: el cliente
+         veia 7 donde habia puesto 15 y no sabia si se habia equivocado el. Es
+         la misma leccion del cartel de recorte del 28/9, aplicada a este
+         camino — y aca queda como aviso y no como cartel, porque esto corre
+         solo cada 60 s y un cartel que pide una decision saltando sin que el
+         cliente toque nada es peor que el problema.
+         Importa mas desde que el carrito sobrevive a una recarga: este es el
+         camino por el que un carrito restaurado se topea contra el freezer. */
+      if (ajustes.length) {
+        updateUI();
+        toast('⚠️ ' + (ajustes.length === 1
+          ? (ajustes[0].queda === 0
+              ? ajustes[0].nombre + ' se agotó y salió de tu carrito'
+              : 'De ' + ajustes[0].nombre + ' quedan ' + ajustes[0].queda + ': ajustamos tu carrito')
+          : 'Ajustamos ' + ajustes.length + ' productos de tu carrito al stock que hay'), 6000);
+      }
     }
     updateStockDisplay();
   } catch (e) { console.warn('fetchStock:', e); }
@@ -7782,7 +7998,18 @@ function _ultimoItems() {
   var items = g.items.map(function (x, i) { return { p: activos[x.id], qty: Number(x.qty) || 0, i: i }; })
     .filter(function (x) { return x.p && !esPorPeso(x.p) && x.qty > 0; })
     .sort(function (a, b) { return (b.qty - a.qty) || (a.i - b.i); });
-  var carne = (g.carne || []).map(function (id) { return activos[id]; }).filter(Boolean);
+  /* LA CARNE SALE DE `PRODUCTOS`, NO DE `activos`. Resolverla contra
+     `getActiveProducts()` le sacaba los cortes que hoy no estan a la vista —un
+     corte sin piezas no se dibuja si hay piezas de otro— y entonces el cliente
+     que llevo Vacio y Entraña leia "Tambien llevaste carne: Vacio". Lo que
+     llevo la vez pasada es su historia y no cambia con el freezer de hoy.
+     Lo que SI se respeta es la zona: en un barrio con vendedor la carne no se
+     vende (la hoja `Red` no tiene columnas de kilos), asi que nombrarla seria
+     ofrecer algo que ahi no existe. */
+  var carne = (g.carne || []).map(function (id) { return PROD_MAP[id]; })
+    .filter(function (p) {
+      return p && esPorPeso(p) && _zonaPermite(p.zonas) && !_productoBloqueadoPorBarrio(p);
+    });
   return { t: g.t || 0, items: items, carne: carne };
 }
 
@@ -7867,9 +8094,18 @@ function _pintarUltimoPie(u) {
   if (u.carne.length) {
     var nombres = u.carne.map(function (p) { return p.nombre; });
     var lista = nombres.length > 1 ? nombres.slice(0, -1).join(', ') + ' y ' + nombres[nombres.length - 1] : nombres[0];
-    html += '<p class="ultimo-carne">También llevaste carne: ' + lista + '.</p>' +
-      '<button type="button" class="ultimo-carne-btn" onclick="scrollToCat(\'' + slugify('Carnes') + '\')">' +
-      'Elegir las piezas de hoy →</button>';
+    html += '<p class="ultimo-carne">También llevaste carne: ' + lista + '.</p>';
+    /* El boton, SOLO si la categoria Carnes esta a la vista. Sin eso lleva a una
+       seccion que no existe y no pasa nada — "un boton que no hace nada es peor
+       que no tener boton: el cliente concluye que la tienda esta rota", que es
+       lo que dice el comentario de `getCategoriasVisibles` y por lo que esa
+       funcion existe. Decirle QUE llevo es cierto igual; ofrecerle ir solo
+       tiene sentido si hay adonde. */
+    var hayCarneHoy = getCategoriasVisibles().some(function (c) { return c.nombre === 'Carnes'; });
+    if (hayCarneHoy) {
+      html += '<button type="button" class="ultimo-carne-btn" onclick="scrollToCat(\'' + slugify('Carnes') + '\')">' +
+        'Elegir las piezas de hoy →</button>';
+    }
   }
   pie.innerHTML = html;
 }
@@ -8050,6 +8286,10 @@ if (savedZone && ZONAS[savedZone]) {
 }
 
 loadClientData();
+/* El carrito de la visita anterior, DESPUES de todo el bloque de zona: la
+   restauracion pregunta si cada cosa se sigue vendiendo en esta zona, y en
+   Pilar eso depende de la zona y el barrio que se acaban de cargar. */
+_cartRestaurar();
 _heroArrancar();
 $id('cart-badge').style.display = 'none';
 fetchStock();

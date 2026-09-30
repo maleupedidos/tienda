@@ -117,7 +117,15 @@ async function main() {
     '--remote-debugging-port=' + puertoCdp, '--user-data-dir=' + perfil,
     '--window-size=' + ANCHO + ',' + ALTO, 'about:blank'], { stdio: 'ignore' });
   let mal = 0, bien = 0;
-  const chk = (ok, t) => { ok ? bien++ : mal++; console.log('  ' + (ok ? VER + 'ok   ' : RED + 'MAL  ') + RST + t); };
+  /* El tercer argumento se IMPRIME. Varios chequeos de esta red ya se lo
+     pasaban y se tiraba, asi que un rojo de aca no decia que habia medido — y
+     por eso uno se quedo dias sin diagnosticar, anotado como "intermitente". Un
+     rojo mudo no se puede arreglar. */
+  const chk = (ok, t, extra) => {
+    ok ? bien++ : mal++;
+    console.log('  ' + (ok ? VER + 'ok   ' : RED + 'MAL  ') + RST + t +
+                (extra ? DIM + '  (' + extra + ')' + RST : ''));
+  };
   const CEL = ANCHO <= 768;
 
   try {
@@ -267,6 +275,17 @@ async function main() {
       ' var t = document.querySelector("input[name=pago][value=Transferencia]");' +
       ' if (t) { t.checked = true; t.dispatchEvent(new Event("change", { bubbles: true })); } })()');
     await dormir(400);
+    /* EL CHECKOUT, ABIERTO Y EN EL PASO DEL PAGO. `#pago-hint` vive ahi adentro, y
+       desde el 29/9/2026 el checkout es su propia pantalla (`position: fixed`):
+       con el cerrado, ese cartel tiene `offsetParent === null` y se mide siempre
+       como escondido. Eso dejaba el ultimo chequeo en rojo —el unico que exige
+       que el hint SE VEA— y hacia pasar a los otros tres por la razon
+       equivocada: con el cartel roto habrian dado verde igual. Es la regla que
+       este repo ya tiene escrita dos veces: antes de exigir que algo no
+       aparezca, hay que exigir que en el caso anterior aparezca. */
+    await ev('(function () { if (typeof abrirCheckout === "function") abrirCheckout();' +
+             ' if (typeof coIr === "function") coIr(2, { sinScroll: true }); })()');
+    await dormir(500);
 
     const verCarteles = async function (ms) {
       await ev('window.__ahora = ' + ms + '; updatePromoBar(); updateUI();' +

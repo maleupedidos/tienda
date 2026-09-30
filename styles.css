@@ -853,6 +853,11 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
    armarlo con innerHTML: el texto sigue yendo por `textContent`. */
 .send-done-datos dd { margin: 0; flex: 1; font-size: .9rem; color: var(--brown); line-height: 1.4; white-space: pre-line; }
 .send-done-datos .send-done-total { font-weight: 700; font-size: 1.02rem; }
+/* El premio de la ruleta, en el naranja de marca: es lo primero que busca el
+   que gano algo. No lleva fondo ni caja — con el naranja alcanza, y una caja
+   mas en esa pantalla compite con la del alias, que es la que el cliente
+   necesita para pagar. */
+.send-done-datos .send-done-premio { font-weight: 700; color: var(--orange); }
 
 /* El alias va seleccionable a proposito: si el boton de copiar falla —
    `navigator.clipboard` puede no estar— el cliente se queda sin poder pagar.

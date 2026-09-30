@@ -1,170 +1,296 @@
 /**
- * Diagnostico contra la tienda VIVA (maleu.com.ar), no contra la copia local.
- *
- * Tadeo reporta que con ?autopedido=1 no le aparecen los otros sorrentinos.
- * La prueba anterior pasaba porque llamaba setZone('estancias') a mano, que NO
- * es lo que hace una persona: una persona abre la pagina, le sale el modal de
- * bienvenida, y elige la zona ahi.
- *
- * Esto reproduce el camino real y reporta el estado interno en cada paso.
+ * ¿Como esta la tienda VIVA, ahora mismo? (reescrito el 29/9/2026)
  *
  *   node _tools/diagnostico-vivo.js
+ *
+ * Recorre https://maleu.com.ar como una persona —entra, escribe su barrio en el
+ * buscador de direccion, mira el catalogo— y reporta el estado interno. Es para
+ * correr ANTES de mostrarle la tienda a alguien, o cuando algo se siente raro y
+ * no se sabe si es la tienda o el navegador.
+ *
+ * NO REEMPLAZA A LAS REDES. Las 32 `verificar-*.js` miden la tienda contra una
+ * copia local y prueban casos que en produccion no se pueden provocar. Esto mide
+ * una sola cosa que ninguna de ellas puede: lo que hay publicado AHORA.
+ *
+ * LO QUE HABIA ACA HASTA HOY MEDIA UN CASO QUE YA NO EXISTE, y por eso daba
+ * rojos que no eran de la tienda. Buscaba `?autopedido=1` (eliminado el
+ * 8/9/2026), `MODO_AUTOPEDIDO`, `_zonaPermite()` y un `#banner-autopedido` que
+ * no existen, elegia la zona tocando un boton del modal viejo —desde el
+ * 28/9/2026 el modal es un buscador de direccion— y terminaba preguntando si
+ * cuatro sorrentinos estaban en Estancias, que se abrieron el 10/9/2026. O sea
+ * que no estaba viejo: era el script de un problema resuelto tres veces, y
+ * seguia listado en el CLAUDE.md como herramienta vigente.
+ *
+ * ES DE SOLO LECTURA, y con dos seguros: todo POST se corta por CDP antes de la
+ * primera navegacion, y ademas Analytics y Meta se bloquean — si no, cada
+ * corrida le sumaria una visita falsa a las metricas de verdad.
  */
 const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const URL_VIVA = 'https://maleu.com.ar/?autopedido=1';
+const URL_VIVA = process.env.URL || 'https://maleu.com.ar/';
+const BARRIO = process.env.BARRIO || 'Estancias del Pilar';
 const RED = '\x1b[31m', VER = '\x1b[32m', AMA = '\x1b[33m', DIM = '\x1b[2m', RST = '\x1b[0m';
 const CHROMES = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
   'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
   'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
 ];
+const dormir = (ms) => new Promise((s) => setTimeout(s, ms));
 
 function conectar(url) {
   const ws = new WebSocket(url);
-  let id = 0; const pend = new Map();
+  let id = 0; const pend = new Map(); const oyentes = [];
   ws.addEventListener('message', (ev) => {
     const m = JSON.parse(ev.data);
     if (m.id && pend.has(m.id)) {
       const { ok, mal } = pend.get(m.id); pend.delete(m.id);
       m.error ? mal(new Error(m.error.message)) : ok(m.result);
-    }
+    } else if (m.method) oyentes.forEach((f) => f(m));
   });
-  const listo = new Promise((r, j) => {
-    ws.addEventListener('open', r);
-    ws.addEventListener('error', () => j(new Error('no conecta')));
-  });
-  return { listo,
-    enviar: (m, p) => new Promise((ok, mal) => { const i = ++id; pend.set(i, { ok, mal }); ws.send(JSON.stringify({ id: i, method: m, params: p || {} })); }),
-    cerrar() { try { ws.close(); } catch (e) { /* ya */ } } };
+  return {
+    listo: new Promise((r, j) => {
+      ws.addEventListener('open', r);
+      ws.addEventListener('error', () => j(new Error('no conecta')));
+    }),
+    on: (f) => oyentes.push(f),
+    enviar: (m, p) => new Promise((ok, mal) => {
+      const i = ++id; pend.set(i, { ok, mal });
+      ws.send(JSON.stringify({ id: i, method: m, params: p || {} }));
+    }),
+  };
 }
+
 async function esperarPagina(puerto) {
   for (let i = 0; i < 80; i++) {
     try {
       const r = await fetch('http://127.0.0.1:' + puerto + '/json/list');
-      const p = (await r.json()).find((t) => t.type === 'page' && t.webSocketDebuggerUrl);
+      const p = (await r.json()).find((x) => x.type === 'page' && x.webSocketDebuggerUrl);
       if (p) return p.webSocketDebuggerUrl;
     } catch (e) { /* todavia no */ }
-    await new Promise((s) => setTimeout(s, 250));
+    await dormir(250);
   }
   throw new Error('Chrome no abrio');
 }
 
 async function main() {
   const chrome = CHROMES.find((c) => fs.existsSync(c));
-  const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'maleu-diag-'));
-  const puerto = 9600 + Math.floor(Math.random() * 300);
+  if (!chrome) { console.error('No encontre Chrome ni Edge'); process.exit(1); }
+  const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'maleu-vivo-'));
+  const puerto = 9700 + Math.floor(Math.random() * 90);
   const proc = spawn(chrome, ['--headless=new', '--disable-gpu', '--no-first-run',
-    '--remote-debugging-port=' + puerto, '--user-data-dir=' + perfil, 'about:blank'], { stdio: 'ignore' });
-  let cli;
-  const limpiar = () => { if (cli) cli.cerrar(); try { proc.kill(); } catch (e) {}
-    try { fs.rmSync(perfil, { recursive: true, force: true }); } catch (e) {} };
+    '--no-default-browser-check', '--remote-debugging-port=' + puerto,
+    '--user-data-dir=' + perfil, '--window-size=390,844', 'about:blank'], { stdio: 'ignore' });
+  const limpiar = () => { try { proc.kill(); } catch (e) {} };
+
+  let avisos = 0, fallas = 0;
+  const linea = (etiqueta, valor, estado) => {
+    const color = estado === 'mal' ? RED : estado === 'aviso' ? AMA : estado === 'ok' ? VER : RST;
+    if (estado === 'mal') fallas++;
+    if (estado === 'aviso') avisos++;
+    console.log('   ' + etiqueta.padEnd(24) + color + valor + RST);
+  };
 
   try {
-    cli = conectar(await esperarPagina(puerto));
+    const cli = conectar(await esperarPagina(puerto));
     await cli.listo;
-    await cli.enviar('Runtime.enable');
     await cli.enviar('Page.enable');
-    await cli.enviar('Network.enable');
-    await cli.enviar('Network.setCacheDisabled', { cacheDisabled: true });
+    await cli.enviar('Runtime.enable');
+    await cli.enviar('Log.enable').catch(() => {});
+    await cli.enviar('Emulation.setDeviceMetricsOverride',
+      { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+
+    /* SOLO LECTURA. Todo POST se corta, y con el Analytics y el pixel de Meta
+       bloqueados esta corrida no le suma una visita falsa a las metricas. */
+    const cortados = [];
+    await cli.enviar('Fetch.enable', { patterns: [{ urlPattern: '*' }] });
+    cli.on(async (m) => {
+      if (m.method !== 'Fetch.requestPaused') return;
+      const r = m.params.request;
+      const malo = r.method === 'POST' ||
+        /googletagmanager|google-analytics|facebook|connect\.facebook/.test(r.url);
+      try {
+        if (malo) {
+          if (r.method === 'POST') cortados.push(r.url.slice(0, 70));
+          await cli.enviar('Fetch.failRequest', { requestId: m.params.requestId, errorReason: 'BlockedByClient' });
+        } else {
+          await cli.enviar('Fetch.continueRequest', { requestId: m.params.requestId });
+        }
+      } catch (e) { /* la pagina ya se fue */ }
+    });
 
     const errores = [];
-    console.log('\n== DIAGNOSTICO contra ' + URL_VIVA + ' ==\n');
-    await cli.enviar('Page.navigate', { url: URL_VIVA });
-    for (let i = 0; i < 100; i++) {
-      const r = await cli.enviar('Runtime.evaluate', {
-        expression: "typeof PRODUCTOS !== 'undefined' && typeof getActiveProducts === 'function'",
-        returnByValue: true });
-      if (r.result && r.result.value === true) break;
-      await new Promise((s) => setTimeout(s, 250));
-    }
+    cli.on((m) => {
+      if (m.method === 'Runtime.exceptionThrown') {
+        const d = m.params.exceptionDetails;
+        errores.push(String((d.exception && d.exception.description) || d.text).split('\n')[0].slice(0, 120));
+      }
+    });
 
     const ev = async (expr) => {
       const r = await cli.enviar('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
-      if (r.exceptionDetails) return { _err: r.exceptionDetails.text + ' ' + (r.exceptionDetails.exception || {}).description };
+      if (r.exceptionDetails) {
+        const d = r.exceptionDetails;
+        return { _err: String((d.exception && d.exception.description) || d.text).slice(0, 160) };
+      }
       return r.result.value;
     };
+    /* `ev` devuelve {_err} cuando la expresion tira. Sin esto, el JSON.parse de
+       ese objeto tapaba el error real con '"[object Object]" is not valid JSON' —
+       pasó en la primera corrida contra produccion. */
+    const leer = async (expr, donde) => {
+      const v = await ev(expr);
+      if (v && typeof v === 'object' && v._err) throw new Error(donde + ': ' + v._err);
+      try { return JSON.parse(v); }
+      catch (e) { throw new Error(donde + ': contesto ' + JSON.stringify(String(v)).slice(0, 120)); }
+    };
+    const esperar = async (cond, ms) => {
+      const fin = Date.now() + (ms || 15000);
+      while (Date.now() < fin) {
+        if (await ev('!!(' + cond + ')').catch(() => false) === true) return true;
+        await dormir(200);
+      }
+      return false;
+    };
 
-    // ── 1) llego el codigo nuevo? ──
-    const base = await ev(`JSON.stringify({
-      search: location.search,
-      modoExiste: typeof MODO_AUTOPEDIDO !== 'undefined',
-      modo: (typeof MODO_AUTOPEDIDO !== 'undefined') ? MODO_AUTOPEDIDO : null,
-      zonaPermiteExiste: typeof _zonaPermite === 'function',
-      zonaGuardada: (function(){try{return localStorage.getItem('maleu_zone');}catch(e){return 'err';}})(),
-      currentZone: (typeof currentZone !== 'undefined') ? currentZone : 'undef',
-      banner: !!document.getElementById('banner-autopedido'),
-      totalCatalogo: (typeof PRODUCTOS !== 'undefined') ? PRODUCTOS.length : -1
-    })`);
-    const b = JSON.parse(base);
-    console.log(DIM + '  al abrir la pagina:' + RST);
-    console.log('   location.search      ' + JSON.stringify(b.search));
-    console.log('   MODO_AUTOPEDIDO      ' + (b.modoExiste ? (b.modo ? VER + 'true' + RST : RED + 'false' + RST) : RED + 'NO EXISTE (codigo viejo en cache)' + RST));
-    console.log('   _zonaPermite()       ' + (b.zonaPermiteExiste ? VER + 'existe' + RST : RED + 'NO EXISTE' + RST));
-    console.log('   cartel naranja       ' + (b.banner ? VER + 'se ve' + RST : RED + 'NO se ve' + RST));
-    console.log('   currentZone          ' + b.currentZone);
-    console.log('   zona en localStorage ' + b.zonaGuardada);
-    console.log('   productos en total   ' + b.totalCatalogo);
+    console.log('\n' + DIM + 'la tienda viva · ' + URL_VIVA + ' · ' +
+      new Date().toLocaleString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' }) + RST);
 
-    // ── 2) el camino real: elegir Estancias por la UI ──
-    console.log(DIM + '\n  eligiendo "Estancias del Pilar" como lo hace una persona:' + RST);
-    const paso = await ev(`(function(){
-      var out = { intentos: [] };
-      // el modal de bienvenida: buscar el control que elige zona
-      var cands = [].slice.call(document.querySelectorAll('[data-zone],[onclick*="Zone"],[onclick*="zona"],button,.zone-btn,.loc-btn'));
-      var hit = cands.filter(function(e){
-        var t = (e.textContent||'') + ' ' + (e.getAttribute('data-zone')||'') + ' ' + (e.getAttribute('onclick')||'');
-        return /estancias/i.test(t);
-      });
-      out.candidatos = hit.slice(0,4).map(function(e){
-        return { tag: e.tagName, txt: (e.textContent||'').trim().slice(0,40),
-                 zone: e.getAttribute('data-zone'), onclick: (e.getAttribute('onclick')||'').slice(0,60) };
-      });
-      if (hit.length) { try { hit[0].click(); out.clickeado = true; } catch(e){ out.clickErr = String(e); } }
-      return JSON.stringify(out);
-    })()`);
-    const p = JSON.parse(paso);
-    if (p.candidatos && p.candidatos.length) {
-      p.candidatos.forEach(c => console.log('   ' + DIM + 'control:' + RST + ' <' + c.tag.toLowerCase() + '> "' + c.txt + '"' + (c.zone ? ' data-zone=' + c.zone : '') + (c.onclick ? ' onclick=' + c.onclick : '')));
-    } else {
-      console.log('   ' + AMA + 'no encontre el control de zona en el modal' + RST);
+    const t0 = Date.now();
+    await cli.enviar('Page.navigate', { url: URL_VIVA });
+    const arranco = await esperar("typeof PRODUCTOS !== 'undefined' && PRODUCTOS.length > 0", 25000);
+    const msArranque = Date.now() - t0;
+    if (!arranco) {
+      linea('la tienda', 'NO ARRANCO en 25 s', 'mal');
+      throw new Error('la tienda no arranco: no hay nada mas que medir');
     }
-    await new Promise((s) => setTimeout(s, 1200));
 
-    // ── 3) que se ve ahora ──
-    const fin = await ev(`JSON.stringify((function(){
-      var vis = [].slice.call(document.querySelectorAll('.product-card,.prod-card,[data-prod-id],.card'))
-        .filter(function(e){ return e.offsetParent !== null; }).length;
-      var act = (typeof getActiveProducts === 'function') ? getActiveProducts().map(function(x){return x.nombre;}) : [];
-      return {
-        currentZone: (typeof currentZone !== 'undefined') ? currentZone : 'undef',
-        activos: act.length,
-        sorrentinos: act.filter(function(n){ return /Sorrentinos/i.test(n); }),
-        enPantalla: vis
-      };
-    })())`);
-    const f = JSON.parse(fin);
-    console.log(DIM + '\n  despues de elegir zona:' + RST);
-    console.log('   currentZone          ' + f.currentZone);
-    console.log('   getActiveProducts()  ' + f.activos + ' productos');
-    console.log('   tarjetas visibles    ' + f.enPantalla);
-    console.log('   sorrentinos activos:');
-    (f.sorrentinos || []).forEach(n => console.log('     - ' + n));
+    /* ── 1) que codigo esta publicado ── */
+    console.log('\n' + DIM + '  lo que esta publicado:' + RST);
+    const pub = await leer(`JSON.stringify({
+      ver: (function(){ var s = [].slice.call(document.querySelectorAll('script[src*="app.js"]'));
+        return s.length ? (s[0].getAttribute('src') || '') : 'sin app.js'; })(),
+      productos: PRODUCTOS.length,
+      combos: (typeof COMBOS !== 'undefined') ? COMBOS.length : -1,
+      cierre: (typeof CIERRE_EN_LA_TIENDA !== 'undefined') ? !!CIERRE_EN_LA_TIENDA : null,
+      lento: (typeof SEND_LENTO_MS !== 'undefined') ? SEND_LENTO_MS : null,
+      fallback: (typeof SEND_FALLBACK_MS !== 'undefined') ? SEND_FALLBACK_MS : null,
+      carrito: (typeof CARRITO_COPIA !== 'undefined') ? CARRITO_COPIA : null
+    })`, 'lo publicado');
+    linea('app.js', pub.ver.replace(/^.*app\.js/, 'app.js'), 'dato');
+    linea('arranco en', msArranque + ' ms', msArranque < 4000 ? 'ok' : 'aviso');
+    linea('catalogo', pub.productos + ' productos · ' + pub.combos + ' combos',
+      pub.productos > 20 ? 'ok' : 'mal');
+    linea('el pedido cierra en', pub.cierre === true ? 'la tienda' :
+      pub.cierre === false ? 'WhatsApp (el interruptor esta APAGADO)' : 'no se sabe',
+      pub.cierre === true ? 'ok' : 'aviso');
+    linea('avisos del envio', pub.lento === null ? 'no se sabe' :
+      'lento ' + (pub.lento / 1000) + ' s · fallback ' + (pub.fallback / 1000) + ' s', 'dato');
+    linea('el carrito se guarda', pub.carrito ? 'si (' + pub.carrito + ')' : 'NO', pub.carrito ? 'ok' : 'aviso');
 
-    const CUATRO = ['Queso Brie', 'Langostinos', 'Pollo y Puerro', 'Espinaca'];
-    const faltan = CUATRO.filter(c => !(f.sorrentinos || []).some(n => n.indexOf(c) >= 0));
-    console.log();
-    if (faltan.length === 0) console.log('  ' + VER + 'los 4 de Pilar estan disponibles' + RST);
-    else console.log('  ' + RED + 'FALTAN: ' + faltan.join(', ') + RST);
+    /* ── 2) la primera pantalla, antes de decir de donde es ── */
+    console.log('\n' + DIM + '  la primera pantalla (sin elegir zona):' + RST);
+    const uno = await leer(`JSON.stringify({
+      provisoria: !!window.zonaProvisoria,
+      tapado: (function(){ var o = document.getElementById('loc-overlay');
+        return !!(o && getComputedStyle(o).display !== 'none' && !o.classList.contains('hidden')); })(),
+      /* Las cards de carne quedan afuera a proposito: su precio es por kilo y
+         no tienen product-price. Contarlas daba "38 de 43" y un aviso que era
+         del instrumento, no de la tienda. OJO: nada de backticks adentro de
+         este template string — cierran el literal y lo que sigue se evalua
+         como codigo. Ya estaba anotado en el CLAUDE.md y volvio a morder. */
+      cards: document.querySelectorAll('.product-card:not(.carne-card)').length,
+      conPrecio: [].slice.call(document.querySelectorAll('.product-card:not(.carne-card) .product-price'))
+        .filter(function(e){ return /\\d/.test(e.textContent); }).length,
+      cardsCarne: document.querySelectorAll('.product-card.carne-card').length,
+      hero: document.querySelectorAll('.hero-foto, .hero-slide, [data-cat]').length,
+      cta: (function(){ var c = document.getElementById('zona-cta'); return !!c && !c.hidden; })()
+    })`, 'la primera pantalla');
+    linea('nada encima', uno.tapado ? 'HAY UN MODAL TAPANDO' : 'el catalogo esta a la vista',
+      uno.tapado ? 'mal' : 'ok');
+    linea('cards con precio', uno.conPrecio + ' de ' + uno.cards +
+      (uno.cardsCarne ? ' · ' + uno.cardsCarne + ' de carne (precio por kilo)' : ''),
+      uno.cards > 0 && uno.conPrecio === uno.cards ? 'ok' : 'aviso');
+    linea('zona provisoria', uno.provisoria ? 'si, y el cartel de zona se ve: ' + uno.cta : 'no (hay zona guardada)',
+      uno.provisoria && !uno.cta ? 'mal' : 'ok');
 
+    /* ── 3) elegir el barrio, como una persona ── */
+    console.log('\n' + DIM + '  escribiendo "' + BARRIO + '" en el buscador de direccion:' + RST);
+    const abrio = await ev(`(function(){ if (typeof showZoneModal === 'function') { showZoneModal('chip'); return true; } return false; })()`);
+    await dormir(500);
+    const buscado = await leer(`(function(){
+      var i = document.getElementById('dir-input');
+      if (!i) return JSON.stringify({ sinBuscador: true });
+      i.value = ${JSON.stringify(BARRIO)};
+      if (typeof dirBuscar === 'function') dirBuscar();
+      var ops = [].slice.call(document.querySelectorAll('#dir-lista .dir-op'));
+      return JSON.stringify({ abrio: ${!!abrio}, opciones: ops.length,
+        primera: ops.length ? ops[0].textContent.replace(/[\\s\\u00a0]+/g, ' ').trim().slice(0, 70) : '' });
+    })()`, 'el buscador');
+    if (buscado.sinBuscador) linea('el buscador', 'NO EXISTE #dir-input', 'mal');
+    else {
+      linea('resultados', buscado.opciones + (buscado.primera ? ' · 1o: ' + buscado.primera : ''),
+        buscado.opciones > 0 ? 'ok' : 'mal');
+      if (buscado.opciones > 0) {
+        await ev(`document.querySelector('#dir-lista .dir-op').click()`);
+        await dormir(1200);
+      }
+    }
+
+    /* ── 4) el estado con la zona puesta ── */
+    console.log('\n' + DIM + '  con la zona elegida:' + RST);
+    await esperar('Object.keys(stockMap || {}).length > 0', 20000);
+    await esperar("typeof piezasEstado !== 'undefined' && piezasEstado !== 'cargando'", 20000);
+    const dos = await leer(`JSON.stringify({
+      zona: currentZone, provisoria: !!window.zonaProvisoria,
+      activos: getActiveProducts().length,
+      stock: Object.keys(stockMap || {}).length,
+      sinStock: Object.keys(stockMap || {}).filter(function(k){ return !(stockMap[k] > 0); }).length,
+      piezasEstado: piezasEstado,
+      piezas: Object.keys(piezasMap || {}).reduce(function(s, a){ return s + piezasMap[a].length; }, 0),
+      cortes: Object.keys(piezasMap || {}),
+      reserva: (typeof reservaInfo !== 'undefined' && reservaInfo) ? reservaInfo.llega : null,
+      /* Devuelve {thisWeek, nextWeek, later}, no un array: el nombre lo dice y
+         la primera version le hizo .slice() igual. Y la clave es dayShort, no
+         label — ese mismo descuido dejo pasar cuatro chequeos de
+         verificar-horario.js el 28/9/2026. */
+      fechas: (typeof _getNextDeliveryDatesGrouped === 'function')
+        ? (function(){ var g = _getNextDeliveryDatesGrouped(currentZone) || {};
+            return [].concat(g.thisWeek || [], g.nextWeek || [], g.later || [])
+              .slice(0, 4).map(function(d){ return (d.dayShort || '?') + ' ' + (d.iso || '?') +
+                (d.timeRange ? ' ' + d.timeRange : ''); }); })() : [],
+      sinStockCards: [].slice.call(document.querySelectorAll('.product-card'))
+        .filter(function(c){ return /Sin stock/i.test(c.textContent); }).length
+    })`, 'con la zona elegida');
+    linea('zona', dos.zona + (dos.provisoria ? ' (todavia provisoria)' : ''), dos.provisoria ? 'mal' : 'ok');
+    linea('productos de la zona', String(dos.activos), dos.activos > 10 ? 'ok' : 'aviso');
+    linea('stock del ERP', dos.stock + ' productos · ' + dos.sinStock + ' en cero',
+      dos.stock > 20 ? 'ok' : 'mal');
+    linea('piezas de carne', dos.piezasEstado + ' · ' + dos.piezas + ' piezas en ' +
+      dos.cortes.length + ' cortes' + (dos.reserva ? ' · reserva llega ' + dos.reserva : ''),
+      dos.piezasEstado === 'sin-datos' ? 'mal' : 'ok');
+    linea('cards "Sin stock"', String(dos.sinStockCards), 'dato');
+    linea('proximas entregas', (dos.fechas || []).join(' · ') || 'NINGUNA',
+      (dos.fechas || []).length ? 'ok' : 'mal');
+
+    /* ── 5) lo que nada de esto puede pasar por alto ── */
+    console.log('\n' + DIM + '  salud:' + RST);
+    linea('excepciones en consola', errores.length ? errores.length + ': ' + errores[0] : 'ninguna',
+      errores.length ? 'mal' : 'ok');
+    linea('POST cortados', cortados.length ? cortados.length + ' (' + cortados[0] + ')' : 'ninguno', 'dato');
+
+    console.log('\n' + (fallas ? RED + fallas + ' mal' : VER + 'sin fallas') +
+      (avisos ? DIM + ' · ' + avisos + ' para mirar' : '') + RST);
+    console.log(DIM + '  Ojo: esto mide lo publicado, no si el navegador de Tadeo lo recibe.' +
+      ' Para eso: node _tools/probar-cache.js' + RST + '\n');
     limpiar();
-    process.exit(faltan.length ? 1 : 0);
+    process.exit(fallas ? 1 : 0);
   } catch (e) {
-    console.error(RED + 'X ' + e.message + RST);
-    limpiar(); process.exit(1);
+    console.error('\n' + RED + 'X ' + e.message + RST + '\n');
+    limpiar();
+    process.exit(1);
   }
 }
 main();
