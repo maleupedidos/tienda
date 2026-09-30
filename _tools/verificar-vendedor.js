@@ -81,6 +81,13 @@ const VENDEDORES = { vendedores: [
      vendedor nuevo", no una persona, y asi el test no envejece. */
   { nombre: 'Vendedor Nuevo', wa: '5491100000004', alias: 'alias.nuevo.prueba',
     barrios: ['Zona Nueva', 'Barrio Nuevo Uno', 'Barrio Nuevo Dos'] },
+  /* EL VENDEDOR DE UNA REGION DONDE MALEU NO ENTREGA (30/9/2026). Es el caso de
+     Tigre: su zona SI esta escrita en `BARRIOS_PILAR_MODAL`, pero si el no esta
+     en la planilla no hay quien entregue ahi — y ahi la tienda tiene que
+     esconder la zona entera en vez de mandar el pedido a la hoja Pilar.
+     El primer barrio es la zona canonica, igual que en la planilla. */
+  { nombre: 'Vendedor Region', wa: '5491100000005', alias: 'alias.region.prueba',
+    barrios: ['Santa Bárbara', 'Altamira', 'Rincón de Milberg', 'Talar del Lago I', 'Virazón'] },
 ] };
 
 /* El premio de la ruleta, como lo emite Backend desde el 24/9/2026:
@@ -548,6 +555,88 @@ async function main() {
     chk(al.delVendedor && al.txtMaleu.indexOf(al.delVendedor) < 0,
         'y NO el alias personal del vendedor', 'el suyo es ' + al.delVendedor);
     chk(al.notaVendedor === false, 'el cartel con el alias del vendedor no se muestra mas');
+
+    /* ── 11. UNA REGION DONDE MALEU NO ENTREGA (30/9/2026) ────────────
+       Tadeo cargo los 34 barrios de Tigre de Fede D'Andrea. Esa zona se
+       comporta como las de Pilar —hoja Red, viernes, sin carne, envio $3.000—
+       con una diferencia que cuesta plata: si su vendedor no esta en la
+       planilla, `vendedorMatch` sale null y `enviarPedido` cae en
+       `canal: z.canal` = **Pilar**. O sea que la pantalla promete un vendedor y
+       el pedido se va a la hoja de Maleu, que tendria que entregar en Nordelta.
+
+       Con una zona de PILAR eso no pasa, porque ahi Maleu entrega de verdad. La
+       diferencia la marca `region`, y es lo que este bloque mide. */
+    console.log('\n' + DIM + '== 11. Tigre: con su vendedor y sin el ==' + RST);
+    await abrir({});
+    await ev('(function(){ if (typeof showZoneModal === "function") showZoneModal("chip"); })()');
+    await dormir(400);
+    const listaTg = () => ev('(function () {' +
+      'var i = document.getElementById("dir-input");' +
+      'if (i) { i.value = ""; if (typeof dirBuscar === "function") dirBuscar(); }' +
+      'return JSON.stringify([].map.call(document.querySelectorAll("#dir-lista .dir-op-nom, #dir-lista .dir-op-nombre"),' +
+      '  function (t) { return t.textContent.replace(/[\\s\\u00a0]+/g, " ").trim(); }));' +
+      '})()');
+
+    const conFede = JSON.parse(await listaTg());
+    const hayTg = (t) => conFede.some(function (x) { return x.indexOf(t) === 0; });
+    chk(hayTg('Santa Bárbara') && hayTg('Rincón de Milberg') && hayTg('Virazón'),
+        'con su vendedor en la planilla, los barrios de Tigre se ofrecen',
+        conFede.length + ' destinos');
+
+    /* El orden alfabetico, que es lo que pidio Tadeo al sumar los 34. */
+    const soloNom = conFede.filter(function (n) { return n && !/no encuentro|no est/i.test(n); });
+    const nz = (t) => String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+    const ordenTg = soloNom.slice().sort(function (a, b) { return nz(a) < nz(b) ? -1 : (nz(a) > nz(b) ? 1 : 0); });
+    chk(soloNom.every(function (n, i) { return n === ordenTg[i]; }),
+        'y toda la lista va de la A a la Z');
+
+    /* El separador de letra: con 40+ barrios es lo que la hace recorrible. */
+    const letras = JSON.parse(await ev('JSON.stringify([].map.call(' +
+      'document.querySelectorAll("#dir-lista .dir-letra"), function (h) { return h.textContent.trim(); }))'));
+    chk(letras.length >= 5 && letras.join('') === letras.slice().sort().join(''),
+        'con separadores de letra, en orden', letras.join(' '));
+
+    /* Y buscando NO van separadores: ahi el orden deja de ser alfabetico
+       porque los que EMPIEZAN con lo escrito van primero. */
+    await ev('(function(){ var i = document.getElementById("dir-input");' +
+      ' i.value = "san"; if (typeof dirBuscar === "function") dirBuscar(); })()');
+    await dormir(200);
+    const letrasBusc = Number(await ev('document.querySelectorAll("#dir-lista .dir-letra").length'));
+    chk(letrasBusc === 0, 'buscando no hay separadores: el orden ya no es alfabetico', String(letrasBusc));
+
+    console.log('\n' + DIM + '   y el pedido de Tigre va a la hoja Red:' + RST);
+    await abrir({
+      maleu_zone: 'pilar',
+      maleu_pilar_zona: { val: 'Santa Bárbara', nombre: 'Santa Bárbara', ts: 1 },
+      maleu_pilar_barrio: { val: 'Rincón de Milberg', nombre: 'Rincón de Milberg', ts: 1 },
+    });
+    const tg = await estado();
+    chk(tg.esRed === true && tg.entregaMaleu === false,
+        'lo atiende su vendedor, no Maleu', JSON.stringify({ esRed: tg.esRed, maleu: tg.entregaMaleu }));
+    chk(tg.carne === 0 && tg.envio === 3000 && tg.dias.join() === 'Viernes',
+        'con las mismas reglas que los demas: sin carne, $3.000, solo viernes',
+        JSON.stringify({ carne: tg.carne, envio: tg.envio, dias: tg.dias }));
+    await mandar();
+    const pedTg = await ultimoPost();
+    chk(pedTg && pedTg.canal === 'Red',
+        'y su PEDIDO se va a la hoja Red, no a Pilar', 'canal: ' + ((pedTg && pedTg.canal) || 'ninguno'));
+
+    console.log('\n' + DIM + '   CONTROL: sin su vendedor, la zona no se ofrece:' + RST);
+    /* La copia de la ultima visita SIN el vendedor de Tigre, y la planilla
+       demorada: es la ventana real de una primera visita. Si la zona se
+       ofreciera ahi, ese pedido se iria a la hoja Pilar. */
+    const sinRegion = VENDEDORES.vendedores.filter(function (v) { return v.nombre !== 'Vendedor Region'; });
+    await abrir({ maleu_vendedores: { ts: Date.now(), vendedores: sinRegion } }, '&demoraVend=4000');
+    await ev('(function(){ if (typeof showZoneModal === "function") showZoneModal("chip"); })()');
+    await dormir(400);
+    const sinFede = JSON.parse(await listaTg());
+    const hayTg2 = (t) => sinFede.some(function (x) { return x.indexOf(t) === 0; });
+    chk(!hayTg2('Santa Bárbara') && !hayTg2('Rincón de Milberg'),
+        'los barrios de Tigre NO se ofrecen: no hay quien entregue ahi',
+        sinFede.length + ' destinos');
+    chk(hayTg2('El Lucero') || hayTg2('Manzanares'),
+        'CONTROL: los de Pilar SI siguen, o sea que no se escondio todo',
+        sinFede.slice(0, 3).join(' | '));
 
     /* ── 9. UN VENDEDOR NUEVO, QUE SOLO EXISTE EN LA PLANILLA ─────────
        El caso del cuarto vendedor. Su zona no esta escrita en

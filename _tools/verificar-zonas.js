@@ -316,8 +316,25 @@ async function main() {
       '          d: ((b.querySelector(".dir-op-dato") || {}).textContent || "").trim() }; }))'));
     const de = (nombre) => ops.filter((o) => o.n === nombre)[0] || { n: '', d: '' };
     chk(ops.length >= 15, 'el buscador ofrece los barrios que conocemos (' + ops.length + ')');
-    chk(ops[0].n === 'Estancias del Pilar' && ops[1].n === 'Estancias del R\u00edo',
-        'los dos de Estancias van primero (' + ops.slice(0, 2).map((o) => o.n).join(' | ') + ')');
+    /* DE LA A A LA Z (30/9/2026). Hasta ese dia este chequeo exigia que los dos
+       de Estancias fueran primero, que era el orden en que estan declarados en
+       el codigo. Tadeo pidio A-Z al sumar los 34 barrios de Tigre: con 57
+       destinos, el orden de declaracion no es un orden para nadie.
+
+       Se mide el ORDEN ENTERO y no las dos primeras: que las dos primeras sean
+       las que son se cumpliria igual con la lista a medio ordenar. */
+    const norm = (t) => String(t || '').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const nombres = ops.map((o) => o.n).filter((n) => n && !/no encuentro|no est/i.test(n));
+    const ordenado = nombres.slice().sort((a, b) => (norm(a) < norm(b) ? -1 : (norm(a) > norm(b) ? 1 : 0)));
+    const primerDesorden = nombres.findIndex((n, i) => n !== ordenado[i]);
+    chk(primerDesorden === -1,
+        'la lista entera va de la A a la Z',
+        primerDesorden === -1 ? nombres.length + ' destinos'
+          : 'se corta en "' + nombres[primerDesorden] + '" (esperaba "' + ordenado[primerDesorden] + '")');
+    /* CONTROL: que el orden no sea A-Z por casualidad de tener pocos. */
+    chk(nombres.length >= 15, 'CONTROL: hay bastantes barrios como para que el orden importe',
+        nombres.length + ' destinos');
     chk(/lun, mi[eé], vie, s[aá]b y dom/.test(de('Estancias del Pilar').d),
         'Estancias dice sus cinco dias ("' + de('Estancias del Pilar').d + '")');
     chk(/viernes/.test(de('El Lucero').d) && !/mi[eé]rcoles/.test(de('El Lucero').d),

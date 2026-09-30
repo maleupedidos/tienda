@@ -1752,6 +1752,51 @@ const BARRIOS_PILAR_MODAL = [
     subBarriosList: ['Manzanares', 'San Francisco', 'La Escondida', 'Manzanares Chico', 'Cerrillos', 'CUBA Fátima']
   },
   {
+    /* TIGRE (30/9/2026). Los 34 barrios de Fede D'Andrea, que arrancó ese día.
+       Los pasó él en su reunión y por eso se escriben tal cual los dijo.
+
+       NO ES PILAR, y queda adentro de la zona `pilar` igual: el cliente ya no
+       elige zona —desde el 28/9 escribe su barrio y la tienda la deduce—, así
+       que el nombre interno de la zona no se le muestra. Lo que sí le llega es
+       el ruteo, y ese es el mismo que el de los otros tres vendedores: hoja
+       Red, viernes, envío $3.000, sin carne.
+
+       `region` existe para que los textos que SÍ se leen no le digan "Pilar" a
+       alguien de Nordelta. El día que Tigre necesite su propio envío, sus
+       propios días o su propio canal, deja de alcanzar con esto y pasa a ser
+       una zona de ZONAS — no forzarlo desde acá. */
+    /* SANTA BARBARA, no "Tigre y alrededores" (30/9/2026). Tadeo, al verlo:
+       "no sirve el 'y alrededores'. nosotros nos manejamos por barrio privado".
+       Asi que la zona canonica es un barrio de verdad —donde esta Fede— y no
+       una etiqueta nuestra. Tiene que ser IGUAL a la primera entrada de su col
+       "Barrios" en la hoja Vendedores, que es de donde sale `zonaCanon`.
+
+       Y esa primera entrada no es decorativa: el ERP la usa ademas como la
+       direccion de retiro del vendedor en la Orden de Compra (`_dirVendedorRed`
+       devuelve `barrios[0]`). Si alguien "ordena la lista alfabeticamente" en
+       la planilla, la OC de Fede pasa a decir "Altamira" y alguien va a buscar
+       mercaderia al lugar equivocado. Lo encontro Backend al sacar la zona.
+
+       Santa Barbara esta ademas en `subBarriosList`, igual que Manzanares: es
+       un barrio donde la gente vive de verdad, no solo el nombre de la zona. */
+    val: 'Santa Bárbara',
+    nombre: 'Santa Bárbara',
+    region: 'Tigre',
+    isRed: true, badge: 'Fede',
+    subBarrios: 'Santa Bárbara · Nordelta · Talar del Lago · Rincón de Milberg y 30 barrios más',
+    subBarriosList: [
+      'Altamira', 'Barbarita', 'Barrancas de San José', 'Barrancas de Santa María',
+      'Barrancas del Lago', 'Cabos del Lago', 'Carpinchos', 'Castaños',
+      'El Encuentro', 'El Golf', 'El Yacht', 'Islas del Golf',
+      'La Alameda', 'La Comarca', 'La Damasia', 'La Isla',
+      'Laguna del Sol', 'Las Glorietas', 'Los Alisos', 'Los Castores',
+      'Los Lagos', 'Los Puentes', 'Los Sauces', 'Pacheco Golf',
+      'Portezuelo', 'Rincón de Milberg', 'San Isidro Labrador', 'Santa Bárbara',
+      'Santa Catalina', 'Santa María de Tigre', 'Talar de Pacheco',
+      'Talar del Lago I', 'Talar del Lago II', 'Virazón'
+    ]
+  },
+  {
     val: '__otro__',
     nombre: 'Otra zona de Pilar',
     isRed: false, isOther: true, badge: 'Maleu',
@@ -1864,8 +1909,47 @@ function _pilarEntregaMaleu() {
    vendedor nuevo, etc.). Actualmente no hay ninguno oculto (Fini arrancó
    13/07/26 con Ayres y alrededores). Para volver a usar, retornar true
    cuando corresponda. */
+/* UNA ZONA DE VENDEDOR NO SE OFRECE SI NINGUN VENDEDOR LA CUBRE (30/9/2026).
+
+   El agujero, medido el mismo dia que se cargo Tigre: una zona marcada `isRed`
+   en el codigo hace que `_pilarBarrioIsRed()` diga "lo atiende un vendedor"
+   —viernes, sin carne, envio $3.000— pero `vendedorMatch` sale de la hoja
+   `Vendedores`, y si el vendedor todavia no esta cargado ahi queda en null. Con
+   null, `enviarPedido` cae en `canal: z.canal` = **Pilar**. O sea: la pantalla
+   promete un vendedor y el pedido se va a la hoja de Maleu, que tendria que
+   entregar en Nordelta.
+
+   Es el mismo modo de falla que el de "Tortugas Country" esa misma mañana
+   —barrio en el codigo y no en la planilla— pero una zona entera en vez de un
+   barrio. Por eso la regla es general y no un parche para Tigre: la zona
+   aparece sola el dia que su vendedor existe, y desaparece sola si lo dan de
+   baja.
+
+   SI TODAVIA NO SABEMOS NADA (`barrioToVendedor` vacio, los primeros segundos
+   de una primera visita) no se esconde ninguna: esconder las cuatro por no
+   haber recibido la respuesta seria romper lo que hoy anda. Esa ventana la
+   cubre la copia de la ultima visita (`maleu_vendedores`). */
 function _barrioOculto(val) {
-  return false;
+  var b = BARRIOS_PILAR_MODAL.filter(function (x) { return x.val === val; })[0];
+  if (!b || !b.isRed) return false;
+  /* SOLO LAS ZONAS DONDE MALEU NO LLEGA. Una zona de Pilar sin vendedor no se
+     esconde: ahi Maleu entrega igual —miercoles y viernes, es su propia zona—
+     asi que esconderla seria perder la venta en vez de protegerla. Es el caso
+     concreto de Fini, que se va a fines de enero: Ayres tiene que seguir
+     comprando aunque su fila no este.
+
+     Con `region` es al reves: si nadie la atiende, no hay quien entregue. */
+  if (!b.region) return false;
+  var claves = Object.keys(barrioToVendedor || {});
+  if (!claves.length) return false;
+  var subs = b.subBarriosList || [];
+  var cubierta = claves.some(function (k) {
+    var v = barrioToVendedor[k];
+    if (!v) return false;
+    if (v.zonaCanon && _dirNorm(v.zonaCanon) === _dirNorm(b.val)) return true;
+    return subs.some(function (s) { return _dirNorm(s) === _dirNorm(v.barrio); });
+  });
+  return !cubierta;
 }
 
 /* ── LOS VENDEDORES DE LA ULTIMA VISITA (29/9/2026) ──────────────────────────
@@ -2684,8 +2768,21 @@ function renderPilarBarrios() {
   // Sub-barrios de la zona activa. Estos VALORES matchean 1:1 con Sheets
   // Vendedores col Barrios → barrioToVendedor los usa para el routing al
   // vendedor correcto (Fini para 'Ayres del Pilar', etc.).
-  (zona.subBarriosList || []).forEach(function(b) {
-    sel.innerHTML += '<option value="' + b + '">' + b + '</option>';
+  /* DE LA A A LA Z, y por `textContent` (30/9/2026). Lo primero lo pidio Tadeo
+     al sumar los 34 barrios de Tigre: un desplegable de 34 en el orden en que
+     estan escritos en el codigo no se puede recorrer. Lo segundo es por las
+     dudas — hoy estos valores salen del codigo, pero el dia que alguno venga
+     de la planilla, concatenarlo al innerHTML seria abrir una puerta que hoy
+     no existe. Se ordena una COPIA: `subBarriosList` se usa tal cual en otros
+     lados y el orden en que Tadeo los escribio es su orden. */
+  (zona.subBarriosList || []).slice().sort(function (a, b) {
+    var x = _dirNorm(a), y = _dirNorm(b);
+    return x < y ? -1 : (x > y ? 1 : 0);
+  }).forEach(function (b) {
+    var o = document.createElement('option');
+    o.value = b;
+    o.textContent = b;
+    sel.appendChild(o);
   });
   // 'Otra zona de Pilar' agrega opción "Otro barrio" con input libre para
   // que el cliente escriba la dirección exacta (ej. calle + número).
@@ -3167,7 +3264,23 @@ function _dirDestinos() {
     var zona = BARRIOS_PILAR_MODAL.filter(function (b) { return b.val === zc; })[0];
     out.push({ txt: v.barrio, zona: 'pilar', pz: zc, pzNombre: (zona && zona.nombre) || zc, sub: v.barrio });
   });
+  /* DE LA A A LA Z (30/9/2026). Pedido de Tadeo al sumar los 34 de Tigre: con
+     55 destinos, el orden en que estan declarados en el codigo no es un orden
+     para nadie. Ordenar por el texto normalizado y no con localeCompare a
+     secas hace que "Ángeles" caiga en la A y no despues de la Z, y que "El
+     Golf" y "El Yacht" queden juntos. */
+  out.sort(function (a, b) {
+    var x = _dirNorm(a.txt), y = _dirNorm(b.txt);
+    return x < y ? -1 : (x > y ? 1 : 0);
+  });
   return out;
+}
+
+/* La inicial con la que se agrupa en la lista. Los numeros y cualquier cosa
+   rara caen juntos en "#" en vez de inventar una letra. */
+function _dirInicial(txt) {
+  var c = _dirNorm(txt).charAt(0).toUpperCase();
+  return (c >= 'A' && c <= 'Z') ? c : '#';
 }
 
 /* Sin acentos y en minuscula: quien escribe "rio" tiene que encontrar "R\u00edo". */
@@ -3195,7 +3308,26 @@ function dirBuscar() {
   if (!inp || !lista) return;
   var res = _dirCoinciden(inp.value);
   lista.innerHTML = '';
+  /* LOS SEPARADORES DE LETRA van SOLO con la lista completa (30/9/2026).
+     Buscando, el orden deja de ser alfabetico —los que EMPIEZAN con lo escrito
+     van primero— asi que una "A" arriba de un resultado que salio por otra
+     letra mentiria. Con 55 barrios la lista sin buscar es la que hay que poder
+     recorrer con el dedo; la lista filtrada ya es corta. */
+  var conLetras = !_dirNorm(inp.value);
+  var letraAnterior = '';
   res.forEach(function (d, i) {
+    if (conLetras) {
+      var ini = _dirInicial(d.txt);
+      if (ini !== letraAnterior) {
+        letraAnterior = ini;
+        var h = document.createElement('div');
+        h.className = 'dir-letra';
+        h.textContent = ini;
+        /* No es un boton y no se puede tocar: es un rotulo. */
+        h.setAttribute('aria-hidden', 'true');
+        lista.appendChild(h);
+      }
+    }
     var b = document.createElement('button');
     b.type = 'button';
     b.className = 'dir-op';
@@ -3370,7 +3502,12 @@ function _cutoffNote(zone) {
   zone = zone || currentZone;
   if (!_zonaDependeDelCutoffViernes(zone)) return null;
   var esClub = zone === 'clubes';
-  var donde = esClub ? 'en la puerta del club' : 'en Pilar y Alrededores';
+  /* "en Pilar y Alrededores" estaba escrito a mano, y desde que existe la zona
+     de Tigre (30/9/2026) eso le diria Pilar a alguien de Nordelta. Sale de la
+     `region` de su zona canonica cuando la tiene. */
+  var _zc = (zone === 'pilar') ? _getPilarZonaActual() : null;
+  var donde = esClub ? 'en la puerta del club'
+    : (_zc && _zc.region ? 'en ' + _zc.region : 'en Pilar y Alrededores');
   var nowAR = new Date(Date.now() - 3 * 3600 * 1000);
   var dow = nowAR.getUTCDay();      // 0=Dom .. 6=Sáb
   var hour = nowAR.getUTCHours();

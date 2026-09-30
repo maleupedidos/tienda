@@ -945,6 +945,10 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
 
 /* La lista scrollea ella: con 18 barrios, sin tope, el modal se pasa del alto
    de un iPhone y el boton de "no encuentro mi barrio" queda abajo del borde. */
+/* En la compu hay pantalla de sobra y la lista es larga: se le da mas alto en
+   vez de partirla en columnas, que con los rotulos pegados arriba quedaria
+   con una letra por columna y se leeria peor. */
+@media (min-width: 768px) { .dir-lista { max-height: 58vh !important; } }
 .dir-lista {
   margin-top: .6rem; max-height: 46vh; overflow-y: auto;
   overscroll-behavior: contain; touch-action: pan-y;
@@ -956,6 +960,19 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
   background: none; border: none; border-bottom: 1px solid #F4ECE4;
   text-align: left; cursor: pointer; touch-action: manipulation;
   font-family: var(--font);
+}
+/* EL SEPARADOR DE LETRA (30/9/2026). Con 55 barrios la lista dejo de ser algo
+   que se lee de un vistazo y paso a ser algo que se recorre. Va pegado arriba
+   mientras se scrollea su tramo, que es lo que te dice donde estas sin tener
+   que volver a mirar. Solo aparece con la lista completa: buscando, el orden
+   no es alfabetico. */
+.dir-letra {
+  position: sticky; top: 0; z-index: 2;
+  padding: .3rem .2rem .25rem;
+  background: var(--cream, #FBF7F1);
+  font-size: .72rem; font-weight: 700; letter-spacing: .1em;
+  color: var(--orange); text-transform: uppercase;
+  border-bottom: 1px solid #F0E7DE;
 }
 .dir-op:hover { background: #FFF8F2; }
 .dir-op-nombre { font-size: .95rem; font-weight: 600; color: var(--brown); }
