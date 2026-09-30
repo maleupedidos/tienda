@@ -613,13 +613,42 @@ async function main() {
     const tg = await estado();
     chk(tg.esRed === true && tg.entregaMaleu === false,
         'lo atiende su vendedor, no Maleu', JSON.stringify({ esRed: tg.esRed, maleu: tg.entregaMaleu }));
-    chk(tg.carne === 0 && tg.envio === 3000 && tg.dias.join() === 'Viernes',
-        'con las mismas reglas que los demas: sin carne, $3.000, solo viernes',
-        JSON.stringify({ carne: tg.carne, envio: tg.envio, dias: tg.dias }));
+    chk(tg.carne === 0 && tg.envio === 3000,
+        'con las mismas reglas que los demas: sin carne y envio $3.000',
+        JSON.stringify({ carne: tg.carne, envio: tg.envio }));
+    /* VIERNES Y SABADO (30/9/2026). Tadeo, viendo la tienda: "los de federico
+       son entregas viernes y sabados a coordinar". Se lo habian prometido en
+       la reunion y era lo unico de esa charla que la tienda no cumplia. */
+    chk(tg.dias.indexOf('Viernes') >= 0 && tg.dias.indexOf('Sábado') >= 0,
+        'y sus dias: viernes Y sabado', tg.dias.join(', '));
     await mandar();
     const pedTg = await ultimoPost();
     chk(pedTg && pedTg.canal === 'Red',
         'y su PEDIDO se va a la hoja Red, no a Pilar', 'canal: ' + ((pedTg && pedTg.canal) || 'ninguno'));
+
+    /* EL CONTROL DEL SABADO, y es el que importa: el sabado tuvo que entrar a
+       `ZONAS.pilar.horarios` para que el calendario supiera que horario decir,
+       asi que sin filtro se lo lleva TODA la zona — incluidos los barrios que
+       entrega Maleu, donde no repartimos los sabados, y los otros vendedores,
+       a los que nadie les prometio un dia nuevo. */
+    console.log('\n' + DIM + '   CONTROL: el sabado es solo de el:' + RST);
+    await abrir({
+      maleu_zone: 'pilar',
+      maleu_pilar_zona: { val: 'Tortugas y alrededores', nombre: 'Tortugas y alrededores', ts: 1 },
+      maleu_pilar_barrio: { val: 'El Lucero', nombre: 'El Lucero', ts: 1 },
+    });
+    const otroVend = await estado();
+    chk(otroVend.dias.join() === 'Viernes',
+        'otro vendedor sigue solo con viernes', otroVend.dias.join(', ') || '(ninguno)');
+    await abrir({
+      maleu_zone: 'pilar',
+      maleu_pilar_zona: { val: '__otro__', nombre: 'Otra zona de Pilar', ts: 1 },
+      maleu_pilar_barrio: { val: 'Los Alcanfores', nombre: 'Los Alcanfores', ts: 1 },
+    });
+    const maleuPil = await estado();
+    chk(maleuPil.dias.indexOf('Sábado') === -1 && maleuPil.dias.indexOf('Miércoles') >= 0,
+        'y lo que entrega Maleu sigue con miercoles y viernes, sin sabado',
+        maleuPil.dias.join(', ') || '(ninguno)');
 
     console.log('\n' + DIM + '   CONTROL: sin su vendedor, la zona no se ofrece:' + RST);
     /* La copia de la ultima visita SIN el vendedor de Tigre, y la planilla

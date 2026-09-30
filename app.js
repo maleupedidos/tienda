@@ -1444,7 +1444,11 @@ const ZONAS = {
     // barrios con vendedor siguen solo el viernes: el vendedor reparte ese día,
     // y un pedido suyo es "a pedido" (entra en la orden del jueves), así que un
     // miércoles no habría con qué armarlo. Lo decide _pilarEntregaMaleu.
-    horarios: { "Miércoles":"A coordinar", "Viernes":"A coordinar" },
+    /* El SABADO existe en la zona desde el 30/9/2026 y NO es para todos: lo
+       entrega el vendedor que lo tenga declarado en su `dias`. Lo que decide
+       quien lo ve es `_diasDeZonaRed()`, no esta lista — acá sólo tiene que
+       estar para que el calendario sepa qué horario decir. */
+    horarios: { "Miércoles":"A coordinar", "Viernes":"A coordinar", "Sábado":"A coordinar" },
     deliveryText: "Entregas: miércoles y viernes · Para el viernes, pedidos hasta el jueves 12 hs",
     deliveryTextVendedor: "Entregas: viernes durante el día · Pedidos hasta el jueves 12 hs",
     showStock: false
@@ -1782,6 +1786,11 @@ const BARRIOS_PILAR_MODAL = [
     val: 'Santa Bárbara',
     nombre: 'Santa Bárbara',
     region: 'Tigre',
+    /* VIERNES Y SABADO, A COORDINAR (30/9/2026). Se lo prometimos a Fede en su
+       reunion y era lo unico de esa charla que la tienda no podia cumplir: los
+       dias salian de la ZONA y el sabado no existia en Pilar para nadie.
+       Ahora cada zona de vendedor declara los suyos; sin `dias`, viernes. */
+    dias: ['Viernes', 'Sábado'],
     isRed: true, badge: 'Fede',
     subBarrios: 'Santa Bárbara · Nordelta · Talar del Lago · Rincón de Milberg y 30 barrios más',
     subBarriosList: [
@@ -1929,6 +1938,41 @@ function _pilarEntregaMaleu() {
    de una primera visita) no se esconde ninguna: esconder las cuatro por no
    haber recibido la respuesta seria romper lo que hoy anda. Esa ventana la
    cubre la copia de la ultima visita (`maleu_vendedores`). */
+/* LOS DIAS DE UNA ZONA DE VENDEDOR (30/9/2026).
+
+   Hasta este dia los dias salian de la ZONA y el filtro era literal: "barrio
+   con vendedor = solo Viernes". A Fede se le prometieron viernes Y sabado en su
+   reunion, y eso no se podia cumplir sin que el sabado apareciera tambien en
+   "Otra zona de Pilar", donde Maleu no reparte los sabados.
+
+   Ahora cada zona declara los suyos. Sin `dias`, viernes — que es lo que hacen
+   los otros tres y lo que hacia el codigo antes, asi que agregar este campo no
+   le cambio el dia a nadie. */
+function _diasDeZonaRed(zona) {
+  return (zona && zona.dias) || ['Viernes'];
+}
+
+/* Los dias de la zona que el cliente tiene elegida ahora, para los textos y
+   para el calendario. Sin zona, viernes. */
+function _diasDelVendedorActual() {
+  return _diasDeZonaRed(_getPilarZonaActual());
+}
+
+/* "los viernes" · "los viernes y sabados". Se arma en un solo lugar porque lo
+   dicen el buscador de barrios, el hero y el cartel de entrega, y ya paso una
+   vez que tres carteles dijeran cosas distintas del mismo hecho. */
+function _diasEnPalabras(dias) {
+  /* Los dias terminados en `s` ya son plurales: "los viernes", no "vierness".
+     "sabado" y "domingo" si lo llevan. */
+  var d = (dias || []).map(function (x) {
+    var s = String(x).toLowerCase();
+    return s.charAt(s.length - 1) === 's' ? s : s + 's';
+  });
+  if (!d.length) return 'los viernes';
+  if (d.length === 1) return 'los ' + d[0];
+  return 'los ' + d.slice(0, -1).join(', ') + ' y ' + d[d.length - 1];
+}
+
 function _barrioOculto(val) {
   var b = BARRIOS_PILAR_MODAL.filter(function (x) { return x.val === val; })[0];
   if (!b || !b.isRed) return false;
@@ -3368,8 +3412,18 @@ function dirBuscar() {
    entregamos ahi. */
 function _dirResumen(d) {
   if (d.zona === 'estancias') return 'Entregas lun, mi\u00e9, vie, s\u00e1b y dom';
-  var esRed = !!(BARRIOS_PILAR_MODAL.filter(function (b) { return b.val === d.pz; })[0] || {}).isRed;
-  return esRed ? 'Entregas los viernes' : 'Entregas mi\u00e9rcoles y viernes';
+  var zona = BARRIOS_PILAR_MODAL.filter(function (b) { return b.val === d.pz; })[0] || {};
+  /* Los dias salen de la zona, no de un texto escrito a mano: el de Fede
+     entrega viernes y sabado, y el buscador es donde el cliente lo lee ANTES
+     de elegir su barrio. Si dijera "los viernes" para todos, el sabado que la
+     tienda si le va a ofrecer despues seria una sorpresa. */
+  if (zona.isRed) {
+    var dias = _diasEnPalabras(_diasDeZonaRed(zona));
+    /* "A coordinar" cuando la zona no declara hora, que es el caso de todas
+       las de Pilar y Tigre: prometer "19 a 21" donde no lo sabemos es peor. */
+    return 'Entregas ' + dias + ' a coordinar';
+  }
+  return 'Entregas mi\u00e9rcoles y viernes';
 }
 
 /* Resuelve zona + zona de Pilar + barrio de una sola vez y cierra. */
@@ -3715,8 +3769,16 @@ function _getNextDeliveryDatesGrouped(zone) {
     var inThisWeek = d.getTime() < nextMonday.getTime();
     // Filtro de restricción Pilar: solo Vie en thisWeek (las extras también pasan)
     if (pilarRestricted && inThisWeek && dayName !== 'Viernes' && !isExtra) continue;
-    // Barrio Red (Marcos): solo Viernes, todas las semanas
-    if (pilarRedOnly && dayName !== 'Viernes' && !isExtra) continue;
+    /* Barrio con vendedor: SUS dias, todas las semanas. Hasta el 30/9/2026 esto
+       era "solo Viernes" escrito literal; ahora sale de la zona, porque a Fede
+       se le prometieron viernes y sabado y los otros tres siguen en viernes. */
+    if (pilarRedOnly && !isExtra &&
+        _diasDeZonaRed(_getPilarZonaActual()).indexOf(dayName) === -1) continue;
+    /* Y EL SABADO NO ES DE MALEU. Existe en `horarios` de la zona para que el
+       calendario sepa que horario decir, pero en "Otra zona de Pilar" no
+       repartimos los sabados: sin esta linea, agregarlo para Fede se lo daba
+       tambien a los barrios que entregamos nosotros. */
+    if (zone === 'pilar' && !pilarRedOnly && dayName === 'Sábado' && !isExtra) continue;
     // Cutoff Pilar Vie de esta semana ya vencido → no ofrecer ese Vie
     if (pilarFridayBloqueadoFlag && inThisWeek && dayName === 'Viernes') continue;
     // timeRange: usar el de extra si aplica, sino el del horario normal
@@ -4110,7 +4172,16 @@ function _pintarHeroEntregas() {
     $id('hero-delivery').style.display = 'none';
     if (schedEl) { schedEl.textContent = z.schedule; schedEl.style.display = ''; }
   } else {
-    var txt = (currentZone === 'pilar' && !_pilarEntregaMaleu() && z.deliveryTextVendedor) ? z.deliveryTextVendedor : z.deliveryText;
+    /* El hero de un barrio con vendedor dice LOS DIAS DE ESE VENDEDOR. Estaba
+       escrito a mano en la zona ("viernes durante el dia"), y desde que Fede
+       entrega viernes y sabado eso le mentiria a un cliente de Tigre. */
+    var txt;
+    if (currentZone === 'pilar' && !_pilarEntregaMaleu()) {
+      txt = 'Entregas ' + _diasEnPalabras(_diasDelVendedorActual()) +
+            ' a coordinar · Pedidos hasta el jueves 12 hs';
+    } else {
+      txt = z.deliveryText;
+    }
     $id('hero-delivery').textContent = txt;
     $id('hero-delivery').style.display = '';
     if (schedEl) schedEl.style.display = 'none';
@@ -5466,10 +5537,28 @@ function _zoneHorariosForDayPicker() {
   if (!currentZone) return {};
   var z = ZONAS[currentZone];
   if (!z) return {};
-  // Pilar: del 06/07/26 al 14/9/2026 fue solo viernes para todos. Desde el
-  // 14/9 lo que entrega Maleu vuelve a tener miércoles y viernes; los barrios
-  // con vendedor, solo viernes. Mismo criterio que el calendario del modal.
-  if (currentZone === 'pilar') return _pilarEntregaMaleu() ? z.horarios : { 'Viernes': 'A coordinar' };
+  /* Pilar: del 06/07/26 al 14/9/2026 fue solo viernes para todos. Desde el
+     14/9 lo que entrega Maleu tiene miércoles y viernes; los barrios con
+     vendedor, los días de SU zona (30/9/2026 — Fede entrega viernes y sábado).
+
+     ESTE ERA UNA SEGUNDA COPIA DEL CRITERIO y el comentario decía "mismo
+     criterio que el calendario del modal" mientras se escribía aparte: al
+     sumar el sábado, el modal lo filtraba bien y este lo dejaba pasar para
+     "Otra zona de Pilar", que es justo donde Maleu no reparte los sábados. Lo
+     agarró `verificar-zonas`. Ahora los dos salen de `_diasDeZonaRed()`. */
+  if (currentZone === 'pilar') {
+    var out = {};
+    if (_pilarEntregaMaleu()) {
+      Object.keys(z.horarios || {}).forEach(function (d) {
+        if (d !== 'Sábado') out[d] = z.horarios[d];
+      });
+    } else {
+      _diasDelVendedorActual().forEach(function (d) {
+        out[d] = (z.horarios && z.horarios[d]) || 'A coordinar';
+      });
+    }
+    return out;
+  }
   return z.horarios || {};
 }
 
