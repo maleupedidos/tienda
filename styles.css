@@ -60,7 +60,7 @@ body.modal-open { overflow:hidden; height:100%; touch-action:none; }
 .loc-btn { display:block; width:100%; padding:.9rem; margin-bottom:.6rem; border:2px solid #eee; border-radius:12px; background:#fff; font-family:var(--font); font-size:.95rem; font-weight:600; cursor:pointer; transition:all .15s; text-align:left; }
 .loc-btn:hover { border-color:var(--orange); background:#FFF8F4; }
 .loc-btn small { display:block; font-weight:400; font-size:.75rem; color:#6b6b6b; margin-top:2px; }
-.loc-btn .loc-price { float:right; color:var(--orange); font-weight:700; }
+.loc-btn .loc-price { float:right; color:var(--orange-ink); font-weight:700; }
 /* Anotación destacada dentro de un botón de zona (ej: cutoff de pedidos en
    Pilar). Es un bloque que ocupa el ancho del botón y deja que el texto
    fluya solo: en desktop entra en 1 línea y en mobile envuelve en 2 sin
@@ -127,7 +127,7 @@ body.modal-open { overflow:hidden; height:100%; touch-action:none; }
 .loc-date-card { position:relative; padding:.85rem .35rem .7rem; border:2px solid #eee; border-radius:12px; background:#fff; cursor:pointer; transition:all .15s; font-family:var(--font); display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:96px; }
 .loc-date-card:hover { border-color:var(--orange); background:#FFF8F4; transform:translateY(-1px); }
 .loc-date-card .dc-day { font-size:.7rem; font-weight:700; color:#6b6b6b; text-transform:uppercase; letter-spacing:.5px; margin-bottom:.15rem; }
-.loc-date-card .dc-day.dc-day-flag { color:var(--orange); font-size:.72rem; letter-spacing:.8px; }
+.loc-date-card .dc-day.dc-day-flag { color:var(--orange-ink); font-size:.72rem; letter-spacing:.8px; }
 .loc-date-card .dc-num { font-size:1.85rem; font-weight:700; color:var(--brown); line-height:1; }
 .loc-date-card .dc-mon { font-size:.7rem; color:#666; margin-top:.1rem; }
 .loc-date-card .dc-time { font-size:.65rem; color:#767676; margin-top:.4rem; line-height:1.1; }
@@ -323,7 +323,7 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .cat-header { margin-bottom:1rem; }
 .cat-title { font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:.4rem; letter-spacing:.05em; }
 .cat-nota { font-size:.75rem; color:#767676; margin-top:.15rem; }
-.cat-tip { font-size:.75rem; color:var(--orange); margin-top:.25rem; }
+.cat-tip { font-size:.75rem; color:var(--orange-ink); margin-top:.25rem; }
 .products-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:.8rem; }
 @media(min-width:600px) { .products-grid { grid-template-columns:repeat(3, 1fr); } }
 
@@ -334,7 +334,17 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .product-thumb-img { width:100%; height:100%; object-fit:cover; }
 .product-body { padding:.7rem; display:flex; flex-direction:column; flex:1; }
 .product-name { font-size:.82rem; font-weight:700; margin-bottom:.2rem; line-height:1.2; }
-.product-desc { font-size:.7rem; color:#6b6b6b; line-height:1.35; flex:1; margin-bottom:.4rem; }
+/* `flex:1` hasta el 1/10/2026, y ESA ERA LA CAUSA de que la descripcion se
+   viera cortada con "..." y la linea siguiente igual a la vista:
+   "La que nunc... / falla.". Con flex-grow el navegador ESTIRA la caja para
+   llenar la card —hasta 3,54 lineas medidas con el clamp en 2—, el clamp
+   recorta a 2 y pone los puntos suspensivos, y la tercera linea se sigue
+   viendo porque hay alto de sobra. Lo sufrian 8 de 42 cards.
+
+   No hace falta que crezca: el `margin-top:auto` de .product-footer ya ancla
+   el precio y el boton abajo. Verificado: 8 descripciones rotas -> 0, y los
+   botones de la fila siguen alineados al pixel. */
+.product-desc { font-size:.7rem; color:#6b6b6b; line-height:1.35; flex:0 0 auto; margin-bottom:.4rem; }
 .product-chips { display:flex; flex-wrap:wrap; gap:.25rem; margin-bottom:.4rem; }
 .chip { font-size:.6rem; background:#f5f5f5; color:#666; padding:.15rem .4rem; border-radius:20px; }
 .stock-indicator { display:block; margin-bottom:.3rem; }
@@ -348,7 +358,7 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 
 /* ── COMBOS ── */
 .combos-section, #productos-ancla { scroll-margin-top:120px; }
-.combos-section .cat-title { color:var(--orange); }
+.combos-section .cat-title { color:var(--orange-ink); }
 .combos-disclaimer { font-size:.72rem; color:#8a6a52; margin-top:.35rem; padding:.4rem .6rem; background:#FFF8ED; border-left:3px solid #FFB74D; border-radius:6px; font-weight:600; }
 
 /* Combo TERMINADO: visible pero no comprable (evento pasó) */
@@ -388,7 +398,7 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .combo-includes li { font-size:.66rem; color:#7a6a5a; line-height:1.5; padding-left:.9rem; position:relative; }
 .combo-includes li::before { content:"•"; position:absolute; left:.15rem; color:var(--orange,#E65100); }
 .combo-personas { display:inline-block; background:#FFF3E0; color:#E65100; font-weight:700; font-size:.78rem; padding:.32rem .7rem; border-radius:20px; margin-bottom:.5rem; border:1px solid #FFD8A8; }
-.combo-includes li strong { color:var(--orange,#E65100); font-weight:700; }
+.combo-includes li strong { color:var(--orange-ink,#B85420); font-weight:700; }
 .combo-includes li.fixed::before { content:"✓"; color:#2E7D32; }
 .combo-includes li.fixed strong { color:#2E7D32; }
 .combo-choose { color:#a89684; font-weight:500; }
@@ -532,8 +542,9 @@ body.con-ver-pedido .wa-float { bottom:calc(5.2rem + env(safe-area-inset-bottom,
    de scroll que esconde la franja del 10%: una sola escucha, pasiva y de a un
    cuadro. No se usa display:none para que la transicion se vea. */
 .wa-float { opacity:1; visibility:visible; transition:transform .15s, box-shadow .15s, opacity .2s ease, visibility 0s linear 0s; }
-body.bajando .wa-float { opacity:0; visibility:hidden; pointer-events:none;
-                         transition:opacity .2s ease, visibility 0s linear .2s; }
+body.bajando .wa-float,
+body.wa-estorba .wa-float { opacity:0; visibility:hidden; pointer-events:none;
+                            transition:opacity .2s ease, visibility 0s linear .2s; }
 
 /* ── REPEAT BLOCK ── */
 
@@ -550,7 +561,7 @@ body.bajando .wa-float { opacity:0; visibility:hidden; pointer-events:none;
 .order-summary-box { background:#FAFAFA; border-radius:10px; padding:1rem; margin-bottom:1.2rem; }
 .order-summary-box h3 { font-size:.85rem; font-weight:700; margin-bottom:.5rem; }
 .summary-line { display:flex; justify-content:space-between; font-size:.8rem; padding:.2rem 0; }
-.summary-line.shipping-line { color:var(--orange); }
+.summary-line.shipping-line { color:var(--orange-ink); }
 .summary-line.subtotal-line { border-top:1px solid #eee; padding-top:.45rem; margin-top:.3rem; font-weight:600; }
 .total-line { font-weight:700; border-top:1px solid #eee; padding-top:.5rem; margin-top:.3rem; font-size:.9rem; }
 .summary-line-combo { align-items:flex-start; }
@@ -605,7 +616,7 @@ body.bajando .wa-float { opacity:0; visibility:hidden; pointer-events:none;
 .select-wrapper { position:relative; }
 .select-wrapper::after { content:'▾'; position:absolute; right:.8rem; top:50%; transform:translateY(-50%); pointer-events:none; color:#767676; font-size:.8rem; }
 .form-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:.8rem; }
-.horario-hint { font-size:.78rem; color:var(--orange); font-weight:600; display:none; }
+.horario-hint { font-size:.78rem; color:var(--orange-ink); font-weight:600; display:none; }
 .pago-fieldset { border:none; }
 .pago-label { font-size:.8rem; font-weight:600; margin-bottom:.4rem; display:block; }
 .radio-row { display:flex; gap:.8rem; }
@@ -634,7 +645,7 @@ body.bajando .wa-float { opacity:0; visibility:hidden; pointer-events:none;
 .cumple-done { display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; }
 .cumple-done-ico { font-size:1.5rem; line-height:1; }
 .cumple-done-txt { flex:1; min-width:0; font-size:.85rem; font-weight:600; color:var(--brown); line-height:1.3; }
-.cumple-done-txt strong { color:var(--orange); white-space:nowrap; }
+.cumple-done-txt strong { color:var(--orange-ink); white-space:nowrap; }
 .cumple-edit-btn { background:#fff; border:1.5px solid #e7d6b0; color:#9a8157; font-family:var(--font); font-size:.74rem; font-weight:700; padding:.4rem .7rem; border-radius:8px; cursor:pointer; transition:all .15s; }
 .cumple-edit-btn:hover { border-color:var(--orange); color:var(--orange); }
 .form-note { font-size:.75rem; color:#767676; text-align:center; margin:1rem 0 .8rem; }
@@ -924,7 +935,7 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
    que gano algo. No lleva fondo ni caja — con el naranja alcanza, y una caja
    mas en esa pantalla compite con la del alias, que es la que el cliente
    necesita para pagar. */
-.send-done-datos .send-done-premio { font-weight: 700; color: var(--orange); }
+.send-done-datos .send-done-premio { font-weight: 700; color: var(--orange-ink); }
 
 /* El alias va seleccionable a proposito: si el boton de copiar falla —
    `navigator.clipboard` puede no estar— el cliente se queda sin poder pagar.
@@ -983,7 +994,7 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
 .recorte-fila:last-child { border-bottom: none; }
 .recorte-prod { font-size: .92rem; font-weight: 600; color: var(--brown); }
 .recorte-num { font-size: .82rem; color: #6b5a52; flex: none; }
-.recorte-num strong { color: var(--orange); font-size: .95rem; }
+.recorte-num strong { color: var(--orange-ink); font-size: .95rem; }
 
 /* El renglon que dice que reconocemos al cliente. Va del lado del texto que
    ya existe, sin caja ni color propio: es una frase, no un cartel. */
@@ -1045,7 +1056,7 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
 .dir-op:hover { background: #FFF8F2; }
 .dir-op-nombre { font-size: .95rem; font-weight: 600; color: var(--brown); }
 .dir-op-dato { font-size: .76rem; color: #8a7a70; }
-.dir-op-otro .dir-op-nombre { color: var(--orange); }
+.dir-op-otro .dir-op-nombre { color: var(--orange-ink); }
 .dir-op:last-child { border-bottom: none; }
 
 /* ── CTA WhatsApp con estado "ready" (último paso) ─────────────
@@ -1164,7 +1175,7 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
    suelta. Mismo tono y tamaño que el chip de porciones, asi no compite.
    El `display:block` lo pone en su renglon sin agregar un div al footer. */
 .precio-unidad { display:block; font-size:.72rem; font-weight:500; color:#7d6f62;
-                 line-height:1.25; margin-top:.05rem; }
+                 line-height:1.25; margin-top:.05rem; min-height:1.25em; }
 
 /* 5. EL BOTON — 44px es el minimo tactil real. Estaba en 36px. */
 .add-btn { min-height:44px; display:flex; align-items:center;
@@ -1648,6 +1659,16 @@ body.busqueda-activa #cat-tiles-section,
 body.busqueda-activa #top-section,
 body.busqueda-activa .cat-nav-hint,
 body.busqueda-activa #ultimo-section { display: none !important; }
+
+/* Y NINGUNA CATEGORIA QUEDA MARCADA (1/10/2026). Buscando "pizza" salian
+   packs de pizza y el chip naranja seguia diciendo "Empanadas", que es la
+   categoria por la que el cliente venia pasando: dos cosas de la misma
+   pantalla afirmando distinto. Se apaga por CSS y no tocando `.active` desde
+   el JS, para que al limpiar la busqueda la marca vuelva sola a donde estaba
+   — si se borrara la clase, habria que acordarse de recalcularla. */
+body.busqueda-activa .cat-nav-btn.active { background:#fff; color:var(--brown);
+                                           border-color:#eee; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+body.busqueda-activa .cat-nav-btn.cat-nav-combos.active { background:var(--brown); color:#fff; border-color:transparent; }
 
 @media (max-width: 600px) {
   .buscador { margin: .45rem .75rem .35rem; }

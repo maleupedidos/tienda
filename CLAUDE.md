@@ -4181,6 +4181,121 @@ verde sobre una card que dice otra cosa.
 > `loading="eager"` + esperar por el mismo motivo; ahora éste también. Tres
 > corridas seguidas en verde.
 
+## Los tres revisores de `.claude/agents/` (1/10/2026)
+
+Los creó Tadeo ese día. **Son de él, no son basura y no se borran**, aunque
+`git status` los muestre sin trackear: están en el `.gitignore` a propósito
+porque este repo es público y las instrucciones internas no se publican.
+
+| agente | para qué |
+|---|---|
+| `cliente-maleu` | recorre maleu.com.ar como un cliente y reporta trabas y dudas en el camino de compra |
+| `diseno-tienda` | mira las capturas y marca lo que se lee como hecho con IA, el contraste que no se lee y la jerarquía confusa |
+| `ecommerce-alimentos` | compara contra tiendas de comida que venden bien y propone qué mejorar, por impacto en la venta |
+
+**Los tres son de sólo lectura** — ninguno toca código. Tadeo: *"podés
+llamarlos cuando quieras"*.
+
+> [!warning] De a uno, no en paralelo
+> Los tres manejan el navegador por el mismo servidor MCP de Playwright, que
+> tiene **una sola instancia**: dos a la vez se pisan la pestaña y cada uno
+> termina mirando lo que navegó el otro.
+
+> [!tip] El momento de llamarlos es ANTES de dar algo por terminado
+> Sobre todo a `diseno-tienda`: lo que se publica lo diseña esta sesión, así
+> que esta sesión es mal juez de si quedó lindo. Conviene pasarle qué se tocó y
+> qué decisiones ya están tomadas — el naranja de marca, por ejemplo— para que
+> no gaste el informe en repetirlas.
+
+## Lo que encontró la primera revisión de diseño (1/10/2026)
+
+Tadeo creó los tres agentes de `.claude/agents/` y se llamó a **`diseno-tienda`**
+contra la tienda ya publicada. Encontró cuatro cosas que esta sesión no había
+visto **porque las había diseñado ella misma**. Las cuatro se arreglaron el
+mismo día.
+
+### 1. El WhatsApp tapaba el botón de comprar en reposo
+
+> [!danger] 4 de cada 26 paradas, medido sobre la tienda publicada
+> Esconderlo al bajar —lo que se había hecho esa misma mañana— cubre el
+> **recorrido**, pero no el **reposo**, que es justo cuando se compra. Parando
+> cada 300px y subiendo 30 en cada parada, en 4 de 26 quedaba encima de un
+> "Agregar" o de un +/-. Un toque ahí se lleva al cliente **fuera de la
+> tienda**.
+>
+> Correrlo más arriba o más abajo no sirve de nada: **las filas de cards se
+> repiten cada ~340px**, siempre hay una debajo.
+
+Ahora hay una segunda regla que ataca la causa: **`_waTapaUnControl()`**
+pregunta por hit-testing en cinco puntos si debajo del botón hay un control de
+compra, y si lo hay no se muestra. Se pregunta con `elementsFromPoint` y no
+comparando contra los 40 botones de la página: 40 `getBoundingClientRect` en
+cada cuadro de scroll sí se notarían. **Medido después: 0 de 22.**
+
+### 2. La descripción mostraba texto DESPUÉS de los puntos suspensivos
+
+> [!danger] "La que nunc… / falla." — en la card del producto más vendido
+> `.product-desc` tenía **`flex:1`**, así que el navegador la **estiraba** para
+> llenar la card: hasta **3,54 líneas** con el clamp en 2. El clamp recortaba a
+> 2 y ponía los puntos, y la tercera línea se seguía viendo porque había alto
+> de sobra. Lo sufrían **8 de 42 cards**.
+>
+> No hace falta que crezca: el `margin-top:auto` de `.product-footer` ya ancla
+> el precio y el botón abajo. Con `flex:0 0 auto`, **8 → 0**, y los botones de
+> la fila siguen alineados al píxel.
+
+> [!warning] Y lo había agravado el precio por unidad, de esa misma mañana
+> El renglón nuevo hace más alta la card del pack, y eso estira más la
+> descripción de la card de al lado. El bug era preexistente; el cambio lo hizo
+> visible. **Una card no se mira sola: se mira al lado de la otra.**
+
+> [!danger] `getComputedStyle().display` da un diagnóstico FALSO acá
+> Devuelve **`flow-root`** aunque el clamp se esté aplicando —el navegador
+> blockifica el display de un flex item—, así que mirar esa propiedad lleva a
+> concluir que el clamp no funciona, que no era el problema. Lo que hay que
+> medir es **el hecho**: cuántas líneas entran en la caja contra las que el
+> clamp deja ver.
+
+### 3. Los precios bailaban 22px entre columnas
+
+El de la card con precio por unidad quedaba más arriba que el de al lado, y es
+la línea que el ojo barre a lo ancho en una grilla. Se resuelve emitiendo el
+renglón **vacío** en los productos que no lo llevan, con `min-height`.
+**No cuesta un píxel de alto**: ocupa espacio que ya estaba muerto entre la
+descripción y el botón.
+
+### 4. Dos naranjas conviviendo
+
+El token `--orange-ink` había resuelto el botón y dejado el resto. **Medidos
+sobre la pantalla**, no estimados: eran 3 a la vista y 11 reglas en el CSS.
+Hoy **todo texto naranja sobre fondo claro** usa `--orange-ink`; los rellenos,
+los bordes de foco, los `:hover` y los números gigantes (texto grande, otro
+umbral) no se tocaron. Medido después: **0 textos por debajo de su umbral**.
+
+### Lo que la red NO veía, y ahora sí
+
+`verificar-card.js` pasó a **38 chequeos**, con los tres hallazgos cubiertos y
+probados al revés. El del WhatsApp es el barrido de la página entera, con su
+control: *"si no se viera NUNCA, cero tapadas no probaría nada — probaría que
+el botón no existe"*. Reinyectado el bug da **4 de 28**, el mismo número que se
+midió a mano en producción.
+
+### Lo que NO se aplicó del informe, y por qué
+
+- **"Seguí bajando para pedirlos ↓"**: el agente propuso borrarlo por ser una
+  pantalla que se explica sola. **Lo pidió Tadeo con esas palabras el
+  10/9/2026** (*"continuá bajando para pedir"*). No se toca sin preguntarle.
+- **La chapita "Lo más pedido" en las 4 cards de esa sección**: tiene razón en
+  que el título ya lo dice, pero qué se destaca lo decide Tadeo.
+- **El hero blando en escritorio**: es la deuda del 23/9, necesita una foto
+  apaisada que saque él.
+
+> [!tip] La lección de método
+> Los cuatro hallazgos estaban **a la vista en las capturas que esta sesión ya
+> había sacado** —la descripción cortada se lee en la captura de "Los más
+> pedidos" del commit anterior— y no se vieron. **El que diseñó algo es mal
+> juez de si quedó bien.** El agente va ANTES de publicar, no después.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

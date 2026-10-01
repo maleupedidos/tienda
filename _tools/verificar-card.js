@@ -277,8 +277,11 @@ const CONTRASTE = `
         var card = document.querySelector('#catalog-root .product-card[data-id="' + p.id + '"]');
         if (!card) return null;
         var e = card.querySelector('.precio-unidad');
+        /* El <span> existe en TODAS las cards: vacio es el que reserva el
+           renglon para que los precios de la fila queden alineados. La
+           pregunta es si DICE algo, no si existe. */
         return { id: p.id, nombre: p.nombre, unid: p.unid || 0, precio: p.precio,
-                 texto: e ? e.textContent.trim() : null };
+                 hay: !!e, texto: e ? e.textContent.trim() : null };
       };
       return JSON.stringify({ con: leer(conUnid), sin: leer(sinUnid),
         esperado: conUnid ? ('$' + (conUnid.precio / conUnid.unid).toLocaleString('es-AR') + ' por ' + conUnid.unidQue) : null });
@@ -291,9 +294,11 @@ const CONTRASTE = `
     /* El control: sin esto, un renglon puesto en TODAS las cards pasaria los
        dos chequeos de arriba. Los sorrentinos traen 16 unidades y NO lo
        llevan a proposito. */
-    chk(!!u.sin && u.sin.texto === null,
+    chk(!!u.sin && u.sin.texto === '',
         'CONTROL: los sorrentinos traen 16 y NO lo dicen — no va en todos',
         u.sin ? u.sin.nombre : 'no se encontro un sorrentino');
+    chk(!!u.sin && u.sin.hay === true,
+        'y aun asi reservan el renglon, para que los precios de la fila no bailen');
 
     /* El footer se repinta al agregar algo, y se arma en CUATRO lugares: es
        justo donde este repo ya perdio cosas (los carteles de stock, 10/9). */
@@ -311,6 +316,35 @@ const CONTRASTE = `
     const enCarrito = await ev(`(function () { toggleCart(); return document.querySelectorAll('#cart-body .precio-unidad').length; })()`);
     chk(enCarrito === 0, 'en el carrito no se repite: ahi ya esta elegido', enCarrito + ' renglones');
     await ev('toggleCart()'); await dormir(400);
+
+    /* ─────────── 2c. la descripcion no se desborda ─────────── */
+    console.log('\n' + G + '== La descripcion ==' + F);
+    /* El sintoma era "La que nunc... / falla.": el clamp recorta y pone los
+       puntos suspensivos, pero la caja quedo mas alta que las lineas que el
+       clamp muestra, asi que la linea siguiente SE SIGUE VIENDO. Pasaba
+       porque .product-desc tenia flex:1 y el navegador la estiraba para
+       llenar la card. Lo sufrian 8 de 42 cards.
+
+       Se mide el HECHO —cuantas lineas entran en la caja contra las que el
+       clamp deja ver— y no la propiedad: `getComputedStyle().display` aca
+       devuelve "flow-root" aunque el clamp se aplique igual, asi que mirar
+       esa propiedad habria dado un diagnostico falso. */
+    const desb = JSON.parse(await ev(`(function () {
+      var rotas = [], total = 0;
+      document.querySelectorAll('.product-desc').forEach(function (d) {
+        var cs = getComputedStyle(d), lh = parseFloat(cs.lineHeight);
+        var clamp = parseInt(cs.webkitLineClamp) || 0;
+        if (!clamp || !lh || !d.clientHeight) return;
+        total++;
+        var lineas = d.clientHeight / lh;
+        if (lineas > clamp + 0.15) rotas.push(d.textContent.trim().slice(0, 26) + ' (' + lineas.toFixed(2) + ' de ' + clamp + ')');
+      });
+      return JSON.stringify({ total: total, rotas: rotas });
+    })()`));
+    chk(desb.total >= 10, 'CONTROL: hay ' + desb.total + ' descripciones con recorte que medir');
+    chk(desb.rotas.length === 0,
+        'ninguna muestra mas lineas de las que recorta: no se ve texto despues de los puntos suspensivos',
+        desb.rotas.length ? desb.rotas.slice(0, 3).join(' · ') : '0 de ' + desb.total);
 
     /* ─────────── 3. el boton de WhatsApp ─────────── */
     console.log('\n' + G + '== Escribinos por WhatsApp ==' + F);
@@ -381,11 +415,54 @@ const CONTRASTE = `
     await scrollA(0);
     chk(await verWa(), 'CONTROL: arriba de todo esta a la vista');
     await scrollA(900);
-    chk(!(await verWa()), 'bajando se va: no le puede caer encima a un boton de una card');
-    await scrollA(500);
-    chk(await verWa(), 'al subir vuelve');
+    chk(!(await verWa()), 'bajando se va, que es cuando el cliente recorre');
+
+    /* LO QUE DE VERDAD PROTEGE LA VENTA: que en ningun lugar de la pagina
+       quede a la vista encima de un control de compra. Un toque ahi se lleva
+       al cliente FUERA de la tienda.
+
+       Se barre la pagina parando cada 300px y SUBIENDO 30 en cada parada —el
+       flotante se esconde al bajar, asi que sin ese movimiento hacia arriba
+       estaria oculto siempre y el barrido no mediria nada. Antes del arreglo
+       daba 4 paradas de 26; ahora tiene que dar 0.
+
+       El segundo numero es el control: si no se viera NUNCA, cero tapadas no
+       probaria nada — probaria que el boton no existe. */
+    const barrido = JSON.parse(await ev(`(function () {
+      var w = document.getElementById('wa-float');
+      var tapa = function () {
+        var r = w.getBoundingClientRect(), vistos = [];
+        for (var x = r.left + 4; x <= r.right - 4; x += 12)
+          for (var y = r.top + 4; y <= r.bottom - 4; y += 12)
+            (document.elementsFromPoint(x, y) || []).forEach(function (e) {
+              var b = e.closest && (e.closest('.add-btn') || e.closest('.card-qty-controls'));
+              if (b && vistos.indexOf(b.textContent.trim()) === -1) vistos.push(b.textContent.trim());
+            });
+        return vistos;
+      };
+      var esperar = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+      return (async function () {
+        var alto = document.documentElement.scrollHeight, visibles = 0, tapando = 0, donde = [];
+        for (var y = 800; y < Math.min(alto - 900, 9000); y += 300) {
+          window.scrollTo(0, y); await esperar(120);
+          window.scrollBy(0, -30); await esperar(430);
+          var cs = getComputedStyle(w);
+          if (cs.visibility === 'hidden' || +cs.opacity === 0) continue;
+          visibles++;
+          var t = tapa();
+          if (t.length) { tapando++; if (donde.length < 3) donde.push(Math.round(pageYOffset) + ': ' + t.join('/')); }
+        }
+        return JSON.stringify({ visibles: visibles, tapando: tapando, donde: donde });
+      })();
+    })()`));
+    chk(barrido.visibles >= 5,
+        'CONTROL: en el barrido se lo ve ' + barrido.visibles + ' veces — si no se viera nunca, lo de abajo no probaria nada');
+    chk(barrido.tapando === 0,
+        'y en NINGUNA queda encima de un boton de comprar',
+        barrido.tapando + ' de ' + barrido.visibles + (barrido.donde.length ? ' — ' + barrido.donde.join(' · ') : ''));
+
     await scrollA(0);
-    chk(await verWa(), 'y arriba de todo esta, que es donde no tapa nada');
+    chk(await verWa(), 'arriba de todo esta, que es donde no tapa nada');
 
     /* ─────────── 5. y se va cuando hay un panel abierto ─────────── */
     console.log('\n' + G + '== Y desaparece con un panel abierto ==' + F);

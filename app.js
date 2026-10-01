@@ -2472,6 +2472,14 @@ function _precioDeCard(p) {
   var h = '<span class="product-price">' + ars(p.precio) + '</span>';
   if (p.unid > 1 && p.unidQue && p.precio % p.unid === 0) {
     h += '<span class="precio-unidad">' + ars(p.precio / p.unid) + ' por ' + p.unidQue + '</span>';
+  } else {
+    /* El renglon se emite VACIO en los que no lo llevan, con `min-height` en
+       el CSS. Sin esto los precios bailan 22px entre una columna y la otra
+       —el de la card con renglon queda mas arriba— y es justo la linea que el
+       ojo barre a lo ancho en una grilla. Medido: alinea las dos columnas y
+       la card NO crece ni un pixel, porque ocupa espacio que ya estaba muerto
+       entre la descripcion y el boton. */
+    h += '<span class="precio-unidad" aria-hidden="true"></span>';
   }
   return h;
 }
@@ -7840,6 +7848,28 @@ function updateCatNavTop() {
 (function () {
   var ultimoY = window.pageYOffset || 0, pendiente = false, UMBRAL = 8;
   var waUltimoY = ultimoY;
+  /* ¿El boton de WhatsApp esta encima de algo que el cliente toca para
+     comprar? Las cuatro esquinas y el centro: un control de 141x44 debajo de
+     un circulo de 54 no se escapa de esa grilla. */
+  function _waTapaUnControl() {
+    var w = $id('wa-float');
+    if (!w) return false;
+    var r = w.getBoundingClientRect();
+    if (!r.width) return false;
+    var pts = [[r.left + 6, r.top + 6], [r.right - 6, r.top + 6],
+               [r.left + 6, r.bottom - 6], [r.right - 6, r.bottom - 6],
+               [r.left + r.width / 2, r.top + r.height / 2]];
+    for (var i = 0; i < pts.length; i++) {
+      var abajo = document.elementsFromPoint(pts[i][0], pts[i][1]) || [];
+      for (var j = 0; j < abajo.length; j++) {
+        var e = abajo[j];
+        if (e === w || w.contains(e) || !e.closest) continue;
+        if (e.closest('.add-btn') || e.closest('.card-qty-controls') ||
+            e.closest('.pz-btn') || e.closest('.res-btn')) return true;
+      }
+    }
+    return false;
+  }
   function mirar() {
     pendiente = false;
 
@@ -7861,6 +7891,18 @@ function updateCatNavTop() {
       document.body.classList.toggle('bajando', yw > waUltimoY);
       waUltimoY = yw;
     }
+    /* Y LA REGLA QUE ATACA LA CAUSA: nunca encima de un boton de comprar.
+       Esconderlo al bajar cubre el recorrido, pero no el REPOSO — que es
+       justo cuando se compra. Medido sobre la tienda publicada, parando en
+       26 lugares: en 4 quedaba tapando un "Agregar" o un +/-, o sea 1 de cada
+       7. Las filas de cards se repiten cada ~340px, asi que correrlo mas
+       arriba o mas abajo no resuelve nada: siempre hay una fila ahi.
+
+       Se pregunta por hit-testing en cinco puntos y no comparando contra los
+       40 botones de la pagina: `elementsFromPoint` ya lo resuelve el
+       navegador, y 40 getBoundingClientRect en cada cuadro de scroll si se
+       notarian. */
+    document.body.classList.toggle('wa-estorba', _waTapaUnControl());
 
     var sh = document.querySelector('.sticky-header');
     /* La sombra de la barra del buscador, que solo va cuando esta pegada
