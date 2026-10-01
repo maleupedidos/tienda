@@ -157,7 +157,15 @@ async function main() {
     const estado = async () => JSON.parse(await ev('(function () {' +
       'var sh = document.querySelector(".sticky-header"), p = document.getElementById("promo-bar");' +
       'var cs = getComputedStyle(p), rs = sh.getBoundingClientRect(), rp = p.getBoundingClientRect();' +
-      'return JSON.stringify({ y: Math.round(pageYOffset), shTop: Math.round(rs.top), shAlto: Math.round(rs.height), shBottom: Math.round(rs.bottom),' +
+      /* Desde el 1/10/2026 la barra de categorias NO se pega a 0: se pega
+         debajo del buscador. Se mide el BORDE DE ABAJO del buscador y no la
+         variable --busq-h de la que sale: leer la variable para despues
+         comprobar que el nav esta donde ella dice es preguntarle dos veces a
+         la misma fuente — con la variable en 0 el nav quedaria tapado detras
+         del buscador y el chequeo pasaria igual (probado). */
+      'var bz = document.getElementById("buscador-zona");' +
+      'var bzBottom = bz ? Math.round(bz.getBoundingClientRect().bottom) : 0;' +
+      'return JSON.stringify({ y: Math.round(pageYOffset), bzBottom: bzBottom, shTop: Math.round(rs.top), shAlto: Math.round(rs.height), shBottom: Math.round(rs.bottom),' +
       '  pos: cs.position, vis: cs.visibility, op: Number(cs.opacity), pe: cs.pointerEvents, pTop: Math.round(rp.top), pBottom: Math.round(rp.bottom), pAlto: Math.round(rp.height),' +
       '  oculta: sh.classList.contains("promo-oculta") }); })()'));
     /* Una card de referencia: si se mueve distinto que el scroll, la pagina salto. */
@@ -198,7 +206,7 @@ async function main() {
       await dormir(300);
       await rueda(-40);                                    // arranca a la vista
       e = await estado();
-      chk(e.shTop === 0 && !e.oculta && e.vis === 'visible', 'con la barra pegada y subiendo, la franja se ve');
+      chk(e.shTop === e.bzBottom && !e.oculta && e.vis === 'visible', 'con la barra pegada y subiendo, la franja se ve, y las categorias quedan debajo del buscador (' + e.shTop + ' = ' + e.bzBottom + ')');
       const alto0 = e.shAlto;
       const antes = await refTop(), y0 = e.y;
       await rueda(300);

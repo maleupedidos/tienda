@@ -3906,6 +3906,78 @@ margen flaco paga lo mismo en Inicial que en Top.
 > son porcentajes y montos de comisión, no costos; **el costo de un producto se
 > busca en la hoja `Productos`.**
 
+## El buscador va abajo del carrusel (1/10/2026)
+
+Pedido que le llegó a Lucas de un cliente, y Tadeo lo trajo así: *"viste que
+recén cuando bajás las categorías, cuando bajás los más pedidos, recén ahí
+tenés el catalogo y el buscador... el que entra y no sabe cómo encarar el
+pedido tiene que bajar hasta abajo para recén ahí hacerlo"*.
+
+El buscador vivía adentro de `.sticky-header`, o sea **después** del carrusel,
+del último pedido, de las categorías y de Los más pedidos: el que entraba
+sabiendo lo que quería tenía que bajar tres pantallas para poder escribirlo.
+
+| | antes | ahora |
+|---|---|---|
+| dónde está el buscador | dentro de la barra de categorías | **abajo del carrusel**, bloque propio |
+| cuánto hay que bajar para buscar | ~1.600px | **0** |
+| al scrollear | se pegaba arriba con las categorías | **se pega solo**, y las categorías debajo |
+| mientras se ve el carrusel | nada pegado | **nada pegado** (no cambió) |
+| la barra pegada en el catálogo, a 390px | 131px | **124px** |
+
+> [!important] Son DOS bloques pegados, y el de abajo lee el alto del de arriba
+> `.buscador-zona` es `position:sticky; top:0`, y `.sticky-header` (categorías +
+> franja del 10%) pasó a `top: var(--busq-h)`. El alto lo pone
+> `_actualizarAltoBuscador()` desde `updateCatNavTop()` **y desde
+> `buscarEnCatalogo()`**: el renglón de resultados aparece y se va, así que la
+> barra de arriba cambia de alto y el nav tiene que volver a saber dónde
+> pegarse. `_stickyOffsetPx()` lo suma, que es de donde salen el scroll a una
+> categoría y el tope de los resultados de la búsqueda.
+
+> [!danger] NO se subió el `.sticky-header` entero, y la razón es la franja
+> Era lo más corto —mover un bloque y listo— pero arrastraba las categorías y
+> la franja del 10% arriba de la sección Categorías, que dice lo mismo con
+> fotos. Y sobre todo: la franja va **superpuesta** debajo de la barra, y su
+> hueco es `.catalog::before`. Con la barra arriba de todo, lo que viene
+> después ya no es el catálogo sino el último pedido — el hueco quedaba en el
+> lugar equivocado y la franja tapaba un título. Así, la franja no se tocó.
+
+> [!warning] La sombra del buscador va sólo cuando está pegado
+> Suelta, debajo del hero, una sombra parte la página en dos a la altura
+> equivocada. La clase `pegado` la pone **el mismo handler de scroll** que
+> decide si la franja se esconde: una sola escucha de scroll, pasiva y de a un
+> cuadro, no dos.
+
+> [!important] Y ahí mismo se corrigió el umbral de la franja
+> Ese handler preguntaba si el `.sticky-header` llegaba a `top <= 0.5` para
+> saber si estaba pegado. Ahora se pega a `--busq-h`, así que con el 0 de antes
+> **la franja no se habría escondido nunca**.
+
+> [!danger] El control destapó un chequeo que se preguntaba a sí mismo
+> El chequeo nuevo de `verificar-franja` leía `--busq-h` y después compro-
+> baba que el nav estuviera donde esa variable decía. Reinyectado el bug de que
+> nadie la setea —el nav se pega a 0, o sea **tapado detrás del buscador**, con
+> los chips de categoría invisibles— **el chequeo pasaba en verde**: la variable
+> decía 0 y el nav estaba en 0, los dos de acuerdo y los dos mal.
+>
+> Hoy mide **las dos cajas**: el borde de abajo del buscador contra el borde de
+> arriba del nav. Con el bug puesto da `0 = 55` y falla. Es la regla de siempre
+> de este repo dicha de otra forma: **si el chequeo y el código sacan el dato de
+> la misma fuente, no se están controlando, se están repitiendo.**
+
+**En la compu el buscador se centra a 1100px**, alineado con el catálogo y el
+hero. Hasta hoy iba de punta a punta porque era parte de la barra de
+categorías, y estaba anotado como "se ve desparejo pero no traba nada"; suelto,
+se arregló solo. El `1rem` de los costados pasa al wrapper: con
+`margin-inline:auto` y la ventana en 900px los auto valen 0 y el campo quedaría
+pegado al borde.
+
+**Las 31 redes en verde**, a 390 y 1440px. La única que hubo que tocar es
+`verificar-franja` (de 18 a 19 chequeos), y por lo de arriba. Los 9 problemas de
+`verificar-paginas` siguen siendo los comentarios de `ruleta.html`: **no
+crecieron**, y el comentario nuevo de `index.html` no nombra a nadie — ese
+archivo se publica entero, comentarios incluidos.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

@@ -289,6 +289,35 @@
      publicidad, no de una tienda. Un local no te recibe con dos carteles que
      dicen "entra"; te muestra lo que vende. -->
 
+<!-- BUSCADOR (1/10/2026, pedido de un cliente). Vivia adentro de
+     .sticky-header, o sea abajo de las categorias y de "Los mas pedidos": el
+     que entraba sabiendo lo que queria tenia que bajar tres pantallas para
+     poder escribirlo.
+
+     Es su propio bloque pegado (`position:sticky; top:0`) y el de las
+     categorias se pega DEBAJO, a `--busq-h`. Mientras se ve el carrusel no
+     hay ninguna barra pegada arriba — el buscador recien se pega cuando el
+     scroll lo alcanza.
+
+     El input vive aca, en el markup, y NO se redibuja: si se redibujara con
+     cada tecla perderia el foco a mitad de palabra. -->
+<div class="buscador-zona" id="buscador-zona">
+  <div class="buscador">
+    <svg class="buscador-lupa" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <circle cx="11" cy="11" r="7"></circle><path d="M16.5 16.5 L21 21"></path>
+    </svg>
+    <input type="search" id="buscador-input" class="buscador-input"
+           placeholder="Buscar un producto" autocomplete="off" enterkeyhint="search"
+           aria-label="Buscar en el catálogo" aria-controls="catalog-root"
+           oninput="buscarEnCatalogo()"
+           onkeydown="if(event.key==='Escape'){limpiarBusqueda();this.blur();}
+                      else if(event.key==='Enter'){event.preventDefault();this.blur();}">
+    <button class="buscador-x" id="buscador-x" type="button" hidden
+            aria-label="Limpiar la búsqueda" onclick="limpiarBusqueda()">&times;</button>
+  </div>
+  <div class="buscador-info" id="buscador-info" hidden></div>
+</div>
+
 <!-- ¿A DONDE TE LO LLEVAMOS?: lo unico que le pedimos arriba, y es una
      invitacion, no una pared. Se ve solo mientras la zona es provisoria; lo
      prende y apaga _updateZonaCta() desde applyZone(). (23/9/2026) -->
@@ -329,23 +358,6 @@
 <div class="cat-nav-hint" aria-hidden="true">Deslizá para ver todo lo que tenemos <span class="cat-nav-hint-arrow">→</span></div>
 <!-- Wrapper sticky: cat-nav + promo-bar viajan juntas y quedan pegadas arriba al scrollear -->
 <div class="sticky-header">
-  <!-- BUSCADOR. El input vive aca, en el markup, y NO se redibuja: si se
-       redibujara con cada tecla perderia el foco a mitad de palabra. -->
-  <div class="buscador">
-    <svg class="buscador-lupa" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <circle cx="11" cy="11" r="7"></circle><path d="M16.5 16.5 L21 21"></path>
-    </svg>
-    <input type="search" id="buscador-input" class="buscador-input"
-           placeholder="Buscar un producto" autocomplete="off" enterkeyhint="search"
-           aria-label="Buscar en el catálogo" aria-controls="catalog-root"
-           oninput="buscarEnCatalogo()"
-           onkeydown="if(event.key==='Escape'){limpiarBusqueda();this.blur();}
-                      else if(event.key==='Enter'){event.preventDefault();this.blur();}">
-    <button class="buscador-x" id="buscador-x" type="button" hidden
-            aria-label="Limpiar la búsqueda" onclick="limpiarBusqueda()">&times;</button>
-  </div>
-  <div class="buscador-info" id="buscador-info" hidden></div>
-
   <nav class="cat-nav" id="cat-nav" aria-label="Categorías"></nav>
 
   <!-- PROMO BAR (contenido se arma dinámicamente en updatePromoBar según zona) -->

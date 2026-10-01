@@ -269,8 +269,12 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 /* Cat-nav: barra horizontal sticky con scroll. Botones grandes y vistosos
    para que el cliente entienda que son atajos a cada sección.
    Logo mini a la izquierda (fuera del scroll horizontal) para volver arriba. */
-/* Wrapper sticky: cat-nav + promo-bar quedan pegadas arriba al scrollear (header NO es sticky a propósito) */
-.sticky-header { position:sticky; top:0; z-index:90; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.06); }
+/* Wrapper sticky: cat-nav + promo-bar quedan pegadas arriba al scrollear (header NO es sticky a propósito).
+   Desde el 1/10/2026 se pega DEBAJO del buscador, que subió a abajo del
+   carrusel y es su propio bloque pegado. `--busq-h` la pone updateCatNavTop
+   con el alto real de esa barra (0 si no está) — una sola fuente, así el día
+   que el renglón de resultados crezca el nav no queda tapado. */
+.sticky-header { position:sticky; top:var(--busq-h, 0px); z-index:90; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.06); }
 .cat-nav { background:#fff; border-bottom:1px solid #f0f0f0; display:flex; align-items:center; }
 .cat-nav-home { flex-shrink:0; background:transparent; border:none; padding:.55rem .35rem .55rem .8rem; cursor:pointer; display:flex; align-items:center; }
 .cat-nav-home img { height:28px; display:block; }
@@ -1439,6 +1443,26 @@ header > .menu-btn { margin-left:-.5rem; margin-right:-.2rem; }
    catalogo — que es justo cuando uno lo necesita.
    La lupa es un SVG y no un emoji a proposito: los 128 emojis eran una
    de las cosas medidas que hacian que la tienda se leyera como plantilla. */
+
+/* LA BARRA DEL BUSCADOR (1/10/2026). Va abajo del carrusel y se pega arriba
+   cuando el scroll la alcanza; la de categorías se pega debajo de ella.
+
+   La sombra sólo cuando está pegada: suelta, debajo del hero, una sombra ahí
+   parte la página en dos a la altura equivocada. La clase la pone el mismo
+   handler de scroll que decide si la franja del 10% se esconde — un solo
+   lugar que mira el scroll, no dos. */
+.buscador-zona { position: sticky; top: 0; z-index: 91; background: #fff; }
+.buscador-zona.pegado { box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+@media (min-width: 768px) {
+  /* En la compu el catálogo va a 1100px. Hasta hoy el buscador iba de punta a
+     punta porque era parte de la barra de categorías; suelto, se centra con
+     el resto. El 1rem de los costados pasa al wrapper: con `margin-inline:auto`
+     y la ventana en 900px los auto valen 0 y el campo quedaría pegado al
+     borde. */
+  .buscador-zona { padding: 0 1rem; }
+  .buscador-zona .buscador,
+  .buscador-zona .buscador-info { max-width: 1100px; margin-left: auto; margin-right: auto; }
+}
 
 .buscador {
   display: flex; align-items: center; gap: .5rem;

@@ -7668,6 +7668,21 @@ function renderCatNav() {
    - behavior:'smooth' cuando el navegador está calmo; 'auto' si acabamos de
      abrir/cerrar overlays (para no competir con animaciones).
    - Reintento a los 380ms por si un reflow tardío movió el layout. */
+/* Alto de la barra del buscador, que desde el 1/10/2026 es su propio bloque
+   pegado arriba y empuja al de categorias. Se mide siempre, este pegada o no:
+   cuando se scrollea hacia un elemento de abajo, al llegar va a estar. */
+function _altoBuscadorPegado() {
+  var bz = $id('buscador-zona');
+  if (!bz || getComputedStyle(bz).position !== 'sticky') return 0;
+  return bz.offsetHeight || 0;
+}
+/* Una sola fuente para "cuanto tapa la barra del buscador": el CSS la lee de
+   --busq-h para pegar el nav debajo, y _stickyOffsetPx la suma. Hay que
+   volver a correrla cuando cambia el alto — el renglon de resultados aparece
+   y desaparece con cada busqueda. */
+function _actualizarAltoBuscador() {
+  document.documentElement.style.setProperty('--busq-h', _altoBuscadorPegado() + 'px');
+}
 function _stickyOffsetPx() {
   var sh = document.querySelector('.sticky-header');
   if (!sh) return 100;
@@ -7678,7 +7693,10 @@ function _stickyOffsetPx() {
      aparecer, y sin contarla taparia el titulo de la categoria a la que se va. */
   var promo = $id('promo-bar');
   var extra = (promo && promo.offsetHeight && getComputedStyle(promo).position === 'absolute') ? promo.offsetHeight : 0;
-  return Math.max(60, r.height + extra + 10);
+  /* El buscador se pega ARRIBA del nav desde el 1/10/2026, asi que lo que tapa
+     son los dos. Sin sumarlo, el titulo de la categoria a la que se va queda
+     escondido detras del buscador. */
+  return Math.max(60, _altoBuscadorPegado() + r.height + extra + 10);
 }
 function _smoothScrollToEl(el, opts) {
   if (!el) return false;
@@ -7741,6 +7759,10 @@ function setActiveNav(slug) {
 }
 function updateCatNavTop() {
   const nav = $id('cat-nav'), promo = $id('promo-bar');
+  /* La barra del buscador se pega arriba de todo y el nav debajo: el CSS lee
+     el alto de --busq-h. Va primero, porque el scrollMarginTop de abajo
+     tambien lo necesita. */
+  _actualizarAltoBuscador();
   if (nav) {
     // Header NO es sticky → cat-nav va al top:0 cuando scrolleás
     nav.style.top = '0px';
@@ -7749,7 +7771,7 @@ function updateCatNavTop() {
        `position:absolute` la habria tirado encima de las categorias. */
     const promoH = promo ? promo.offsetHeight : 0;
     document.documentElement.style.setProperty('--promo-h', promoH + 'px');
-    const total = nav.offsetHeight + promoH;
+    const total = _altoBuscadorPegado() + nav.offsetHeight + promoH;
     document.querySelectorAll('.cat-section').forEach(s => { s.style.scrollMarginTop = total + 'px'; });
   }
 }
@@ -7774,9 +7796,18 @@ function updateCatNavTop() {
   function mirar() {
     pendiente = false;
     var sh = document.querySelector('.sticky-header');
+    /* La sombra de la barra del buscador, que solo va cuando esta pegada
+       (1/10/2026). Se mira aca y no con otra escucha de scroll: ya hay una,
+       pasiva y de a un cuadro. */
+    var bz = $id('buscador-zona');
+    var busqH = _altoBuscadorPegado();
+    if (bz) bz.classList.toggle('pegado', busqH > 0 && bz.getBoundingClientRect().top <= 0.5);
     if (!sh) return;
     var y = window.pageYOffset || 0;
-    var pegada = y > 0 && sh.getBoundingClientRect().top <= 0.5;
+    /* El nav se pega DEBAJO del buscador, asi que "pegada" es su top llegando
+       a busqH, no a 0. Con el 0 de antes la franja del 10% no se escondia
+       nunca. */
+    var pegada = y > 0 && sh.getBoundingClientRect().top <= busqH + 0.5;
     if (!pegada) { sh.classList.remove('promo-oculta'); ultimoY = y; return; }
     var d = y - ultimoY;
     if (Math.abs(d) < UMBRAL) return;          // se acumula hasta llegar al umbral
@@ -9259,6 +9290,9 @@ function buscarEnCatalogo() {
   });
 
   _busqPintarInfo(visibles, crudo, porDescripcion);
+  /* El renglon de resultados crece y se va, o sea que la barra del buscador
+     cambia de alto: hay que decirle al nav donde pegarse de nuevo. */
+  _actualizarAltoBuscador();
 
   /* Al final de todo: la info de arriba cambia el alto de la barra pegada, y
      el tope se calcula con ese alto ya puesto. */
