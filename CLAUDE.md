@@ -4350,6 +4350,30 @@ separador está separando algo. Solo queda huérfano cuando no hay sugerencia
 > los 140 ms (en movimiento) y a los 900 (ya frenado). `verificar-card.js`
 > quedó en **39 chequeos**.
 
+## La chapita no se repite donde el titulo ya lo dice (1/10/2026)
+
+Decision de Tadeo, de lo que habia quedado abierto en la revision de diseno:
+**adentro de la seccion "Los mas pedidos" no va la chapita "Lo mas pedido"** —
+las cuatro cards la llevaban y el titulo ya lo dice. En el resto del catalogo
+se queda, porque ahi el producto aparece entre sus vecinos de categoria y la
+chapita es lo que lo destaca. Mismo criterio con el que el 28/9 se saco
+"Nuevo" de los cinco cortes de carne.
+
+Se esconde por CSS (`#top-productos .chapa-top`) y no se saca del markup: la
+misma card la dibuja el mismo codigo en las dos partes, y partirlo en dos es
+la forma conocida de que una se despegue de la otra.
+
+> [!important] El chequeo va en PAREJA, o no mide nada
+> Esconderla en toda la tienda pasaria igual el chequeo de "no esta en Los mas
+> pedidos". Por eso al lado va el que exige que **el mismo producto SI la
+> lleve en su categoria**. Probado en las dos direcciones: cada bug da rojo en
+> el suyo y solo en el suyo.
+
+> [!note] Lo que sigue abierto de esa revision
+> **"Segui bajando para pedirlos"** se queda — Tadeo lo confirmo el 1/10/2026,
+> y ya lo habia pedido con esas palabras el 10/9. Y el **hero blando en
+> escritorio** sigue esperando la foto apaisada.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

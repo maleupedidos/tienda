@@ -346,6 +346,29 @@ const CONTRASTE = `
         'ninguna muestra mas lineas de las que recorta: no se ve texto despues de los puntos suspensivos',
         desb.rotas.length ? desb.rotas.slice(0, 3).join(' · ') : '0 de ' + desb.total);
 
+    /* ─────────── 2d. la chapita no se repite ─────────── */
+    console.log('\n' + G + '== "Lo mas pedido" ==' + F);
+    /* Decision de Tadeo (1/10/2026): adentro de la seccion "Los mas pedidos"
+       no va, porque el titulo ya lo dice. En el resto del catalogo si.
+
+       Los dos chequeos juntos y no uno solo: esconderla en TODA la tienda
+       pasaria el primero igual, y la chapita es lo que destaca un producto
+       entre sus vecinos de categoria. */
+    const cha = JSON.parse(await ev(`(function () {
+      var visible = function (e) { var cs = getComputedStyle(e); return cs.display !== 'none' && cs.visibility !== 'hidden'; };
+      var top = PRODUCTOS.filter(function (p) { return p.top && _enLaZona(p.id); })[0];
+      var enCat = top ? document.querySelector('#catalog-root .cat-section .product-card[data-id="' + top.id + '"] .chapa-top') : null;
+      return JSON.stringify({
+        nombre: top ? top.nombre : null,
+        cardsEnTop: document.querySelectorAll('#top-productos .product-card').length,
+        chapasEnTop: [].slice.call(document.querySelectorAll('#top-productos .chapa-top')).filter(visible).length,
+        enSuCategoria: !!(enCat && visible(enCat))
+      });
+    })()`));
+    chk(cha.cardsEnTop >= 2, 'CONTROL: la seccion "Los mas pedidos" tiene ' + cha.cardsEnTop + ' cards que mirar');
+    chk(cha.chapasEnTop === 0, 'adentro de "Los mas pedidos" no se repite la chapita', cha.chapasEnTop + ' de ' + cha.cardsEnTop);
+    chk(cha.enSuCategoria === true, 'pero el mismo producto SI la lleva en su categoria', cha.nombre);
+
     /* ─────────── 3. el boton de WhatsApp ─────────── */
     console.log('\n' + G + '== Escribinos por WhatsApp ==' + F);
     const w = JSON.parse(await ev(`(function () {

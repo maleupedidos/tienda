@@ -1807,6 +1807,20 @@ body.busqueda-activa .cat-nav-btn.cat-nav-combos.active { background:var(--brown
   /* que no tape el toque sobre la foto */
   pointer-events: none;
 }
+/* ADENTRO DE "LOS MAS PEDIDOS" NO VA LA CHAPITA (1/10/2026, decision de Tadeo).
+   Las cuatro cards de esa seccion la llevaban, y el titulo de la seccion ya lo
+   dice: una chapita que esta siempre deja de significar algo. Es el mismo
+   criterio con el que el 28/9 se saco "Nuevo" de los cinco cortes de carne.
+
+   En el resto del catalogo se queda: ahi el producto aparece entre sus
+   vecinos de categoria y la chapita es lo que lo destaca. Y en "Lo que
+   pediste la ultima vez" tambien, que es otra seccion.
+
+   Se esconde por CSS y no se saca del markup: la misma card se dibuja en las
+   dos partes con el mismo codigo, y partirlo en dos seria la forma conocida
+   de que una se despegue de la otra. */
+#top-productos .chapa-top { display: none; }
+
 .chapa-prod {
   font-family: var(--font); font-size: .68rem; font-weight: 700;
   line-height: 1.25; letter-spacing: .01em;
