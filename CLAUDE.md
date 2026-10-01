@@ -3727,6 +3727,185 @@ lado. **No reemplaza a las redes** —ellas prueban casos que en producción no 
 provocar— ni a `probar-cache.js`, que es el único que contesta si el navegador del
 cliente recibe el código de ahora.
 
+## La zona de Tigre, y los días que salen del vendedor (30/9/2026)
+
+Fede D'Andrea arrancó ese día. Tadeo pasó sus **34 barrios** y son **Tigre**
+—Santa Bárbara, Nordelta, Talar del Lago, Pacheco, Rincón de Milberg—, no Pilar.
+Eso confirmó lo que había quedado abierto en su reunión.
+
+**Quedan adentro de la zona `pilar` igual**, y no es pereza: desde el 28/9 el
+cliente no elige zona —escribe su barrio y la tienda la deduce—, así que el
+nombre interno no se le muestra. Lo que sí le llega es el ruteo, y es el mismo
+que el de los otros tres vendedores: hoja `Red`, envío $3.000, sin carne.
+
+> [!important] `region` existe para los textos, no para el ruteo
+> Sin ella, el cartel de cierre le diría *"en Pilar y Alrededores"* a alguien de
+> Nordelta. **El día que Tigre necesite su propio envío, sus propios días o su
+> propio canal, deja de alcanzar y pasa a ser una zona de `ZONAS`.** No forzarlo
+> desde la card.
+
+**La zona canónica es "Santa Bárbara", no "Tigre y alrededores".** Tadeo, al
+verlo: *"no sirve el 'y alrededores'. nosotros nos manejamos por barrio
+privado"*. Tiene que ser **igual a la primera entrada** de su col `Barrios` en
+la hoja `Vendedores`, que es de donde sale `zonaCanon`.
+
+> [!danger] Esa primera entrada NO es decorativa: es la dirección de retiro
+> `_dirVendedorRed` (Code.js) devuelve `barrios[0]` y la escribe en la col
+> "Dirección" de la Orden de Compra. Con la zona canónica primera funcionaba de
+> casualidad; con la lista en A-Z puro, la OC de Fede habría dicho **"Altamira"**
+> — un barrio cualquiera de los 34, no donde retira. Sin error y sin que nadie
+> lo note hasta que alguien vaya a buscar mercadería al lugar equivocado. Lo
+> encontró Backend al sacar la zona canónica.
+>
+> Por eso **el A-Z de la tienda se aplica sobre una COPIA**: el orden en que la
+> lista está declarada significa algo.
+
+### Una zona fuera del área de Maleu no se ofrece si nadie la cubre
+
+> [!danger] El agujero, medido el mismo día: la pantalla prometía un vendedor y el pedido se iba a la hoja Pilar
+> Una zona marcada `isRed` hace que `_pilarBarrioIsRed()` diga "lo atiende un
+> vendedor" —sus días, sin carne, envío $3.000—, pero **quién** sale de la hoja
+> `Vendedores`. Si el vendedor no está cargado ahí, `vendedorMatch` queda en
+> `null` y `enviarPedido` cae en `canal: z.canal` = **Pilar**. O sea que Maleu
+> quedaba comprometido a entregar en Nordelta.
+>
+> Es el mismo modo de falla que "Tortugas Country" esa misma mañana —barrio en
+> el código y no en la planilla— pero una zona entera en vez de un barrio.
+
+Lo cierra **`_barrioOculto`**, que ya existía como gancho devolviendo `false`.
+
+> [!important] Sólo las zonas con `region`, y es la diferencia que importa
+> Una zona de **Pilar** sin vendedor **no se esconde**: ahí Maleu entrega igual
+> —miércoles y viernes, es su propia zona— así que esconderla sería perder la
+> venta en vez de protegerla. **Es el caso de Fini, que se va a fines de enero:
+> Ayres tiene que seguir comprando aunque su fila no esté.**
+>
+> Con `region` es al revés: si nadie la atiende, no hay quien entregue.
+>
+> Y si `barrioToVendedor` está vacío —los primeros segundos de una primera
+> visita— no se esconde ninguna: esa ventana la cubre la copia de la última
+> visita (`maleu_vendedores`).
+
+**Consecuencia práctica, y por eso se pudo publicar antes que la fila:** la zona
+aparece sola el día que su vendedor existe, y desaparece sola si lo dan de baja.
+
+### Los días salen del vendedor, no de la zona
+
+Tadeo: *"los de federico son entregas viernes y sábados a coordinar"*. Se lo
+prometieron en su reunión y era lo único de esa charla que la tienda no podía
+cumplir: los días salían de la **zona** y el sábado no existía en Pilar para
+nadie.
+
+Ahora cada zona de vendedor declara los suyos (`dias` en la card) y **sin ese
+campo son viernes** — que es lo que hacían los otros tres, así que el campo
+nuevo no le cambió el día a nadie.
+
+> [!danger] El calendario del formulario tenía una SEGUNDA COPIA del criterio
+> `_zoneHorariosForDayPicker` devolvía `z.horarios` tal cual para lo que entrega
+> Maleu, y su comentario decía *"mismo criterio que el calendario del modal"*
+> mientras se escribía aparte. Al sumar el sábado a la zona —hizo falta para que
+> el calendario supiera qué horario decir— el modal lo filtraba bien y **éste lo
+> dejaba pasar: "Otra zona de Pilar" quedaba ofreciendo sábados**, donde Maleu no
+> reparte. Lo agarró `verificar-zonas` en la primera corrida.
+>
+> Los dos caminos salen ahora de `_diasDeZonaRed()`. Y los textos también
+> (`_diasEnPalabras`), porque el renglón del buscador y el hero son dos lugares
+> más donde el mismo hecho podía decirse distinto.
+
+### La lista de barrios: agrupada por zona, A-Z adentro
+
+Con 55 destinos, el orden en que están declarados en el código no es un orden
+para nadie. El A-Z puro duró unas horas: Tadeo lo vio en la tienda y arriba de
+todo le quedaban "Ayres del Pilar", "Azzurra" y "Cerrillos", con **Estancias del
+Pilar —de donde sale la mayor parte de la venta— séptimo**, enterrado entre
+barrios de vendedores.
+
+    ESTANCIAS   Estancias del Pilar · Estancias del Río
+    PILAR       Ayres del Pilar · Azzurra · … (18)
+    TIGRE       Altamira · Barbarita · … (34)
+
+**Una persona reconoce su zona antes que su barrio.** El encabezado la orienta y
+el A-Z la deja encontrar adentro. Estancias va primero por mercado, no por
+abecedario; un grupo nuevo cae al final.
+
+> [!important] Los encabezados van SOLO con la lista completa
+> Buscando, el orden deja de ser el de la lista —los que **empiezan** con lo
+> escrito van primero— y un encabezado arriba de un resultado de otra zona
+> mentiría.
+
+El renglón de cada barrio habla de **días y nada más**. Decía *"Entregas los
+viernes a coordinar"*, que quedaba torpe y le sumaba ruido a los tres que antes
+decían sólo "Entregas los viernes": el horario sale en el calendario, que es
+donde el cliente elige. Misma decisión que tomó Tadeo el 28/9 al sacar el envío
+de esta lista.
+
+### La red: escenario 11 de `verificar-vendedor.js` (86 chequeos)
+
+Con su vendedor y sin él. Los barrios se ofrecen, el orden agrupado, los
+encabezados, que buscando no haya ninguno, el pedido yéndose a la hoja `Red`, y
+**el control de que el sábado es sólo de él** —ni los otros vendedores ni los
+barrios de Maleu lo tienen—. Y el control al revés: sin su fila en la planilla,
+los barrios de Tigre no se ofrecen y los de Pilar siguen estando.
+
+## La carne en la Red: por qué sigue bloqueada (30/9/2026)
+
+Tadeo: *"que a toda la tienda online le aparezcan las piezas de carne… ¡que los
+vendedores también puedan vender carne!"*. Y después: *"la carne es producto de
+Maleu. Los vendedores tienen que vender todo el catálogo"*.
+
+**No se habilitó, y no es prudencia: la hoja `Red` no tiene columnas de kilos.**
+Medido en `Code.js`: los cinco cortes (CCo, CEn, CLo, CPi, CVa) no están en su
+contrato de columnas. Home los tiene en 71-75 y Pilar en 69-74; Red no.
+
+> [!danger] Habilitarla sin eso cobra el pedido y no guarda los kilos
+> Es el modo de falla que ya está anotado arriba: si el id no tiene columna en la
+> hoja de ese canal, el backend **lo cobra y no lo escribe**. Sin error, sin log.
+> Y con carne es peor: la pieza se marca vendida y después no aparece en ningún
+> pedido, así que dos clientes se pueden llevar la misma.
+
+Lo tiene Backend, y al medirlo apareció que es más de lo que parecía: a Red le
+falta también la columna **Pesaje**, y el manejo por pieza que Home y Pilar sí
+tienen.
+
+**Cuando confirme que está vivo**, del lado de la tienda es sacar el bloqueo de
+`_productoBloqueadoPorBarrio` y ajustar sus tests. No antes.
+
+### Y apareció una regla de la escala que no estaba escrita en ningún lado
+
+La escala de comisiones de la Red **paga una parte del margen de cada producto,
+y esa parte baja cuando el margen baja.** Medido cruzando la hoja `Productos`
+contra los 87 montos:
+
+| margen del producto | se lleva el vendedor |
+|---|---|
+| 35% o más | **44% del margen** (los 15, exacto) |
+| 28-35% | 42-43% |
+| 22-28% | 24-37% |
+| menos de 22% (las tres tortas) | **14%** |
+
+Explica los números que parecían arbitrarios: **los $750 de la torta no son un
+castigo, son el 14% de su margen.** Y 18 de los 29 no suben por nivel — lo de
+margen flaco paga lo mismo en Inicial que en Top.
+
+> [!warning] Se interpola producto por producto, NO por "banda"
+> Derivé la comisión de los cinco cortes aplicándoles un 24% parejo —el de los
+> sorrentinos premium— y **estaba mal**: picaña y vacío dejan 31% y 30%, casi lo
+> mismo que las empanadas comunes (34%), que se llevan 43%. Con 24% cobraban la
+> mitad sin motivo. Me corrigió Backend midiendo, e interpolando cada corte entre
+> los dos productos **reales** que lo rodean por margen.
+>
+> Los montos que quedaron, elegidos por Tadeo: Picaña $3.500/kg · Vacío $3.350 ·
+> Colita $1.700 · Lomo $1.400 · Entraña $1.000.
+
+**La unidad de la carne ES el kilo** (la hoja `Productos` los tiene con
+`Unidad = kg`), así que la escala no necesita una forma de pago nueva.
+
+> [!note] Los precios y costos NO se escriben acá
+> Este archivo no se publica, pero la regla del repo es la del CLAUDE.md de
+> Maleu: nada de costos ni márgenes absolutos en el repo. Los números de arriba
+> son porcentajes y montos de comisión, no costos; **el costo de un producto se
+> busca en la hoja `Productos`.**
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en
