@@ -122,23 +122,30 @@ const PRODUCTOS = [
      no sean de mis vendedores, deberia estar involucrada la carne". Lo decide
      `_pilarEntregaMaleu`.
 
-     NO en los barrios con vendedor (`sinVendedor`) ni en Clubes, y no es una
-     decision comercial: es donde la planilla tiene DONDE guardarlos. La hoja
-     Pilar tiene columnas para la carne (70-74); la de Clubes no, y un pedido de
-     un barrio con vendedor la tienda lo manda a la hoja Red — que tampoco la tiene. En las dos, el pedido entra, el total
-     sale bien, y los kilos no caen en ningun lado: sin error y sin log. Es la
-     misma forma de fallar que el `editarPedido` que cobraba 16 productos sin
-     guardarlos.
-     Se abren esos canales el dia que RED_PRODUCT_COLS y CLUBES_PRODUCT_COLS
-     conozcan los ids 30-34. Lo vigila `node _tools/verificar-pedido.js`. */
-  { id:30, abbr:"CCo", cat:"Carnes", porPeso:true, sinVendedor:true, zonas:["estancias","pilar"], nombre:"Colita de Cuadril", desc:"Jugosa al horno y perfecta a la parrilla. Un corte que nunca falla.", precio:25000, img:"carne-colita.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
+     Y DESDE EL 30/9/2026, TAMBIEN EN LOS BARRIOS CON VENDEDOR. Tadeo: "que los
+     vendedores tambien puedan vender carne... la carne es producto de Maleu,
+     los vendedores tienen que vender todo el catalogo". Estuvo cerrado hasta
+     ese dia y NO era una decision comercial: la hoja `Red` no tenia donde
+     guardar los kilos. El pedido entraba, el total salia bien, y los kilos no
+     caian en ningun lado — sin error y sin log —, y encima la pieza quedaba
+     marcada como vendida sin aparecer en ningun pedido, asi que dos clientes se
+     podian llevar la misma.
+     Lo abrio Backend (@737): la hoja Red paso de 74 a 80 columnas —los cinco
+     cortes mas `Pesaje`— y `RED_PRODUCT_COLS` mapea los ids 30-34. Verificado
+     contra el `Code.js` publicado antes de sacar el bloqueo de aca.
+
+     NO en Clubes, y por lo mismo que antes: `CLUBES_PRODUCT_COLS` no conoce
+     esos ids. Eso no lo decide esta linea sino `zonas`, que no incluye clubes.
+     Lo vigila `node _tools/verificar-pedido.js`, que cruza el catalogo entero
+     contra los mapas reales del ERP. */
+  { id:30, abbr:"CCo", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Colita de Cuadril", desc:"Jugosa al horno y perfecta a la parrilla. Un corte que nunca falla.", precio:25000, img:"carne-colita.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
   /* La entrana viene de a DOS tiras por paquete (dato de Lucas, 10/9/2026), y
      el peso que se ve es el del paquete entero. Sin decirlo, el que elige una
      de 1,163 kg no sabe si le llega una tira grande o dos. */
-  { id:31, abbr:"CEn", cat:"Carnes", porPeso:true, sinVendedor:true, zonas:["estancias","pilar"], nombre:"Entra\u00f1a",           desc:"Fina, sabrosa y r\u00e1pida. La que sale primero de la parrilla.",          precio:34000, img:"carne-entrana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo","2 tiras por paquete"] },
-  { id:32, abbr:"CLo", cat:"Carnes", porPeso:true, sinVendedor:true, zonas:["estancias","pilar"], nombre:"Lomo sin cord\u00f3n",  desc:"El corte m\u00e1s tierno, limpio y sin cord\u00f3n. Para la ocasi\u00f3n que se merece el mejor.", precio:33000, img:"carne-lomo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Sin cord\u00f3n"] },
-  { id:33, abbr:"CPi", cat:"Carnes", porPeso:true, sinVendedor:true, zonas:["estancias","pilar"], nombre:"Pica\u00f1a",            desc:"El corte brasilero que se volvi\u00f3 infaltable. Con su tapa de grasa.",  precio:26000, img:"carne-picana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
-  { id:34, abbr:"CVa", cat:"Carnes", porPeso:true, sinVendedor:true, zonas:["estancias","pilar"], nombre:"Vac\u00edo",             desc:"El cl\u00e1sico del asado argentino. Paciencia y fuego bajo.",            precio:26000, img:"carne-vacio.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
+  { id:31, abbr:"CEn", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Entra\u00f1a",           desc:"Fina, sabrosa y r\u00e1pida. La que sale primero de la parrilla.",          precio:34000, img:"carne-entrana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo","2 tiras por paquete"] },
+  { id:32, abbr:"CLo", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Lomo sin cord\u00f3n",  desc:"El corte m\u00e1s tierno, limpio y sin cord\u00f3n. Para la ocasi\u00f3n que se merece el mejor.", precio:33000, img:"carne-lomo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Sin cord\u00f3n"] },
+  { id:33, abbr:"CPi", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Pica\u00f1a",            desc:"El corte brasilero que se volvi\u00f3 infaltable. Con su tapa de grasa.",  precio:26000, img:"carne-picana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
+  { id:34, abbr:"CVa", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Vac\u00edo",             desc:"El cl\u00e1sico del asado argentino. Paciencia y fuego bajo.",            precio:26000, img:"carne-vacio.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
 ];
 
 const CATEGORIAS = [
@@ -192,8 +199,20 @@ function _catBloqueadaPorBarrio(cat) {
       && cat === 'Sorrentinos'
       && (selectedPilarBarrio === 'Ayres del Pilar' || selectedPilarBarrioName === 'Ayres del Pilar');
 }
-/* Lo mismo, por producto: lo que no tiene donde guardarse en la hoja Red
-   (`sinVendedor`, la carne) no se ofrece en un barrio con vendedor. */
+/* Lo mismo, por producto. `sinVendedor` marca lo que no tiene donde guardarse
+   en la hoja `Red`.
+
+   HOY NO LO LLEVA NINGUN PRODUCTO (30/9/2026): lo tenian los cinco cortes de
+   carne y se les saco cuando Backend le agrego las columnas a la hoja. El
+   mecanismo se deja porque el modo de falla que cubre es real y silencioso —un
+   producto que se cobra y no se guarda— y el dia que entre uno que la hoja Red
+   no conozca, la defensa tiene que existir antes que el producto.
+
+   Que hoy no lo use nadie significa que NO ESTA PROBADO contra un caso vivo.
+   Lo que si esta probado es la regla de fondo, y en un lugar mejor:
+   `verificar-pedido.js` cruza el catalogo entero contra `RED_PRODUCT_COLS` y
+   `CLUBES_PRODUCT_COLS` del `Code.js` real, asi que un producto ofrecido donde
+   no se puede guardar corta ahi aunque nadie se acuerde de este flag. */
 function _productoBloqueadoPorBarrio(p) {
   if (!p) return false;
   if (_catBloqueadaPorBarrio(p.cat)) return true;
@@ -2859,14 +2878,19 @@ function onPilarBarrioChange() {
   updatePromoBar();
   _updateZoneChip();
   _pintarHeroEntregas();
-  // Sorrentinos bloqueados en Ayres del Pilar, y la carne en los barrios con
-  // vendedor: sacarlos del carrito y re-renderizar catálogo + nav (oculta o
-  // reaparece la categoría y sus chips según el barrio).
-  // renderCatalog() ya repinta el nav y los tiles: no hace falta pedirlo.
+  /* Sorrentinos bloqueados en Ayres del Pilar: sacarlos del carrito y
+     re-renderizar catálogo + nav (oculta o reaparece la categoría y sus chips
+     según el barrio). renderCatalog() ya repinta el nav y los tiles.
+
+     LA CARNE YA NO SE SACA (30/9/2026): se vende en los barrios con vendedor
+     desde que la hoja Red tiene columnas de kilos. El aviso que estaba acá
+     —"la carne la entregamos nosotros: en los barrios con vendedor no está"—
+     se fue con el bloqueo. `_purgeCartBloqueados` sigue contando piezas por si
+     algún día vuelve a haber un producto por peso que un barrio no pueda
+     recibir; hoy ese contador siempre da 0. */
   var _sacadas = _purgeCartBloqueados();
   if (typeof _sacadas === 'number' && _sacadas > 0) {
-    toast('⚠️ La carne la entregamos nosotros: en los barrios con vendedor no está. ' +
-      'Lo que tenías de carne salió de tu carrito', 5000);
+    toast('⚠️ Lo que tenías de carne salió de tu carrito: en tu barrio no lo entregamos', 5000);
   }
   if (typeof renderCatalog === 'function') renderCatalog();
   // Si cambió Red ↔ no-Red, el cap de stock puede cambiar — refrescar

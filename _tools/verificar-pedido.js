@@ -395,11 +395,16 @@ async function main() {
     /* Y que el filtro se cumpla EN LA PANTALLA, con el inventario cargado: el
        catalogo declara las zonas, pero quien las respeta es `_zonaPermite`.
        Que el dato este bien no prueba que la tienda lo use. */
-    /* Desde el 14/9/2026 la carne SI se ofrece en lo que entrega Maleu en Pilar
-       ("Otra zona de Pilar"), y NO en un barrio con vendedor: sus pedidos van a
-       la hoja Red, que no tiene columnas de carne. Se miran los tres casos. */
+    /* Desde el 14/9/2026 la carne se ofrece en lo que entrega Maleu en Pilar, y
+       desde el **30/9/2026 tambien en los barrios con vendedor**: ese dia
+       Backend le agrego a la hoja `Red` las cinco columnas de kilos y `Pesaje`
+       (74 -> 80 columnas), asi que ya hay donde guardarlos. Tadeo: "la carne es
+       producto de Maleu, los vendedores tienen que vender todo el catalogo".
+
+       CLUBES SIGUE SIN CARNE, y es el control que hace que esto mida algo: si
+       las tres zonas dijeran que si, el chequeo pasaria con el filtro roto. */
     const ZONAS_A_MIRAR = [
-      { nombre: 'pilar, barrio con vendedor', zona: 'pilar', carne: false, extra: {
+      { nombre: 'pilar, barrio con vendedor', zona: 'pilar', carne: true, extra: {
         maleu_pilar_zona: { val: 'Tortugas y alrededores', nombre: 'Tortugas y alrededores', ts: 1 },
         maleu_pilar_barrio: { val: 'El Lucero', nombre: 'El Lucero', ts: 1 } } },
       { nombre: 'pilar, lo entrega Maleu', zona: 'pilar', carne: true, extra: {

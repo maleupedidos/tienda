@@ -479,9 +479,18 @@ async function main() {
         ' abierto: ' + abierto + ' })'));
       chk(red.zona === 'pilar' && red.esRed === true, 'la zona queda en un barrio de vendedor y el modal cierra');
       chk(red.abierto === false, 'el modal cierra');
-      chk(red.piezas === 0, 'y la carne NO entra: ese pedido va a la hoja Red, que no la puede guardar',
+      /* LA CARNE SI ENTRA DESDE EL 30/9/2026. Hasta ese dia este chequeo exigia
+         lo contrario —la pieza no entraba y se le decia por que—, porque la
+         hoja `Red` no tenia donde guardar los kilos. Backend le agrego las
+         cinco columnas y `Pesaje` (74 -> 80), asi que el pedido de un barrio
+         con vendedor ahora la puede llevar.
+
+         Lo que este escenario sigue cuidando es lo de siempre: que tocar una
+         pieza con la zona sin elegir PREGUNTE la zona, y que al elegirla RETOME
+         lo que el cliente habia tocado en vez de perderlo. */
+      chk(red.piezas === 1, 'y la pieza que habia tocado entra sola al elegir la zona',
           'piezas ' + red.piezas);
-      chk(/no lo tenemos|no est/i.test(red.toast), 'y se dice por que', '"' + red.toast + '"');
+      chk(/agregado|kg/i.test(red.toast), 'y se le dice que entro', '"' + red.toast + '"');
     }
 
     /* ── 5. PILAR: LA ZONA SE COMPLETA ANTES DE AGREGAR ───────────── */

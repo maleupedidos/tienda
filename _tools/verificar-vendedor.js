@@ -320,7 +320,8 @@ async function main() {
     chk(e1.nuestro === false, 'y el cliente NO esta marcado como nuestro');
     chk(e1.envio === 3000, 'el envio es el del vendedor: $3.000', String(e1.envio));
     chk(e1.dias.length === 1 && e1.dias[0] === 'Viernes', 'entrega solo los viernes', e1.dias.join(', '));
-    chk(e1.carne === 0, 'y no se ofrece carne: la hoja Red no tiene columnas para guardarla');
+    chk(e1.carne > 0, 'y SI se ofrece carne: desde el 30/9/2026 la hoja Red tiene columnas de kilos',
+        e1.carne + ' cortes');
     await mandar();
     const p1 = await ultimoPost();
     chk(!!p1 && p1.canal === 'Red', 'el pedido sale a la hoja Red', p1 ? p1.canal : 'sin POST');
@@ -509,7 +510,7 @@ async function main() {
     chk(tocoTC === true, 'CONTROL: se pudo elegir "Tortugas Country" en el buscador');
     const tc = await estado();
     chk(tc.esRed === true, 'igual lo atiende un vendedor', JSON.stringify({ esRed: tc.esRed }));
-    chk(tc.carne === 0 && tc.envio === 3000, 'con sus reglas: sin carne y envio $3.000',
+    chk(tc.carne > 0 && tc.envio === 3000, 'con sus reglas: con carne y envio $3.000',
         JSON.stringify({ carne: tc.carne, envio: tc.envio }));
     /* SE MANDA EL PEDIDO Y SE MIRA A QUE HOJA VA. Preguntarle a
        `_vendedorDeBarrio()` directo no sirve como control: reinyectando el bug
@@ -629,8 +630,8 @@ async function main() {
     const tg = await estado();
     chk(tg.esRed === true && tg.entregaMaleu === false,
         'lo atiende su vendedor, no Maleu', JSON.stringify({ esRed: tg.esRed, maleu: tg.entregaMaleu }));
-    chk(tg.carne === 0 && tg.envio === 3000,
-        'con las mismas reglas que los demas: sin carne y envio $3.000',
+    chk(tg.carne > 0 && tg.envio === 3000,
+        'con las mismas reglas que los demas: con carne y envio $3.000',
         JSON.stringify({ carne: tg.carne, envio: tg.envio }));
     /* VIERNES Y SABADO (30/9/2026). Tadeo, viendo la tienda: "los de federico
        son entregas viernes y sabados a coordinar". Se lo habian prometido en
@@ -698,7 +699,7 @@ async function main() {
     const vn = await estado();
     chk(vn.esRed === true, 'su barrio lo atiende EL, no Maleu', JSON.stringify({ esRed: vn.esRed }));
     chk(vn.entregaMaleu === false, 'y por lo tanto no lo entrega Maleu');
-    chk(vn.carne === 0, 'sin carne: la hoja Red no tiene columnas de kilos', String(vn.carne));
+    chk(vn.carne > 0, 'con carne, como todos los vendedores desde el 30/9/2026', String(vn.carne));
     chk(vn.dias.length > 0 && vn.dias.every(function (d) { return /Vier/i.test(d); }),
         'solo viernes, como los otros tres', vn.dias.join(' · '));
     chk(vn.envio === 3000, 'y el envio de $3.000, que se queda el vendedor', String(vn.envio));
@@ -725,12 +726,21 @@ async function main() {
     const ventana = JSON.parse(await ev('JSON.stringify({' +
       ' llego: Object.keys(barrioToVendedor || {}).length,' +
       ' esRed: _pilarBarrioIsRed(), entregaMaleu: _pilarEntregaMaleu(),' +
+      ' envio: getShipping(),' +
+      ' dias: [].map.call(document.querySelectorAll("#day-picker .dp-cell.available"),' +
+      '         function (b) { return b.getAttribute("data-dia"); })' +
+      '        .filter(function (d, i, a) { return a.indexOf(d) === i; }),' +
       ' carne: document.querySelectorAll(".carne-card").length })'));
     chk(ventana.llego > 0,
         'la copia de la ultima visita se lee al arrancar', 'barrios conocidos: ' + ventana.llego);
     chk(ventana.esRed === true,
         'y su barrio YA es de vendedor, sin esperar a la planilla', JSON.stringify({ esRed: ventana.esRed }));
-    chk(ventana.carne === 0, 'asi que no se le ofrece carne en esa ventana', String(ventana.carne));
+    /* La carne ya no distingue: se vende en los dos lados. Lo que esta ventana
+       tiene que cuidar es el ENVIO y los DIAS, que si cambian segun haya
+       vendedor o no. */
+    chk(ventana.envio === 3000 && ventana.dias.join() === 'Viernes',
+        'y se le cobra el envio del vendedor y sus dias, no los de Maleu',
+        JSON.stringify({ envio: ventana.envio, dias: ventana.dias }));
 
     /* EL CONTROL, y sin el los tres de arriba no probarian nada: SIN la copia,
        en esa misma ventana el barrio pasa por "no es de vendedor". Es el agujero

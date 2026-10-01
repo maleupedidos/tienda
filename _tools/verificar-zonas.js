@@ -472,9 +472,22 @@ async function main() {
     chk(await tocar('#loc-subbarrios-grid button[onclick*="El Lucero"]'), 'El Lucero se toca');
     await dormir(300);
     const trasCambio = JSON.parse(await ev('JSON.stringify({ piezas: Object.keys(piezaCart).length, productos: cartCount(), toast: document.getElementById("toast").textContent, carne: document.querySelectorAll(".carne-card").length, fecha: selectedDeliveryDate, paso: document.getElementById("loc-step-date").style.display })'));
-    chk(trasCambio.piezas === 0 && trasCambio.productos === 1, 'la carne sale del carrito y la pizza se queda (' + trasCambio.piezas + ' piezas, ' + trasCambio.productos + ' en el carrito)');
-    chk(/carne/i.test(trasCambio.toast) && /vendedor/.test(trasCambio.toast), 'y se dice por que ("' + trasCambio.toast + '")');
-    chk(trasCambio.carne === 0, 'ya no se ven los cortes');
+    /* LA CARNE YA NO SALE DEL CARRITO (30/9/2026). Hasta ese dia este bloque
+       exigia lo contrario: cambiar a un barrio con vendedor le sacaba la carne
+       y se lo avisaba, porque la hoja `Red` no tenia columnas de kilos. Backend
+       se las agrego (74 -> 80, mas `Pesaje`), asi que ahora se vende en los dos
+       lados y lo correcto es que el carrito no se toque.
+
+       Lo que este escenario sigue cuidando, y es lo valioso, esta mas abajo: la
+       FECHA. El miercoles que eligio en la zona de Maleu no vale en un barrio
+       que recibe los viernes, y eso no cambio. */
+    chk(trasCambio.piezas === 1 && trasCambio.productos === 2,
+        'la carne se queda en el carrito, igual que la pizza',
+        trasCambio.piezas + ' piezas, ' + trasCambio.productos + ' en el carrito');
+    chk(!/carne/i.test(trasCambio.toast),
+        'y NO se le avisa que le sacamos nada, porque no le sacamos nada',
+        '"' + trasCambio.toast + '"');
+    chk(trasCambio.carne > 0, 'los cortes se siguen viendo', String(trasCambio.carne));
     chk(trasCambio.fecha !== '2026-09-16', 'el miercoles elegido no se respeta en un barrio que recibe los viernes (fecha ' + trasCambio.fecha + ', paso de fecha ' + (trasCambio.paso === 'none' ? 'cerrado' : 'abierto') + ')');
     const fMarcos = await fechasDelModal();
     chk(fMarcos.length > 0 && fMarcos.every((f) => /Viernes/.test(f)), 'el calendario de Marcos: solo viernes (' + fMarcos.slice(0, 3).join(' · ') + ')');

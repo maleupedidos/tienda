@@ -426,10 +426,16 @@ async function main() {
     chk(/ya no est/.test(d1.toast || '') || d1.count === 2,
         'se le dice que algo salio del carrito', (d1.toast || 'sin aviso').slice(0, 70));
 
-    titulo('D2 · LA CARNE EN UN BARRIO CON VENDEDOR no vuelve al carrito');
-    /* El que cuesta plata: esos pedidos van a la hoja `Red`, que no tiene
-       columnas de kilos. La carne entraria, el total saldria bien, y los kilos
-       no caerian en ningun lado — sin error, sin log, sin nada. */
+    titulo('D2 · LA CARNE EN UN BARRIO CON VENDEDOR vuelve al carrito');
+    /* HASTA EL 30/9/2026 ESTE BLOQUE EXIGIA LO CONTRARIO, y era el que cuidaba
+       la plata: los pedidos de un barrio con vendedor van a la hoja `Red`, que
+       no tenia columnas de kilos — la carne entraba, el total salia bien, y los
+       kilos no caian en ningun lado, sin error y sin log.
+
+       Backend le agrego las cinco columnas y `Pesaje` (74 -> 80) ese dia, asi
+       que ahora la carne SI se vende ahi y lo correcto es que la copia la
+       devuelva. La regla de fondo —la copia solo devuelve lo que esa zona
+       vende— la sigue midiendo D1, con un producto que ya no existe. */
     const conCarne = { t: MARTES - 60000, z: 'pilar', c: {}, k: {}, p: {} };
     conCarne.p['ENT-01'] = { abbr: 'CEn', id: 0, kg: 1.163, precio: 30238, nombre: 'Carne Entraña' };
     const carneId = JSON.parse(await ev('(function () { var p = PRODUCTOS.filter(function (x) { return x.abbr === "CEn"; })[0];' +
@@ -447,8 +453,9 @@ async function main() {
     chk(d2.zona === 'pilar', 'CONTROL: entro a Pilar', 'zona ' + d2.zona);
     chk(await ev('_pilarBarrioIsRed() === true'),
         'CONTROL: y a un barrio que atiende un vendedor');
-    chk(d2.piezas.length === 0, 'la pieza de carne NO volvio al carrito', JSON.stringify(d2.piezas));
-    chk(Number(d2.cart[armado.a]) === 1, 'y lo que si se vende en ese barrio, si', JSON.stringify(d2.cart));
+    chk(d2.piezas.length === 1, 'la pieza de carne volvio al carrito, con su peso y su precio',
+        JSON.stringify(d2.piezas));
+    chk(Number(d2.cart[armado.a]) === 1, 'y lo demas tambien', JSON.stringify(d2.cart));
 
     /* ═══════════ E · el que todavia no eligio zona ═══════════ */
     titulo('E · el cliente nuevo, sin zona elegida, no deja nada guardado');

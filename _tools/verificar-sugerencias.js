@@ -411,16 +411,18 @@ async function main() {
     chk(await ev('piezasEstado === "vacio" && cartCount() > 0') && !s.vis, 'con toda la carne agotada (y una pizza en el carrito) no sugiere');
     await cerrarCarrito();
 
-    /* Pilar tiene dos casos desde el 14/9/2026: lo que entrega Maleu vende carne,
-       un barrio con vendedor no (sus pedidos van a la hoja Red, sin columnas de
-       carne). */
+    /* Pilar tuvo dos casos del 14/9 al 30/9/2026: lo que entrega Maleu vendia
+       carne y un barrio con vendedor no, porque la hoja `Red` no tenia columnas
+       de kilos. **Backend se las agrego el 30/9 (74 -> 80, mas `Pesaje`)**, asi
+       que hoy los dos venden carne y los dos la sugieren. */
     await cerrarCarrito();
     await abrir('pilar', '', 'El Lucero');   // un barrio de la zona de Tortugas (vendedor)
     const zona = await ev('currentZone');
     await ev('(function () { var p = getActiveProducts().filter(function (x) { return !esPorPeso(x); })[0]; addToCart(String(p.id)); })()');
     await abrirCarrito();
     s = await sug();
-    chk(zona === 'pilar' && !s.vis && (await ev('cartCount()')) > 0 && (await ev('hayPiezas()')), 'en un barrio de Pilar con vendedor, que no vende carne, no sugiere aunque haya piezas y algo en el carrito (zona ' + zona + ')');
+    chk(zona === 'pilar' && s.vis && (await ev('cartCount()')) > 0 && (await ev('hayPiezas()')),
+        'en un barrio de Pilar con vendedor SI sugiere carne, desde que la hoja Red tiene columnas (zona ' + zona + ')');
     await cerrarCarrito();
     await abrir('pilar');
     await ev('(function () { var p = getActiveProducts().filter(function (x) { return !esPorPeso(x); })[0]; addToCart(String(p.id)); })()');
