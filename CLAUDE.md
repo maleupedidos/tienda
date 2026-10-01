@@ -3978,6 +3978,125 @@ pegado al borde.
 crecieron**, y el comentario nuevo de `index.html` no nombra a nadie — ese
 archivo se publica entero, comentarios incluidos.
 
+## El botón de agregar, y el de WhatsApp (1/10/2026)
+
+Tadeo, con una captura de **frizata.com** al lado: *"el botón naranja de
+agregar un producto hoy en la tienda de Maleu es muy feo y parece mucho a una
+inteligencia artificial… nos falta más profesionalismo"*. Y: *"podemos agregarle
+un carrito al costado de la opción de agregar… y el botón de WhatsApp para que
+el cliente nos escriba"*.
+
+> [!important] El diagnóstico, en una frase
+> En Frizata el color de marca es un **acento** —borde y texto— y lo que domina
+> la pantalla es la foto del producto. Acá eran tres o cuatro **bloques naranjas
+> rellenos** por fila peleandole la atención a la comida, que es la decisión de
+> compra. Es lo mismo que ya estaba escrito en «la foto manda» (7/9/2026),
+> aplicado al botón.
+
+| | antes | ahora |
+|---|---|---|
+| el botón | bloque naranja relleno, ancho completo | **contorneado**, con el carrito |
+| el texto | "+ Agregar" | **"Agregar"** — el "+" decía dos veces lo mismo que el ícono |
+| al tocarlo | cambiaba de naranja | **se rellena** del naranja de marca |
+| dónde se escribe el rótulo | en **cuatro** lugares | `_rotuloAgregar()`, uno |
+| preguntar antes de comprar | no había por dónde | **botón flotante de WhatsApp** |
+
+### El naranja que escribe no es el naranja que rellena
+
+> [!danger] Un botón contorneado pintado con el naranja de marca se ve DESLAVADO
+> `--orange` sobre blanco da **2,72** de contraste y `--hover-orange` **3,44**:
+> los dos por debajo del 4,5 que necesita un texto. O sea que el camino obvio
+> —"el mismo naranja, pero de borde"— habría dado un botón más flojo que el de
+> antes, que es lo contrario de lo que se buscaba.
+>
+> Por eso nació **`--orange-ink: #B85420`**, medido en **4,85**. La referencia es
+> el rosa de Frizata, que da **4,50** — justo el umbral, y por eso su botón se
+> lee nítido.
+>
+> **No toca la identidad y no reemplaza a `--orange`**: los rellenos, los chips
+> activos y el botón cuando se toca siguen siendo el de marca. Este es el tono
+> con el que el naranja **escribe** sobre fondo claro. Sigue valiendo lo del
+> «Escaneo general»: mover `--orange` es una decisión de Tadeo con Juani Peña
+> delante, no un arreglo al pasar.
+
+De paso se saldaron tres textos naranjas que estaban en 3,44 sobre blanco:
+"Agregar lo mismo", "Elegir las piezas de hoy" y "Ver todas las piezas".
+
+### "Pedir para el vie 18" tenía que seguir leyéndose distinto
+
+> [!warning] Su distinción era contorno contra relleno, y este cambio se la comía
+> Ese botón **cambia la fecha de todo el pedido**, y desde el 13/9/2026 era
+> contorneado justamente para no parecerse a "+ Agregar". Con los dos
+> contorneados quedaban iguales. La distinción se mudó al **color** —va en el
+> marrón de la marca— y al carrito, que éste no lleva.
+>
+> Lo cuida `verificar-sin-stock.js`, que ya armaba ese escenario: compara los
+> dos botones **en la misma pantalla**, con el control de que haya un "Agregar"
+> con que comparar. Reinyectado el bug —los dos del mismo color— da MAL.
+
+### El botón de WhatsApp
+
+Va al **número de Maleu siempre**, incluso en un barrio con vendedor: esas
+conversaciones entran a WATI y quedan en el CRM; mandandolas al celular del
+vendedor, la consulta no deja rastro en ningún lado. Si algún día se quiere lo
+contrario, es una línea — `vendedorMatch.wa` ya existe.
+
+Su mensaje arranca **"¡Hola! Tengo una consulta"**, a propósito distinto del de
+un pedido (*"Hola! Quiero hacer un pedido:"*), que es por donde WATI los
+reconoce.
+
+> [!danger] Un flotante SIEMPRE tapa algo, y acá lo que hay debajo son botones
+> Medido en los combos: tapaba **"Armar combo"**. Un toque ahí no es que no pasa
+> nada — **se lleva al cliente fuera de la tienda**, que es el peor resultado
+> posible de un botón de ayuda.
+>
+> Por eso **se esconde mientras el cliente baja** y vuelve apenas sube o llega
+> arriba, que es el mismo patrón de la franja del 10% y usa **el mismo handler
+> de scroll**: una sola escucha, pasiva y de a un cuadro. Bajando es justo
+> cuando está recorriendo el catálogo y por tocar un producto.
+>
+> Y desaparece con cualquier panel abierto (`body.modal-open`, la clase que ya
+> pone `_fondoQuieto` para todos): sobre el checkout taparía el botón de
+> comprar. Una sola fuente, así no hay que acordarse de este botón cada vez que
+> nazca un panel nuevo.
+>
+> Con "Ver pedido" a la vista **sube**: quedaban a 8px uno del otro.
+
+### La red nueva: `node _tools/verificar-card.js [ancho]`
+
+**29 chequeos**, verdes a 390 y 1440px. El botón de agregar (que diga "Agregar",
+que lleve un carrito, que sea contorneado, que tenga borde, que al tocarlo
+agregue de verdad con un toque por coordenadas) y el de WhatsApp (el número, el
+texto, `noopener`, 44px, que nada lo tape, que no se pise con "Ver pedido", que
+se vaya al bajar y con un panel abierto).
+
+> [!important] El contraste se CALCULA sobre lo que computa el navegador
+> Escribir los colores a mano en el test sería repetir el CSS: el día que
+> alguien cambie el color, el test seguiría midiendo el viejo y daría verde. Es
+> la misma leccion que la del buscador el día anterior — si el chequeo y el
+> código sacan el dato de la misma fuente, no se controlan, se repiten.
+
+Probada al revés con **nueve bugs reinyectados de a uno** —vuelve el relleno, el
+texto en el naranja claro, sin borde, sin carrito, el WhatsApp que no se esconde
+con un panel, el que no sube con "Ver pedido", el que no se va al bajar, su
+mensaje arrancando como un pedido, y "Pedir para…" pintado igual que
+"Agregar"—: **los nueve se agarran**.
+
+> [!danger] El toque de verdad al botón de WhatsApp colgaba el test 600 s
+> Es un `<a target="_blank">`: el click abre una pestaña a wa.me y deja el
+> navegador ocupado. El test se comía el timeout entero **sin imprimir ni el
+> error** — parecía que la tienda estaba rota. Ahora ese chequeo **mide y no
+> toca** (`elementFromPoint`, que es lo mismo que mira el toque antes de
+> disparar), y `wa.me` entró a la lista de URLs bloqueadas por si alguna vez se
+> escapa una.
+
+> [!note] Lo que NO se hizo, y por qué
+> Frizata muestra el **precio por unidad** de cada pack (*"($7600 x u.)"*), que
+> es útil y se lee de un vistazo. No se agregó porque no es estilo: hay que
+> saber cuántas unidades trae cada producto, y eso hoy está escrito en prosa
+> dentro de los chips (*"2 pizzas grandes"*). Derivarlo de ahí sería adivinar.
+> Si Tadeo lo quiere, el camino es un campo nuevo en `PRODUCTOS`.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

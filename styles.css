@@ -4,6 +4,16 @@
   --cream: #F2E8C7;
   --white: #FAFAFA;
   --hover-orange: #D96B38;
+  /* EL NARANJA PARA ESCRIBIR, no para rellenar (1/10/2026). El de marca sobre
+     blanco da 2,72 de contraste y el de hover 3,44: los dos por debajo del 4,5
+     que necesita un texto para leerse. Este da 4,85, medido.
+
+     NO reemplaza a --orange ni toca la identidad: los rellenos, los chips
+     activos y los bordes siguen siendo el de marca. Este es el tono con el que
+     el naranja ESCRIBE sobre un fondo claro. La referencia es Frizata, cuyo
+     rosa sobre blanco da 4,50 — justo el umbral, y por eso su boton
+     contorneado se lee nitido en vez de deslavado. */
+  --orange-ink: #B85420;
   --font: 'Montserrat', system-ui, sans-serif;
 }
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
@@ -424,9 +434,24 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .combo-modal-add:disabled { background:#ccc; cursor:not-allowed; }
 .product-footer { display:flex; flex-direction:column; gap:.45rem; margin-top:auto; }
 .product-price { font-size:1rem; font-weight:700; color:var(--brown); }
-.add-btn { display:block; width:100%; background:var(--orange); color:#fff; border:none; border-radius:50px; padding:.5rem .8rem; font-family:var(--font); font-size:.82rem; font-weight:700; cursor:pointer; transition:background .15s; text-align:center; }
-.add-btn:hover { background:var(--hover-orange); }
-.add-btn:disabled { background:#ccc; cursor:not-allowed; }
+/* EL BOTON DE AGREGAR: contorneado, con el carrito (1/10/2026)
+   Era un bloque naranja relleno de ancho completo. Con tres o cuatro cards por
+   fila eran tres o cuatro bloques de color peleandole la atencion a la foto, y
+   la foto es la decision de compra. Tadeo, comparando con frizata.com:
+   "el boton naranja de agregar es muy feo y parece mucho a una IA".
+
+   Contorneado, el color de marca queda de acento y la comida manda. Al tocarlo
+   SE RELLENA del naranja de marca: el que acaba de agregar algo tiene que
+   verlo sin dudar. */
+.add-btn { display:block; width:100%; background:#fff; color:var(--orange-ink); border:1.5px solid var(--orange-ink); border-radius:50px; padding:.5rem .8rem; font-family:var(--font); font-size:.82rem; font-weight:700; cursor:pointer; transition:background .15s, color .15s, border-color .15s; text-align:center; }
+.add-btn:hover { background:var(--orange); color:#fff; border-color:var(--orange); }
+.add-btn:active { background:var(--hover-orange); color:#fff; border-color:var(--hover-orange); }
+.add-btn:disabled { background:#f4f1ee; color:#8a8078; border-color:#e3ddd6; cursor:not-allowed; }
+.add-btn:disabled:hover { background:#f4f1ee; color:#8a8078; border-color:#e3ddd6; }
+/* El carrito del boton. Hereda el color del texto, asi que se pone blanco solo
+   cuando el boton se rellena. El trazo va mas grueso que el de los otros
+   iconos (1,7): a 1,2em dentro de un boton de 13px, el de 1,7 desaparece. */
+.add-btn .ico { width:1.2em; height:1.2em; flex:0 0 auto; stroke-width:1.9; }
 .card-qty-controls { display:flex; align-items:center; justify-content:center; gap:.5rem; }
 .card-qty-btn { width:32px; height:32px; border-radius:50%; border:1.5px solid var(--orange); background:#fff; font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:600; color:var(--orange); }
 .card-qty-btn:disabled { opacity:.35; cursor:not-allowed; }
@@ -471,6 +496,44 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 
 /* ── FLOAT CART ── */
 .float-cart-btn { display:none; align-items:center; justify-content:center; gap:.45rem; position:fixed; bottom:1.2rem; left:50%; transform:translateX(-50%); background:var(--orange); color:#fff; border:none; border-radius:50px; padding:.75rem 1.5rem; font-family:var(--font); font-weight:700; font-size:.85rem; cursor:pointer; z-index:50; box-shadow:0 4px 16px rgba(240,125,71,.4); white-space:nowrap; }
+
+/* ── ESCRIBINOS POR WHATSAPP (1/10/2026) ──────────────────────────────
+   Abajo a la derecha; el carrito flotante va CENTRADO, asi que no se pisan
+   ni a 390px (el carrito ocupa de 105 a 285, este de 318 a 374).
+
+   Se esconde con cualquier panel abierto —carrito, checkout, modal de zona,
+   combo— usando `body.modal-open`, que es la clase que ya pone `_fondoQuieto`
+   para todos. Sobre el checkout taparia el boton de comprar, que es lo ultimo
+   que hay que estorbar; y una sola fuente evita tener que acordarse de este
+   boton cada vez que nazca un panel nuevo. */
+.wa-float {
+  position:fixed; right:1rem; bottom:calc(1.2rem + env(safe-area-inset-bottom, 0px));
+  width:54px; height:54px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:#25D366; color:#fff; z-index:150;
+  box-shadow:0 4px 14px rgba(0,0,0,.22);
+  transition:transform .15s, box-shadow .15s;
+}
+.wa-float svg { width:30px; height:30px; display:block; }
+.wa-float:hover { transform:scale(1.06); box-shadow:0 6px 18px rgba(0,0,0,.28); }
+.wa-float:active { transform:scale(.96); }
+body.modal-open .wa-float { display:none; }
+/* Con "Ver pedido" abajo, el de WhatsApp sube para no quedar pegado a el. */
+body.con-ver-pedido .wa-float { bottom:calc(5.2rem + env(safe-area-inset-bottom, 0px)); }
+
+/* SE VA MIENTRAS EL CLIENTE BAJA, y vuelve apenas sube o llega arriba.
+   Un boton flotante SIEMPRE tapa algo, y lo que hay debajo en esta tienda son
+   los botones de las cards: medido en los combos, tapaba "Armar combo". Un
+   toque ahi no es que no pasa nada — se lleva al cliente FUERA de la tienda,
+   que es el peor resultado posible de un boton de ayuda.
+
+   Bajando es justo cuando el cliente esta recorriendo el catalogo y por tocar
+   un producto; al frenar y subir vuelve a estar. Lo decide el mismo handler
+   de scroll que esconde la franja del 10%: una sola escucha, pasiva y de a un
+   cuadro. No se usa display:none para que la transicion se vea. */
+.wa-float { opacity:1; visibility:visible; transition:transform .15s, box-shadow .15s, opacity .2s ease, visibility 0s linear 0s; }
+body.bajando .wa-float { opacity:0; visibility:hidden; pointer-events:none;
+                         transition:opacity .2s ease, visibility 0s linear .2s; }
 
 /* ── REPEAT BLOCK ── */
 
@@ -1098,7 +1161,7 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
 
 /* 5. EL BOTON — 44px es el minimo tactil real. Estaba en 36px. */
 .add-btn { min-height:44px; display:flex; align-items:center;
-           justify-content:center; }
+           justify-content:center; gap:.4rem; }
 
 /* ══════════════════════════════════════════════════════════════════
    TIPOGRAFIA — la del manual de marca, usada como dice el manual
@@ -1984,13 +2047,18 @@ body.busqueda-activa #ultimo-section { display: none !important; }
 
 /* ── "PEDIR PARA EL VIE 18" (13/9/2026) ──
    El boton de una card sin stock para la fecha elegida, cuando hay otra fecha
-   que si se puede pedir. Contorno y no relleno: no es lo mismo que "+ Agregar"
-   — cambia la fecha de todo el pedido — y tiene que leerse distinto. */
+   que si se puede pedir. Tiene que leerse DISTINTO de "Agregar": no es lo
+   mismo, cambia la fecha de todo el pedido.
+
+   Hasta el 1/10/2026 la diferencia era contorno contra relleno. Ese dia
+   "Agregar" paso a ser contorneado y los dos quedaron iguales, asi que la
+   distincion se mudo al color: este va en el marron de la marca, y sin el
+   carrito. Se ve de un vistazo que hace otra cosa. */
 .add-btn.add-btn-otra-fecha {
-  background: #fff; color: var(--hover-orange);
-  border: 1.5px solid var(--orange); line-height: 1.2;
+  background: #fff; color: var(--brown);
+  border: 1.5px solid #d9cec6; line-height: 1.2;
 }
-.add-btn.add-btn-otra-fecha:hover { background: #FFF3E0; }
+.add-btn.add-btn-otra-fecha:hover { background: #faf6f2; border-color: var(--brown); color: var(--brown); }
 
 /* ── EL CATALOGO EN LA COMPU (13/9/2026) ──
    Las categorias y "Los mas pedidos" van a 1100px y 4 columnas, pero cada
@@ -2046,14 +2114,14 @@ body.busqueda-activa #ultimo-section { display: none !important; }
    ultimo pedido de solo carne dejaria la grilla vacia ocupando lugar. */
 .ultimo-section[hidden], #ultimo-productos[hidden] { display:none !important; }
 .ultimo-todo { min-height:44px; padding:.55rem 1.2rem; border-radius:999px;
-               border:1.5px solid var(--orange); background:#fff; color:var(--hover-orange);
+               border:1.5px solid var(--orange); background:#fff; color:var(--orange-ink);
                font-family:var(--font); font-weight:700; font-size:.88rem; line-height:1.25;
                cursor:pointer; max-width:100%; }
 .ultimo-todo:hover { background:#FFF3E0; }
 .ultimo-todo:disabled { border-color:#ddd4ca; color:#6f6660; background:#faf7f2; cursor:default; }
 .ultimo-mas, .ultimo-carne { margin:0; font-size:.82rem; color:#5f5751; line-height:1.4; max-width:36rem; }
 .ultimo-carne-btn { min-height:44px; padding:.5rem 1rem; border:none; background:none;
-                    color:var(--hover-orange); font-family:var(--font); font-weight:700; font-size:.88rem;
+                    color:var(--orange-ink); font-family:var(--font); font-weight:700; font-size:.88rem;
                     cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
 
 /* ── LAS SUGERENCIAS DEL CARRITO (13/9/2026): carne, y al reves ──
@@ -2075,7 +2143,7 @@ body.busqueda-activa #ultimo-section { display: none !important; }
 .sug-btn:hover { background:var(--hover-orange); }
 @media (max-width: 480px) { .sug-porc { display:none; } }
 .sug-ver { display:block; margin:.2rem auto 0; min-height:44px; padding:.4rem .8rem; background:none;
-                 border:none; color:var(--hover-orange); font-family:var(--font); font-weight:600;
+                 border:none; color:var(--orange-ink); font-family:var(--font); font-weight:600;
                  font-size:.82rem; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
 
 /* ── LA FRANJA DEL 10% SE ESCONDE AL BAJAR (13/9/2026) ──

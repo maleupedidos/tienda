@@ -4136,7 +4136,9 @@ var _ICONOS = {
   pin:  '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
   cal:  '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>',
   bolsa:'<path d="M6 8h12l-1.1 12.2H7.1L6 8Z"/><path d="M9 8V6.2a3 3 0 0 1 6 0V8"/>',
-  reloj:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 1.9"/>'
+  reloj:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 1.9"/>',
+  carro:'<circle cx="9.5" cy="20" r="1.5"/><circle cx="17.5" cy="20" r="1.5"/>' +
+        '<path d="M2.5 4h2.3l2.3 11.1a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.2L20.5 8H5.6"/>'
 };
 function _ico(nombre, clase) {
   var d = _ICONOS[nombre];
@@ -4145,6 +4147,16 @@ function _ico(nombre, clase) {
          'stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" ' +
          'aria-hidden="true" focusable="false">' + d + '</svg>';
 }
+/* EL ROTULO DEL BOTON QUE SUMA AL CARRITO (1/10/2026).
+   Una sola fuente: "+ Agregar" estaba escrito en CUATRO lugares (la card del
+   producto, su repintado, y las dos vistas del combo), o sea cuatro lugares
+   donde el dia de mañana uno puede quedarse sin el carrito o sin el cambio de
+   texto. El "+" se fue con el icono: decia dos veces lo mismo.
+
+   Lo llevan SOLO los botones que suman al carrito. "Pedir para el vie 18"
+   —que cambia la fecha de todo el pedido— y "Armar combo" —que abre el
+   configurador— no lo llevan, a proposito: hacen otra cosa. */
+function _rotuloAgregar() { return _ico('carro') + '<span>Agregar</span>'; }
 /* Pinta un chip como icono + texto. El texto va por `textContent` y NO
    concatenado al HTML: varias de estas etiquetas son nombres de barrio que
    llegan de la planilla (`action=vendedores`), o sea de afuera del codigo. */
@@ -4317,7 +4329,7 @@ function _comboCardHTML(c) {
     ? '<button class="add-btn combo-btn-terminado" disabled aria-disabled="true">Terminado</button>'
     : (choices
       ? '<button class="add-btn" onclick="openComboConfig(\'' + c.id + '\')">Armar combo</button>'
-      : '<button class="add-btn" onclick="addComboDefault(\'' + c.id + '\')">+ Agregar</button>');
+      : '<button class="add-btn" onclick="addComboDefault(\'' + c.id + '\')">' + _rotuloAgregar() + '</button>');
   const terminadoBadge = c.terminado
     ? '<span class="combo-terminado-badge">' + (c.terminadoLabel || 'Terminado') + '</span>'
     : '';
@@ -4530,7 +4542,7 @@ function productCardHTML(p) {
       '<span class="stock-indicator" data-stock="' + p.id + '"></span>' +
       '<div class="product-footer">' +
         '<span class="product-price">' + ars(p.precio) + '</span>' +
-        '<button class="add-btn" onclick="addToCart(\'' + p.id + '\')">+ Agregar</button>' +
+        '<button class="add-btn" onclick="addToCart(\'' + p.id + '\')">' + _rotuloAgregar() + '</button>' +
       '</div>' +
     '</div>' +
   '</article>';
@@ -4644,7 +4656,7 @@ function _pintarFooterDeCard(card, id) {
   } else if (qty === 0) {
     footer.innerHTML = '<span class="product-price">' + ars(p.precio) + '</span>' +
       '<button class="add-btn" onclick="addToCart(\'' + p.id + '\')"' + (sinStock ? ' disabled' : '') + '>' +
-      (sinStock ? 'Sin stock' : '+ Agregar') + '</button>';
+      (sinStock ? 'Sin stock' : _rotuloAgregar()) + '</button>';
   } else {
     footer.innerHTML = '<span class="product-price">' + ars(p.precio) + '</span>' +
       '<div class="card-qty-controls">' +
@@ -5091,7 +5103,7 @@ function renderComboFooter(comboId) {
     const max = comboBestMax(c, null);
     const sinStock = max !== Infinity && max <= 0;
     btn = '<button class="add-btn" onclick="addComboDefault(\'' + c.id + '\')"' + (sinStock ? ' disabled' : '') + '>' +
-      (sinStock ? 'Sin stock' : '+ Agregar') + '</button>';
+      (sinStock ? 'Sin stock' : _rotuloAgregar()) + '</button>';
   }
   // placaSola: la placa ya trae el precio → footer solo con el botón (no duplicar).
   if (c.placaSola) { footer.innerHTML = btn; return; }
@@ -5236,8 +5248,15 @@ function updateUI() {
 
   const floatBtn = $id('float-cart-btn');
   if (floatBtn) {
-    floatBtn.style.display = (count > 0 && !_formVisible) ? 'flex' : 'none';
+    const verPedido = (count > 0 && !_formVisible);
+    floatBtn.style.display = verPedido ? 'flex' : 'none';
     if (count > 0) floatBtn.innerHTML = _ico('bolsa') + '<span class="chip-txt">Ver pedido · ' + ars(total) + '</span>';
+    /* "Ver pedido" va centrado abajo y el de WhatsApp a la derecha: a 390px
+       quedan a 8px uno del otro, que se ve apretado y se toca peor. Con el
+       pedido armado, el de WhatsApp sube. Se marca en el body —y no se le
+       toca el style al boton— para que lo resuelva el CSS, que es el que sabe
+       cuanto mide cada uno. */
+    document.body.classList.toggle('con-ver-pedido', verPedido);
   }
 
   const bodyEl = $id('cart-body'), footEl = $id('cart-foot');
@@ -7793,8 +7812,29 @@ function updateCatNavTop() {
    parpadear. En la compu la clase se pone igual, pero el CSS no la usa. */
 (function () {
   var ultimoY = window.pageYOffset || 0, pendiente = false, UMBRAL = 8;
+  var waUltimoY = ultimoY;
   function mirar() {
     pendiente = false;
+
+    /* EL BOTON DE WHATSAPP SE VA MIENTRAS EL CLIENTE BAJA (1/10/2026).
+       Va primero y con su propia cuenta, antes de cualquier `return`: lo de
+       abajo sale temprano cuando la barra no esta pegada, y el boton flota
+       igual en toda la pagina.
+
+       Un flotante siempre tapa algo, y lo que hay debajo son los botones de
+       las cards — medido en los combos, tapaba "Armar combo". Un toque ahi se
+       lleva al cliente FUERA de la tienda. Bajando es cuando esta recorriendo
+       el catalogo; al frenar y subir vuelve. Arriba de todo no se esconde
+       nunca: ahi no hay nada que tapar. */
+    var yw = window.pageYOffset || 0;
+    if (yw <= 120) {
+      document.body.classList.remove('bajando');
+      waUltimoY = yw;
+    } else if (Math.abs(yw - waUltimoY) >= UMBRAL) {
+      document.body.classList.toggle('bajando', yw > waUltimoY);
+      waUltimoY = yw;
+    }
+
     var sh = document.querySelector('.sticky-header');
     /* La sombra de la barra del buscador, que solo va cuando esta pegada
        (1/10/2026). Se mira aca y no con otra escucha de scroll: ya hay una,

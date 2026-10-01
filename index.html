@@ -764,6 +764,24 @@
 </footer>
 
 <button class="float-cart-btn" id="float-cart-btn" onclick="toggleCart()"></button>
+
+<!-- ESCRIBINOS (1/10/2026). Cualquier tienda seria tiene por donde preguntar
+     antes de comprar, y el unico canal de Maleu es WhatsApp.
+
+     Va al numero de Maleu SIEMPRE, incluso en un barrio con vendedor: esas
+     conversaciones entran a WATI y quedan en el CRM; mandandolas al celular
+     del vendedor, la consulta no deja rastro en ningun lado.
+
+     El texto arranca distinto del mensaje de un pedido ("Hola! Quiero hacer un
+     pedido:"), que es el que WATI mira para reconocerlo. -->
+<a class="wa-float" id="wa-float"
+   href="https://wa.me/5491155038905?text=%C2%A1Hola!%20Tengo%20una%20consulta"
+   target="_blank" rel="noopener" aria-label="Escribinos por WhatsApp">
+  <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+    <path fill="currentColor" d="M16 3.2A12.7 12.7 0 0 0 5.1 22.5L3.6 28l5.7-1.5A12.7 12.7 0 1 0 16 3.2Zm0 23.1c-1.9 0-3.8-.5-5.4-1.5l-.4-.2-3.4.9.9-3.3-.3-.4a10.5 10.5 0 1 1 8.6 4.5Zm5.8-7.9c-.3-.2-1.9-.9-2.2-1s-.5-.2-.7.2-.8 1-1 1.2-.4.2-.7.1a8.6 8.6 0 0 1-4.3-3.7c-.3-.6.3-.5.9-1.7a.6.6 0 0 0 0-.6c0-.2-.7-1.8-1-2.4s-.5-.5-.7-.5h-.6a1.2 1.2 0 0 0-.9.4 3.6 3.6 0 0 0-1.1 2.7 6.3 6.3 0 0 0 1.3 3.3 14.3 14.3 0 0 0 5.5 4.9c2 .9 2.8 1 3.8.8a3.2 3.2 0 0 0 2.1-1.5 2.6 2.6 0 0 0 .2-1.5c-.1-.2-.3-.3-.6-.4Z"/>
+  </svg>
+</a>
+
 <div class="toast" id="toast"></div>
 
 <!-- Loader de envío del pedido (overlay con spinner + barra progreso) -->

@@ -333,6 +333,35 @@ async function main() {
         'sin stock para hoy, el boton ofrece el viernes: "' + est.pma.boton + '"');
     chk(est.copias === 2, 'y lo dice en las DOS copias de la card ("Lo mas pedido" y su categoria): ' + est.copias);
 
+    /* "Pedir para el vie 18" CAMBIA LA FECHA DE TODO EL PEDIDO, asi que no se
+       puede leer igual que "Agregar". Hasta el 1/10/2026 la diferencia era
+       contorno contra relleno; ese dia "Agregar" paso a ser contorneado y la
+       distincion se mudo al COLOR, mas el carrito, que este no lleva.
+
+       El control va primero: si en esta pantalla no hay ningun "Agregar" con
+       que comparar, que los dos sean distintos no prueba nada. */
+    const dist = JSON.parse(await ev('(function () {' +
+      'var o = document.querySelector(".add-btn-otra-fecha");' +
+      'var a = [].slice.call(document.querySelectorAll(".add-btn")).filter(function (b) {' +
+      '  return !/add-btn-otra-fecha|combo-btn-terminado/.test(b.className) && !b.disabled; })[0];' +
+      'if (!o || !a) return JSON.stringify({ hayOtra: !!o, hayAgregar: !!a });' +
+      'var co = getComputedStyle(o), ca = getComputedStyle(a);' +
+      'return JSON.stringify({ hayOtra: true, hayAgregar: true,' +
+      '  colorOtra: co.color, colorAgregar: ca.color,' +
+      '  bordeOtra: co.borderTopColor, bordeAgregar: ca.borderTopColor,' +
+      '  carritoOtra: o.querySelectorAll("svg.ico").length,' +
+      '  carritoAgregar: a.querySelectorAll("svg.ico").length }); })()'));
+    chk(dist.hayOtra && dist.hayAgregar,
+        'CONTROL: en la pantalla hay un "Pedir para..." Y un "Agregar" con que compararlo');
+    if (dist.hayOtra && dist.hayAgregar) {
+      chk(dist.colorOtra !== dist.colorAgregar || dist.bordeOtra !== dist.bordeAgregar,
+          'se lee DISTINTO de "Agregar": no cambian lo mismo',
+          dist.colorOtra + ' contra ' + dist.colorAgregar);
+      chk(dist.carritoOtra === 0 && dist.carritoAgregar === 1,
+          'y el carrito lo lleva solo el que suma al carrito',
+          'otra-fecha ' + dist.carritoOtra + ' · agregar ' + dist.carritoAgregar);
+    }
+
     console.log('\n' + DIM + '== Los combos sin stock para hoy ==' + RST);
     const combos = JSON.parse(await ev('(function () {' +
       'var cards = [].slice.call(document.querySelectorAll(".combo-card"));' +
