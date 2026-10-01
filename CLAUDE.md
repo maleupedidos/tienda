@@ -4097,6 +4097,90 @@ mensaje arrancando como un pedido, y "Pedir para…" pintado igual que
 > dentro de los chips (*"2 pizzas grandes"*). Derivarlo de ahí sería adivinar.
 > Si Tadeo lo quiere, el camino es un campo nuevo en `PRODUCTOS`.
 
+## Cuánto sale una (1/10/2026)
+
+Quedó planteado al rehacer el botón —Frizata muestra el precio por unidad de
+cada pack— y Tadeo lo devolvió: *"si creés que como experiencia del usuario
+quedaría lindo y elegante, adelante"*. Se hizo, **pero no en todo el catálogo**.
+
+```
+$17.000
+$8.500 por pizza
+```
+
+> [!important] Lo que vende no es el dato, es la comparación que habilita
+> La misma pizza suelta está en la categoría de arriba a **$11.200**. O sea
+> que el pack ahorra **$2.700 por pizza**, y hasta hoy el cliente tenía que
+> dividir de cabeza para enterarse. En "Los más pedidos" quedan uno al lado
+> del otro: *Pizza Margarita $11.500* y *Pack Muzzarella x2 $17.000 · $8.500
+> por pizza*.
+
+**Lo llevan 14 productos de 34**, y la lista es a mano por una razón:
+
+| | lleva | por qué |
+|---|---|---|
+| Packs de pizza x2 | **sí** | es el caso que lo justifica |
+| Empanadas x8 | **sí** | *$2.500 por empanada* se compara con lo que el cliente ya conoce |
+| **Sorrentinos (16 unidades)** | **no** | nadie los compra pensando cuánto sale cada uno, y el chip ya dice "600g · 16 unidades". Ahí el número es ruido en el renglón que más se mira |
+| Tartas, wraps, Franui, tortas | no | vienen de a uno |
+| Carnes | no | **ya estaba**: `$25.000 por kilo`, desde la grilla de piezas |
+
+Los 7 del catálogo principal y **los 7 de Clubes**, que tiene sus propios
+precios ($13.000 el pack → $6.500 por pizza).
+
+> [!warning] NO se deriva del nombre ni de los chips, a propósito
+> Un regex sobre `"2 pizzas grandes"` / `"8 empanadas"` habría funcionado… y
+> habría agarrado también `"600g · 16 unidades"`, que es justo el que no va. Y
+> el día que alguien reescriba un chip, cambia un **precio en pantalla**. Son
+> dos campos explícitos en `PRODUCTOS`: `unid` y `unidQue` (el sustantivo en
+> singular, para que diga *"por pizza"* y no *"x u."*).
+
+> [!danger] El número tiene que dar exacto o no se muestra
+> `_precioDeCard` exige `precio % unid === 0`. Un precio por unidad redondeado
+> es un número que **miente al que lo multiplica**: ve "$2.250 por empanada",
+> hace la cuenta y le da otra cosa que el total. Hoy los 14 dan exacto, y el
+> script que cargó los campos lo verificó uno por uno antes de escribir.
+
+**No compara contra el producto suelto**, que sería la frase que más vende
+(*"ahorrás $2.700"*): un *Pack Cebolla y Queso* no tiene UN individual
+equivalente —el suelto es *Cebolla Caramelizada*—, así que el ahorro saldría
+de una equivalencia inventada. El número se muestra y el cliente compara solo.
+
+**En el carrito no va** (ahí ya elegiste) **ni en los combos** (tienen precio
+cerrado y su lista de qué incluyen).
+
+### Los botones siguen alineados aunque la card crezca
+
+El renglón extra hace 16px más alta a la card que lo lleva, y en "Los más
+pedidos" conviven con las que no. **No queda desparejo**: el footer está
+anclado abajo y el botón es lo último, así que lo medido da 451/451 y 813/813.
+
+### Lo cuida `verificar-card.js` (34 chequeos)
+
+El precio sale del **catálogo**, no escrito en el test: un número copiado a
+mano queda viejo el día que Tadeo cambie un precio, y el test seguiría en
+verde sobre una card que dice otra cosa.
+
+> [!danger] El control destapó que una rama no se medía
+> El footer se arma en **cuatro** lugares. Reinyectado el bug en la rama de los
+> `+/-`, el test lo agarraba; reinyectado en la rama de *"Agregar"*, **pasaba en
+> verde**. El motivo: el bloque anterior toca el primer `.add-btn` del catálogo
+> y en Estancias **ese es justamente un pack**, así que para cuando se medía ya
+> estaba en el carrito y las dos mediciones miraban la misma rama. Ahora el
+> pack se elige entre los que **no** están en el carrito, y cada bug cae en la
+> suya.
+>
+> **Queda sin cubrir la tercera rama** (la de *"Pedir para el vie 18"*): para
+> ejercitarla hace falta un pack sin stock para hoy, que es un escenario de
+> `verificar-sin-stock`. Decirlo vale más que inflar el número.
+
+> [!warning] Y una corrida de cada tres fallaba por las fotos
+> *"suma uno al carrito (0 → 0)"*, sobre un botón que funciona. Las imágenes
+> `lazy` cambian el alto de la página **mientras se scrollea**, así que el
+> toque medido antes del reflow le cae a otra cosa. `verificar-franja` ya hacía
+> `loading="eager"` + esperar por el mismo motivo; ahora éste también. Tres
+> corridas seguidas en verde.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

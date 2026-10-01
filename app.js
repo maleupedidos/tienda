@@ -82,9 +82,9 @@ const PRODUCTOS = [
   { id:3,  cat:"Pizzas Individuales",   nombre:"Pizza Cebolla Caramelizada",    desc:"Cebolla bien dulce con queso cremoso. Para los que saben.",                       precio:11500, img:"pizza-cebolla-cocida.jpg", emoji:"🍕", chips:["Para 1–2 personas","1 pizza grande","Al horno en 12 min"] },
   { id:4,  cat:"Pizzas Individuales",   nombre:"Pizza Jamón y Morrón",          desc:"Con jamón, morrón rojo y orégano. Completa y sabrosa.",                           precio:12000, img:"pizza-jamon-morron-cocida.jpg", emoji:"🍕", chips:["Para 1–2 personas","1 pizza grande","Al horno en 12 min"] },
   { id:19, cat:"Pizzas Individuales",   nombre:"Pizza Muzzarella",              desc:"Puro queso derretido sobre salsa de tomate. La clásica que nunca sobra.",          precio:11200, img:"pizza-muzarella-cocida.jpg", emoji:"🍕", chips:["Para 1–2 personas","1 pizza grande","Al horno en 12 min"] },
-  { id:5,  cat:"Pack Pizzas x2",  nombre:"Pack Muzzarella x2",            desc:"Dos pizzas de muzzarella para tener siempre una cena resuelta en el freezer.",   precio:17000, img:"pack-muzarella-cocida.jpg", emoji:"🍕", top:true, chips:["Para 3–4 personas","2 pizzas grandes","Al horno en 12 min"] },
-  { id:6,  cat:"Pack Pizzas x2",  nombre:"Pack Jamón y Queso x2",         desc:"Dos pizzas de jamón y queso. Una para hoy, otra para cuando quieras.",             precio:17000, img:"pack-jamon-queso-cocida.jpg", emoji:"🍕", chips:["Para 3–4 personas","2 pizzas grandes","Al horno en 12 min"] },
-  { id:7,  cat:"Pack Pizzas x2",  nombre:"Pack Cebolla y Queso x2",       desc:"Dos pizzas con cebolla caramelizada. Guardá una para mañana.",                   precio:17000, img:"pack-cebolla-queso-cocida.jpg", emoji:"🍕", chips:["Para 3–4 personas","2 pizzas grandes","Al horno en 12 min"] },
+  { id:5,  cat:"Pack Pizzas x2",  nombre:"Pack Muzzarella x2",            desc:"Dos pizzas de muzzarella para tener siempre una cena resuelta en el freezer.",   precio:17000, img:"pack-muzarella-cocida.jpg", emoji:"🍕", top:true, unid:2, unidQue:"pizza", chips:["Para 3–4 personas","2 pizzas grandes","Al horno en 12 min"] },
+  { id:6,  cat:"Pack Pizzas x2",  nombre:"Pack Jamón y Queso x2",         desc:"Dos pizzas de jamón y queso. Una para hoy, otra para cuando quieras.",             precio:17000, img:"pack-jamon-queso-cocida.jpg", emoji:"🍕", unid:2, unidQue:"pizza", chips:["Para 3–4 personas","2 pizzas grandes","Al horno en 12 min"] },
+  { id:7,  cat:"Pack Pizzas x2",  nombre:"Pack Cebolla y Queso x2",       desc:"Dos pizzas con cebolla caramelizada. Guardá una para mañana.",                   precio:17000, img:"pack-cebolla-queso-cocida.jpg", emoji:"🍕", unid:2, unidQue:"pizza", chips:["Para 3–4 personas","2 pizzas grandes","Al horno en 12 min"] },
   { id:8,  cat:"Sorrentinos",      nombre:"Sorrentinos Cordero al Malbec", desc:"Cordero, zanahoria, apio, cebolla y especias. Distinto y muy rico.",             precio:19800, img:"sorrentinos-cordero-v2.jpg", emoji:"🍝", chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
   { id:9,  cat:"Sorrentinos",      nombre:"Sorrentinos Jamón y Queso",     desc:"Relleno cremoso y generoso. El favorito de la familia.",                         precio:18300, img:"sorrentinos-jamon-v2.jpg", emoji:"🍝", top:true, chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
   { id:10, cat:"Sorrentinos",      nombre:"Sorrentinos Calabaza y Queso",  desc:"Suave, dulce y sabroso. Relleno cremoso de calabaza y queso.",                   precio:16500, img:"sorrentinos-calabaza-v2.jpg", emoji:"🍝", chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
@@ -92,10 +92,10 @@ const PRODUCTOS = [
   { id:21, cat:"Sorrentinos",      nombre:"Sorrentinos Langostinos al Azafrán", desc:"Langostinos y azafrán en masa casera. Muy gourmet.",                      precio:22100, img:"sorrentinos-langostinos.jpg",emoji:"🍝", chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
   { id:22, cat:"Sorrentinos",      nombre:"Sorrentinos Pollo y Puerro",    desc:"Pollo tierno con puerro salteado. Suave, sabroso y muy rendidor.",              precio:18300, img:"sorrentinos-pollo-puerro.jpg",emoji:"🍝", chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
   { id:23, cat:"Sorrentinos",      nombre:"Sorrentinos Espinaca",          desc:"Espinaca con queso cremoso. Verde, suave, tradicional.",                         precio:17000, img:"sorrentinos-espinaca.jpg",   emoji:"🍝", chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
-  { id:11, cat:"Empanadas",        nombre:"Empanadas Carne a Cuchillo x8", desc:"Carne cortada a cuchillo, jugosa y bien condimentada. Las que piden todos.",     precio:20000, img:"empanadas-carne-v2.jpg", emoji:"🥟", top:true, chips:["Para 2–4 personas","8 empanadas","Al horno hasta dorar"] },
-  { id:12, cat:"Empanadas",        nombre:"Empanadas Jamón y Queso x8",    desc:"Cremosas por dentro, doraditas por fuera. Para cualquier momento.",              precio:18000, img:"empanadas-jamon-v2.jpg", emoji:"🥟", chips:["Para 2–4 personas","8 empanadas","Al horno hasta dorar"] },
-  { id:17, cat:"Empanadas",        nombre:"Empanadas Cebolla y Queso Azul x8",  desc:"Cebolla caramelizada con queso azul. Intensas y cremosas.",               precio:18000, img:"empanadas-cebolla-v2.jpg", emoji:"🥟", chips:["Para 2–4 personas","8 empanadas","Al horno hasta dorar"] },
-  { id:18, cat:"Empanadas",        nombre:"Empanadas Verdura x8",          desc:"Relleno de verdura fresca y queso. Livianas y riquísimas.",                      precio:18000, img:"empanadas-verdura-v2.jpg", emoji:"🥟", chips:["Para 2–4 personas","8 empanadas","Al horno hasta dorar"] },
+  { id:11, cat:"Empanadas",        nombre:"Empanadas Carne a Cuchillo x8", desc:"Carne cortada a cuchillo, jugosa y bien condimentada. Las que piden todos.",     precio:20000, img:"empanadas-carne-v2.jpg", emoji:"🥟", top:true, unid:8, unidQue:"empanada", chips:["Para 2–4 personas","8 empanadas","Al horno hasta dorar"] },
+  { id:12, cat:"Empanadas",        nombre:"Empanadas Jamón y Queso x8",    desc:"Cremosas por dentro, doraditas por fuera. Para cualquier momento.",              precio:18000, img:"empanadas-jamon-v2.jpg", emoji:"🥟", unid:8, unidQue:"empanada", chips:["Para 2–4 personas","8 empanadas","Al horno hasta dorar"] },
+  { id:17, cat:"Empanadas",        nombre:"Empanadas Cebolla y Queso Azul x8",  desc:"Cebolla caramelizada con queso azul. Intensas y cremosas.",               precio:18000, img:"empanadas-cebolla-v2.jpg", emoji:"🥟", unid:8, unidQue:"empanada", chips:["Para 2–4 personas","8 empanadas","Al horno hasta dorar"] },
+  { id:18, cat:"Empanadas",        nombre:"Empanadas Verdura x8",          desc:"Relleno de verdura fresca y queso. Livianas y riquísimas.",                      precio:18000, img:"empanadas-verdura-v2.jpg", emoji:"🥟", unid:8, unidQue:"empanada", chips:["Para 2–4 personas","8 empanadas","Al horno hasta dorar"] },
   { id:24, cat:"Tartas",   nombre:"Tarta Pollo y Verdeo",          desc:"Pollo y verdeo. Sustanciosa y bien rendidora.",                                                                  precio:12000, img:"tarta-pollo.jpg", emoji:"🥧", chips:["Para 1–2 personas","Tarta de 16 cm","Al horno en 10 min"] },
   { id:25, cat:"Tartas",   nombre:"Tarta Jamón y Queso",           desc:"El clásico. Mucho jamón, mucho queso. Hecha como en casa.",                                                                  precio:12000, img:"tarta-jamon-queso.jpg", emoji:"🥧", chips:["Para 1–2 personas","Tarta de 16 cm","Al horno en 10 min"] },
   { id:26, cat:"Tartas",   nombre:"Tarta Calabaza",                desc:"Calabaza con queso rallado y semillas de girasol arriba. Sabor a horno familiar.",                                                                  precio:12000, img:"tarta-calabaza.jpg", emoji:"🥧", chips:["Para 1–2 personas","Tarta de 16 cm","Al horno en 10 min"] },
@@ -174,13 +174,13 @@ const PRODUCTOS_CLUBES = [
   { id:'pcc', cat:"Pizzas Individuales",  nombre:"Pizza Cebolla Caramelizada", desc:"Cebolla bien dulce con queso cremoso. Para los que saben.",                 precio:8000,  img:"pizza-cebolla-cocida.jpg", emoji:"🍕", chips:["1 pizza grande","Al horno en 12 min"] },
   { id:'pma', cat:"Pizzas Individuales",  nombre:"Pizza Margarita",            desc:"Tomate fresco, mozzarella y albahaca. La que nunca falla.",                  precio:8000,  img:"pizza-margarita-cocida.jpg", emoji:"🍕", chips:["1 pizza grande","Al horno en 12 min"] },
   { id:'pjm', cat:"Pizzas Individuales",  nombre:"Pizza Jamón y Morrón",       desc:"Con jamón, morrón rojo y orégano. Completa y sabrosa.",                     precio:8000,  img:"pizza-jamon-morron-cocida.jpg", emoji:"🍕", chips:["1 pizza grande","Al horno en 12 min"] },
-  { id:'pp1', cat:"Pack Pizzas x2", nombre:"Pack Muzzarella x2",         desc:"Dos pizzas de muzzarella. Cena resuelta para todo el equipo.",              precio:13000, img:"pack-muzarella-cocida.jpg", emoji:"🍕", top:true, chips:["2 pizzas grandes","Al horno en 12 min"] },
-  { id:'pp2', cat:"Pack Pizzas x2", nombre:"Pack Jamón y Queso x2",      desc:"Dos pizzas de jamón y queso. El clásico del tercer tiempo.",               precio:13000, img:"pack-jamon-queso-cocida.jpg", emoji:"🍕", chips:["2 pizzas grandes","Al horno en 12 min"] },
-  { id:'pp3', cat:"Pack Pizzas x2", nombre:"Pack Cebolla y Queso x2",    desc:"Dos pizzas con cebolla caramelizada. Siempre piden más.",                  precio:13000, img:"pack-cebolla-queso-cocida.jpg", emoji:"🍕", chips:["2 pizzas grandes","Al horno en 12 min"] },
-  { id:'ecac', cat:"Empanadas", nombre:"Empanadas Carne a Cuchillo x8", desc:"Carne cortada a cuchillo, jugosa y bien condimentada. Las que piden todos.", precio:18400, img:"empanadas-carne-v2.jpg", emoji:"🥟", chips:["8 empanadas","Al horno hasta dorar"] },
-  { id:'ejyq', cat:"Empanadas", nombre:"Empanadas Jamón y Queso x8",    desc:"Cremosas por dentro, doraditas por fuera. Para cualquier momento.",          precio:16000, img:"empanadas-jamon-v2.jpg", emoji:"🥟", chips:["8 empanadas","Al horno hasta dorar"] },
-  { id:'ecyq', cat:"Empanadas", nombre:"Empanadas Cebolla y Queso Azul x8", desc:"Cebolla caramelizada con queso azul. Intensas y cremosas.",              precio:16000, img:"empanadas-cebolla-v2.jpg", emoji:"🥟", chips:["8 empanadas","Al horno hasta dorar"] },
-  { id:'evc',  cat:"Empanadas", nombre:"Empanadas Verdura x8",          desc:"Relleno de verdura fresca y queso. Livianas y riquísimas.",                  precio:16000, img:"empanadas-verdura-v2.jpg", emoji:"🥟", chips:["8 empanadas","Al horno hasta dorar"] },
+  { id:'pp1', cat:"Pack Pizzas x2", nombre:"Pack Muzzarella x2",         desc:"Dos pizzas de muzzarella. Cena resuelta para todo el equipo.",              precio:13000, img:"pack-muzarella-cocida.jpg", emoji:"🍕", top:true, unid:2, unidQue:"pizza", chips:["2 pizzas grandes","Al horno en 12 min"] },
+  { id:'pp2', cat:"Pack Pizzas x2", nombre:"Pack Jamón y Queso x2",      desc:"Dos pizzas de jamón y queso. El clásico del tercer tiempo.",               precio:13000, img:"pack-jamon-queso-cocida.jpg", emoji:"🍕", unid:2, unidQue:"pizza", chips:["2 pizzas grandes","Al horno en 12 min"] },
+  { id:'pp3', cat:"Pack Pizzas x2", nombre:"Pack Cebolla y Queso x2",    desc:"Dos pizzas con cebolla caramelizada. Siempre piden más.",                  precio:13000, img:"pack-cebolla-queso-cocida.jpg", emoji:"🍕", unid:2, unidQue:"pizza", chips:["2 pizzas grandes","Al horno en 12 min"] },
+  { id:'ecac', cat:"Empanadas", nombre:"Empanadas Carne a Cuchillo x8", desc:"Carne cortada a cuchillo, jugosa y bien condimentada. Las que piden todos.", precio:18400, img:"empanadas-carne-v2.jpg", emoji:"🥟", unid:8, unidQue:"empanada", chips:["8 empanadas","Al horno hasta dorar"] },
+  { id:'ejyq', cat:"Empanadas", nombre:"Empanadas Jamón y Queso x8",    desc:"Cremosas por dentro, doraditas por fuera. Para cualquier momento.",          precio:16000, img:"empanadas-jamon-v2.jpg", emoji:"🥟", unid:8, unidQue:"empanada", chips:["8 empanadas","Al horno hasta dorar"] },
+  { id:'ecyq', cat:"Empanadas", nombre:"Empanadas Cebolla y Queso Azul x8", desc:"Cebolla caramelizada con queso azul. Intensas y cremosas.",              precio:16000, img:"empanadas-cebolla-v2.jpg", emoji:"🥟", unid:8, unidQue:"empanada", chips:["8 empanadas","Al horno hasta dorar"] },
+  { id:'evc',  cat:"Empanadas", nombre:"Empanadas Verdura x8",          desc:"Relleno de verdura fresca y queso. Livianas y riquísimas.",                  precio:16000, img:"empanadas-verdura-v2.jpg", emoji:"🥟", unid:8, unidQue:"empanada", chips:["8 empanadas","Al horno hasta dorar"] },
 ];
 const CATEGORIAS_CLUBES = [
   { nombre:"Pack Pizzas x2",      icono:"🍕", nota:"Pack de 2 unidades · Ideal para compartir en equipo" },
@@ -2448,6 +2448,33 @@ const PROD_ABBR = {
 /* ── HELPERS ── */
 function $id(id) { return document.getElementById(id); }
 function ars(n) { return '$' + n.toLocaleString('es-AR'); }
+
+/* EL PRECIO DE UNA CARD, Y DEBAJO CUANTO SALE UNA (1/10/2026)
+   "$17.000 / $8.500 por pizza". Es lo que hace visible el ahorro del pack:
+   la misma pizza suelta esta en la categoria de arriba a $11.200, y hasta hoy
+   el cliente tenia que dividir de cabeza para enterarse.
+
+   Lo llevan SOLO los productos con `unid`, que son los que traen mas de una
+   unidad Y donde el numero ayuda a decidir: los packs de pizza y las
+   empanadas. Los sorrentinos traen 16 y NO lo llevan a proposito — nadie los
+   compra pensando cuanto sale cada uno, y el chip ya dice "600g - 16
+   unidades"; ponerlo seria ruido en la linea que mas se mira.
+
+   No compara contra el producto suelto, aunque seria la frase que mas vende:
+   un "Pack Cebolla y Queso" no tiene UN individual equivalente (el suelto es
+   "Cebolla Caramelizada"), asi que el ahorro saldria de una equivalencia
+   inventada. El numero se muestra y el cliente compara solo.
+
+   Una sola fuente para los cuatro lugares que arman el precio de una card.
+   En el carrito NO va: ahi ya elegiste, y el precio por unidad no decide
+   nada. Los combos tampoco: tienen precio cerrado y su lista de que incluyen. */
+function _precioDeCard(p) {
+  var h = '<span class="product-price">' + ars(p.precio) + '</span>';
+  if (p.unid > 1 && p.unidQue && p.precio % p.unid === 0) {
+    h += '<span class="precio-unidad">' + ars(p.precio / p.unid) + ' por ' + p.unidQue + '</span>';
+  }
+  return h;
+}
 function cartTotal() { return productsSubtotal() + combosSubtotal() + piezasSubtotal(); }
 function cartCount() { return Object.values(cart).reduce((a,b)=>a+b, 0) + Object.values(comboCart).reduce((a,inst)=>a+(inst.qty||0), 0) + piezasCount(); }
 
@@ -4541,7 +4568,7 @@ function productCardHTML(p) {
       (p.chips ? '<div class="product-chips">' + p.chips.map(c => '<span class="chip">' + c + '</span>').join('') + '</div>' : '') +
       '<span class="stock-indicator" data-stock="' + p.id + '"></span>' +
       '<div class="product-footer">' +
-        '<span class="product-price">' + ars(p.precio) + '</span>' +
+        _precioDeCard(p) +
         '<button class="add-btn" onclick="addToCart(\'' + p.id + '\')">' + _rotuloAgregar() + '</button>' +
       '</div>' +
     '</div>' +
@@ -4650,15 +4677,15 @@ function _pintarFooterDeCard(card, id) {
   const atLimit = cap !== null && cap !== undefined && qty >= cap;
   const otraFecha = (sinStock && qty === 0) ? _fechaConStock(id) : null;
   if (qty === 0 && otraFecha) {
-    footer.innerHTML = '<span class="product-price">' + ars(p.precio) + '</span>' +
+    footer.innerHTML = _precioDeCard(p) +
       '<button class="add-btn add-btn-otra-fecha" onclick="pedirParaOtraFecha(\'' + p.id + '\')">' +
       'Pedir para ' + _fechaCorta(otraFecha) + '</button>';
   } else if (qty === 0) {
-    footer.innerHTML = '<span class="product-price">' + ars(p.precio) + '</span>' +
+    footer.innerHTML = _precioDeCard(p) +
       '<button class="add-btn" onclick="addToCart(\'' + p.id + '\')"' + (sinStock ? ' disabled' : '') + '>' +
       (sinStock ? 'Sin stock' : _rotuloAgregar()) + '</button>';
   } else {
-    footer.innerHTML = '<span class="product-price">' + ars(p.precio) + '</span>' +
+    footer.innerHTML = _precioDeCard(p) +
       '<div class="card-qty-controls">' +
         '<button class="card-qty-btn remove" onclick="cardChangeQty(\'' + p.id + '\',-1)">−</button>' +
         '<span class="card-qty-val">' + qty + '</span>' +

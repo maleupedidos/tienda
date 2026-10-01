@@ -1,3 +1,9 @@
 node_modules/
 .DS_Store
 Thumbs.db
+
+# Config de Claude Code: es de la herramienta, no de la tienda. Este repo es
+# PUBLICO (GitHub Pages), asi que las instrucciones internas no van aca.
+# Jekyll tampoco publica lo que empieza con punto, pero el repo se ve igual.
+.claude/
+.playwright-mcp/

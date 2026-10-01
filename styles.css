@@ -1159,6 +1159,13 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
       al mismo tamaño que el nombre del producto. */
 .product-price { font-size:1.15rem; letter-spacing:-.02em; }
 
+/* CUANTO SALE UNA (1/10/2026). Va debajo del precio y en voz baja: el precio
+   del pack es el que manda, este es el que deja compararlo con la unidad
+   suelta. Mismo tono y tamaño que el chip de porciones, asi no compite.
+   El `display:block` lo pone en su renglon sin agregar un div al footer. */
+.precio-unidad { display:block; font-size:.72rem; font-weight:500; color:#7d6f62;
+                 line-height:1.25; margin-top:.05rem; }
+
 /* 5. EL BOTON — 44px es el minimo tactil real. Estaba en 36px. */
 .add-btn { min-height:44px; display:flex; align-items:center;
            justify-content:center; gap:.4rem; }
