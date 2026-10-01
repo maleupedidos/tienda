@@ -4296,6 +4296,60 @@ midió a mano en producción.
 > pedidos" del commit anterior— y no se vieron. **El que diseñó algo es mal
 > juez de si quedó bien.** El agente va ANTES de publicar, no después.
 
+## La segunda pasada: una causa explicaba tres cosas (1/10/2026)
+
+Se volvió a llamar a `diseno-tienda` **sobre los arreglos ya publicados**, para
+que verificara lo corregido. Los cuatro andaban; dos habían quedado a medias, y
+lo que faltaba tenía **una sola causa compartida**.
+
+> [!important] `.card-qty-controls` medía 32px y `.add-btn` 44
+> Cuando un producto ya está en el carrito, su card cambia el botón por los
+> +/-. Al medir 12px menos, **el precio de esa card quedaba 12px más arriba que
+> el de su vecina** — y ese es el estado normal de media compra, o sea que la
+> grilla se veía despareja justo mientras el cliente elige.
+>
+> Una sola medida arregló tres hallazgos: el precio que todavía bailaba, los
+> controles por debajo del mínimo táctil (32 en la compu, 40 y 38 en el
+> celular) y que una card ya agregada se viera estructuralmente distinta.
+
+### Lo demás de esa pasada
+
+| | qué pasaba | cómo quedó |
+|---|---|---|
+| **Los combos en escalera** | los 4 precios y los 4 "Armar combo" con **31px** de desfasaje, en el bloque de ticket más alto. `.combo-card` no era flex, así que el `margin-top:auto` no tenía de dónde agarrarse | **0px** |
+| **Un tercer naranja** | `#E65100` sobre `#FFF3E0` da **3,46** con letra de 10-11px: las chapitas, "Para 2 a 3 personas", "Últimas N unidades". Convivía con `--orange` y `--orange-ink` | todas a `--orange-ink`. El fondo crema no se tocó |
+| **Los ± en el naranja de marca** | 2,72, y es el control con el que se suben unidades | a `--orange-ink`; el borde sigue siendo el de marca |
+| **Tres flechas →** | sobrevivieron al rediseño del 23/9, que las sacó de "Confirmar pedido" | borradas |
+| **El separador del carrito** | *"$18.300 c/u ·"* terminaba el renglón con el punto colgando | viaja pegado al total |
+| **El "×4" del checkout** | caía 22px abajo, solo, al lado de un producto que ya se llama "x8" | pegado al nombre |
+
+> [!warning] El botón de WhatsApp estaba oculto el 86% del recorrido
+> `bajando` solo se limpiaba al subir o al llegar arriba de todo, así que
+> bajando quedaba escondido en 12 de 14 paradas: **el botón que Tadeo pidió casi
+> no se veía**. Ahora vuelve ~450 ms después de frenar, que es cuando el cliente
+> se quedó mirando algo. Se puede, porque el que lo cuida de taparle un botón
+> ya no es el escondite sino `_waTapaUnControl()`.
+
+> [!note] El link de la página actual dejó de ser naranja
+> Sobre el crema del header, `--orange` da **2,22** y hasta `--orange-ink` se
+> queda en **3,96**: llegar a 4,5 pedía un naranja que ya no se lee como Maleu.
+> Va en marrón y negrita — la señal de "estás acá" la hace el **subrayado
+> naranja** que ya estaba debajo, que sí es el color de marca.
+
+### Lo que el agente dijo que NO valía la pena
+
+El separador huérfano al final de la lista del carrito: lo midió con la lista
+scrolleada al fondo y **abajo viene la caja de sugerencias**, así que el
+separador está separando algo. Solo queda huérfano cuando no hay sugerencia
+(Clubes, barrio con vendedor). Se le hizo caso.
+
+> [!danger] Y un chequeo de la red quedó viejo por el arreglo mismo
+> *"bajando se va"* medía **después** de esperar, y desde que el botón vuelve al
+> frenar, esperar da siempre "está a la vista". Son dos mitades de la misma
+> regla y **el orden de la medición es lo que las distingue**: ahora se mide a
+> los 140 ms (en movimiento) y a los 900 (ya frenado). `verificar-card.js`
+> quedó en **39 chequeos**.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

@@ -714,7 +714,7 @@ function _pintarSugerencia() {
           'Pieza de ' + kgTexto(x.pz.kg) + ' · <strong>' + ars(piezaPrecio(x.p, x.pz.kg)) + '</strong>',
           'sumarPiezaSugerida(\'' + x.p.abbr + '\',\'' + x.pz.id + '\')');
       }).join('') +
-      '<button type="button" class="sug-ver" onclick="verDesdeCarrito(\'carne\')">Ver todas las piezas →</button>';
+      '<button type="button" class="sug-ver" onclick="verDesdeCarrito(\'carne\')">Ver todas las piezas</button>';
   } else {
     var m = _sugerenciaMaleu();
     if (m.prods.length) {
@@ -729,7 +729,7 @@ function _pintarSugerencia() {
           return _sugFila(p.img, p.nombre, (porc ? '<span class="sug-porc">' + porc + ' · </span>' : '') + '<strong>' + ars(p.precio) + '</strong>',
             'sumarProductoSugerido(\'' + p.id + '\')');
         }).join('') +
-        '<button type="button" class="sug-ver" onclick="verDesdeCarrito(\'todo\')">Ver todo lo que tenemos →</button>';
+        '<button type="button" class="sug-ver" onclick="verDesdeCarrito(\'todo\')">Ver todo lo que tenemos</button>';
     }
   }
   if (!tipo) { el.innerHTML = ''; el.hidden = true; el.removeAttribute('data-tipo'); return; }
@@ -5311,7 +5311,7 @@ function updateUI() {
         _miniCarrito(c) +
         '<div class="cart-item-info">' +
           '<div class="cart-item-name">' + c.nombre + '</div>' +
-          '<div class="cart-item-sub">' + ars(c.precio) + ' c/u · <strong>' + ars(c.precio*inst.qty) + '</strong></div>' +
+          '<div class="cart-item-sub">' + ars(c.precio) + ' c/u <span class="cart-sep">· <strong>' + ars(c.precio*inst.qty) + '</strong></span></div>' +
           '<ul class="cart-combo-includes">' + comps + '</ul>' +
         '</div>' +
         '<div class="qty-controls">' +
@@ -5328,7 +5328,7 @@ function updateUI() {
         _miniCarrito(p) +
         '<div class="cart-item-info">' +
           '<div class="cart-item-name">' + p.nombre + '</div>' +
-          '<div class="cart-item-sub">' + ars(p.precio) + ' c/u · <strong>' + ars(p.precio*qty) + '</strong></div>' +
+          '<div class="cart-item-sub">' + ars(p.precio) + ' c/u <span class="cart-sep">· <strong>' + ars(p.precio*qty) + '</strong></span></div>' +
         '</div>' +
         '<div class="qty-controls">' +
           '<button class="qty-btn" onclick="changeQty(\'' + id + '\',-1)">−</button>' +
@@ -5478,14 +5478,14 @@ function updateFormSummary() {
     const picks = (inst.picks || []).map(pk => _optLabel(pk.nombre, pk.label)).join(' · ');
     return '<div class="summary-line summary-line-combo"><span>' +
       '<span class="summary-combo-name">' + c.nombre +
-        (inst.qty > 1 ? ' <strong>×' + inst.qty + '</strong>' : '') + '</span>' +
+        (inst.qty > 1 ? ' <strong class="sum-x">×' + inst.qty + '</strong>' : '') + '</span>' +
       (picks ? '<span class="summary-combo-picks">' + picks + '</span>' : '') +
       '</span><span>' + ars(c.precio*inst.qty) + '</span></div>';
   }).join('');
   html += Object.entries(cart).map(([id,qty]) => {
     const p = PROD_MAP[id];
     if (!p) return '';
-    return '<div class="summary-line"><span>' + p.nombre + ' <strong>×' + qty + '</strong></span><span>' + ars(p.precio*qty) + '</span></div>';
+    return '<div class="summary-line"><span>' + p.nombre + ' <strong class="sum-x">×' + qty + '</strong></span><span>' + ars(p.precio*qty) + '</span></div>';
   }).join('');
 
   /* La carne. Faltaba: con un pedido de pura carne el resumen mostraba los
@@ -7847,7 +7847,7 @@ function updateCatNavTop() {
    parpadear. En la compu la clase se pone igual, pero el CSS no la usa. */
 (function () {
   var ultimoY = window.pageYOffset || 0, pendiente = false, UMBRAL = 8;
-  var waUltimoY = ultimoY;
+  var waUltimoY = ultimoY, waQuieto = null;
   /* ¿El boton de WhatsApp esta encima de algo que el cliente toca para
      comprar? Las cuatro esquinas y el centro: un control de 141x44 debajo de
      un circulo de 54 no se escapa de esa grilla. */
@@ -7891,6 +7891,16 @@ function updateCatNavTop() {
       document.body.classList.toggle('bajando', yw > waUltimoY);
       waUltimoY = yw;
     }
+    /* Y VUELVE CUANDO EL CLIENTE FRENA. Sin esto `bajando` solo se limpiaba al
+       subir o al llegar arriba de todo, asi que bajando quedaba escondido en
+       12 de 14 paradas: el boton que se pidio no se veia casi nunca. El que lo
+       cuida de taparle un boton al cliente es _waTapaUnControl(), no el
+       escondite — asi que al frenar puede volver sin riesgo. */
+    if (waQuieto) clearTimeout(waQuieto);
+    waQuieto = setTimeout(function () {
+      document.body.classList.remove('bajando');
+      document.body.classList.toggle('wa-estorba', _waTapaUnControl());
+    }, 450);
     /* Y LA REGLA QUE ATACA LA CAUSA: nunca encima de un boton de comprar.
        Esconderlo al bajar cubre el recorrido, pero no el REPOSO — que es
        justo cuando se compra. Medido sobre la tienda publicada, parando en
@@ -8548,7 +8558,7 @@ function _pintarUltimoPie(u) {
     var hayCarneHoy = getCategoriasVisibles().some(function (c) { return c.nombre === 'Carnes'; });
     if (hayCarneHoy) {
       html += '<button type="button" class="ultimo-carne-btn" onclick="scrollToCat(\'' + slugify('Carnes') + '\')">' +
-        'Elegir las piezas de hoy →</button>';
+        'Elegir las piezas de hoy</button>';
     }
   }
   pie.innerHTML = html;

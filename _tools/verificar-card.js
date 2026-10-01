@@ -414,8 +414,19 @@ const CONTRASTE = `
 
     await scrollA(0);
     chk(await verWa(), 'CONTROL: arriba de todo esta a la vista');
-    await scrollA(900);
-    chk(!(await verWa()), 'bajando se va, que es cuando el cliente recorre');
+    /* MIENTRAS BAJA se va, y al FRENAR vuelve. Las dos mitades de la misma
+       regla, y el orden de la medicion es lo que las distingue: el boton
+       reaparece solo despues de que el scroll se queda quieto, asi que medir
+       tarde da siempre "esta a la vista" y el chequeo no probaria nada.
+
+       Los 140ms de abajo son holgados contra los 450 del temporizador, y
+       los 900 que siguen lo superan con margen: si alguien cambia ese tiempo
+       a mas de 900, este chequeo se vuelve rojo y hay que mirarlo. */
+    await ev('window.scrollTo(0, 900)');
+    await dormir(140);                       // en movimiento, antes de que frene
+    chk(!(await verWa()), 'mientras baja se va, que es cuando el cliente recorre');
+    await dormir(900);                       // ya frenado
+    chk(await verWa(), 'y al frenar vuelve: el boton que se pidio tiene que estar cuando se lo mira');
 
     /* LO QUE DE VERDAD PROTEGE LA VENTA: que en ningun lugar de la pagina
        quede a la vista encima de un control de compra. Un toque ahi se lleva

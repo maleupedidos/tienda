@@ -157,7 +157,7 @@ body.modal-open { overflow:hidden; height:100%; touch-action:none; }
 .ico-grande { width:2rem; height:2rem; display:block; margin:0 auto .5rem; opacity:.5; }
 .chip-txt { display:inline; }
 .header-chips { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; justify-content:flex-end; }
-.date-chip { background:#FFF3E0; color:#E65100; }
+.date-chip { background:#FFF3E0; color:var(--orange-ink); }
 
 /* ── HEADER ── */
 /* Header NO sticky: se va con el scroll naturalmente para liberar espacio.
@@ -351,10 +351,10 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .stock-badge { font-size:.65rem; padding:.1rem .4rem; border-radius:10px; }
 .stock-out { background:#FEE; color:#C00; }
 .stock-order { background:#E3F2FD; color:#1565C0; }
-.stock-low { background:#FFF3E0; color:#E65100; }
+.stock-low { background:#FFF3E0; color:var(--orange-ink); }
 .stock-ok { background:#E8F5E9; color:#2E7D32; }
 .stock-info { background:#E1F5FE; color:#01579B; font-weight:600; }
-.stock-proj { background:#FFF3E0; color:#E65100; font-weight:600; }
+.stock-proj { background:#FFF3E0; color:var(--orange-ink); font-weight:600; }
 
 /* ── COMBOS ── */
 .combos-section, #productos-ancla { scroll-margin-top:120px; }
@@ -383,6 +383,14 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .combo-group-tag { font-size:.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#fff; background:#1565C0; padding:.18rem .5rem; border-radius:20px; }
 .combo-card { border:1.5px solid #FFE0B2; }
 .combo-card:hover { box-shadow:0 4px 22px rgba(230,81,0,.12); }
+/* EL PIE DEL COMBO VA AL FONDO (1/10/2026). Sin esto los 4 precios y los 4
+   "Armar combo" quedaban en escalera —31px de desfasaje medido entre vecinos—
+   en el bloque de ticket mas alto de la tienda. La card no era flex, asi que
+   el `margin-top:auto` no tenia de donde agarrarse.
+   El `margin-top:0` del .product-footer de adentro se queda: el que empuja es
+   el pie entero, no el footer. */
+.combo-card { display:flex; flex-direction:column; }
+.combo-card .combo-full-foot { margin-top:auto; }
 /* Card completa: la imagen diseñada es la card; debajo solo precio + botón */
 .combo-card-full { overflow:hidden; }
 .combo-full-img { width:100%; height:auto; display:block; }
@@ -397,7 +405,7 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .combo-includes { list-style:none; margin:0 0 .4rem; padding:.4rem .55rem; background:#FFF8F0; border-radius:8px; }
 .combo-includes li { font-size:.66rem; color:#7a6a5a; line-height:1.5; padding-left:.9rem; position:relative; }
 .combo-includes li::before { content:"•"; position:absolute; left:.15rem; color:var(--orange,#E65100); }
-.combo-personas { display:inline-block; background:#FFF3E0; color:#E65100; font-weight:700; font-size:.78rem; padding:.32rem .7rem; border-radius:20px; margin-bottom:.5rem; border:1px solid #FFD8A8; }
+.combo-personas { display:inline-block; background:#FFF3E0; color:var(--orange-ink); font-weight:700; font-size:.78rem; padding:.32rem .7rem; border-radius:20px; margin-bottom:.5rem; border:1px solid #FFD8A8; }
 .combo-includes li strong { color:var(--orange-ink,#B85420); font-weight:700; }
 .combo-includes li.fixed::before { content:"✓"; color:#2E7D32; }
 .combo-includes li.fixed strong { color:#2E7D32; }
@@ -462,8 +470,15 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
    cuando el boton se rellena. El trazo va mas grueso que el de los otros
    iconos (1,7): a 1,2em dentro de un boton de 13px, el de 1,7 desaparece. */
 .add-btn .ico { width:1.2em; height:1.2em; flex:0 0 auto; stroke-width:1.9; }
-.card-qty-controls { display:flex; align-items:center; justify-content:center; gap:.5rem; }
-.card-qty-btn { width:32px; height:32px; border-radius:50%; border:1.5px solid var(--orange); background:#fff; font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:600; color:var(--orange); }
+/* MIDE LO MISMO QUE .add-btn, Y NO ES SOLO POR EL DEDO (1/10/2026).
+   Una card con el producto ya agregado cambia el boton por estos +/-, y
+   median 32px contra los 44 del boton: el precio de esa card quedaba 12px mas
+   arriba que el de su vecina. Es el estado normal de media compra, asi que la
+   grilla se veia despareja justo cuando el cliente esta eligiendo.
+   El glifo va en --orange-ink: es un control de 17px que hay que leer, y en el
+   naranja de marca daba 2,72 sobre blanco. El BORDE sigue siendo el de marca. */
+.card-qty-controls { display:flex; align-items:center; justify-content:center; gap:.5rem; min-height:44px; width:100%; }
+.card-qty-btn { width:44px; height:44px; border-radius:50%; border:1.5px solid var(--orange); background:#fff; font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:600; color:var(--orange-ink); }
 .card-qty-btn:disabled { opacity:.35; cursor:not-allowed; }
 .card-qty-btn.remove { border-color:#ccc; color:#767676; }
 .card-qty-val { font-weight:700; font-size:1rem; min-width:1.4rem; text-align:center; }
@@ -492,7 +507,7 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .cart-item-name { font-size:.85rem; font-weight:600; }
 .cart-item-sub { font-size:.75rem; color:#6b6b6b; }
 .qty-controls { display:flex; align-items:center; gap:.35rem; }
-.qty-btn { width:26px; height:26px; border-radius:50%; border:1.5px solid var(--orange); color:var(--orange); background:#fff; font-size:.95rem; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:600; }
+.qty-btn { width:44px; height:44px; border-radius:50%; border:1.5px solid var(--orange); color:var(--orange-ink); background:#fff; font-size:.95rem; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:600; }
 .qty-btn:first-child { border-color:#ccc; color:#767676; }
 .cart-incentive { background:linear-gradient(135deg,#fff8e1,#fff3e0); border:1.5px solid #F07D47; border-radius:10px; padding:10px 12px; margin-bottom:10px; text-align:center; font-size:.82rem; line-height:1.5; color:#331C1C; }
 .cart-incentive strong { color:#F07D47; }
@@ -506,6 +521,12 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 
 /* ── FLOAT CART ── */
 .float-cart-btn { display:none; align-items:center; justify-content:center; gap:.45rem; position:fixed; bottom:1.2rem; left:50%; transform:translateX(-50%); background:var(--orange); color:#fff; border:none; border-radius:50px; padding:.75rem 1.5rem; font-family:var(--font); font-weight:700; font-size:.85rem; cursor:pointer; z-index:50; box-shadow:0 4px 16px rgba(240,125,71,.4); white-space:nowrap; }
+
+.cart-sep { white-space:nowrap; }
+/* El "x4" del resumen del checkout: con el nombre en dos renglones caia solo
+   22px mas abajo, al lado de un producto que YA se llama "x8". Se le pega a la
+   ultima palabra del nombre en vez de quedar suelto. */
+.summary-line .sum-x { white-space:nowrap; }
 
 /* ── ESCRIBINOS POR WHATSAPP (1/10/2026) ──────────────────────────────
    Abajo a la derecha; el carrito flotante va CENTRADO, asi que no se pisan
@@ -1352,7 +1373,13 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
 .site-nav-link:hover { color:var(--orange); }
 /* La pagina donde estas parado lleva subrayado, como Bocado. Es la unica
    pista de donde estas una vez que saliste de la tienda. */
-.site-nav-link.is-active { color:var(--orange); }
+/* El link de la pagina actual: en marron y no en naranja (1/10/2026).
+   Sobre el crema del header el naranja de marca da 2,22 y hasta --orange-ink
+   se queda en 3,96, los dos por debajo de 4,5 para una letra de 14px. Llegar
+   al umbral pedia un naranja tan oscuro que dejaba de leerse como Maleu.
+   La senal de "estas aca" no la hacia el color: ya hay un subrayado naranja
+   debajo (::after), que SI es el color de marca y se ve perfecto. */
+.site-nav-link.is-active { color:var(--brown); font-weight:700; }
 .site-nav-link.is-active::after { content:''; position:absolute; left:0; right:0;
                                   bottom:0; height:2px; background:var(--orange);
                                   border-radius:2px; }
@@ -1789,7 +1816,7 @@ body.busqueda-activa .cat-nav-btn.cat-nav-combos.active { background:var(--brown
 /* "Nuevo" en el marron de la marca: es la que tiene que ganar la mirada. */
 .chapa-nuevo { background: var(--brown); color: var(--white); }
 /* "Lo mas pedido" en el naranja suave que ya usaba, para no gritar las dos. */
-.chapa-top   { background: #FFF3E0; color: #E65100; }
+.chapa-top   { background: #FFF3E0; color: var(--orange-ink); }
 
 /* El flag del combo entro al mismo contenedor, asi que deja de posicionarse
    por su cuenta: lo apila el flex. Si siguiera absoluto se superpondria con
@@ -2103,10 +2130,10 @@ body.busqueda-activa .cat-nav-btn.cat-nav-combos.active { background:var(--brown
    de la card. Son los botones que mas se tocan antes de pagar. En la compu se
    quedan como estan: con el mouse se aciertan igual. */
 @media (max-width: 560px) {
-  .qty-btn { width: 38px; height: 38px; font-size: 1.05rem; }
+  .qty-btn { width: 44px; height: 44px; font-size: 1.05rem; }
   .qty-controls { gap: .45rem; }
   .pz-quitar { width: 38px; height: 38px; }
-  .card-qty-btn { width: 40px; height: 40px; }
+  .card-qty-btn { width: 44px; height: 44px; }
 }
 
 /* ── LOS AVISOS LARGOS NO SE CORTAN (13/9/2026) ──
@@ -2196,7 +2223,7 @@ body.busqueda-activa .cat-nav-btn.cat-nav-combos.active { background:var(--brown
    KILO en app.js). Va a tamaño completo y con la foto en color, a diferencia
    del "Sin stock": se puede comprar. La caja crema separa "esto llega despues"
    de la grilla de piezas, que es lo que se lleva hoy. */
-.chapa-reserva { background: #FFF3E0; color: #E65100; }
+.chapa-reserva { background: #FFF3E0; color: var(--orange-ink); }
 .res-caja { margin-top: .2rem; padding: .7rem .75rem; border-radius: 10px; background: var(--cream); }
 .res-t {
   font-size: .72rem; font-weight: 700; letter-spacing: .06em;
