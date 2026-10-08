@@ -161,7 +161,7 @@ const PRODUCTOS = [
   { id:38, abbr:"CMa", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Matambre entero", desc:"A la parrilla, a la pizza o arrollado. Rinde un mont\u00f3n.", precio:22825, img:"carne-matambre.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Pieza entera"] },
   { id:39, abbr:"CAC", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Asado Cotilla Especial", desc:"El asado en placa, con su hueso. Fuego bajo y sin apuro.", precio:27900, img:"carne-asado-cotilla.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
   { id:40, abbr:"CAB", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Asado Banderita", desc:"Tiras con el hueso cruzado. Se hace r\u00e1pido y queda crocante.", precio:27900, img:"carne-asado-banderita.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
-  { id:41, abbr:"CPe", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Peceto fileteado", desc:"Magro y tierno, ya cortado en bifes. Para milanesas o a la plancha.", precio:25025, img:"carne-peceto.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Fileteado"] },
+  { id:41, abbr:"CPe", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Peceto feteado", desc:"Magro y tierno, ya cortado en fetas. Para milanesas o a la plancha.", precio:25025, img:"carne-peceto.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Feteado"] },
 ];
 
 const CATEGORIAS = [
