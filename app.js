@@ -33,8 +33,8 @@ var IMG_V = {
   "carne-ojo-bife.jpg": "819ef24d",
   "carne-peceto.jpg": "2bb317d2",
   "carne-picana.jpg": "05684de8",
-  "carne-vacio-entero.jpg": "be8621f0",
-  "carne-vacio.jpg": "c1827fc5",
+  "carne-vacio-entero.jpg": "c1827fc5",
+  "carne-vacio.jpg": "be8621f0",
   "categoria-carnes.jpg": "7b69d315",
   "combo-finde.jpg": "4e0022fd",
   "combo-freezer.jpg": "2d59c6e7",
@@ -149,13 +149,13 @@ const PRODUCTOS = [
   /* La entrana viene de a DOS tiras por paquete (dato de Lucas, 10/9/2026), y
      el peso que se ve es el del paquete entero. Sin decirlo, el que elige una
      de 1,163 kg no sabe si le llega una tira grande o dos. */
-  { id:31, abbr:"CEn", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Entra\u00f1a",           desc:"Fina, sabrosa y r\u00e1pida. La que sale primero de la parrilla.",          precio:37625, img:"carne-entrana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo","2 tiras por paquete"] },
+  { id:31, abbr:"CEn", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Entra\u00f1a",           desc:"Fina, sabrosa y r\u00e1pida. La que sale primero de la parrilla.",          precio:34000, img:"carne-entrana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo","2 tiras por paquete"] },
   { id:32, abbr:"CLo", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Lomo sin cord\u00f3n",  desc:"El corte m\u00e1s tierno, limpio y sin cord\u00f3n. Para la ocasi\u00f3n que se merece el mejor.", precio:33000, img:"carne-lomo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Sin cord\u00f3n"] },
   { id:33, abbr:"CPi", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Pica\u00f1a",            desc:"El corte brasilero que se volvi\u00f3 infaltable. Con su tapa de grasa.",  precio:22875, img:"carne-picana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
   { id:34, abbr:"CVa", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Vac\u00edo porcionado", desc:"El cl\u00e1sico del asado argentino, en porciones. Paciencia y fuego bajo.", precio:26000, img:"carne-vacio.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Porcionado"] },
   /* Los cortes de LM Carnes (7/10/2026): ids 35-41 del ERP (HOME_PRODUCT_COLS
      CJ-CP, PILAR CB-CH, RED CM-CS). Precios de la lista de Lucas. */
-  { id:35, abbr:"CVE", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Vac\u00edo entero", desc:"La pieza entera, como la pide el asador. Para una parrillada en serio.", precio:26000, img:"carne-vacio-entero.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Pieza entera"] },
+  { id:35, abbr:"CVE", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Vac\u00edo entero", desc:"La pieza entera, como la pide el asador. Para una parrillada en serio.", precio:25200, img:"carne-vacio-entero.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Pieza entera"] },
   { id:36, abbr:"CBC", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Bife de Chorizo", desc:"Jugoso y con su borde de grasa. El cl\u00e1sico de la parrilla.", precio:29250, img:"carne-bife-chorizo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
   { id:37, abbr:"COB", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Ojo de Bife", desc:"Bien marmolado, tierno y lleno de sabor. Vuelta y vuelta.", precio:30325, img:"carne-ojo-bife.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
   { id:38, abbr:"CMa", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Matambre entero", desc:"A la parrilla, a la pizza o arrollado. Rinde un mont\u00f3n.", precio:22825, img:"carne-matambre.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Pieza entera"] },
