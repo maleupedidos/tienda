@@ -361,6 +361,48 @@ async function main() {
     chk(/lucas/.test(await ev('_origenNuestroTexto()')),
         'y un link de otro NO le cambia el dueño: vale el primero', '"' + (await ev('_origenNuestroTexto()')) + '"');
 
+    /* ── 3b. EL LINK DE UNA CAMPAÑA NO ES UN ORIGEN (12/10/2026) ───── */
+    console.log('\n' + DIM + '== Toca el boton de un template de WhatsApp: ?o=wati-segunda-a ==' + RST);
+    await abrir(SEMILLA_RUFO, '&o=wati-segunda-a');
+    const ec = await estado();
+    chk(ec.nuestro === false, 'NO queda marcado como cliente nuestro', '"' + ec.origen + '"');
+    chk(ec.esRed === true && ec.envio === 3000 && ec.dias.length === 1 && ec.dias[0] === 'Viernes',
+        'sigue siendo de Rufo: su envio y sus viernes', JSON.stringify({ red: ec.esRed, envio: ec.envio, dias: ec.dias }));
+    chk(await ev('_campaniaVigente()') === 'wati-segunda-a', 'la campaña queda guardada aparte', String(await ev('_campaniaVigente()')));
+    chk(await ev('!/[?&]o=/.test(location.search)'), 'y el parametro se borra de la barra', await ev('location.search'));
+    await mandar();
+    const pc = await ultimoPost();
+    chk(!!pc && pc.canal === 'Red' && pc.vendedor === 'Rufo', 'el pedido sale a la hoja Red, con Rufo',
+        pc ? pc.canal + ' / ' + pc.vendedor : 'sin POST');
+    chk(!!pc && !pc.origenDetalle, 'sin origen de cliente', pc ? String(pc.origenDetalle) : '-');
+    chk(!!pc && pc.campania === 'wati-segunda-a', 'y lleva campania = "wati-segunda-a"', pc ? String(pc.campania) : '-');
+
+    await abrir(SEMILLA_RUFO, '&o=WATI-Volve-B', true);
+    chk(await ev('_campaniaVigente()') === 'wati-volve-b', 'otro template despues: gana el ultimo, en minusculas',
+        String(await ev('_campaniaVigente()')));
+    chk(await ev('_esNuestro()') === false, 'y sigue sin ser nuestro');
+    await ev('localStorage.setItem("maleu_campania", JSON.stringify({ c: "wati-volve-b", t: Date.now() - 13 * 86400000 }))');
+    chk(await ev('_campaniaVigente()') === 'wati-volve-b', 'a los 13 dias todavia vale');
+    await ev('localStorage.setItem("maleu_campania", JSON.stringify({ c: "wati-volve-b", t: Date.now() - 15 * 86400000 }))');
+    chk(await ev('_campaniaVigente()') === '' && await ev('localStorage.getItem("maleu_campania")') === null,
+        'a los 15 ya no: vencio y se borra');
+
+    console.log('\n' + DIM + '== Un cliente que ya era nuestro toca el boton de una campaña ==' + RST);
+    await abrir(SEMILLA_RUFO, '&o=evento&d=Los%20Robles&r=lucas');
+    const antesOrigen = await ev('localStorage.getItem("maleu_origen")');
+    await abrir(SEMILLA_RUFO, '&o=wati-segunda-a', true);
+    chk(await ev('localStorage.getItem("maleu_origen")') === antesOrigen && /lucas/.test(await ev('_origenNuestroTexto()')),
+        'el origen del cliente no cambio', '"' + (await ev('_origenNuestroTexto()')) + '"');
+    await mandar();
+    const pn = await ultimoPost();
+    chk(!!pn && pn.canal === 'Pilar' && /lucas/.test(String(pn.origenDetalle || '')) && pn.campania === 'wati-segunda-a',
+        'y el pedido lleva las dos cosas: quien lo trajo y por que campaña entro',
+        pn ? pn.canal + ' / ' + pn.origenDetalle + ' / ' + pn.campania : 'sin POST');
+    await abrir(SEMILLA_RUFO);
+    await mandar();
+    const ps = await ultimoPost();
+    chk(!!ps && !('campania' in ps), 'sin link de campaña el pedido no manda el campo', ps ? String(ps.campania) : 'sin POST');
+
     /* ── 4. EL CUPON DE LA RULETA ──────────────────────────────────── */
     console.log('\n' + DIM + '== El cupon de la ruleta, validado por el backend ==' + RST);
     await abrir(SEMILLA_RUFO, '&cupon=RUL-OK01');

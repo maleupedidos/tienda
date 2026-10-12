@@ -2282,12 +2282,41 @@ function _vendedorQueTrajo() {
    Alcanza con UNO de los tres. Despues se borran de la barra de direcciones,
    igual que el cupon: el link que el cliente comparta no tiene por que arrastrar
    de donde salio. */
+/* ── EL LINK DE UNA CAMPAÑA NO ES UN ORIGEN DE CLIENTE (12/10/2026) ──
+
+   Los templates de WhatsApp llevan `?o=wati-<jugada>-<a|b>` para saber por cual
+   boton entro el pedido. Hasta este dia ese `o` caia en `_guardarOrigenNuestro`
+   como cualquier otro: el cliente quedaba marcado "nuestro" para siempre y
+   dejaba de ser del vendedor de su barrio, por haber tocado un boton. Y como
+   ahi vale el primero, de la segunda campaña en adelante no quedaba rastro.
+
+   Son dos preguntas distintas. De quien es el cliente: el primero que lo trajo,
+   para siempre. De que campaña vino ESTA visita: el ultimo link que toco, y
+   vence a los 14 dias. Por eso va en otra clave y con otra regla. */
+var CAMPANIA_LS = 'maleu_campania', CAMPANIA_DIAS = 14;
+function _esLinkDeCampania(o) { return /^wati-/i.test(String(o || '')); }
+function _guardarCampania(c) {
+  try {
+    localStorage.setItem(CAMPANIA_LS, JSON.stringify({ c: String(c).trim().toLowerCase(), t: Date.now() }));
+  } catch (e) {}
+}
+function _campaniaVigente() {
+  try {
+    var o = JSON.parse(localStorage.getItem(CAMPANIA_LS) || 'null');
+    if (!o || !o.c) return '';
+    if (!(Date.now() - Number(o.t || 0) < CAMPANIA_DIAS * 86400000)) { localStorage.removeItem(CAMPANIA_LS); return ''; }
+    return o.c;
+  } catch (e) { return ''; }
+}
+
 (function () {
   try {
     var p = new URLSearchParams(location.search);
     var o = (p.get('o') || '').trim(), d = (p.get('d') || '').trim(), r = (p.get('r') || '').trim();
-    if (o || r) {
-      _guardarOrigenNuestro({ o: o || 'link', d: d, r: r, t: Date.now() });
+    var esCampania = _esLinkDeCampania(o);
+    if (esCampania) { _guardarCampania(o); o = ''; }
+    if (o || r) _guardarOrigenNuestro({ o: o || 'link', d: d, r: r, t: Date.now() });
+    if (o || r || esCampania) {
       var u = new URL(location.href);
       ['o', 'd', 'r'].forEach(function (k) { u.searchParams.delete(k); });
       history.replaceState(history.state, '', u.pathname + u.search + u.hash);
@@ -6915,6 +6944,10 @@ function enviarPedido() {
      los campos que no conoce, asi que esto no rompe nada mientras no lo lea. */
   var _org = _origenNuestroTexto();
   if (_org) postData.origenDetalle = _org;
+  /* El link de campaña por el que entro esta visita (ver _campaniaVigente). El
+     ERP lo anota en la columna Campaña del pedido; no decide de quien es. */
+  var _camp = _campaniaVigente();
+  if (_camp) postData.campania = _camp;
   /* Y si lo trajo un vendedor, su usuario. El ERP ya tenia donde anotarlo
      (`redTrajoCliente`: Vendedor / Maleu / vacio) y vacio NO es Vendedor: sin
      esto un pedido no le paga a nadie. Lo que faltaba no era el concepto,

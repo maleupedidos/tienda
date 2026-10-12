@@ -4374,6 +4374,25 @@ la forma conocida de que una se despegue de la otra.
 > y ya lo habia pedido con esas palabras el 10/9. Y el **hero blando en
 > escritorio** sigue esperando la foto apaisada.
 
+## Un link de campaña (`?o=wati-…`) no es un origen de cliente (12/10/2026)
+
+Hasta ese día cualquier `?o=` marcaba al cliente como "nuestro" para siempre
+(`maleu_origen`) y lo sacaba del vendedor de su barrio. Los templates de WhatsApp
+llevan `?o=wati-<jugada>-<a|b>`, así que tocar un botón bastaba.
+
+Ahora un `o` que empieza con `wati-` **no pasa por `_guardarOrigenNuestro`**: se
+guarda aparte en `maleu_campania` (gana el último, vence a los 14 días) y viaja en
+el POST como `campania`, que el ERP anota en la columna Campaña del pedido. De quién
+es el cliente y por qué campaña entró esta visita son dos preguntas distintas.
+
+Lo sostiene la sección 3b de `node _tools/verificar-vendedor.js`. Probada al revés:
+con el `app.js` anterior el cliente queda "nuestro", paga $5.000 de envío en vez de
+$3.000 y el pedido sale a Pilar en vez de a Rufo.
+
+**No se limpió ningún `maleu_origen` ya guardado.** Medido ese día contra WATI: de
+92 templates, los únicos con `?o=` eran los 10 `jug_*` (en revisión de Meta) y un
+borrador; ninguno había salido.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en
