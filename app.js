@@ -84,35 +84,35 @@ function fotoUrl(nombre) {
 
 /* ── PRODUCTOS ── */
 const PRODUCTOS = [
-  { id:1,  cat:"Pizzas Individuales",   nombre:"Pizza Margarita",              desc:"Tomate fresco, mozzarella y albahaca. La que nunca falla.",                        precio:11500, img:"pizza-margarita-cocida.jpg", emoji:"🍕", top:true, chips:["Para 1–2 personas","1 pizza grande","Al horno en 12 min"] },
-  { id:2,  cat:"Pizzas Individuales",   nombre:"Pizza Jamón y Queso",           desc:"Mucho jamón, mucho queso. Simple, efectiva y sin dramas.",                        precio:11800, img:"pizza-jamon-queso-cocida.jpg", emoji:"🍕", chips:["Para 1–2 personas","1 pizza grande","Al horno en 12 min"] },
-  { id:3,  cat:"Pizzas Individuales",   nombre:"Pizza Cebolla Caramelizada",    desc:"Cebolla bien dulce con queso cremoso. Para los que saben.",                       precio:11500, img:"pizza-cebolla-cocida.jpg", emoji:"🍕", chips:["Para 1–2 personas","1 pizza grande","Al horno en 12 min"] },
-  { id:4,  cat:"Pizzas Individuales",   nombre:"Pizza Jamón y Morrón",          desc:"Con jamón, morrón rojo y orégano. Completa y sabrosa.",                           precio:12000, img:"pizza-jamon-morron-cocida.jpg", emoji:"🍕", chips:["Para 1–2 personas","1 pizza grande","Al horno en 12 min"] },
-  { id:19, cat:"Pizzas Individuales",   nombre:"Pizza Muzzarella",              desc:"Puro queso derretido sobre salsa de tomate. La clásica que nunca sobra.",          precio:11200, img:"pizza-muzarella-cocida.jpg", emoji:"🍕", chips:["Para 1–2 personas","1 pizza grande","Al horno en 12 min"] },
-  { id:5,  cat:"Pack Pizzas x2",  nombre:"Pack Muzzarella x2",            desc:"Dos pizzas de muzzarella para tener siempre una cena resuelta en el freezer.",   precio:17000, img:"pack-muzarella-cocida.jpg", emoji:"🍕", top:true, unid:2, unidQue:"pizza", chips:["Para 3–4 personas","2 pizzas grandes","Al horno en 12 min"] },
-  { id:6,  cat:"Pack Pizzas x2",  nombre:"Pack Jamón y Queso x2",         desc:"Dos pizzas de jamón y queso. Una para hoy, otra para cuando quieras.",             precio:17000, img:"pack-jamon-queso-cocida.jpg", emoji:"🍕", unid:2, unidQue:"pizza", chips:["Para 3–4 personas","2 pizzas grandes","Al horno en 12 min"] },
-  { id:7,  cat:"Pack Pizzas x2",  nombre:"Pack Cebolla y Queso x2",       desc:"Dos pizzas con cebolla caramelizada. Guardá una para mañana.",                   precio:17000, img:"pack-cebolla-queso-cocida.jpg", emoji:"🍕", unid:2, unidQue:"pizza", chips:["Para 3–4 personas","2 pizzas grandes","Al horno en 12 min"] },
-  { id:8,  cat:"Sorrentinos",      nombre:"Sorrentinos Cordero al Malbec", desc:"Cordero, zanahoria, apio, cebolla y especias. Distinto y muy rico.",             precio:19800, img:"sorrentinos-cordero-v2.jpg", emoji:"🍝", chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
-  { id:9,  cat:"Sorrentinos",      nombre:"Sorrentinos Jamón y Queso",     desc:"Relleno cremoso y generoso. El favorito de la familia.",                         precio:18300, img:"sorrentinos-jamon-v2.jpg", emoji:"🍝", top:true, chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
-  { id:10, cat:"Sorrentinos",      nombre:"Sorrentinos Calabaza y Queso",  desc:"Suave, dulce y sabroso. Relleno cremoso de calabaza y queso.",                   precio:16500, img:"sorrentinos-calabaza-v2.jpg", emoji:"🍝", chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
-  { id:20, cat:"Sorrentinos",      nombre:"Sorrentinos Queso Brie",        desc:"Queso brie cremoso y perfumado. Gourmet sin vueltas.",                          precio:22100, img:"sorrentinos-brie.jpg",      emoji:"🍝", chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
-  { id:21, cat:"Sorrentinos",      nombre:"Sorrentinos Langostinos al Azafrán", desc:"Langostinos y azafrán en masa casera. Muy gourmet.",                      precio:22100, img:"sorrentinos-langostinos.jpg",emoji:"🍝", chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
-  { id:22, cat:"Sorrentinos",      nombre:"Sorrentinos Pollo y Puerro",    desc:"Pollo tierno con puerro salteado. Suave, sabroso y muy rendidor.",              precio:18300, img:"sorrentinos-pollo-puerro.jpg",emoji:"🍝", chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
-  { id:23, cat:"Sorrentinos",      nombre:"Sorrentinos Espinaca",          desc:"Espinaca con queso cremoso. Verde, suave, tradicional.",                         precio:17000, img:"sorrentinos-espinaca.jpg",   emoji:"🍝", chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
-  { id:11, cat:"Empanadas",        nombre:"Empanadas Carne a Cuchillo x8", desc:"Carne cortada a cuchillo, jugosa y bien condimentada. Las que piden todos.",     precio:20000, img:"empanadas-carne-v2.jpg", emoji:"🥟", top:true, unid:8, unidQue:"empanada", chips:["Para 2–4 personas","8 empanadas","Al horno hasta dorar"] },
-  { id:12, cat:"Empanadas",        nombre:"Empanadas Jamón y Queso x8",    desc:"Cremosas por dentro, doraditas por fuera. Para cualquier momento.",              precio:18000, img:"empanadas-jamon-v2.jpg", emoji:"🥟", unid:8, unidQue:"empanada", chips:["Para 2–4 personas","8 empanadas","Al horno hasta dorar"] },
-  { id:17, cat:"Empanadas",        nombre:"Empanadas Cebolla y Queso Azul x8",  desc:"Cebolla caramelizada con queso azul. Intensas y cremosas.",               precio:18000, img:"empanadas-cebolla-v2.jpg", emoji:"🥟", unid:8, unidQue:"empanada", chips:["Para 2–4 personas","8 empanadas","Al horno hasta dorar"] },
-  { id:18, cat:"Empanadas",        nombre:"Empanadas Verdura x8",          desc:"Relleno de verdura fresca y queso. Livianas y riquísimas.",                      precio:18000, img:"empanadas-verdura-v2.jpg", emoji:"🥟", unid:8, unidQue:"empanada", chips:["Para 2–4 personas","8 empanadas","Al horno hasta dorar"] },
-  { id:24, cat:"Tartas",   nombre:"Tarta Pollo y Verdeo",          desc:"Pollo y verdeo. Sustanciosa y bien rendidora.",                                                                  precio:12000, img:"tarta-pollo.jpg", emoji:"🥧", chips:["Para 1–2 personas","Tarta de 16 cm","Al horno en 10 min"] },
-  { id:25, cat:"Tartas",   nombre:"Tarta Jamón y Queso",           desc:"El clásico. Mucho jamón, mucho queso. Hecha como en casa.",                                                                  precio:12000, img:"tarta-jamon-queso.jpg", emoji:"🥧", chips:["Para 1–2 personas","Tarta de 16 cm","Al horno en 10 min"] },
-  { id:26, cat:"Tartas",   nombre:"Tarta Calabaza",                desc:"Calabaza con queso rallado y semillas de girasol arriba. Sabor a horno familiar.",                                                                  precio:12000, img:"tarta-calabaza.jpg", emoji:"🥧", chips:["Para 1–2 personas","Tarta de 16 cm","Al horno en 10 min"] },
-  { id:27, cat:"Tartas",   nombre:"Tarta Verdura",                 desc:"Verdura con queso rallado. Liviana y rica.",                                                                  precio:12000, img:"tarta-verdura.jpg", emoji:"🥧", chips:["Para 1–2 personas","Tarta de 16 cm","Al horno en 10 min"] },
-  { id:28, cat:"Wraps",    nombre:"Wrap Carne",                    desc:"Wrap relleno de carne. Bien condimentado, listo al horno.",                                                       precio:13000, img:"wrap-carne.jpg", emoji:"🌯", chips:["Para 1–2 personas","Listo al horno en 10 min"] },
-  { id:29, cat:"Wraps",    nombre:"Wrap Pollo",                    desc:"Wrap relleno de pollo. Sabroso y rendidor.",                                                                      precio:13000, img:"wrap-pollo.jpg", emoji:"🌯", chips:["Para 1–2 personas","Listo al horno en 10 min"] },
-  { id:13, cat:"Franuis", nombre:"Franui Leche",            desc:"Frambuesas bañadas en chocolate con leche y blanco. El cierre perfecto.",        precio:9000,  img:"franui-new.jpg", emoji:"🍫", chips:["Para 2–3 personas","Listo para servir"] },
-  { id:14, cat:"Tortas", nombre:"Torta Golosa",                  desc:"Masa de chocolate, dulce de leche, mousse de chocolate y almendras acarameladas.", precio:26000, img:"torta-golosa.jpg", emoji:"🎂", chips:["Para 8–10 personas","Torta entera","Lista para cortar y servir"] },
-  { id:15, cat:"Tortas", nombre:"Torta Lemon Crumble",           desc:"Base sablée, relleno de limón y crumble crocante espolvoreado.",                 precio:26000, img:"torta-lemon.jpg", emoji:"🎂", chips:["Para 8–10 personas","Torta entera","Lista para cortar y servir"] },
-  { id:16, cat:"Tortas", nombre:"Torta Coco",                    desc:"Base crocante, dulce de leche y relleno de coco. Generosa y sin vueltas.",       precio:26000, img:"torta-coco.jpg", emoji:"🎂", chips:["Para 8–10 personas","Torta entera","Lista para cortar y servir"] },
+  { id:1,  cat:"Pizzas Individuales",   nombre:"Pizza Margarita",              desc:"Tomate fresco, mozzarella y albahaca. La que nunca falla.",                        img:"pizza-margarita-cocida.jpg", emoji:"🍕", top:true, chips:["Para 1–2 personas","1 pizza grande","Al horno en 12 min"] },
+  { id:2,  cat:"Pizzas Individuales",   nombre:"Pizza Jamón y Queso",           desc:"Mucho jamón, mucho queso. Simple, efectiva y sin dramas.",                        img:"pizza-jamon-queso-cocida.jpg", emoji:"🍕", chips:["Para 1–2 personas","1 pizza grande","Al horno en 12 min"] },
+  { id:3,  cat:"Pizzas Individuales",   nombre:"Pizza Cebolla Caramelizada",    desc:"Cebolla bien dulce con queso cremoso. Para los que saben.",                       img:"pizza-cebolla-cocida.jpg", emoji:"🍕", chips:["Para 1–2 personas","1 pizza grande","Al horno en 12 min"] },
+  { id:4,  cat:"Pizzas Individuales",   nombre:"Pizza Jamón y Morrón",          desc:"Con jamón, morrón rojo y orégano. Completa y sabrosa.",                           img:"pizza-jamon-morron-cocida.jpg", emoji:"🍕", chips:["Para 1–2 personas","1 pizza grande","Al horno en 12 min"] },
+  { id:19, cat:"Pizzas Individuales",   nombre:"Pizza Muzzarella",              desc:"Puro queso derretido sobre salsa de tomate. La clásica que nunca sobra.",          img:"pizza-muzarella-cocida.jpg", emoji:"🍕", chips:["Para 1–2 personas","1 pizza grande","Al horno en 12 min"] },
+  { id:5,  cat:"Pack Pizzas x2",  nombre:"Pack Muzzarella x2",            desc:"Dos pizzas de muzzarella para tener siempre una cena resuelta en el freezer.",   img:"pack-muzarella-cocida.jpg", emoji:"🍕", top:true, unid:2, unidQue:"pizza", chips:["Para 3–4 personas","2 pizzas grandes","Al horno en 12 min"] },
+  { id:6,  cat:"Pack Pizzas x2",  nombre:"Pack Jamón y Queso x2",         desc:"Dos pizzas de jamón y queso. Una para hoy, otra para cuando quieras.",             img:"pack-jamon-queso-cocida.jpg", emoji:"🍕", unid:2, unidQue:"pizza", chips:["Para 3–4 personas","2 pizzas grandes","Al horno en 12 min"] },
+  { id:7,  cat:"Pack Pizzas x2",  nombre:"Pack Cebolla y Queso x2",       desc:"Dos pizzas con cebolla caramelizada. Guardá una para mañana.",                   img:"pack-cebolla-queso-cocida.jpg", emoji:"🍕", unid:2, unidQue:"pizza", chips:["Para 3–4 personas","2 pizzas grandes","Al horno en 12 min"] },
+  { id:8,  cat:"Sorrentinos",      nombre:"Sorrentinos Cordero al Malbec", desc:"Cordero, zanahoria, apio, cebolla y especias. Distinto y muy rico.",             img:"sorrentinos-cordero-v2.jpg", emoji:"🍝", chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
+  { id:9,  cat:"Sorrentinos",      nombre:"Sorrentinos Jamón y Queso",     desc:"Relleno cremoso y generoso. El favorito de la familia.",                         img:"sorrentinos-jamon-v2.jpg", emoji:"🍝", top:true, chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
+  { id:10, cat:"Sorrentinos",      nombre:"Sorrentinos Calabaza y Queso",  desc:"Suave, dulce y sabroso. Relleno cremoso de calabaza y queso.",                   img:"sorrentinos-calabaza-v2.jpg", emoji:"🍝", chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
+  { id:20, cat:"Sorrentinos",      nombre:"Sorrentinos Queso Brie",        desc:"Queso brie cremoso y perfumado. Gourmet sin vueltas.",                          img:"sorrentinos-brie.jpg",      emoji:"🍝", chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
+  { id:21, cat:"Sorrentinos",      nombre:"Sorrentinos Langostinos al Azafrán", desc:"Langostinos y azafrán en masa casera. Muy gourmet.",                      img:"sorrentinos-langostinos.jpg",emoji:"🍝", chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
+  { id:22, cat:"Sorrentinos",      nombre:"Sorrentinos Pollo y Puerro",    desc:"Pollo tierno con puerro salteado. Suave, sabroso y muy rendidor.",              img:"sorrentinos-pollo-puerro.jpg",emoji:"🍝", chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
+  { id:23, cat:"Sorrentinos",      nombre:"Sorrentinos Espinaca",          desc:"Espinaca con queso cremoso. Verde, suave, tradicional.",                         img:"sorrentinos-espinaca.jpg",   emoji:"🍝", chips:["Para 2–3 personas","600g · 16 unidades","Listos en 4 min"] },
+  { id:11, cat:"Empanadas",        nombre:"Empanadas Carne a Cuchillo x8", desc:"Carne cortada a cuchillo, jugosa y bien condimentada. Las que piden todos.",     img:"empanadas-carne-v2.jpg", emoji:"🥟", top:true, unid:8, unidQue:"empanada", chips:["Para 2–4 personas","8 empanadas","Al horno hasta dorar"] },
+  { id:12, cat:"Empanadas",        nombre:"Empanadas Jamón y Queso x8",    desc:"Cremosas por dentro, doraditas por fuera. Para cualquier momento.",              img:"empanadas-jamon-v2.jpg", emoji:"🥟", unid:8, unidQue:"empanada", chips:["Para 2–4 personas","8 empanadas","Al horno hasta dorar"] },
+  { id:17, cat:"Empanadas",        nombre:"Empanadas Cebolla y Queso Azul x8",  desc:"Cebolla caramelizada con queso azul. Intensas y cremosas.",               img:"empanadas-cebolla-v2.jpg", emoji:"🥟", unid:8, unidQue:"empanada", chips:["Para 2–4 personas","8 empanadas","Al horno hasta dorar"] },
+  { id:18, cat:"Empanadas",        nombre:"Empanadas Verdura x8",          desc:"Relleno de verdura fresca y queso. Livianas y riquísimas.",                      img:"empanadas-verdura-v2.jpg", emoji:"🥟", unid:8, unidQue:"empanada", chips:["Para 2–4 personas","8 empanadas","Al horno hasta dorar"] },
+  { id:24, cat:"Tartas",   nombre:"Tarta Pollo y Verdeo",          desc:"Pollo y verdeo. Sustanciosa y bien rendidora.",                                                                  img:"tarta-pollo.jpg", emoji:"🥧", chips:["Para 1–2 personas","Tarta de 16 cm","Al horno en 10 min"] },
+  { id:25, cat:"Tartas",   nombre:"Tarta Jamón y Queso",           desc:"El clásico. Mucho jamón, mucho queso. Hecha como en casa.",                                                                  img:"tarta-jamon-queso.jpg", emoji:"🥧", chips:["Para 1–2 personas","Tarta de 16 cm","Al horno en 10 min"] },
+  { id:26, cat:"Tartas",   nombre:"Tarta Calabaza",                desc:"Calabaza con queso rallado y semillas de girasol arriba. Sabor a horno familiar.",                                                                  img:"tarta-calabaza.jpg", emoji:"🥧", chips:["Para 1–2 personas","Tarta de 16 cm","Al horno en 10 min"] },
+  { id:27, cat:"Tartas",   nombre:"Tarta Verdura",                 desc:"Verdura con queso rallado. Liviana y rica.",                                                                  img:"tarta-verdura.jpg", emoji:"🥧", chips:["Para 1–2 personas","Tarta de 16 cm","Al horno en 10 min"] },
+  { id:28, cat:"Wraps",    nombre:"Wrap Carne",                    desc:"Wrap relleno de carne. Bien condimentado, listo al horno.",                                                       img:"wrap-carne.jpg", emoji:"🌯", chips:["Para 1–2 personas","Listo al horno en 10 min"] },
+  { id:29, cat:"Wraps",    nombre:"Wrap Pollo",                    desc:"Wrap relleno de pollo. Sabroso y rendidor.",                                                                      img:"wrap-pollo.jpg", emoji:"🌯", chips:["Para 1–2 personas","Listo al horno en 10 min"] },
+  { id:13, cat:"Franuis", nombre:"Franui Leche",            desc:"Frambuesas bañadas en chocolate con leche y blanco. El cierre perfecto.",        img:"franui-new.jpg", emoji:"🍫", chips:["Para 2–3 personas","Listo para servir"] },
+  { id:14, cat:"Tortas", nombre:"Torta Golosa",                  desc:"Masa de chocolate, dulce de leche, mousse de chocolate y almendras acarameladas.", img:"torta-golosa.jpg", emoji:"🎂", chips:["Para 8–10 personas","Torta entera","Lista para cortar y servir"] },
+  { id:15, cat:"Tortas", nombre:"Torta Lemon Crumble",           desc:"Base sablée, relleno de limón y crumble crocante espolvoreado.",                 img:"torta-lemon.jpg", emoji:"🎂", chips:["Para 8–10 personas","Torta entera","Lista para cortar y servir"] },
+  { id:16, cat:"Tortas", nombre:"Torta Coco",                    desc:"Base crocante, dulce de leche y relleno de coco. Generosa y sin vueltas.",       img:"torta-coco.jpg", emoji:"🎂", chips:["Para 8–10 personas","Torta entera","Lista para cortar y servir"] },
   /* ═══ CARNES — Maleu Carnes (Lucas Moresco) ════════════════
      Se venden POR KILO y por PIEZA: el cliente elige la pieza que se lleva,
      con su peso exacto. Ver el bloque PIEZAS mas abajo.
@@ -145,23 +145,23 @@ const PRODUCTOS = [
      esos ids. Eso no lo decide esta linea sino `zonas`, que no incluye clubes.
      Lo vigila `node _tools/verificar-pedido.js`, que cruza el catalogo entero
      contra los mapas reales del ERP. */
-  { id:30, abbr:"CCo", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Colita de Cuadril", desc:"Jugosa al horno y perfecta a la parrilla. Un corte que nunca falla.", precio:20750, img:"carne-colita.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
+  { id:30, abbr:"CCo", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Colita de Cuadril", desc:"Jugosa al horno y perfecta a la parrilla. Un corte que nunca falla.", img:"carne-colita.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
   /* La entrana viene de a DOS tiras por paquete (dato de Lucas, 10/9/2026), y
      el peso que se ve es el del paquete entero. Sin decirlo, el que elige una
      de 1,163 kg no sabe si le llega una tira grande o dos. */
-  { id:31, abbr:"CEn", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Entra\u00f1a",           desc:"Fina, sabrosa y r\u00e1pida. La que sale primero de la parrilla.",          precio:34000, img:"carne-entrana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo","2 tiras por paquete"] },
-  { id:32, abbr:"CLo", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Lomo sin cord\u00f3n",  desc:"El corte m\u00e1s tierno, limpio y sin cord\u00f3n. Para la ocasi\u00f3n que se merece el mejor.", precio:33000, img:"carne-lomo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Sin cord\u00f3n"] },
-  { id:33, abbr:"CPi", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Pica\u00f1a",            desc:"El corte brasilero que se volvi\u00f3 infaltable. Con su tapa de grasa.",  precio:22875, img:"carne-picana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
-  { id:34, abbr:"CVa", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Vac\u00edo porcionado", desc:"El cl\u00e1sico del asado argentino, en porciones. Paciencia y fuego bajo.", precio:26000, img:"carne-vacio.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Porcionado"] },
+  { id:31, abbr:"CEn", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Entra\u00f1a",           desc:"Fina, sabrosa y r\u00e1pida. La que sale primero de la parrilla.",          img:"carne-entrana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo","2 tiras por paquete"] },
+  { id:32, abbr:"CLo", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Lomo sin cord\u00f3n",  desc:"El corte m\u00e1s tierno, limpio y sin cord\u00f3n. Para la ocasi\u00f3n que se merece el mejor.", img:"carne-lomo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Sin cord\u00f3n"] },
+  { id:33, abbr:"CPi", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Pica\u00f1a",            desc:"El corte brasilero que se volvi\u00f3 infaltable. Con su tapa de grasa.",  img:"carne-picana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
+  { id:34, abbr:"CVa", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Vac\u00edo porcionado", desc:"El cl\u00e1sico del asado argentino, en porciones. Paciencia y fuego bajo.", img:"carne-vacio.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Porcionado"] },
   /* Los cortes de LM Carnes (7/10/2026): ids 35-41 del ERP (HOME_PRODUCT_COLS
      CJ-CP, PILAR CB-CH, RED CM-CS). Precios de la lista de Lucas. */
-  { id:35, abbr:"CVE", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Vac\u00edo entero", desc:"La pieza entera, como la pide el asador. Para una parrillada en serio.", precio:25200, img:"carne-vacio-entero.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Pieza entera"] },
-  { id:36, abbr:"CBC", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Bife de Chorizo", desc:"Jugoso y con su borde de grasa. El cl\u00e1sico de la parrilla.", precio:29250, img:"carne-bife-chorizo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
-  { id:37, abbr:"COB", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Ojo de Bife", desc:"Bien marmolado, tierno y lleno de sabor. Vuelta y vuelta.", precio:30325, img:"carne-ojo-bife.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
-  { id:38, abbr:"CMa", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Matambre entero", desc:"A la parrilla, a la pizza o arrollado. Rinde un mont\u00f3n.", precio:22825, img:"carne-matambre.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Pieza entera"] },
-  { id:39, abbr:"CAC", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Asado Cotilla Especial", desc:"El asado en placa, con su hueso. Fuego bajo y sin apuro.", precio:27900, img:"carne-asado-cotilla.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
-  { id:40, abbr:"CAB", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Asado Banderita", desc:"Tiras con el hueso cruzado. Se hace r\u00e1pido y queda crocante.", precio:27900, img:"carne-asado-banderita.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
-  { id:41, abbr:"CPe", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Peceto feteado", desc:"Magro y tierno, ya cortado en fetas. Para milanesas o a la plancha.", precio:25025, img:"carne-peceto.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Feteado"] },
+  { id:35, abbr:"CVE", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Vac\u00edo entero", desc:"La pieza entera, como la pide el asador. Para una parrillada en serio.", img:"carne-vacio-entero.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Pieza entera"] },
+  { id:36, abbr:"CBC", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Bife de Chorizo", desc:"Jugoso y con su borde de grasa. El cl\u00e1sico de la parrilla.", img:"carne-bife-chorizo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
+  { id:37, abbr:"COB", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Ojo de Bife", desc:"Bien marmolado, tierno y lleno de sabor. Vuelta y vuelta.", img:"carne-ojo-bife.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
+  { id:38, abbr:"CMa", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Matambre entero", desc:"A la parrilla, a la pizza o arrollado. Rinde un mont\u00f3n.", img:"carne-matambre.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Pieza entera"] },
+  { id:39, abbr:"CAC", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Asado Cotilla Especial", desc:"El asado en placa, con su hueso. Fuego bajo y sin apuro.", img:"carne-asado-cotilla.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
+  { id:40, abbr:"CAB", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Asado Banderita", desc:"Tiras con el hueso cruzado. Se hace r\u00e1pido y queda crocante.", img:"carne-asado-banderita.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
+  { id:41, abbr:"CPe", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Peceto feteado", desc:"Magro y tierno, ya cortado en fetas. Para milanesas o a la plancha.", img:"carne-peceto.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Feteado"] },
 ];
 
 const CATEGORIAS = [
@@ -353,7 +353,6 @@ const COMBOS = [
     nombre: 'Descubrí Maleu · Semana',
     desc: 'Conocé los productos ideales para el día a día.',
     personas: '2 a 3 personas',
-    precio: 46900,
     img: 'combo-semana.jpg', fullCard: true,
     emoji: '🎁',
     zonas: ['estancias', 'pilar'],
@@ -369,7 +368,6 @@ const COMBOS = [
     nombre: 'Descubrí Maleu · Fin de Semana',
     desc: 'Probá los clásicos de Maleu para compartir.',
     personas: '2 a 3 personas',
-    precio: 34900,
     img: 'combo-finde.jpg', fullCard: true,
     emoji: '🎁',
     zonas: ['estancias', 'pilar'],
@@ -384,7 +382,6 @@ const COMBOS = [
     nombre: 'Noche en Casa',
     desc: 'Una cena rica y lista en minutos para dos personas.',
     personas: '2 personas',
-    precio: 23900,
     img: 'combo-noche.jpg', fullCard: true,
     emoji: '🎁',
     zonas: ['estancias', 'pilar'],
@@ -398,7 +395,6 @@ const COMBOS = [
     nombre: 'Mesa Familiar',
     desc: 'Una solución práctica para una comida en familia.',
     personas: '4 a 5 personas',
-    precio: 45900,
     img: 'combo-mesa.jpg', fullCard: true,
     emoji: '🎁',
     zonas: ['estancias', 'pilar'],
@@ -413,7 +409,6 @@ const COMBOS = [
     nombre: 'Freezer Lleno',
     desc: 'Resolvé varias comidas de la semana en un solo pedido.',
     personas: '4 a 6 personas',
-    precio: 84900,
     img: 'combo-freezer.jpg', fullCard: true,
     emoji: '🎁',
     zonas: ['estancias', 'pilar'],
@@ -805,6 +800,7 @@ function piezasEnCarrito(abbr) {
 /* Poner o sacar una pieza del carrito. Es un interruptor y no un +/-: la
    pieza es unica, o te la llevas o no. */
 function togglePieza(abbr, piezaId) {
+  if (!piezaCart[piezaId] && _sinPrecios()) return;   /* sacar una pieza siempre se puede */
   if (_pedirZonaAntes(function () {
         if (!getActiveProducts().some(function (p) { return p.abbr === abbr; })) {
           _noEstaEnEstaZona('La carne'); return;
@@ -1224,6 +1220,7 @@ function cambiarReserva(abbr, delta) {
   var p = _corteDe(abbr);
   if (!p) return;
   var it = reservaEnCarrito(abbr), max = reservaMaxKg(p);
+  if (delta > 0 && _sinPrecios()) return;
   if (delta > 0 && !it) {
     if (max < RES_MIN) { toast('⚠️ Ya no quedan kilos de ' + p.nombre + ' para reservar', 3500); _repintarCarne(abbr); return; }
     if (!_fechaSirveReserva(_fechaElegidaParaReserva())) { reservarParaOtraFecha(abbr); return; }
@@ -2492,7 +2489,10 @@ const PROD_ABBR = {
 
 /* ── HELPERS ── */
 function $id(id) { return document.getElementById(id); }
-function ars(n) { return '$' + n.toLocaleString('es-AR'); }
+/* Sin precio todavia (14/10/2026): «$…», nunca un numero. Desde ese dia los
+   precios no estan escritos aca: llegan de la planilla con `stock_full`, y
+   hasta que llegan no hay precio que mostrar — ni uno viejo. */
+function ars(n) { return (typeof n === 'number' && isFinite(n)) ? '$' + n.toLocaleString('es-AR') : '$…'; }
 
 /* EL PRECIO DE UNA CARD, Y DEBAJO CUANTO SALE UNA (1/10/2026)
    "$17.000 / $8.500 por pizza". Es lo que hace visible el ahorro del pack:
@@ -5080,6 +5080,7 @@ function _metaForzarCarga() {
   try { if (typeof window.traerMeta === 'function') window.traerMeta(); } catch (e) {}
 }
 function addToCart(id, mensaje) {
+  if (_sinPrecios()) return false;
   /* La zona, primero: cambia el catalogo, el envio y el 10% en efectivo, y
      applyZone() vacia el carrito. Preguntarla despues le borraria en la cara
      lo que acaba de agregar. */
@@ -5103,6 +5104,7 @@ function cardChangeQty(id, delta) { modifyCart(id, delta); }
 /* ── COMBOS: alta de instancias configuradas ── */
 /* Agrega una instancia (comboId + componentes resueltos). Devuelve true si entró. */
 function addComboInstance(comboId, comp, picks) {
+  if (_sinPrecios()) return false;
   const c = COMBO_MAP[comboId]; if (!c) return false;
   const sig = comboSignature(comboId, comp);
   const existing = comboCart[sig] ? comboCart[sig].qty : 0;
@@ -6579,6 +6581,7 @@ function _coBarraParar() { clearInterval(_coBarraT); _coBarraT = null; _coBarraP
 
 function enviarPedido() {
   if (_enviando) return;
+  if (_sinPrecios()) return;
   if (!currentZone) { showZoneModal('enviar'); return; }
   /* Una zona provisoria vale para MIRAR, no para entregar: el pedido iria a la
      hoja equivocada, con el envio y el descuento de una zona que el cliente
@@ -8003,7 +8006,8 @@ async function fetchStock() {
     const full = await res.json();
     PRODUCTOS.forEach(p => {
       const abbr = PROD_ABBR[p.id];
-      if (!abbr || !full[abbr]) return;
+      /* Sin `f` no hay dato de stock (solo precio): no se inventa un 0. */
+      if (!abbr || !full[abbr] || full[abbr].f === undefined) return;
       /* SOLO el depósito de Tadeo (25/9/2026). `f` y `p` son la suma de LOS DOS
          depósitos, y eso alcanzaba mientras el de Lucas estaba en cero — que es
          como estuvo siempre, porque el ERP no tenía forma de repartir.
@@ -8020,6 +8024,7 @@ async function fetchStock() {
       stockMap[p.id] = _stockLimpio(full[abbr].f - enLucas);
       stockProyectadoMap[p.id] = _stockLimpio(full[abbr].p - enLucas);
     });
+    _aplicarPrecios(full);
     // Ajustar carrito si excede el tope vigente según el modo actual
     const mode = getStockMode();
     if (mode === 'real' || mode === 'proyectado') {
@@ -8053,8 +8058,57 @@ async function fetchStock() {
       }
     }
     updateStockDisplay();
-  } catch (e) { console.warn('fetchStock:', e); }
+  } catch (e) {
+    console.warn('fetchStock:', e);
+    /* Sin precios no se puede comprar: el primer intento que falla se repite
+       enseguida en vez de esperar el minuto del pulso. */
+    if (!_preciosListos) setTimeout(fetchStock, 5000);
+  }
   await piezasListas;
+}
+
+/* ── LOS PRECIOS VIENEN DE LA PLANILLA (14/10/2026) ──
+   Tadeo: «que app.js no tenga precios escritos y los tome del backend, así un
+   cambio en Productos llega solo a la tienda. Mientras carga, que no muestre un
+   precio viejo». `stock_full` (que ya se pedia cada 60 s) trae `pv` = col I de
+   Productos por producto y `_combos` = la hoja «Precios Combos». La misma hoja con la
+   que el servidor revalida el pedido: tienda y servidor no pueden discrepar.
+   Hasta que llegan, `ars` muestra «$…» y no se puede agregar ni pedir. Las piezas
+   del carrito guardado se recalculan: traian el precio de la visita anterior. */
+var _preciosListos = false;
+function _aplicarPrecios(full) {
+  if (!full) return;
+  var cambio = false, faltan = 0;
+  PRODUCTOS.forEach(function (p) {
+    /* La carne no esta en PROD_ABBR: cada corte trae su `abbr`. */
+    var abbr = PROD_ABBR[p.id] || p.abbr, pv = abbr && full[abbr] ? Number(full[abbr].pv) : 0;
+    if (pv > 0) { if (p.precio !== pv) { p.precio = pv; cambio = true; } }
+    else if (!(p.precio > 0)) faltan++;
+  });
+  var cb = full._combos || {};
+  COMBOS.forEach(function (c) {
+    var pc = Number(cb[c.id]) || 0;
+    if (pc > 0 && c.precio !== pc) { c.precio = pc; cambio = true; }
+  });
+  Object.keys(piezaCart).forEach(function (pid) {
+    var it = piezaCart[pid], corte = it && _corteDe(it.abbr);
+    if (corte && corte.precio > 0) {
+      var np = piezaPrecio(corte, it.kg);
+      if (np !== it.precio) { it.precio = np; cambio = true; }
+    }
+  });
+  var antes = _preciosListos;
+  _preciosListos = faltan === 0;
+  if (cambio || antes !== _preciosListos) {
+    try { renderCatalog(); } catch (e1) {}
+    try { updateUI(); } catch (e2) {}
+  }
+}
+/* La puerta: agregar o pedir sin precio es venderle a ciegas. */
+function _sinPrecios() {
+  if (_preciosListos) return false;
+  toast('Cargando los precios… un segundo');
+  return true;
 }
 
 /* Las piezas van con el mismo pulso que el stock: son el stock de la carne.

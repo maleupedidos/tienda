@@ -1,3 +1,4 @@
+const conPrecios = require('./precios-prueba.js');   /* los precios vienen de stock_full desde el 14/10/2026 */
 /**
  * Lo que se encontro recorriendo la tienda como un cliente el domingo 13/9/2026.
  *
@@ -147,7 +148,7 @@ const PREP = '(function () {' +
   'window.fetch = function (url, opts) {' +
   '  var u = String(url);' +
   '  if (opts && String(opts.method || "").toUpperCase() === "POST" && u.indexOf("script.google") >= 0) { window.__post++; (window.__posts = window.__posts || []).push(u.slice(0, 80) + " " + String(opts.body || "").slice(0, 160)); return new Promise(function () {}); }' +
-  '  if (u.indexOf("action=stock_full") >= 0) return json(' + JSON.stringify(STOCK) + ');' +
+  '  if (u.indexOf("action=stock_full") >= 0) return json(' + JSON.stringify(conPrecios(STOCK)) + ');' +
   '  if (u.indexOf("action=piezas_full") >= 0) return json({});' +
   '  if (u.indexOf("script.google") >= 0) return json({ ok: true });' +
   '  return orig.apply(this, arguments);' +

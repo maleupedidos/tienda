@@ -86,17 +86,27 @@ misma cola de cobros.
 | **La tienda** (este repo) | `maleu.com.ar` | El cliente. Público, indexable. |
 | **El ERP** (`maleupedidos.github.io`) | `maleupedidos.github.io/app.html` | Nosotros. Login con token + permisos por rol. |
 
-## Los precios se editan en UN solo lugar
+## Los precios se editan en UN solo lugar: la planilla (desde el 14/10/2026)
 
-`app.js` → array `PRODUCTOS` → es **la fuente única**.
+**`app.js` no tiene precios escritos.** Un producto se cobra lo que dice
+`Productos!I` y un combo lo que dice la hoja **«Precios Combos»** (ID, Nombre, Precio).
+Llegan en `stock_full` (`pv` por producto, `_combos`), que la tienda ya pedía
+cada 60 s: un cambio en la planilla llega solo, sin publicar la tienda.
 
-Cuando se pushea un cambio a `app.js`, el workflow `sync-precios.yml` regenera
-`data/precios.json` (mapa `id → precio`). El **Portal Red del ERP** (`red.html`)
-lo lee por HTTP desde `https://maleu.com.ar/data/precios.json`.
+- **Mientras cargan**, `ars()` muestra «$…» y `_sinPrecios()` no deja agregar ni
+  pedir. Nunca se muestra un precio viejo (no hay copia guardada, a propósito).
+- Las piezas del carrito guardado se recalculan al llegar (`_aplicarPrecios`).
+- **El servidor revalida con las mismas dos hojas** (`_subtotalServidor_`). Hasta
+  el 14/10 no conocía los combos y le cobraba al cliente el descuento del combo
+  (Schisano $9.200, Caro Rojo $9.600).
+- La composición de un combo (qué productos entran) sigue acá, en `COMBOS`; el
+  precio, no.
+- `PRODUCTOS_CLUBES` sigue con sus precios escritos: la lista Club de empanadas no
+  está en la planilla (Proveedores col J tiene solo las pizzas).
 
-> [!warning] No edites `data/precios.json` a mano
-> Lo pisa el workflow en el próximo push a `app.js`. Si cambiás un precio,
-> cambialo en `app.js` y listo — el portal lo toma solo.
+`data/precios.json` quedó **congelado** en el 14/10/2026: el workflow ya no lo
+regenera (sin precios en `app.js` lo dejaría vacío) y el Portal Red lee
+`action=precios` del backend.
 
 ## Qué hay acá
 
@@ -106,7 +116,7 @@ lo lee por HTTP desde `https://maleu.com.ar/data/precios.json`.
 | `app.js` | El catálogo (`PRODUCTOS`) y toda la lógica del carrito. |
 | `styles.css` | Los estilos. |
 | `img/` | Fotos de producto. Las saca Tadeo con el iPhone. |
-| `data/precios.json` | **Generado.** Lo lee el Portal Red del ERP. |
+| `data/precios.json` | **Congelado el 14/10/2026.** Ya no lo lee nadie (los precios vienen de la planilla). |
 | `CNAME` | `maleu.com.ar`. Sin esto GitHub Pages no sirve el dominio propio. |
 
 ## ⚠ El `?v=` NO se toca a mano — y por que importa (1/9/2026)

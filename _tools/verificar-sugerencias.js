@@ -1,3 +1,4 @@
+const conPrecios = require('./precios-prueba.js');   /* los precios vienen de stock_full desde el 14/10/2026 */
 /**
  * Las sugerencias del carrito (13/9/2026): carne, y al reves.
  *
@@ -81,7 +82,9 @@ const idDe = (nombre) => Number((APP.match(new RegExp('\\{\\s*id:(\\d+),\\s*cat:
 const idPMu = idDe('Pizza Muzzarella');
 const ID = { PMa: idDe('Pizza Margarita'), PPM: idDe('Pack Muzzarella'), SJyQ: idDe('Sorrentinos Jam'),
   SCo: idDe('Sorrentinos Cordero'), ECaC: idDe('Empanadas Carne') };
-const precio = (ab) => Number((APP.match(new RegExp('abbr:"' + ab + '"[^\\n]*?precio:(\\d+)')) || [])[1]);
+/* Desde el 14/10/2026 el precio no esta en app.js: es el que la prueba le da a la
+   tienda por `stock_full` (la foto de precios-prueba.js). */
+const precio = (ab) => Number(conPrecios.PV[ab]);
 
 function servir() {
   return new Promise((listo, fallo) => {
@@ -152,7 +155,7 @@ const PREP = '(function () {' +
   'window.fetch = function (url, opts) {' +
   '  var u = String(url);' +
   '  if (opts && String(opts.method || "").toUpperCase() === "POST" && u.indexOf("script.google") >= 0) { window.__post++; return new Promise(function () {}); }' +
-  '  if (u.indexOf("action=stock_full") >= 0) return json(' + JSON.stringify(STOCK) + ');' +
+  '  if (u.indexOf("action=stock_full") >= 0) return json(' + JSON.stringify(conPrecios(STOCK)) + ');' +
   '  if (u.indexOf("action=piezas_full") >= 0) return json(window.__piezas);' +
   '  if (u.indexOf("script.google") >= 0) return json({ ok: true });' +
   '  return orig.apply(this, arguments);' +

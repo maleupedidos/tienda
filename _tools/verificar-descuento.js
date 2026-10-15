@@ -120,7 +120,7 @@ const PREP = `(function () {
         { status: 200, headers: { 'Content-Type': 'application/json' } }));
     }
     if (u.indexOf('action=stock_full') >= 0) {
-      return Promise.resolve(new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } }));
+      return Promise.resolve(new Response(${JSON.stringify(JSON.stringify(require('./precios-prueba.js')({})))}, { status: 200, headers: { 'Content-Type': 'application/json' } }));
     }
     return orig.apply(this, arguments);
   };

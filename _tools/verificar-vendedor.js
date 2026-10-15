@@ -1,3 +1,4 @@
+const conPrecios = require('./precios-prueba.js');   /* los precios vienen de stock_full desde el 14/10/2026 */
 /**
  * A quien se le asigna una venta: al que trajo al cliente, no al barrio.
  *
@@ -181,7 +182,7 @@ const PREP = '(function () {' +
   'window.fetch = function (url, opts) {' +
   '  var u = String(url);' +
   '  if (opts && String(opts.method || "").toUpperCase() === "POST" && u.indexOf("script.google") >= 0) { window.__posts.push({ body: String(opts.body || "") }); return new Promise(function () {}); }' +
-  '  if (u.indexOf("action=stock_full") >= 0) return json(' + JSON.stringify(STOCK) + ');' +
+  '  if (u.indexOf("action=stock_full") >= 0) return json(' + JSON.stringify(conPrecios(STOCK)) + ');' +
   '  if (u.indexOf("action=piezas_full") >= 0) return json(' + JSON.stringify(PIEZAS) + ');' +
   /* `&demoraVend=` retrasa SOLO esta respuesta. Es la unica forma de medir la
      ventana en que `barrioToVendedor` todavia esta vacio: sin demora contesta al

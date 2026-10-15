@@ -1,3 +1,4 @@
+const conPrecios = require('./precios-prueba.js');   /* los precios vienen de stock_full desde el 14/10/2026 */
 /**
  * Cuanto tarda en aparecer la carne (11/9/2026).
  *
@@ -130,7 +131,7 @@ function prep(cfg) {
     }
     if (m === 'GET' && u.indexOf('action=stock_full') >= 0) {
       if (!window.__t.stockIni) window.__t.stockIni = performance.now();
-      return responder({}, CFG.demoraStock, 'stockFin');
+      return responder(${JSON.stringify(conPrecios({}))}, CFG.demoraStock, 'stockFin');
     }
     return orig.apply(this, arguments);
   };

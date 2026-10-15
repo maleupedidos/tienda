@@ -1,3 +1,4 @@
+const conPrecios = require('./precios-prueba.js');   /* los precios vienen de stock_full desde el 14/10/2026 */
 /**
  * "Lo que pediste la última vez" (13/9/2026).
  *
@@ -160,7 +161,7 @@ const PREP = '(function () {' +
   'window.fetch = function (url, opts) {' +
   '  var u = String(url);' +
   '  if (opts && String(opts.method || "").toUpperCase() === "POST" && u.indexOf("script.google") >= 0) { window.__post++; return new Promise(function () {}); }' +
-  '  if (u.indexOf("action=stock_full") >= 0) return json(' + JSON.stringify(STOCK) + ');' +
+  '  if (u.indexOf("action=stock_full") >= 0) return json(' + JSON.stringify(conPrecios(STOCK)) + ');' +
   /* `&fallapiezas=1` hace FALLAR el inventario, que es la unica forma de que la
      categoria Carnes no se dibuje. Un inventario VACIO no sirve: desde el
      11/9/2026 `vacio` y `sin-datos` son dos estados distintos, y con el vacio

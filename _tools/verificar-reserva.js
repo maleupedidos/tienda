@@ -1,3 +1,4 @@
+const conPrecios = require('./precios-prueba.js');   /* los precios vienen de stock_full desde el 14/10/2026 */
 /**
  * La reserva de carne por kilo (17/9/2026).
  *
@@ -155,7 +156,7 @@ const PREP = '(function () {' +
   '    var d = {}; try { d = JSON.parse(body); } catch (e) {}' +
   '    return d.action ? json({ ok: true }) : json({ ok: true, n: "999" });' +
   '  }' +
-  '  if (u.indexOf("action=stock_full") >= 0) return json(' + JSON.stringify(STOCK) + ');' +
+  '  if (u.indexOf("action=stock_full") >= 0) return json(' + JSON.stringify(conPrecios(STOCK)) + ');' +
   '  if (u.indexOf("action=piezas_full") >= 0) {' +
   '    var r = JSON.parse(JSON.stringify(window.__piezasResp));' +
   '    return demora ? new Promise(function (ok) { setTimeout(function () { ok(json(r)); }, demora); }) : json(r);' +

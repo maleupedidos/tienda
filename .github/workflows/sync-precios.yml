@@ -1,11 +1,19 @@
 name: Publicar tienda
 
-# Fuente unica de precios: el array PRODUCTOS de app.js (esta tienda). Cada vez
-# que se pushea un cambio a app.js, este workflow regenera data/precios.json
-# (mapa id -> precio), que el Portal Red del ERP lee por HTTP desde
-# https://maleu.com.ar/data/precios.json. Asi el portal nunca se desfasa: el
-# precio se edita en un solo lugar (app.js) y el portal lo toma solo.
-# Solo commitea si el JSON cambio.
+# Desde el 14/10/2026 los precios NO estan en app.js: la tienda los toma de la
+# planilla (hoja Productos y hoja Precios Combos) por `stock_full`, y el Portal Red del
+# ERP por `action=precios`. Hasta ese dia este workflow regeneraba
+# data/precios.json desde app.js; sin precios escritos lo dejaria vacio y
+# romperia a quien lo lea, asi que ese paso se saco. data/precios.json queda
+# congelado en el 14/10/2026 y ya no lo lee nadie.
+#
+# Lo que queda es el cache-buster: GitHub Pages sirve app.js con
+# Cache-Control: max-age=14400 (4 horas), y el navegador cachea por URL EXACTA.
+# Como el ?v= estuvo fijo en "20260819-1" desde el 19/8/2026, la URL no
+# cambiaba y el navegador seguia usando su copia vieja. Paso el 1/9/2026: el
+# modo autopedido estaba publicado y Tadeo no lo veia.
+# Ojo con esto al verificar: `curl` y un navegador con el cache desactivado
+# dicen que el servidor tiene el archivo nuevo, que es OTRA pregunta.
 
 on:
   push:
@@ -26,38 +34,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Regenerar data/precios.json desde app.js
-        run: |
-          python3 - <<'PY'
-          import re, json
-          app = open('app.js', encoding='utf-8').read()
-          start = app.index('const PRODUCTOS')
-          block = app[start:app.index('];', start)]
-          items = re.findall(r'\bid:(\d+),.*?precio:(\d+)', block)
-          m = {str(int(i)): int(p) for i, p in items}
-          m = {k: m[k] for k in sorted(m, key=lambda x: int(x))}
-          json.dump(m, open('data/precios.json', 'w', encoding='utf-8'),
-                    ensure_ascii=False, separators=(',', ':'))
-          print('precios.json:', len(m), 'productos')
-          PY
-
-      # Sin esto, un cambio publicado puede no llegarle al cliente. GitHub Pages
-      # sirve app.js con Cache-Control: max-age=14400 (4 horas), y el navegador
-      # cachea por URL EXACTA. Como el ?v= estuvo fijo en "20260819-1" desde el
-      # 19/8/2026, la URL no cambiaba y el navegador seguia usando su copia vieja.
-      # Paso el 1/9/2026: el modo autopedido estaba publicado y Tadeo no lo veia.
-      # Ojo con esto al verificar: `curl` y un navegador con el cache desactivado
-      # dicen que el servidor tiene el archivo nuevo, que es OTRA pregunta.
       - name: Actualizar el ?v= de index.html con el hash de cada archivo
         run: python3 _tools/cachebuster.py
 
       - name: Commitear solo si cambio
         run: |
-          if git diff --quiet -- data/precios.json index.html; then
+          if git diff --quiet -- index.html; then
             echo "Sin cambios: nada que commitear."; exit 0
           fi
           git config user.name  "maleu-precios-bot"
           git config user.email "maleucongelados@gmail.com"
-          git add data/precios.json index.html
-          git commit -m "chore: sync precios + cache-buster desde app.js [skip ci]"
+          git add index.html
+          git commit -m "chore: cache-buster desde app.js [skip ci]"
           git push
