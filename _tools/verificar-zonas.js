@@ -395,7 +395,7 @@ async function main() {
       chk(pRio.barrioPrivado === 'Estancias del Río' && pRio.barrio === 'Estancias del Río' && !pRio.subBarrio,
           'con el barrio "Estancias del Rio" y sin sub barrio (' + [pRio.barrioPrivado, pRio.barrio, pRio.subBarrio].join(' / ') + ')');
       chk(Number(pRio.envio) === 0, 'sin envio (' + pRio.envio + ')');
-      chk(Number(pRio.descuento) === Math.round(espRio.sub * 0.1) && espRio.desc > 0, 'con el 10% en efectivo (' + pRio.descuento + ' sobre ' + espRio.sub + ')');
+      chk(Number(pRio.descuento) === 0 && espRio.sub > 0, 'sin descuento en efectivo: el 10% se saco el 15/10/2026 (' + pRio.descuento + ' sobre ' + espRio.sub + ')');
       const carne = (pRio.items || []).filter((it) => it.unidad === 'kg');
       chk(carne.length === 1 && carne[0].abbr === 'CVa' && (carne[0].piezas || [])[0] === 'VAC-01', 'con la pieza de carne (' + JSON.stringify(carne.map((c) => c.abbr + ':' + (c.piezas || []).join('+'))) + ')');
     }
@@ -508,7 +508,7 @@ async function main() {
     await listos();
     const alc = JSON.parse(await ev('(function () { addToCart(5); var ef = document.querySelector("input[name=pago][value=Efectivo]"); ef.checked = true; ef.dispatchEvent(new Event("change", { bubbles: true }));' +
       ' return JSON.stringify({ envio: getShipping(), efectivo: cashDiscountActive(), carne: document.querySelectorAll(".carne-card").length, dias: [].map.call(document.querySelectorAll("#day-picker .dp-cell.available"), function (b) { return b.getAttribute("data-dia"); }) }); })()'));
-    chk(alc.envio === 0 && alc.efectivo, 'envio gratis y 10% en efectivo (' + alc.envio + ' / ' + alc.efectivo + ')');
+    chk(alc.envio === 0 && !alc.efectivo, 'envio gratis, y sin 10% en efectivo desde el 15/10/2026 (' + alc.envio + ' / ' + alc.efectivo + ')');
     chk(alc.carne > 0, 'con carne: lo entrega Maleu');
     chk(alc.dias.indexOf('Miércoles') >= 0, 'y con miercoles');
 

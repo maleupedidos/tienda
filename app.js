@@ -2631,11 +2631,15 @@ function cashDiscountActive() {
      pago—, y apagar uno solo deja los otros dos prendidos: la primera version
      tapaba la franja en `updatePromoBar` y `updateUI` se la volvia a encender
      dos lineas despues. Es la leccion de siempre de este repo: se arregla en
-     la raiz, no en los call sites. (23/9/2026) */
-  if (zonaProvisoria) return false;
-  if (currentZone === 'estancias') return true;
-  // Ex-Home: conservan el 10% en efectivo aunque ahora estén en zona Pilar.
-  if (_pilarBarrioEsExHome()) return true;
+     la raiz, no en los call sites. (23/9/2026)
+
+     SE SACO EL 15/10/2026, en todos lados. Tadeo: "nos pasamos a un
+     monotributo mas grande y ya no lo necesito. Vamos a fidelizar con
+     templates para clientes activos y regalando productos". Se apaga aca, en
+     la raiz, por lo mismo de arriba: la franja, el incentivo del carrito, el
+     cartel del medio de pago y el total preguntan todos por esta funcion. El
+     ERP (`_descAutoPedido_`) ya no lo da: si volviera, tiene que volver en las
+     dos puntas. */
   return false;
 }
 function discountsActive() {
@@ -5441,7 +5445,7 @@ function updateUI() {
       if (appliedCoupon && getCouponDiscount() > 0) partes.push(appliedCoupon.codigo);
       var autoLbl = getCashDiscount() > 0 ? getDiscountLabel() : '';
       if (autoLbl) partes.push(autoLbl);
-      discRow.querySelector('span').textContent = partes.join(' + ') || '10% OFF';
+      discRow.querySelector('span').textContent = partes.join(' + ') || 'Descuento';
       $id('cart-discount').textContent = '-' + ars(discount);
     }
     else { discRow.style.display = 'none'; }
@@ -5456,23 +5460,15 @@ function updateUI() {
     var totLbl = $id('cart-total').previousElementSibling;
     if (totLbl) totLbl.textContent = hayReservaEnCarrito() ? 'Total aprox.' : 'Total';
 
-    // Incentivo — el 10% en efectivo aplica a productos y carne, no a los
-    // combos: si el carrito es solo combos (pSub=0), no hay nada que
-    // descontar y se oculta. Hasta el 11/9/2026 habia otro renglon, "Estás a
-    // $X de tener 10% OFF por superar los $100.000": se fue con ese descuento.
+    // Incentivo. Hasta el 15/10/2026 recordaba "Pagando en efectivo tenés 10%
+    // OFF"; ese descuento se saco (ver `cashDiscountActive`). Queda solo el
+    // aviso de un descuento que se aplico de verdad (un cupon).
     var incentiveEl = $id('cart-incentive');
     var pSub = descontableSubtotal();
-    if (incentiveEl && discountsActive() && pSub > 0) {
-      var sel = document.querySelector('input[name="pago"]:checked');
-      var isCash = sel && sel.value === 'Efectivo';
-
+    if (incentiveEl && pSub > 0) {
       if (discount > 0) {
         // Ya tiene descuento — felicitarlo
         incentiveEl.innerHTML = '<strong>¡Descuento aplicado!</strong><br>Estás ahorrando <strong>' + ars(discount) + '</strong>';
-        incentiveEl.style.display = '';
-      } else if (!isCash && ahorroPorEfectivo() > 0 && _anunciar10Hoy()) {
-        // Recordar el efectivo, sea el pedido chico o grande
-        incentiveEl.innerHTML = '<div class="incentive-cash" style="border:none;margin:0;padding:0;">Pagando en efectivo tenés 10% OFF</div>';
         incentiveEl.style.display = '';
       } else {
         incentiveEl.style.display = 'none';
@@ -9086,8 +9082,8 @@ function updatePromoBar() {
        sumaban. Con un solo descuento, esa aclaracion no tiene de que hablar. */
     /* Sin emoji y sin adorno: el CSS la pone en mayusculas, que es como
        lo escribe una tienda — no como lo escribiria un chat. */
-    chips.push('10% OFF pagando en efectivo');
-    chips.push('Los combos no participan de esta promoción');
+    /* El 10% del efectivo se saco el 15/10/2026: `discountsActive()` da false
+       y esta rama no corre. Si vuelve un descuento automatico, su chip va aca. */
   }
   // Chip de cutoff Red (aplica en Pilar Red haya descuentos o no).
   var cutoffChip = _pilarRedCutoffChip();

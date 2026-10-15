@@ -364,7 +364,9 @@ async function main() {
       ' guardada: localStorage.getItem("maleu_zone") })'));
     chk(!/D[oó]nde entregamos/.test(traszona.chip), 'ahora el chip dice la zona', '"' + traszona.chip + '"');
     chk(traszona.cta === false, 'el cartel se fue');
-    chk(traszona.promo !== 'none', 'y aparece la franja del 10%, que ahora SI corresponde');
+    /* Hasta el 15/10/2026 aca aparecia la franja del 10%. Ese descuento se saco
+       y en Estancias la franja ya no tiene nada que decir. */
+    chk(traszona.promo === 'none', 'y no aparece ninguna franja del 10% (se saco el 15/10/2026)');
     chk(traszona.hero === true, 'el hero ya puede decir los dias');
     chk(traszona.guardada === 'estancias', 'la zona quedo guardada', String(traszona.guardada));
     const origen = JSON.parse(await ev(ultimoEvento('select_zone')) || 'null') || {};

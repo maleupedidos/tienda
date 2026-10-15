@@ -399,7 +399,7 @@ async function main() {
       chk(!en.reserva && JSON.stringify(en.piezas) === '["ENT-01"]', 'la entraña va con su pieza, como siempre (' + JSON.stringify(en.piezas) + ')');
       chk(JSON.stringify(ped.reservaCarne) === JSON.stringify({ llega: '2026-09-18', cortes: { CVa: 1.5, CLo: 2 } }), 'el pedido dice de que compra es la reserva (' + JSON.stringify(ped.reservaCarne) + ')');
       chk(ped.canal === 'Home' && ped.fechaEntrega === '2026-09-18', 'a la hoja Home, para el viernes 18 (' + ped.canal + ', ' + ped.fechaEntrega + ')');
-      chk(Number(ped.descuento) === Math.round(esp.sub * 0.1) && Math.abs(ped.total - (esp.sub - esp.desc)) < 2, 'el 10% en efectivo incluye la carne estimada (' + ped.descuento + ' de ' + esp.sub + ', total ' + ped.total + ')');
+      chk(Number(ped.descuento) === 0 && Math.abs(ped.total - esp.sub) < 2, 'en efectivo el total es el subtotal con la carne estimada, sin 10% (' + ped.descuento + ' de ' + esp.sub + ', total ' + ped.total + ')');
     }
     await esperar('false', 2500);
     /* EL PEDIDO TERMINA EN LA TIENDA (29/9/2026). Hasta ese dia esto se leia

@@ -1,5 +1,10 @@
 /**
- * La franja del 10% se esconde al bajar, en el celular (13/9/2026).
+ * La franja de arriba se esconde al bajar, en el celular (13/9/2026).
+ *
+ * DESDE EL 15/10/2026 SE MIDE EN UN BARRIO CON VENDEDOR. Hasta ese dia la
+ * franja de Estancias decia el 10% en efectivo, y ese descuento se saco: en
+ * Estancias ya no hay franja. La que queda es la del cierre de los jueves en
+ * los barrios con vendedor, y el mecanismo de esconderla es el mismo.
  *
  *   node _tools/verificar-franja.js [ancho]      (390 por defecto)
  *
@@ -91,9 +96,18 @@ async function esperarPagina(puerto) {
   throw new Error('Chrome no abrio');
 }
 
+/* Un vendedor inventado (este repo es publico) con el barrio donde se mide. */
+const VENDEDORES = { vendedores: [{ nombre: 'Vendedor Prueba', wa: '5491100000001', alias: '',
+  barrios: ['Tortugas y alrededores', 'El Lucero'] }] };
+const SEMBRAR = { maleu_zone: 'pilar',
+  maleu_pilar_zona: { val: 'Tortugas y alrededores', nombre: 'Tortugas y alrededores', ts: 1 },
+  maleu_pilar_barrio: { val: 'El Lucero', nombre: 'El Lucero', ts: 1 },
+  maleu_delivery_date: { iso: '2026-09-18', dayName: 'Viernes', flexible: false, zone: 'pilar', ts: 1 } };
+
 /* El reloj y el backend. Stock para todo: lo que se mide es la barra. */
 const PREP = '(function () {' +
-  'try { localStorage.clear(); } catch (e) {}' +
+  'try { localStorage.clear(); var S = ' + JSON.stringify(SEMBRAR) + ';' +
+  ' Object.keys(S).forEach(function (k) { localStorage.setItem(k, typeof S[k] === "string" ? S[k] : JSON.stringify(S[k])); }); } catch (e) {}' +
   'var RD = Date; window.__ahora = ' + DOMINGO + ';' +
   'function FD() { if (!(this instanceof FD)) return new RD(window.__ahora).toString(); if (arguments.length === 0) return new RD(window.__ahora);' +
   '  var a = [null].concat([].slice.call(arguments)); return new (Function.prototype.bind.apply(RD, a))(); }' +
@@ -103,6 +117,7 @@ const PREP = '(function () {' +
   'window.fetch = function (url, opts) { var u = String(url);' +
   '  if (opts && String(opts.method || "").toUpperCase() === "POST" && u.indexOf("script.google") >= 0) { window.__post++; return new Promise(function () {}); }' +
   '  if (u.indexOf("action=piezas_full") >= 0) return json({});' +
+  '  if (u.indexOf("action=vendedores") >= 0) return json(' + JSON.stringify(VENDEDORES) + ');' +
   '  if (u.indexOf("script.google") >= 0) return json({ ok: true });' +
   '  return orig.apply(this, arguments); };' +
   '})();';
@@ -174,13 +189,9 @@ async function main() {
     await cli.enviar('Page.addScriptToEvaluateOnNewDocument', { source: PREP });
     await cli.enviar('Page.navigate', { url: 'http://127.0.0.1:' + PUERTO + '/index.html?t=' + Date.now() });
     if (!(await esperar("typeof PRODUCTOS !== 'undefined' && !!document.getElementById('loc-step-zone')", 15000))) throw new Error('la tienda no arranco');
-    await ev('(async function () { var d = function (ms) { return new Promise(function (s) { setTimeout(s, ms); }); };' +
-      /* Se escribe el barrio: el modal dejo de tener un boton por zona. */
-      'var i = document.getElementById("dir-input");' +
-      'if (i) { i.value = "Estancias del Pilar"; dirBuscar(); }' +
-      'await d(250);' +
-      'var z = document.querySelector("#dir-lista .dir-op"); if (z) { z.click(); await d(500); }' +
-      'var f = document.querySelector("#loc-dates-grid button[onclick*=\'2026-09-18\']"); if (f) f.click(); })()');
+    /* La zona va sembrada en el PREP (El Lucero, de vendedor): el control de
+       abajo exige que la tienda la haya tomado como tal. */
+    await esperar('typeof _pilarBarrioIsRed === "function" && _pilarBarrioIsRed()', 8000);
     await dormir(1200);
     /* Las fotos lazy cambian el alto de la pagina mientras se scrollea y eso
        ensucia la medicion del salto: se cargan todas antes. */
@@ -189,7 +200,8 @@ async function main() {
     await ev('document.documentElement.style.scrollBehavior = "auto"');
 
     let e = await estado();
-    chk(e.pAlto > 20, 'la franja del 10% existe en Estancias (' + e.pAlto + 'px; sin esto lo de abajo no mide nada)');
+    chk(await ev('_pilarBarrioIsRed()'), 'CONTROL: la zona es un barrio con vendedor');
+    chk(e.pAlto > 20, 'la franja existe (' + e.pAlto + 'px; sin esto lo de abajo no mide nada)');
 
     if (CEL) {
       console.log(DIM + '== Celular ==' + RST);
@@ -315,16 +327,15 @@ async function main() {
     const alOtroDia = await verCarteles(Date.UTC(2026, 8, 25, 3, 1, 0));   // 25/9 00:01 AR
     const normal    = await verCarteles(DOMINGO);
 
-    chk(!elDia.franja && !elDia.hint && !elDia.incentivo,
-        'el dia de la ruleta NINGUNO de los tres carteles habla del 10%', JSON.stringify(elDia));
-    chk(elDia.descuentoSigueVivo,
-        'pero el descuento sigue aplicandose: se apaga el anuncio, no la plata');
-    chk(!esaNoche.franja && !esaNoche.hint && !esaNoche.incentivo,
-        'y siguen callados hasta las 23:59 de ese dia', JSON.stringify(esaNoche));
+    chk(!elDia.franja && !esaNoche.franja,
+        'el dia de la ruleta la franja no sale, hasta las 23:59', JSON.stringify(elDia));
     chk(alOtroDia.franja && alOtroDia.anuncia,
-        'A LA MEDIANOCHE VUELVEN SOLOS, sin que nadie publique nada', JSON.stringify(alOtroDia));
-    chk(normal.franja && normal.hint,
-        'y cualquier otro dia estan como siempre', JSON.stringify(normal));
+        'A LA MEDIANOCHE VUELVE SOLA, sin que nadie publique nada', JSON.stringify(alOtroDia));
+    chk(normal.franja, 'y cualquier otro dia esta como siempre', JSON.stringify(normal));
+    /* Desde el 15/10/2026 no hay 10% del efectivo: ningun cartel lo promete,
+       ningun dia. */
+    chk([elDia, esaNoche, alOtroDia, normal].every(function (x) { return !x.hint && !x.incentivo && !x.descuentoSigueVivo; }),
+        'ningun dia el carrito ni el medio de pago prometen el 10%', JSON.stringify(normal));
 
     /* Se deja la pagina como estaba, que abajo se miden POSTs y el ancho. */
     await ev('window.__ahora = ' + DOMINGO + '; cart = {}; updateUI(); updatePromoBar();' +

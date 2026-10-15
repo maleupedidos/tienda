@@ -4403,6 +4403,44 @@ $3.000 y el pedido sale a Pilar en vez de a Rufo.
 92 templates, los únicos con `?o=` eran los 10 `jug_*` (en revisión de Meta) y un
 borrador; ninguno había salido.
 
+## Sin 10% en efectivo, en todos lados (15/10/2026)
+
+Tadeo: *"nos pasamos a un monotributo más grande y ya no lo necesito. Vamos a
+fidelizar con templates para clientes activos y regalando productos, no con un
+descuento automático"*. **Desde ese día la tienda no tiene ningún descuento
+automático.** Lo que **queda** son los cupones (ruleta, vendedores, campañas).
+
+- **Se apagó en la raíz**: `cashDiscountActive()` devuelve `false`. De ahí cuelgan
+  el total, la etiqueta, la franja, el incentivo del carrito y el cartel del medio
+  de pago, así que se apagaron todos juntos. El código de esas cinco piezas se
+  dejó, por si algún día vuelve un descuento automático.
+- **Los textos que lo prometían se borraron**: Preguntas, Términos, el renglón
+  del carrito ("10% OFF" → "Descuento") y el cartel del pago en `index.html`.
+- **En Estancias ya no hay franja arriba**: su único mensaje era el 10%. La de
+  los barrios con vendedor (el cierre del jueves) sigue, y por eso
+  `verificar-franja.js` se mide desde el 15/10 en El Lucero.
+- **El ERP salió antes (@925)**. `_descAutoPedido_` guarda 0, y el 10% exacto lo
+  acepta **sólo en efectivo**, que es lo que todavía puede mandar una pestaña
+  abierta desde antes. Si el descuento volviera, tiene que volver en las dos puntas.
+
+> [!note] Rojos preexistentes medidos ese día contra HEAD limpio (`RAIZ=`)
+> · `verificar-envio`: *"ROTO: no pude armar el pedido de prueba"*, igual con la
+>   tienda de antes.
+> · `verificar-franja` en un barrio con vendedor: el título de la primera
+>   categoría queda 2px debajo de la franja (401 ≥ 403). Antes no se veía porque
+>   la red se medía en Estancias.
+
+## El catering se hace en la parrilla del lugar (15/10/2026)
+
+`catering.html` decía *"Llevamos el horno a tu casa"* en el título y en las dos
+descripciones, y *"el horno, el carbón…"* en lo que llevamos. **Era falso: nunca
+llevamos horno.** Las pizzas se hacen **en la parrilla de la casa**; llevamos el
+carbón, la masa, los quesos, los toppings y la verdulería, y vamos dos personas.
+El título pasó a *"Pizzas a la parrilla en tu evento"* y se sumó la pregunta
+*"¿Qué tiene que haber en el lugar?"* → una parrilla. El cotizador del ERP no
+tiene ningún costo de horno (carbón, aceite y nafta por evento). Los *"al horno"*
+de las fichas y de Tips son instrucciones de cocción para el cliente: quedan.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

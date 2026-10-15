@@ -504,11 +504,12 @@ async function main() {
     await ev('document.getElementById("pago-tr").click()');
     await dormir(300);
     const conTransfer = (await pasos()).total;
-    chk(conEfectivo !== conTransfer,
-        'el total cambia al pasar de efectivo a transferencia', conEfectivo + ' -> ' + conTransfer);
+    /* Desde el 15/10/2026 no hay 10% del efectivo: el total es el mismo pague
+       como pague. Lo que se mide es que el renglon siga al medio de pago sin
+       inventar un descuento. */
     const nEf = Number(String(conEfectivo).replace(/\D/g, ''));
     const nTr = Number(String(conTransfer).replace(/\D/g, ''));
-    chk(nEf < nTr, 'y en efectivo es MENOS: el 10% esta contado', nEf + ' < ' + nTr);
+    chk(nEf > 0 && nEf === nTr, 'el total es el mismo en efectivo y por transferencia (sin 10%)', nEf + ' = ' + nTr);
     const propio = await ev('(function () {' +
       ' var t = Math.round(cartTotal() - getTotalDiscount() + getShipping() - getSaldoAFavor());' +
       ' return String(t); })()');

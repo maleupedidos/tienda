@@ -1,5 +1,6 @@
 /**
- * El unico descuento automatico es el 10% en efectivo (11/9/2026).
+ * No hay descuento automatico: el 10% en efectivo se saco el 15/10/2026
+ * (el de +$100.000, el 11/9/2026).
  *
  *   node _tools/verificar-descuento.js [ancho]      (390 por defecto)
  *
@@ -16,7 +17,7 @@
  * QUE HACE. Abre la tienda en un Chrome de verdad con un carrito de mas de
  * $100.000 (productos + una pieza de carne) y verifica:
  *   · por transferencia: sin descuento en ningun lado, ni la palabra "100.000";
- *   · en efectivo: el 10%, con su etiqueta;
+ *   · en efectivo: TAMPOCO (desde el 15/10/2026), ni la fila ni la etiqueta;
  *   · el JSON del pedido por transferencia: descuento 0 y total = subtotal;
  *   · en Pilar (fuera de los ex-Home): ningun descuento, ni la barra de promo.
  *
@@ -267,30 +268,24 @@ async function main() {
        carteles siempre se pone en rojo justo esos dias, con la tienda haciendo
        exactamente lo que se le pidio. Se mide la regla entera: si hoy se
        anuncia, tienen que estar; si no, tienen que estar callados los tres. */
-    const anuncia = (await ev('_anunciar10Hoy()')) === true;
-    if (anuncia) {
-      chk(/efectivo/i.test(tr.incentivo) && /10%/.test(tr.incentivo),
-          'el carrito recuerda el efectivo, aunque el pedido sea grande: "' + tr.incentivo.trim() + '"');
-      chk(tr.hint, 'y el cartel del medio de pago tambien');
-      /* Se pide QUE LO DIGA, no las palabras exactas: el 23/9/2026 la franja
-         paso a 'pagando en efectivo' (y a mayusculas por CSS) y este chequeo se
-         puso en rojo sin que el descuento hubiera cambiado. Un test atado a la
-         redaccion frena el copy, que es justo lo que tiene que poder moverse. */
-      chk(/10% OFF/.test(tr.promo) && /efectivo/i.test(tr.promo) && !/100\.000/.test(tr.promo) && !/acumulables/i.test(tr.promo),
-          'la barra de promo dice el efectivo y nada de "$100.000" ni "no acumulables"');
-    } else {
-      console.log(DIM + '  (hoy es un dia sin anuncio del 10%: se mide al reves)' + RST);
-      chk(!/10%/.test(tr.incentivo), 'hoy el carrito NO menciona el 10%: "' + tr.incentivo.trim() + '"');
-      chk(!tr.hint, 'ni el cartel del medio de pago');
-      chk(!/10% OFF/.test(tr.promo), 'ni la barra de promo ("' + String(tr.promo).slice(0, 40) + '")');
-    }
+    /* Desde el 15/10/2026 ningun cartel habla del 10%: ni el carrito, ni el
+       cartel del medio de pago, ni la barra de promo. Tadeo: "nos pasamos a un
+       monotributo mas grande y ya no lo necesito". */
+    chk(!/10%/.test(tr.incentivo), 'el carrito NO menciona el 10%: "' + tr.incentivo.trim() + '"');
+    chk(!tr.hint, 'ni el cartel del medio de pago');
+    chk(!/10%/.test(tr.promo), 'ni la barra de promo ("' + String(tr.promo).slice(0, 40) + '")');
     chk(!/100\.000|\+\$100K/.test(tr.toda), 'la palabra "100.000" no aparece en ninguna parte de la pagina');
 
     console.log('\n' + DIM + '== En efectivo ==' + RST);
     const ef = JSON.parse(await ev(PAGAR('Efectivo')));
-    chk(ef.desc === Math.round(ef.sub * 0.10), 'el 10%: ' + ef.desc + ' sobre ' + ef.sub);
-    chk(ef.etiqueta === '10% OFF Efectivo', 'con su etiqueta ("' + ef.etiqueta + '")');
-    chk(ef.filaDesc, 'y la fila de descuento en el carrito');
+    /* El control: el carrito tiene algo que descontar (si fuera solo combos,
+       el 0 de abajo no probaria nada). */
+    chk(ef.sub > 0, 'hay subtotal descontable (' + ef.sub + ')');
+    chk(ef.desc === 0, 'en efectivo NO hay 10%: ' + ef.desc + ' sobre ' + ef.sub);
+    chk(ef.etiqueta === '', 'ninguna etiqueta de descuento ("' + ef.etiqueta + '")');
+    chk(!ef.filaDesc, 'el carrito no dibuja la fila de descuento');
+    chk(!/10%/.test(ef.incentivo) && !ef.hint && !/10%/.test(ef.promo), 'ningun cartel promete el 10%');
+    chk(!/10% OFF/i.test(ef.toda), 'la pagina entera no dice "10% OFF"');
 
     console.log('\n' + DIM + '== El pedido que se le manda al ERP, por transferencia ==' + RST);
     const crudo = await ev(MANDAR);
