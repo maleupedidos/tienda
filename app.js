@@ -6067,7 +6067,7 @@ function _pintarBotonFinal() {
   }
   var n = $id('form-note');
   if (n && CIERRE_EN_LA_TIENDA) {
-    n.textContent = 'Al tocar el bot\u00f3n registramos tu pedido y te mandamos la confirmaci\u00f3n por WhatsApp.';
+    n.textContent = 'Al tocar el bot\u00f3n registramos tu pedido y te mostramos c\u00f3mo seguirlo.';
   }
 }
 
@@ -6097,7 +6097,11 @@ function setSendLoaderDone(info) {
      Es lo que convierte "mandaste un mensaje" en "tenes un pedido". Si por lo
      que sea no vino, el pedido esta igual: no se inventa ninguno. */
   if (t) t.textContent = info.n ? 'Pedido #' + info.n + ' confirmado' : 'Pedido confirmado';
-  if (sub) sub.textContent = 'Te mandamos la confirmación por WhatsApp.';
+  /* Desde el 19/10/2026 no se promete el WhatsApp: el cupo de WATI se acabo y
+     la confirmacion no salia. Lo que si existe siempre es el seguimiento. */
+  if (sub) sub.textContent = info.t ? 'Guardá esta página: acá ves cómo avanza tu pedido.' : 'Tu pedido quedó registrado.';
+  var _segBox = $id('seg');
+  if (_segBox) _segBox.hidden = true;   /* lo prende segPintar, solo si el pedido tiene seguimiento */
 
   /* A PANTALLA COMPLETA. Solo en `done`: mientras el pedido se registra sigue
      siendo el cartel, que es lo correcto — ahi todavia se puede volver. */
@@ -6215,6 +6219,279 @@ function setSendLoaderDone(info) {
     btn.textContent = 'Volver a la tienda';
     try { btn.focus({ preventScroll: true }); } catch (e) {}
   }
+}
+
+/* ══ EL SEGUIMIENTO DEL PEDIDO (19/10/2026) ══════════════════════════════
+   El 19/10 se acabo el cupo de WATI y la confirmacion por WhatsApp dejo de
+   llegar: el cliente compraba y no sabia nada mas. Tadeo pidio una pantalla
+   "tipo Mercado Libre" donde vea cuando le llega y como avanza, y que pueda
+   dejar un mail para los avisos.
+
+   · La pantalla de "Pedido confirmado" ES el seguimiento: abajo del titulo
+     aparece la linea de tiempo (recibido → confirmado → armado → hoy es el
+     dia → entregado), que pregunta al ERP (`?action=seguimiento&t=`).
+   · El codigo es el clientOrderId (co_<ms>_<azar>), que solo conoce este
+     navegador. La URL pasa a ser /?seguimiento=<codigo>: refrescar deja al
+     cliente en el mismo lugar, y el link es el mismo que va en los mails.
+   · Se guarda en `maleu_seguimiento_v1` con el comprobante entero (productos,
+     direccion, alias): si vuelve a entrar a la tienda, arriba le queda la
+     franja "Tu pedido #N" para volver. Se olvida al entregarse o a los 15 dias.
+   · "Atras" desde el seguimiento NO vuelve al formulario (ya no existe ese
+     pedido): cierra la pantalla y deja la tienda con la franja.
+   · Solo Home y Pilar: Clubes se arma distinto en el ERP y no tiene etapas. */
+var SEG_KEY = 'maleu_seguimiento_v1';
+var SEG_DIAS = 15;
+var SEG_POLL_MS = 60000;
+var SEG_POLL_MAX = 40;
+var _segT = '', _segPolls = 0, _segTimer = null, _segUlt = null;
+var SEG_NOMBRES = { recibido: 'Recibimos tu pedido', confirmado: 'Entrega confirmada', armado: 'Armado',
+                    hoy: 'Hoy es el día', entregado: 'Entregado' };
+var SEG_DIAS_SEM = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
+function _segEsCodigo(t) { return /^co_\d{10,14}_[a-z0-9]{6,40}$/.test(String(t || '')); }
+function _segLeer() {
+  try {
+    var g = JSON.parse(localStorage.getItem(SEG_KEY) || 'null');
+    if (!g || !_segEsCodigo(g.t)) return null;
+    if (Date.now() - (Number(g.ts) || 0) > SEG_DIAS * 86400000) { localStorage.removeItem(SEG_KEY); return null; }
+    return g;
+  } catch (e) { return null; }
+}
+function _segGuardar(g) { try { localStorage.setItem(SEG_KEY, JSON.stringify(g)); } catch (e) {} }
+function _segUrl(t) { return '/?seguimiento=' + encodeURIComponent(t); }
+/* 'jueves 22/10' de 'aaaa-mm-dd'. */
+function _segDia(iso) {
+  var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return '';
+  var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return SEG_DIAS_SEM[d.getDay()] + ' ' + m[3] + '/' + m[2];
+}
+function _segHoyIso() {
+  var d = new Date();
+  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+}
+
+/* Al confirmarse un pedido: guardarlo, cambiar la URL y prender la linea de tiempo. */
+function segAlConfirmar(info) {
+  if (!info || !_segEsCodigo(info.t)) return;
+  if (info.canal !== 'Home' && info.canal !== 'Pilar' && info.canal !== 'Red') return;
+  var g = { t: info.t, ts: Date.now(), n: info.n || '', fecha: info.fecha || '', info: info, etapa: 'recibido' };
+  _segGuardar(g);
+  /* La entrada /checkout que puso abrirCheckout se REEMPLAZA: "atras" ya no
+     tiene un formulario al que volver, y refrescar cae en el seguimiento. */
+  try { history.replaceState({ seg: 1 }, '', _segUrl(info.t)); } catch (e) {}
+  _coEnHistoria = false;
+  segPintar(g, null);
+  segPreguntar(info.t, true);
+}
+
+/* Abre la pantalla de seguimiento desde cero (recarga, link de un mail). */
+function segAbrir(t) {
+  var g = _segLeer();
+  if (!g || g.t !== t) g = { t: t, ts: Date.now(), n: '', fecha: '', info: null, etapa: '' };
+  var info = g.info || { n: g.n, entrega: g.fecha ? _segDia(g.fecha) : '', detalle: '', total: '', alias: [] };
+  try { showSendLoader(); } catch (e) {}
+  try { setSendLoaderDone(info); } catch (e) {}
+  var sub = $id('send-sub');
+  if (sub) sub.textContent = 'Guardá esta página: acá ves cómo avanza tu pedido.';
+  segPintar(g, null);
+  segPreguntar(t, true);
+}
+
+/* Cerrar la pantalla y quedar en la tienda, con la franja para volver. */
+function segCerrar() {
+  _segParar();
+  try { hideSendLoader(); } catch (e) {}
+  try { cerrarCheckout(true); } catch (e) {}
+  try { history.replaceState({}, '', '/'); } catch (e) {}
+  segFranja();
+  try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (e) {}
+}
+
+function _segParar() { clearTimeout(_segTimer); _segTimer = null; }
+
+function segPreguntar(t, primera) {
+  _segT = t;
+  _segParar();
+  if (primera) _segPolls = 0;
+  if (_segPolls++ >= SEG_POLL_MAX) return;
+  fetch(APPS_SCRIPT_URL + '?action=seguimiento&t=' + encodeURIComponent(t), { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (_segT !== t) return;
+      if (j && j.ok) {
+        _segUlt = j;
+        var g = _segLeer();
+        if (g && g.t === t && j.encontrado) {
+          g.etapa = j.etapa; if (j.n) g.n = j.n; if (j.fecha) g.fecha = j.fecha;
+          _segGuardar(g);
+        }
+        segPintar(g && g.t === t ? g : { t: t, info: null }, j);
+      }
+      _segProgramar(t);
+    })
+    .catch(function () { _segProgramar(t); });
+}
+function _segProgramar(t) {
+  var j = _segUlt;
+  if (j && (j.etapa === 'entregado' || j.etapa === 'cancelado')) return;
+  var ov = $id('send-overlay');
+  if (!ov || !ov.classList.contains('pantalla')) return;
+  _segTimer = setTimeout(function () { if (!document.hidden) segPreguntar(t, false); else _segProgramar(t); }, SEG_POLL_MS);
+}
+document.addEventListener('visibilitychange', function () {
+  if (!document.hidden && _segT) {
+    var ov = $id('send-overlay');
+    if (ov && ov.classList.contains('pantalla')) segPreguntar(_segT, false);
+  }
+});
+
+/* Pinta la linea de tiempo. `j` = respuesta del ERP (null = todavia no llego). */
+function segPintar(g, j) {
+  var box = $id('seg');
+  if (!box) return;
+  box.hidden = false;
+  var etapas = (j && j.encontrado && j.etapas) ? j.etapas : null;
+  var etapa = (j && j.encontrado) ? j.etapa : (g.etapa || 'recibido');
+  var fecha = (j && j.fecha) || g.fecha || '';
+  var horario = (j && j.horario) || '';
+  var n = (j && j.n) || g.n || (g.info && g.info.n) || '';
+
+  var tit = $id('send-title');
+  /* "confirmado" en el titulo es "lo registramos" —como fue siempre—; la etapa
+     de la linea se llama "Entrega confirmada" para no decir dos veces lo mismo. */
+  if (tit && n) tit.textContent = 'Pedido #' + n + ' ' + ({ cancelado: 'cancelado', entregado: 'entregado' }[etapa] || 'confirmado');
+
+  var llega = $id('seg-llega');
+  if (llega) {
+    var txt;
+    if (etapa === 'cancelado') txt = 'Este pedido se canceló.';
+    else if (etapa === 'entregado') txt = '¡Entregado! Que lo disfrutes.';
+    else if (fecha && fecha === _segHoyIso()) txt = 'Llega hoy' + (horario ? ', ' + horario : '');
+    else if (fecha) txt = 'Te llega el ' + _segDia(fecha) + (horario ? ', ' + horario : '');
+    else txt = (g.info && g.info.entrega) ? 'Entrega: ' + g.info.entrega : 'Recibimos tu pedido';
+    llega.textContent = txt;
+    llega.className = 'seg-llega' + (etapa === 'cancelado' ? ' seg-cancelado' : etapa === 'entregado' ? ' seg-entregado' : '');
+  }
+
+  var ol = $id('seg-pasos');
+  if (ol) {
+    ol.innerHTML = '';
+    ol.hidden = etapa === 'cancelado';
+    var lista = etapas || ['recibido', 'confirmado', 'armado', 'hoy', 'entregado'].map(function (k) {
+      return { k: k, ok: k === 'recibido', cuando: '' };
+    });
+    lista.forEach(function (p) {
+      var li = document.createElement('li');
+      li.className = 'seg-paso' + (p.ok ? ' ok' : '') + (p.k === etapa ? ' actual' : '');
+      var nom = document.createElement('span');
+      nom.className = 'seg-paso-nom';
+      nom.textContent = SEG_NOMBRES[p.k] || p.k;
+      li.appendChild(nom);
+      if (p.ok && p.cuando) {
+        var c = document.createElement('span');
+        c.className = 'seg-paso-cuando';
+        c.textContent = p.cuando;
+        li.appendChild(c);
+      }
+      ol.appendChild(li);
+    });
+  }
+
+  var nota = $id('seg-nota');
+  if (nota) {
+    var NOTAS = {
+      recibido: (j && j.encontrado) ? 'Lo estamos revisando: en un rato te lo confirmamos.' : 'Ya lo tenemos. En un ratito aparece acá cómo avanza.',
+      confirmado: 'Te lo llevamos el día que elegiste.',
+      armado: 'Ya está preparado y listo para salir.',
+      hoy: 'Hoy te lo llevamos.',
+      entregado: '', cancelado: 'Si no lo esperabas, escribinos y lo vemos.'
+    };
+    nota.textContent = NOTAS[etapa] || '';
+    nota.hidden = !nota.textContent;
+  }
+
+  /* El mail: si ya hay uno, se dice cual (enmascarado) y se ofrece cambiarlo. */
+  var form = $id('seg-mail'), okm = $id('seg-mail-ok');
+  var terminado = etapa === 'entregado' || etapa === 'cancelado';
+  if (form && okm) {
+    var tiene = j && j.mail;
+    form.hidden = terminado || !!tiene;
+    okm.hidden = terminado || !tiene;
+    if (tiene) {
+      okm.innerHTML = '';
+      okm.appendChild(document.createTextNode('Te avisamos cada paso a ' + j.mail + '. '));
+      var cam = document.createElement('button');
+      cam.type = 'button'; cam.className = 'seg-mail-cambiar'; cam.textContent = 'Cambiar';
+      cam.onclick = function () { okm.hidden = true; form.hidden = false; var i = $id('seg-mail-in'); if (i) i.focus(); };
+      okm.appendChild(cam);
+    }
+  }
+  var b = $id('send-done-btn');
+  if (b) { b.onclick = segCerrar; b.textContent = 'Volver a la tienda'; }
+}
+
+function segMandarMail(ev) {
+  if (ev) ev.preventDefault();
+  var inp = $id('seg-mail-in'), msg = $id('seg-mail-msg'), btn = $id('seg-mail-btn');
+  var mail = String((inp && inp.value) || '').trim();
+  if (!/^[^\s@,;<>]+@[^\s@,;<>]+\.[a-zA-Z]{2,}$/.test(mail)) {
+    if (msg) msg.textContent = 'Revisá el mail: algo como nombre@gmail.com';
+    return false;
+  }
+  if (!_segT) return false;
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
+  if (msg) msg.textContent = '';
+  fetch(APPS_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'seguimientoMail', t: _segT, mail: mail }) })
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Avisarme'; }
+      if (j && j.ok) {
+        _track('seguimiento_mail', {});
+        if (_segUlt) _segUlt.mail = j.mail;
+        var g = _segLeer();
+        segPintar(g && g.t === _segT ? g : { t: _segT, info: null }, _segUlt || { mail: j.mail });
+        toast('Listo, te avisamos por mail', 2600);
+      } else if (msg) {
+        msg.textContent = (j && j.error === 'todavia no encuentro el pedido')
+          ? 'Tu pedido se está guardando: probá de nuevo en un minuto.'
+          : 'No se pudo guardar. Probá de nuevo en un rato.';
+      }
+    })
+    .catch(function () {
+      if (btn) { btn.disabled = false; btn.textContent = 'Avisarme'; }
+      if (msg) msg.textContent = 'No se pudo guardar. Probá de nuevo en un rato.';
+    });
+  return false;
+}
+
+/* La franja de la tienda: "Tu pedido #N · llega el jueves" → vuelve al seguimiento. */
+function segFranja() {
+  var el = $id('seg-banner');
+  if (!el) return;
+  var g = _segLeer();
+  var vivo = g && g.etapa !== 'entregado' && g.etapa !== 'cancelado' && !(g.fecha && g.fecha < _segHoyIso());
+  el.hidden = !vivo;
+  if (!vivo) return;
+  var t = $id('seg-banner-txt');
+  if (t) t.textContent = 'Tu pedido' + (g.n ? ' #' + g.n : '') +
+    (g.fecha ? (g.fecha === _segHoyIso() ? ' llega hoy' : ' llega el ' + _segDia(g.fecha)) : ' está en marcha');
+  el.href = _segUrl(g.t);
+  el.onclick = function (e) {
+    e.preventDefault();
+    try { history.pushState({ seg: 1 }, '', _segUrl(g.t)); } catch (e2) {}
+    segAbrir(g.t);
+  };
+}
+
+/* "No quiero mas avisos" del mail: se da de baja y se muestra el seguimiento. */
+function _segBaja(t) {
+  fetch(APPS_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'seguimientoMail', t: t, mail: '' }) })
+    .then(function (r) { return r.json(); })
+    .then(function (j) { if (j && j.ok) { toast('Listo: no te mandamos más mails de este pedido', 3500); if (_segUlt) _segUlt.mail = ''; segPreguntar(t, false); } })
+    .catch(function () {});
 }
 
 /* Copiar con la red del metodo viejo, igual que el alias del formulario: si
@@ -6507,6 +6784,12 @@ function cerrarCheckout(porAtras) {
 window.addEventListener('popstate', function (ev) {
   var sec = $id('form-section');
   if (sec && !sec.hidden) cerrarCheckout(true);
+  /* El seguimiento (19/10/2026): "atras" desde la pantalla del pedido deja la
+     tienda con la franja; "adelante" a un /?seguimiento= la vuelve a abrir. */
+  var mSeg = location.search.match(/[?&]seguimiento=([^&]+)/);
+  if (mSeg && _segEsCodigo(decodeURIComponent(mSeg[1]))) { segAbrir(decodeURIComponent(mSeg[1])); return; }
+  var ovSeg = $id('send-overlay');
+  if (_segT && ovSeg && ovSeg.classList.contains('pantalla')) segCerrar();
 });
 
 /* Al abrir el formulario. El que ya nos compro tiene sus datos cargados desde
@@ -7178,13 +7461,23 @@ function enviarPedido() {
            simple —que es el que ya existia— y se limpia igual: el pedido
            esta, y la confirmacion se la manda el ERP por WhatsApp. */
         var _pintada = false;
-        try { setSendLoaderDone(_datosDelCierre(resp)); _pintada = true; } catch (_ep) {}
+        var _info = null;
+        try {
+          _info = _datosDelCierre(resp);
+          /* El seguimiento (19/10/2026): el codigo, el canal y la fecha. */
+          if (postData.canal === 'Home' || postData.canal === 'Pilar' || postData.canal === 'Red') {
+            _info.t = postData.clientOrderId; _info.canal = postData.canal; _info.fecha = postData.fechaEntrega || '';
+          }
+          setSendLoaderDone(_info); _pintada = true;
+        } catch (_ep) {}
         _marcarCuponUsado();
         _limpiarTrasPedido(false);
+        /* Despues de limpiar: un error del seguimiento no puede dejar el carrito lleno. */
+        if (_pintada && _info && _info.t) { try { segAlConfirmar(_info); } catch (_es) {} }
         if (!_pintada) {
           setSendLoaderSuccess();
           var _t = $id('send-sub');
-          if (_t) _t.textContent = 'Te mandamos la confirmación por WhatsApp.';
+          if (_t) _t.textContent = 'Tu pedido quedó registrado.';
           setTimeout(function () { hideSendLoader(); window.scrollTo({ top: 0, behavior: 'smooth' }); }, 2600);
         }
         return;
@@ -7288,6 +7581,18 @@ function _orderSignature(postData) {
     Math.round(Number(postData.total) || 0)
   ].join('|');
 }
+/* 16 caracteres al azar del generador del navegador (19/10/2026). Desde el
+   seguimiento este id es la llave del pedido para el cliente —quien la tiene
+   ve sus etapas—, y Math.random daba 8. Sin crypto, queda Math.random. */
+function _azarId() {
+  var A = 'abcdefghijklmnopqrstuvwxyz0123456789', out = '';
+  try {
+    var b = new Uint8Array(16); crypto.getRandomValues(b);
+    for (var i = 0; i < b.length; i++) out += A[b[i] % 36];
+    return out;
+  } catch (e) {}
+  return (Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10)).slice(0, 16);
+}
 function _clientOrderIdForOrder(postData) {
   var sig = _orderSignature(postData);
   var map = {};
@@ -7298,7 +7603,7 @@ function _clientOrderIdForOrder(postData) {
     if (!map[k] || now - (map[k].ts || 0) > 1800000) delete map[k];
   });
   var oid = (map[sig] && map[sig].oid) ? map[sig].oid
-          : ('co_' + now + '_' + Math.random().toString(36).slice(2,10));
+          : ('co_' + now + '_' + _azarId());
   map[sig] = { oid: oid, ts: now };
   try { localStorage.setItem('maleu_order_sigs', JSON.stringify(map)); } catch(e) {}
   return oid;
@@ -8743,6 +9048,22 @@ try {
   if (/[?&]ir=checkout/.test(location.search) && cartCount() > 0) {
     setTimeout(function () { abrirCheckout(); }, 0);
   }
+} catch (e) {}
+/* EL SEGUIMIENTO (19/10/2026): /?seguimiento=<codigo> abre el pedido (al
+   refrescar, o desde el link de un mail); &baja=1 es el "no quiero mas
+   avisos" del mail. Sin eso, la franja si hay un pedido en marcha. */
+try {
+  var _mSeg = location.search.match(/[?&]seguimiento=([^&]+)/);
+  var _tSeg = _mSeg ? decodeURIComponent(_mSeg[1]) : '';
+  if (_segEsCodigo(_tSeg)) {
+    setTimeout(function () {
+      segAbrir(_tSeg);
+      if (/[?&]baja=1/.test(location.search)) {
+        try { history.replaceState({ seg: 1 }, '', _segUrl(_tSeg)); } catch (e2) {}
+        _segBaja(_tSeg);
+      }
+    }, 0);
+  } else segFranja();
 } catch (e) {}
 _pintarBotonFinal();
 updateCatNavTop();

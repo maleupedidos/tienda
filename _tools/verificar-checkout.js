@@ -633,7 +633,8 @@ async function main() {
         'el boton deja de ser de WhatsApp', '"' + btnCi.txt + '"');
     chk(btnCi.logo === false, 'y se va el logo: el pedido ya no se manda por ahi');
     chk(!/37, 211, 102/.test(btnCi.verde), 'ni el verde de WhatsApp', btnCi.verde);
-    chk(/confirmaci/i.test(btnCi.nota) && !/te llevamos a WhatsApp/i.test(btnCi.nota),
+    /* Desde el 19/10/2026 la nota habla del seguimiento, no de la confirmacion por WhatsApp. */
+    chk(/registramos tu pedido/i.test(btnCi.nota) && !/WhatsApp/i.test(btnCi.nota),
         'y la nota ya no promete que lo lleva a WhatsApp');
 
     /* El backend contesta que si a los 2 s. Es la unica forma de ver la
@@ -673,7 +674,10 @@ async function main() {
     chk(/done/.test(fin.cls), 'la tarjeta pasa al estado de pedido cerrado', fin.cls);
     chk(/Entrega/.test(fin.datos) && /Dirección/.test(fin.datos) && /Total/.test(fin.datos),
         'con la entrega, la direccion y el total, bien escritos');
-    chk(fin.url === urlAntes, 'Y NO SE FUE A WHATSAPP: sigue en la tienda');
+    /* Desde el 19/10/2026 la URL cambia A PROPOSITO a /?seguimiento=<codigo>
+       (ver verificar-seguimiento.js): lo que se mide es que siga en la tienda. */
+    chk(new URL(fin.url).origin === new URL(urlAntes).origin && /[?&]seguimiento=co_/.test(fin.url) && !/wa\.me/.test(fin.url),
+        'Y NO SE FUE A WHATSAPP: sigue en la tienda, en su seguimiento', fin.url);
     chk(!escapados.some((x) => /wa\.me|whatsapp/.test(x)),
         'ni lo intento por atras', escapados.join(' | ') || 'nada');
 
@@ -685,7 +689,7 @@ async function main() {
       ' var lo = card.querySelector(".send-loader").getBoundingClientRect();' +
       ' var btn = document.getElementById("send-done-btn");' +
       ' var wa = document.getElementById("send-done-wa");' +
-      ' return { clase: ov.className, ancho: Math.round(r.width), alto: Math.round(r.height),' +
+      ' return { clase: ov.className, ancho: Math.round(r.width), alto: Math.round(r.height), ovW: ov.clientWidth,' +
       '   viewW: window.innerWidth, viewH: window.innerHeight,' +
       '   loaderW: Math.round(lo.width), loaderH: Math.round(lo.height),' +
       '   items: document.querySelectorAll("#send-done-items li").length,' +
@@ -694,7 +698,10 @@ async function main() {
       '   waAlto: wa ? Math.round(wa.getBoundingClientRect().height) : 0 };' +
       '})())'));
     chk(/pantalla/.test(pant.clase), 'la confirmacion ocupa la pantalla, no es un cartel', pant.clase);
-    chk(pant.ancho === pant.viewW, 'la tarjeta va de borde a borde', pant.ancho + ' de ' + pant.viewW);
+    /* Contra el ancho UTIL de la pantalla, no el de la ventana: desde el
+       seguimiento (19/10/2026) la pantalla es mas alta que la ventana y en
+       escritorio aparece la barra de scroll, que se come 15 px. */
+    chk(pant.ancho === pant.ovW && pant.ovW >= pant.viewW - 20, 'la tarjeta va de borde a borde', pant.ancho + ' de ' + pant.ovW + ' (ventana ' + pant.viewW + ')');
     chk(pant.alto >= pant.viewH, 'y cubre el alto entero', pant.alto + ' >= ' + pant.viewH);
     /* El circulo del check es CUADRADO. Con `width:100%` heredado quedaba un
        ovalo de 84x72, y eso no lo dice ningun numero de la pagina: se vio en

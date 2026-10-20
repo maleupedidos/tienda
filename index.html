@@ -223,6 +223,14 @@
   </div>
 </header>
 
+<!-- LA FRANJA DEL PEDIDO EN MARCHA (19/10/2026). La prende segFranja si este
+     navegador tiene un pedido sin entregar: vuelve a su seguimiento. -->
+<a class="seg-banner" id="seg-banner" href="/" hidden>
+  <span class="seg-banner-punto" aria-hidden="true"></span>
+  <span id="seg-banner-txt">Tu pedido está en marcha</span>
+  <span class="seg-banner-ver">Ver &rsaquo;</span>
+</a>
+
 <!-- Panel del menu en celular. Vive fuera del <header> porque el header es
      sticky con overflow propio: adentro, el panel quedaria recortado. -->
 <div class="menu-overlay" id="menu-overlay" hidden onclick="toggleMenu()"></div>
@@ -803,6 +811,22 @@
          `setSendLoaderDone`; los renglones van por `textContent` porque la
          direccion y el detalle salen de lo que escribio el cliente. -->
     <div class="send-done">
+      <!-- EL SEGUIMIENTO (19/10/2026). Lo llena segPintar con lo que contesta
+           el ERP (?action=seguimiento). Solo pedidos de Home y Pilar. -->
+      <div class="seg" id="seg" hidden>
+        <p class="seg-llega" id="seg-llega"></p>
+        <ol class="seg-pasos" id="seg-pasos"></ol>
+        <p class="seg-nota" id="seg-nota" hidden></p>
+        <form class="seg-mail" id="seg-mail" novalidate onsubmit="return segMandarMail(event)">
+          <label for="seg-mail-in">&#191;Quer&eacute;s que te avisemos por mail c&oacute;mo avanza tu pedido?</label>
+          <div class="seg-mail-fila">
+            <input type="email" id="seg-mail-in" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="tu@mail.com" maxlength="120">
+            <button type="submit" id="seg-mail-btn">Avisarme</button>
+          </div>
+          <p class="seg-mail-msg" id="seg-mail-msg" aria-live="polite"></p>
+        </form>
+        <p class="seg-mail-ok" id="seg-mail-ok" hidden></p>
+      </div>
       <!-- EL COMPROBANTE (29/9/2026). Lo llena setSendLoaderDone: la lista de
            productos, la entrega, la direccion y el total. -->
       <ul class="send-done-items" id="send-done-items"></ul>
