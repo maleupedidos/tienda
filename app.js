@@ -107,8 +107,15 @@ const PRODUCTOS = [
   { id:25, cat:"Tartas",   nombre:"Tarta Jamón y Queso",           desc:"El clásico. Mucho jamón, mucho queso. Hecha como en casa.",                                                                  img:"tarta-jamon-queso.jpg", emoji:"🥧", chips:["Para 1–2 personas","Tarta de 16 cm","Al horno en 10 min"] },
   { id:26, cat:"Tartas",   nombre:"Tarta Calabaza",                desc:"Calabaza con queso rallado y semillas de girasol arriba. Sabor a horno familiar.",                                                                  img:"tarta-calabaza.jpg", emoji:"🥧", chips:["Para 1–2 personas","Tarta de 16 cm","Al horno en 10 min"] },
   { id:27, cat:"Tartas",   nombre:"Tarta Verdura",                 desc:"Verdura con queso rallado. Liviana y rica.",                                                                  img:"tarta-verdura.jpg", emoji:"🥧", chips:["Para 1–2 personas","Tarta de 16 cm","Al horno en 10 min"] },
-  { id:28, cat:"Wraps",    nombre:"Wrap Carne",                    desc:"Wrap relleno de carne. Bien condimentado, listo al horno.",                                                       img:"wrap-carne.jpg", emoji:"🌯", chips:["Para 1–2 personas","Listo al horno en 10 min"] },
-  { id:29, cat:"Wraps",    nombre:"Wrap Pollo",                    desc:"Wrap relleno de pollo. Sabroso y rendidor.",                                                                      img:"wrap-pollo.jpg", emoji:"🌯", chips:["Para 1–2 personas","Listo al horno en 10 min"] },
+  /* Wraps de Sevuchitas, de a 2 (22/10/2026). Hasta que lleguen sus fotos usan
+     las de los wraps anteriores, con la chapa «Nuevo». Los de Claudia Polito
+     quedan con `baja`: no se muestran, pero un carrito viejo guardado en el
+     celular que los tenga no se rompe al abrir. */
+  { id:42, cat:"Wraps",    nombre:"Wrap Pollo x2",                 desc:"Dos wraps rellenos de pollo. Pre-cocidos, listos al horno en pocos minutos.",                                      img:"wrap-pollo.jpg", emoji:"🌯", nuevo:true, unid:2, unidQue:"wrap", chips:["Para 2 personas","2 wraps","Listos al horno"] },
+  { id:43, cat:"Wraps",    nombre:"Wrap Bondiola x2",              desc:"Dos wraps rellenos de bondiola. Pre-cocidos, listos al horno en pocos minutos.",                                   img:"wrap-carne.jpg", emoji:"🌯", nuevo:true, unid:2, unidQue:"wrap", chips:["Para 2 personas","2 wraps","Listos al horno"] },
+  { id:44, cat:"Wraps",    nombre:"Wrap Veggie x2",                desc:"Dos wraps vegetarianos. Pre-cocidos, listos al horno en pocos minutos.",                                           img:"wrap-pollo.jpg", emoji:"🌯", nuevo:true, unid:2, unidQue:"wrap", chips:["Para 2 personas","2 wraps","Listos al horno"] },
+  { id:28, cat:"Wraps",    nombre:"Wrap Carne",                    desc:"Wrap relleno de carne. Bien condimentado, listo al horno.",                                                       img:"wrap-carne.jpg", emoji:"🌯", baja:true, chips:["Para 1–2 personas","Listo al horno en 10 min"] },
+  { id:29, cat:"Wraps",    nombre:"Wrap Pollo",                    desc:"Wrap relleno de pollo. Sabroso y rendidor.",                                                                      img:"wrap-pollo.jpg", emoji:"🌯", baja:true, chips:["Para 1–2 personas","Listo al horno en 10 min"] },
   { id:13, cat:"Franuis", nombre:"Franui Leche",            desc:"Frambuesas bañadas en chocolate con leche y blanco. El cierre perfecto.",        img:"franui-new.jpg", emoji:"🍫", chips:["Para 2–3 personas","Listo para servir"] },
   { id:14, cat:"Tortas", nombre:"Torta Golosa",                  desc:"Masa de chocolate, dulce de leche, mousse de chocolate y almendras acarameladas.", img:"torta-golosa.jpg", emoji:"🎂", chips:["Para 8–10 personas","Torta entera","Lista para cortar y servir"] },
   { id:15, cat:"Tortas", nombre:"Torta Lemon Crumble",           desc:"Base sablée, relleno de limón y crumble crocante espolvoreado.",                 img:"torta-lemon.jpg", emoji:"🎂", chips:["Para 8–10 personas","Torta entera","Lista para cortar y servir"] },
@@ -293,6 +300,7 @@ function _zonaPermite(zonas) {
 function getActiveProducts() {
   if (currentZone === 'clubes') return PRODUCTOS_CLUBES;
   return PRODUCTOS.filter(function(p) {
+    if (p.baja) return false;   // se dejo de vender (22/10/2026, wraps de Claudia)
     if (!_zonaPermite(p.zonas)) return false;
     if (_productoBloqueadoPorBarrio(p)) return false;
     /* La carne se muestra solo cuando SABEMOS que hay: mientras el inventario
@@ -358,7 +366,8 @@ const COMBOS = [
     zonas: ['estancias', 'pilar'],
     slots: [
       { label: 'Tarta',       unidad: 'tarta',               pick: 1, options: { cat: 'Tartas' } },
-      { label: 'Wrap',        unidad: 'wrap',                pick: 1, options: { cat: 'Wraps' } },
+      /* El wrap salio el 22/10/2026: los de Claudia se dejaron de vender y los de
+         Sevuchitas vienen de a 2 ($20.000), no entran en el precio del combo. */
       { label: 'Sorrentinos', unidad: 'pack de sorrentinos', pick: 1, options: { ids: [10, 9, 8] } },  // Calabaza, J&Q, Cordero
       { label: 'Postre',      unidad: 'Franui',              pick: 1, options: { ids: [13] } },
     ],
@@ -2481,6 +2490,7 @@ const PROD_ABBR = {
   20:'SQB', 21:'SL', 22:'SPyP', 23:'SE',
   24:'TP', 25:'TJyQ', 26:'TCa', 27:'TV',
   28:'RC', 29:'RP',
+  42:'WPo', 43:'WBo', 44:'WVe',   // Wraps Sevuchitas x2 (22/10/2026)
   // Clubes (IDs string)
   'pmu':'PMu', 'pma':'PMa', 'pjq':'PJyQ', 'pcc':'PCC', 'pjm':'PJyM',
   'pp1':'PPM', 'pp2':'PPJyQ', 'pp3':'PPCyQ',
