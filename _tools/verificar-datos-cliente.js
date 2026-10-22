@@ -46,7 +46,8 @@ const mismoTel = (a, b) => {
    `bp` es el Barrio Privado (hoy hay uno solo) y `barrio` el Sub Barrio, que se
    llena solo al elegir el primero — el sub-barrio se toma del desplegable real
    en vez de escribirlo acá, así el test no envejece cuando cambie la lista. */
-const CLI = { nombre: 'Prueba Datos', tel: '1155667788', bp: 'Estancias del Pilar', lote: '77' };
+/* El mail entra el 22/10/2026 (bloque 2): obligatorio, y vuelve como el nombre. */
+const CLI = { nombre: 'Prueba Datos', tel: '1155667788', mail: 'prueba.datos@gmail.com', bp: 'Estancias del Pilar', lote: '77' };
 
 let ok = 0, mal = 0;
 function ch(cond, txt, extra) {
@@ -154,7 +155,7 @@ const LEER_FORM = `(function(){
   var v = function(id){ var e = document.getElementById(id); return e ? String(e.value || '') : null; };
   var pago = document.querySelector('input[name="pago"]:checked');
   return JSON.stringify({
-    nombre: v('f-nombre'), tel: v('f-telefono'),
+    nombre: v('f-nombre'), tel: v('f-telefono'), mail: v('f-mail'),
     bp: v('f-barrio-privado'), barrio: v('f-barrio'), lote: v('f-lote'),
     dia: v('f-dia'), pago: pago ? pago.value : '',
     guardado: (function(){ try {
@@ -201,6 +202,12 @@ const LEER_FORM = `(function(){
       try {
         if (malo) { if (r.method === 'POST') posts.push(r.method + ' ' + r.url.slice(0, 80));
           await cli.enviar('Fetch.failRequest', { requestId: m.params.requestId, errorReason: 'BlockedByClient' }); }
+        /* Los precios llegan en stock_full desde el 14/10/2026: con el backend
+           apuntado a una URL que no existe, la tienda quedaba en "Cargando los
+           precios" y "+ Agregar" no hacia nada (3 rojos anotados como del test). */
+        else if (/action=stock_full/.test(r.url)) await cli.enviar('Fetch.fulfillRequest', { requestId: m.params.requestId, responseCode: 200,
+          responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Access-Control-Allow-Origin', value: '*' }],
+          body: Buffer.from(JSON.stringify(require('./precios-prueba.js')({}))).toString('base64') });
         else await cli.enviar('Fetch.continueRequest', { requestId: m.params.requestId });
       } catch (e) {}
     });
@@ -261,6 +268,7 @@ const LEER_FORM = `(function(){
         e.dispatchEvent(new Event('change', {bubbles:true})); return true; };
       poner('f-nombre', ${JSON.stringify(CLI.nombre)});
       poner('f-telefono', ${JSON.stringify(CLI.tel)});
+      poner('f-mail', ${JSON.stringify(CLI.mail)});
       poner('f-barrio-privado', ${JSON.stringify(CLI.bp)});
       if (typeof filtrarSubBarrios === 'function') filtrarSubBarrios();
       var sb = document.getElementById('f-barrio');
@@ -277,7 +285,7 @@ const LEER_FORM = `(function(){
     ch(!!CLI.barrio, 'el desplegable de sub-barrio se lleno al elegir el barrio privado', CLI.barrio);
     const lleno = JSON.parse(await ev(LEER_FORM));
     ch(lleno.nombre === CLI.nombre && mismoTel(lleno.tel, CLI.tel) && lleno.bp === CLI.bp
-       && lleno.barrio === CLI.barrio && lleno.lote === CLI.lote && !!lleno.dia && !!lleno.pago,
+       && lleno.barrio === CLI.barrio && lleno.lote === CLI.lote && lleno.mail === CLI.mail && !!lleno.dia && !!lleno.pago,
        'quedo completo antes de mandar', JSON.stringify(lleno).slice(0, 170));
 
     await ev('enviarPedido()');
@@ -289,6 +297,7 @@ const LEER_FORM = `(function(){
     const guardado = JSON.parse(await ev("localStorage.getItem('maleu_cliente_pg')"));
     ch(guardado && guardado.nombre === CLI.nombre && mismoTel(guardado.telefono, CLI.tel) && guardado.lote === CLI.lote,
        'lo guardado es lo que el cliente escribio', JSON.stringify(guardado));
+    ch(guardado && guardado.mail === CLI.mail, 'con el mail', guardado && guardado.mail);
     await cerrar();
 
     /* ───────── VISITA 2: vuelve al otro día, mismo navegador ───────── */
@@ -309,6 +318,7 @@ const LEER_FORM = `(function(){
     ch(v2.bp === CLI.bp, 'el barrio privado vuelve solo', JSON.stringify(v2.bp));
     ch(v2.barrio === CLI.barrio, 'el sub-barrio vuelve solo', JSON.stringify(v2.barrio));
     ch(v2.lote === CLI.lote, 'el lote vuelve solo', JSON.stringify(v2.lote));
+    ch(v2.mail === CLI.mail, 'el mail vuelve solo', JSON.stringify(v2.mail));
     /* El dia NO sale de la precarga: sale de la fecha que quedo elegida. Desde
        el 23/9/2026 esa fecha la pone el calendario del FORMULARIO
        (selectDayPicker llama a setDeliveryDate), no el modal. Lo que no tiene
@@ -377,6 +387,7 @@ const LEER_FORM = `(function(){
     const v3 = JSON.parse(await ev(LEER_FORM));
     ch(v3.nombre === CLI.nombre, 'el nombre vuelve al elegir la zona en el modal', JSON.stringify(v3.nombre));
     ch(mismoTel(v3.tel, CLI.tel), 'el telefono tambien', JSON.stringify(v3.tel));
+    ch(v3.mail === CLI.mail, 'y el mail', JSON.stringify(v3.mail));
     ch(v3.bp === CLI.bp && v3.barrio === CLI.barrio && v3.lote === CLI.lote, 'y la direccion tambien',
        JSON.stringify({ bp: v3.bp, barrio: v3.barrio, lote: v3.lote }));
     await cerrar();
@@ -439,6 +450,7 @@ const LEER_FORM = `(function(){
         e.blur(); };
       poner('f-nombre', ${JSON.stringify(CLI.nombre)});
       poner('f-telefono', ${JSON.stringify(CLI.tel)});
+      poner('f-mail', ${JSON.stringify(CLI.mail)});
       poner('f-barrio-privado', ${JSON.stringify(CLI.bp)});
       if (typeof filtrarSubBarrios === 'function') filtrarSubBarrios();
       var sb = document.getElementById('f-barrio');
@@ -451,6 +463,7 @@ const LEER_FORM = `(function(){
     ch(!!sinMandar, 'se guardo sin haber mandado ningun pedido');
     ch(sinMandar && sinMandar.nombre === CLI.nombre && mismoTel(sinMandar.telefono, CLI.tel),
        'con el nombre y el telefono', JSON.stringify(sinMandar && { n: sinMandar.nombre, t: sinMandar.telefono }));
+    ch(sinMandar && sinMandar.mail === CLI.mail, 'y el mail', sinMandar && sinMandar.mail);
     ch(sinMandar && sinMandar.lote === CLI.lote && sinMandar.barrio === CLI.barrio,
        'y con la direccion entera', JSON.stringify(sinMandar && { b: sinMandar.barrio, l: sinMandar.lote }));
     await cerrar();
@@ -461,6 +474,7 @@ const LEER_FORM = `(function(){
     await ev(ELEGIR_ZONA_FECHA);
     await ev('goToForm()'); await dormir(700);
     const v5 = JSON.parse(await ev(LEER_FORM));
+    ch(v5.mail === CLI.mail, 'el mail', JSON.stringify(v5.mail));
     ch(v5.nombre === CLI.nombre && mismoTel(v5.tel, CLI.tel), 'nombre y telefono',
        JSON.stringify({ nombre: v5.nombre, tel: v5.tel }));
     ch(v5.bp === CLI.bp && v5.barrio === CLI.barrio && v5.lote === CLI.lote, 'barrio, sub-barrio y lote',

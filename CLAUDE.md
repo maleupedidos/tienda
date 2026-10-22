@@ -4486,6 +4486,38 @@ Las redes que miden esto: `verificar-checkout` (108), `verificar-seguimiento` (3
 `mailto:` no hace pedido de red), `verificar-horario` (21), `verificar-card` (25: sin
 flotante y ningún "Agregar" tapado) y `verificar-zonas` (70, con la franja en el pedido).
 
+## El mail, obligatorio en el checkout (bloque 2, armado el 22/10/2026)
+
+> [!warning] Rama `mail-checkout`, SIN PUBLICAR al 22/10/2026
+> Se publica recién cuando Tadeo confirme que Backend acepta `mail` en vivo (previsto
+> el lunes 26/10 a la mañana). Antes de pushear: `git fetch`, rebasear sobre
+> `origin/main` y volver a correr las redes de abajo.
+
+Hasta ese día el mail era opcional y se pedía DESPUÉS de comprar, en el seguimiento: lo
+dejaba 1 de cada 7. Sin mail el cliente no tiene comprobante. Backend manda el
+comprobante solo, con el detalle, a ese mail. **Sólo para el pedido, nada de publicidad**
+(decisión de Tadeo; dicho en `privacidad.html`).
+
+- **Campo `#f-mail`** en el paso 1, debajo del celular: `type=email`,
+  `autocomplete=email`, `inputmode=email`, 16px (el iPhone no hace zoom).
+- **`_mailValido`** es la regla de las DOS validaciones (`_coFaltaEnPaso(1)` y
+  `enviarPedido`), la misma que ya usaba el seguimiento.
+- **El aviso de tipeo NO frena** (`_mailSugerencia`): distancia de edición ≤ 2 contra
+  una lista corta de dominios comunes (`MAIL_DOMINIOS`), y nunca para un dominio que ya
+  está en la lista. Si el cliente insiste con lo que escribió, es su mail. «Corregir» lo
+  arregla con un toque.
+- **Se guarda** con `guardarDatosCliente` y vuelve con `loadClientData`, igual que el
+  nombre. El que compró antes del mail vuelve sin él y arranca en el paso 1.
+- **Viaja en el POST como `mail`** y queda en el comprobante (`info.mail`).
+- **Seguimiento:** con mail, en vez de la caja va *"Te mandamos el detalle a ta***@gmail.com.
+  Cambiar"*. «Cambiar» usa el `seguimientoMail` de siempre. Un pedido de una pestaña vieja
+  sin mail sigue mostrando la caja. Lo que diga el ERP (`j.mail`) gana sobre lo local.
+
+Redes: `verificar-checkout` (125), `verificar-seguimiento` (35), `verificar-datos-cliente`
+(41), `verificar-envio` (58), las cuatro a 390 y 1440. Reinyectados de a uno (mail opcional,
+no viaja en el POST, no se guarda): los tres dan rojo. `verificar-datos-cliente` también
+contestaba `stock_full` sin precios desde el 14/10 (3 rojos anotados como del test).
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

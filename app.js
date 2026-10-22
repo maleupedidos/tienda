@@ -5963,7 +5963,79 @@ function _telPoner(valor) {
 }
 
 
+/* ══ EL MAIL, OBLIGATORIO EN EL CHECKOUT (bloque 2, 22/10/2026) ══════════
+   Hasta ese dia el mail era opcional y se pedia DESPUES de comprar, en el
+   seguimiento: lo dejaba 1 de cada 7. Sin mail el cliente no tiene comprobante,
+   y si cierra la pestaña no le queda nada. Backend manda el comprobante solo,
+   con el detalle, a este mail. Se usa para el pedido y nada mas (Tadeo: nada de
+   publicidad).
+
+   · `_mailValido` es la regla de las DOS validaciones (_coFaltaEnPaso y
+     enviarPedido) y la misma que ya usaba el seguimiento.
+   · El aviso de tipeo NO frena: si el cliente insiste con lo que escribio, es
+     su mail. Solo ofrece la correccion con un toque. */
+var MAIL_DOMINIOS = ['gmail.com', 'hotmail.com', 'hotmail.com.ar', 'outlook.com', 'outlook.com.ar',
+  'yahoo.com', 'yahoo.com.ar', 'live.com', 'live.com.ar', 'icloud.com', 'fibertel.com.ar'];
+function _mailLimpio() { return String(($id('f-mail') || {}).value || '').trim(); }
+function _mailValido(m) { return /^[^\s@,;<>]+@[^\s@,;<>]+\.[a-zA-Z]{2,}$/.test(String(m || '')); }
+/* Distancia de edicion entre dos textos cortos (los dominios miden < 20). */
+function _mailDist(a, b) {
+  var d = [], i, j;
+  for (i = 0; i <= a.length; i++) d[i] = [i];
+  for (j = 0; j <= b.length; j++) d[0][j] = j;
+  for (i = 1; i <= a.length; i++) {
+    for (j = 1; j <= b.length; j++) {
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      /* Dos letras dadas vuelta (gmial) cuentan como un error, no dos. */
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+    }
+  }
+  return d[a.length][b.length];
+}
+/* El mail corregido si el dominio parece un error de tipeo de uno comun
+   (gmial.com, hotmal.com, outlok.com, yaho.com, gmail.con...); si no, ''. */
+function _mailSugerencia(m) {
+  m = String(m || '').trim();
+  var at = m.lastIndexOf('@');
+  if (at < 1) return '';
+  var dom = m.slice(at + 1).toLowerCase();
+  if (!dom || MAIL_DOMINIOS.indexOf(dom) >= 0) return '';
+  var mejor = '', dmin = 3;
+  MAIL_DOMINIOS.forEach(function (d) {
+    var x = _mailDist(dom, d);
+    if (x < dmin) { dmin = x; mejor = d; }
+  });
+  /* Hasta 2 errores, y nunca para un dominio corto que podria ser otro real. */
+  return mejor && dom.length >= 5 ? m.slice(0, at + 1) + mejor : '';
+}
+function _mailPintarSugerencia() {
+  var box = $id('mail-sug'), txt = $id('mail-sug-txt');
+  if (!box || !txt) return;
+  var s = _mailSugerencia(_mailLimpio());
+  box.hidden = !s;
+  txt.textContent = s;
+}
+function _mailCorregir() {
+  var s = _mailSugerencia(_mailLimpio());
+  if (!s) return;
+  var e = $id('f-mail');
+  e.value = s;
+  e.dispatchEvent(new Event('change', { bubbles: true }));
+  _mailPintarSugerencia();
+  if (_mailValido(s)) clearError('f-mail', 'err-mail');
+  _track('mail_corregido', {});
+}
+/* 'ta***@gmail.com': lo que se le muestra al cliente de su mail. */
+function _mailMascara(m) {
+  m = String(m || ''); var at = m.indexOf('@');
+  return at < 1 ? '' : m.slice(0, Math.min(2, at)) + '***' + m.slice(at);
+}
+
 function validateOnBlur(campo) {
+  if (campo === 'mail') {
+    _mailValido(_mailLimpio()) ? clearError('f-mail', 'err-mail') : showError('f-mail', 'err-mail');
+    _mailPintarSugerencia();
+  }
   if (campo==='nombre') { $id('f-nombre').value.trim() ? clearError('f-nombre','err-nombre') : showError('f-nombre','err-nombre'); }
   if (campo==='barrioPrivado') { $id('f-barrio-privado').value ? clearError('f-barrio-privado','err-barrio-privado') : showError('f-barrio-privado','err-barrio-privado'); }
   if (campo==='barrio') { $id('f-barrio').value ? clearError('f-barrio','err-barrio') : showError('f-barrio','err-barrio'); }
@@ -6465,19 +6537,27 @@ function segPintar(g, j) {
     nota.hidden = !nota.textContent;
   }
 
-  /* El mail: si ya hay uno, se dice cual (enmascarado) y se ofrece cambiarlo. */
+  /* El mail: si ya hay uno, se dice cual (enmascarado) y se ofrece cambiarlo.
+     Desde el 22/10/2026 el mail se pide en el checkout, asi que el pedido nuevo
+     ya lo trae (`info.mail`) y la caja de "¿Queres que te avisemos?" sale solo
+     para un pedido de una pestaña vieja que no lo tenia. Lo que diga el ERP
+     (`j.mail`, ya enmascarado) gana: puede haberse cambiado desde otro lado. */
   var form = $id('seg-mail'), okm = $id('seg-mail-ok');
   var terminado = etapa === 'entregado' || etapa === 'cancelado';
   if (form && okm) {
-    var tiene = j && j.mail;
+    var tiene = (j && j.mail) || _mailMascara(g && g.info && g.info.mail);
     form.hidden = terminado || !!tiene;
     okm.hidden = terminado || !tiene;
     if (tiene) {
       okm.innerHTML = '';
-      okm.appendChild(document.createTextNode('Te avisamos cada paso a ' + j.mail + '. '));
+      okm.appendChild(document.createTextNode('Te mandamos el detalle a ' + tiene + '. '));
       var cam = document.createElement('button');
       cam.type = 'button'; cam.className = 'seg-mail-cambiar'; cam.textContent = 'Cambiar';
-      cam.onclick = function () { okm.hidden = true; form.hidden = false; var i = $id('seg-mail-in'); if (i) i.focus(); };
+      cam.onclick = function () {
+        okm.hidden = true; form.hidden = false;
+        var lb = form.querySelector('label'); if (lb) lb.textContent = '¿A qué mail te lo mandamos?';
+        var i = $id('seg-mail-in'); if (i) i.focus();
+      };
       okm.appendChild(cam);
     }
   }
@@ -6659,6 +6739,8 @@ function _coFaltaEnPaso(n, callado) {
 
     bien('f-tel-num', 'err-telefono');
     if (_telLocal().length !== TEL_LARGO) mal('f-tel-num', 'err-telefono');
+    bien('f-mail', 'err-mail');
+    if (!_mailValido(_mailLimpio())) mal('f-mail', 'err-mail');
     return primero;
   }
 
@@ -6992,6 +7074,7 @@ function enviarPedido() {
   }
 
   if (_telLocal().length !== TEL_LARGO) { showError('f-tel-num','err-telefono'); if(!primerInvalido) primerInvalido=$id('f-tel-num'); }
+  if (!_mailValido(_mailLimpio())) { showError('f-mail','err-mail'); if(!primerInvalido) primerInvalido=$id('f-mail'); }
   if (!dia) {
     showError('f-dia','err-dia');
     var _dpRoot = $id('day-picker');
@@ -7309,6 +7392,9 @@ function enviarPedido() {
   // 2 veces con el MISMO pedido (típico en señal mala: ve error, reintenta), el
   // clientOrderId se REUSA → backend dedupea. Fix del 21/06/26 tras duplicados
   // Vie/Sáb 19-20/06 en Estancias que hubo que borrar a mano del Sheets.
+  /* El mail viaja con el pedido (bloque 2, 22/10/2026): el ERP manda el
+     comprobante y los avisos de cada etapa ahi. Ya paso las dos validaciones. */
+  postData.mail = _mailLimpio();
   postData.clientOrderId = _clientOrderIdForOrder(postData);
   /* El texto del pedido sin confirmar se arma recien aca, cuando ya existe el
      clientOrderId. Hasta el 22/10/2026 habia dos versiones (la normal iba a
@@ -7531,6 +7617,7 @@ function enviarPedido() {
                contestar el seguimiento, y mientras tanto la pantalla decia
                "Te llega el viernes 30/10" sin la hora. */
             _info.horario = /coordinar/i.test(postData.horario || '') ? '' : (postData.horario || '');
+            _info.mail = postData.mail || '';
           }
           setSendLoaderDone(_info); _pintada = true;
         } catch (_ep) {}
@@ -8510,7 +8597,7 @@ function updateStockDisplay() {
    medio escribir pisaría el que ya estaba guardado. */
 function _datosClienteDelForm(extra) {
   var v = function (id) { var e = $id(id); return e ? String(e.value || '').trim() : ''; };
-  var d = { nombre: v('f-nombre'), telefono: v('f-telefono'), zone: currentZone };
+  var d = { nombre: v('f-nombre'), telefono: v('f-telefono'), mail: v('f-mail'), zone: currentZone };
   if (currentZone === 'estancias') {
     d.barrioPrivado = v('f-barrio-privado');
     d.barrio = d.barrioPrivado === 'Estancias del Pilar' ? v('f-barrio') : d.barrioPrivado;
@@ -8743,12 +8830,16 @@ function loadClientData() {
       if (global) {
         _ponerSiVacio('f-nombre', global.nombre);
         _ponerSiVacio('f-telefono', global.telefono);
+        _ponerSiVacio('f-mail', global.mail);
         if (!$id('f-tel-num').value) _telPoner(global.telefono);
       }
       return;
     }
     _ponerSiVacio('f-nombre', saved.nombre);
     _ponerSiVacio('f-telefono', saved.telefono);
+    /* El mail vuelve igual que el nombre (22/10/2026). Si la copia de esta zona
+       es de antes del mail, se toma el de la global. */
+    _ponerSiVacio('f-mail', saved.mail || (global && global.mail));
     if (!$id('f-tel-num').value) _telPoner(saved.telefono);
     setTimeout(_pintarSaludo, 0);   // despues de que se completen los de abajo
     if (currentZone === 'estancias') {

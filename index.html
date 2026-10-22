@@ -629,6 +629,20 @@
           <div style="color:#5D4037">De tu compra anterior te quedaron <strong id="saldoFavorMonto">$0</strong>. Se aplica automáticamente al total de este pedido.</div>
         </div>
       </div>
+
+      <!-- EL MAIL, OBLIGATORIO (22/10/2026). Para el comprobante y los avisos del
+           pedido, nada de publicidad. 16px: con menos el iPhone hace zoom al
+           tocarlo. El aviso de tipeo ("¿Quisiste decir…?") no frena. -->
+      <div class="field-group">
+        <label for="f-mail">Mail</label>
+        <input type="email" id="f-mail" class="f-mail" inputmode="email" autocomplete="email"
+               autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="120"
+               placeholder="tu@mail.com"
+               oninput="_mailPintarSugerencia()" onblur="validateOnBlur('mail')">
+        <p class="mail-sug" id="mail-sug" hidden><span>¿Quisiste decir <strong id="mail-sug-txt"></strong>?</span> <button type="button" class="mail-sug-btn" id="mail-sug-btn" onclick="_mailCorregir()">Corregir</button></p>
+        <small class="tel-hint">Te mandamos el comprobante y te avisamos cómo avanza tu pedido.</small>
+        <span class="field-error" id="err-mail">&#9888; Revisá el mail: algo como nombre@gmail.com</span>
+      </div>
       </div>
       
       <div class="co-paso" data-co-paso="2" hidden>

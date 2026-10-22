@@ -215,7 +215,7 @@ async function main() {
       }
       let data = {};
       try { data = JSON.parse(body); } catch (e) {}
-      const ev = { t: Date.now() - t0, tipo: resourceType, coid: data.clientOrderId || '', accion: data.action || '' };
+      const ev = { t: Date.now() - t0, tipo: resourceType, coid: data.clientOrderId || '', accion: data.action || '', mail: data.mail };
       posts.push(ev);
       if (resourceType !== 'Fetch' && resourceType !== 'XHR') { fulfill(requestId, '{"ok":true}'); return; }
       if (data.action) { fulfill(requestId, '{"ok":true}'); return; }   // usarCupon, guardarCumple...
@@ -267,7 +267,7 @@ async function main() {
       await ev(`(function(){
         var set = function(id, v){ var e = document.getElementById(id); if (!e) return;
           e.value = v; e.dispatchEvent(new Event('input', {bubbles:true})); e.dispatchEvent(new Event('change', {bubbles:true})); };
-        set('f-nombre', 'Prueba Envio'); set('f-telefono', '1122334455');
+        set('f-nombre', 'Prueba Envio'); set('f-telefono', '1122334455'); set('f-mail', 'prueba.envio@gmail.com');
         var bp = document.getElementById('f-barrio-privado');
         if (bp) { for (var i = 0; i < bp.options.length; i++) { if (bp.options[i].value === 'Estancias del Pilar') { bp.selectedIndex = i; break; } }
                   bp.dispatchEvent(new Event('change', {bubbles:true})); }
@@ -382,6 +382,8 @@ async function main() {
       chk(!!cerro && /^Recibimos tu pedido #999$/.test(cerro.tit), 'con el N que devolvio el ERP: "' + (cerro ? cerro.tit : '-') + '"');
       chk(navs.length === 0 && waNavs.length === 0, 'y no abre ni mail ni WhatsApp: el pedido termina en la tienda (' + navs.length + ' mails, ' + waNavs.length + ' wa.me)');
       chk(fetches().length === 1 && beacons().length === 0, 'un solo POST al backend (' + fetches().length + ' fetch, ' + beacons().length + ' beacon) — antes eran 3 y hasta 18');
+      /* El mail viaja con el pedido desde el bloque 2 (22/10/2026). */
+      chk((fetches()[0] || {}).mail === 'prueba.envio@gmail.com', 'con el mail del cliente adentro (' + ((fetches()[0] || {}).mail || 'sin mail') + ')');
       const coid = (fetches()[0] || {}).coid || '';
       const pend = await pendientes();
       chk(!pend[coid], 'confirmado, sale de la cola de pendientes');

@@ -200,7 +200,7 @@ async function main() {
       }
       let data = {};
       try { data = JSON.parse(body); } catch (e) {}
-      const ev = { t: Date.now() - t0, tipo: resourceType, coid: data.clientOrderId || '', accion: data.action || '' };
+      const ev = { t: Date.now() - t0, tipo: resourceType, coid: data.clientOrderId || '', accion: data.action || '', mail: data.mail };
       posts.push(ev);
       if (resourceType !== 'Fetch' && resourceType !== 'XHR') { fulfill(requestId, '{"ok":true}'); return; }
       if (data.action === 'seguimientoMail') { mails.push(data); fulfill(requestId, JSON.stringify({ ok: true, mail: data.mail ? data.mail.slice(0, 2) + '***' + data.mail.slice(data.mail.indexOf('@')) : '' })); return; }
@@ -255,7 +255,7 @@ async function main() {
       await ev(`(function(){
         var set = function(id, v){ var e = document.getElementById(id); if (!e) return;
           e.value = v; e.dispatchEvent(new Event('input', {bubbles:true})); e.dispatchEvent(new Event('change', {bubbles:true})); };
-        set('f-nombre', 'Prueba Envio'); set('f-telefono', '1122334455');
+        set('f-nombre', 'Prueba Envio'); set('f-telefono', '1122334455'); set('f-mail', 'prueba.envio@gmail.com');
         var bp = document.getElementById('f-barrio-privado');
         if (bp) { for (var i = 0; i < bp.options.length; i++) { if (bp.options[i].value === 'Estancias del Pilar') { bp.selectedIndex = i; break; } }
                   bp.dispatchEvent(new Event('change', {bubbles:true})); }
@@ -322,6 +322,11 @@ async function main() {
     chk(/^Recibimos tu pedido #999$/.test(s.tit) && !/confirmad/i.test(s.tit), 'recibido: el titulo es "Recibimos tu pedido #999", sin "confirmado": "' + s.tit + '"');
     chk(/Te avisamos acá cuando lo confirmemos/.test(s.nota) && !/en un rato/i.test(s.nota), 'y abajo una sola cosa: "' + s.nota + '"');
     chk(/^mailto:pedidos@maleu\.com\.ar\?subject=Pedido%20%23999$/.test(s.duda), 'la duda va por mail a pedidos@, con el numero en el asunto: ' + s.duda);
+    /* Bloque 2 (22/10/2026): el mail ya vino del checkout, asi que en vez de la
+       caja "¿Queres que te avisemos?" va una linea con el mail y "Cambiar". */
+    chk(/^Te mandamos el detalle a pr\*\*\*@gmail\.com\. Cambiar$/.test(s.mailOk) && !s.form,
+        'en vez de la caja: "' + s.mailOk + '"');
+    chk(posts.some((p) => p.mail === 'prueba.envio@gmail.com'), 'y el pedido viajo con ese mail');
     chk(s.pasos === 5 && s.ok === 1 && /Recibimos/.test(s.actual), 'cinco pasos, el primero prendido (' + s.ok + '/' + s.pasos + ', actual «' + s.actual + '»)');
     chk(/Te llega el jueves 31\/12, 19 a 21 h/.test(s.llega), 'arriba dice cuando llega: "' + s.llega + '"');
     chk(gets.some((u) => u.indexOf('t=' + encodeURIComponent(coid)) > 0), 'le pregunto al ERP por ESE codigo (' + gets.length + ' consultas)');
@@ -362,13 +367,19 @@ async function main() {
     await esperar((x) => x.pantalla && x.seg, 8000);
 
     console.log('\n' + DIM + '-- el mail --' + RST);
+    s = await estado();
+    chk(/pr\*\*\*@gmail\.com/.test(s.mailOk) && !s.form, 'la linea del mail sigue despues de refrescar y volver: "' + s.mailOk + '"');
+    await ev("document.querySelector('#seg-mail-ok .seg-mail-cambiar').click()");
+    s = await esperar((x) => x.form, 3000);
+    chk(s.form && !s.mailOk && /A qué mail te lo mandamos/.test(await ev("document.querySelector('#seg-mail label').textContent")),
+        '"Cambiar" abre el campo para escribir otro');
     await ev("document.getElementById('seg-mail-in').value = 'no-es-un-mail'; document.getElementById('seg-mail-btn').click();");
     s = await esperar((x) => x.msg, 3000);
     chk(/Revisá el mail/.test(s.msg) && mails.length === 0, 'un mail mal escrito no se manda: "' + s.msg + '"');
     await ev("document.getElementById('seg-mail-in').value = 'cliente.prueba@gmail.com'; document.getElementById('seg-mail-btn').click();");
     s = await esperar((x) => x.mailOk, 6000);
     chk(mails.length === 1 && mails[0].t === coid && mails[0].mail === 'cliente.prueba@gmail.com', 'el bueno va al ERP con el codigo (' + mails.length + ' envios)');
-    chk(/cl\*\*\*@gmail\.com/.test(s.mailOk) && !s.form, 'y dice a donde avisa: "' + s.mailOk + '"');
+    chk(/^Te mandamos el detalle a cl\*\*\*@gmail\.com\./.test(s.mailOk) && !s.form, 'y dice a donde va: "' + s.mailOk + '"');
 
     console.log('\n' + DIM + '-- entregado --' + RST);
     etapaSeg = 'entregado'; mailSeg = 'cl***@gmail.com';
@@ -389,6 +400,15 @@ async function main() {
     chk(mails.length === antes + 1 && mails[mails.length - 1].mail === '', 'el link de baja le pide al ERP borrar el mail');
     s = await estado();
     chk(s.url === '/?seguimiento=' + coid, 'y la URL queda sin el &baja (si refresca no se vuelve a dar de baja)');
+
+    /* UNA PESTAÑA VIEJA: un pedido hecho antes del mail obligatorio no tiene
+       mail ni en el navegador ni en el ERP. Ahi sigue apareciendo la caja. */
+    console.log('\n' + DIM + '-- un pedido de antes del mail --' + RST);
+    etapaSeg = 'confirmado'; mailSeg = '';
+    await ev("(function(){ var g = JSON.parse(localStorage.getItem('maleu_seguimiento_v1')); if (g && g.info) delete g.info.mail; localStorage.setItem('maleu_seguimiento_v1', JSON.stringify(g)); })()");
+    await cli.enviar('Page.navigate', { url: base + '/?seguimiento=' + coid });
+    s = await esperar((x) => x.pantalla && x.seg && x.ok === 2, 10000);
+    chk(s.form && !s.mailOk, 'sin mail en ningun lado, sigue la caja de "¿Queres que te avisemos?"');
 
     chk(noBackend > 0, 'todos los POST los contesto el simulador (' + noBackend + '): ninguno llego a la planilla');
   } finally {

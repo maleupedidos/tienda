@@ -2588,6 +2588,16 @@ body.busqueda-activa .cat-nav-btn.cat-nav-combos.active { background:var(--brown
 .tel-num { flex: 1 1 auto; min-width: 0; }
 .tel-hint { display: block; margin-top: .3rem; font-size: .76rem; color: #8a7a70; }
 
+/* "¿Quisiste decir gmail.com?" (22/10/2026). El mail corregido es un boton de
+   44px de alto: se corrige con un toque. No es un error y no frena: va en tinta
+   de marca, no en el rojo de los campos que faltan. */
+.mail-sug { display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap;
+  margin: .45rem 0 0; font-size: .88rem; color: var(--brown, #3a2420); line-height: 1.35; }
+.mail-sug[hidden] { display: none; }
+.mail-sug strong { word-break: break-all; }
+.mail-sug-btn { min-height: 44px; padding: 0 1rem; border: 1.5px solid var(--orange-ink); border-radius: 10px;
+  background: #fff; font: inherit; font-weight: 700; color: var(--orange-ink); cursor: pointer; }
+
 /* A 340px la fila de cuatro piezas no entra: el prefijo se va a su propio
    renglon antes que apretar el campo donde el cliente escribe. */
 @media (max-width: 360px) {

@@ -168,6 +168,8 @@ const LLENAR_DATOS = '(function () {' +
   'var a = document.getElementById("f-tel-area"); if (a) { a.value = "11"; _telAreaCambio(); }' +
   'var tn = document.getElementById("f-tel-num");' +
   'if (tn) { tn.value = "55667788"; tn.dispatchEvent(new Event("input", { bubbles: true })); }' +
+  /* El mail, obligatorio desde el 22/10/2026 (bloque 2). */
+  'set("f-mail", "prueba.checkout@gmail.com");' +
 '})()';
 
 /* Los campos obligatorios de Estancias, con como se vacian. El bloque D los
@@ -181,6 +183,10 @@ const OBLIGATORIOS = [
      Con el hidden, este chequeo daba paso=false sobre una validacion que
      funciona bien. */
   { campo: 'f-tel-num', paso: 1, err: 'err-telefono' },
+  /* El mail (22/10/2026): vacio, y escrito mal. Un mail sin dominio tiene que
+     frenar igual que uno que no esta. */
+  { campo: 'f-mail', paso: 1, err: 'err-mail' },
+  { campo: 'f-mail', paso: 1, err: 'err-mail', valor: 'prueba@gmail' },
 ];
 
 async function main() {
@@ -547,7 +553,7 @@ async function main() {
       await ev(LLENAR_DATOS);
       /* Los DOS: desde el 29/9 el hidden es respaldo del visible, asi que
          vaciar uno solo no prueba nada — y ese es justo el punto del respaldo. */
-      await ev('document.getElementById(' + JSON.stringify(o.campo) + ').value = "";' +
+      await ev('document.getElementById(' + JSON.stringify(o.campo) + ').value = ' + JSON.stringify(o.valor || '') + ';' +
         (o.campo === 'f-tel-num' ? ' document.getElementById("f-telefono").value = "";' : ''));
       const porElPaso = await ev('!!_coFaltaEnPaso(' + o.paso + ', true)');
       const antes = await ev('window.__posts.length');
@@ -555,7 +561,7 @@ async function main() {
       await dormir(250);
       const porElEnvio = (await ev('window.__posts.length')) === antes;
       chk(porElPaso && porElEnvio,
-          'sin ' + o.campo + ': lo frenan las dos',
+          (o.valor ? o.campo + ' = "' + o.valor + '"' : 'sin ' + o.campo) + ': lo frenan las dos',
           'paso=' + porElPaso + ' envio=' + porElEnvio);
     }
     /* El control: con TODO completo, ninguna de las dos frena. Sin esto, una
@@ -563,6 +569,53 @@ async function main() {
     await ev(LLENAR_DATOS);
     chk(!(await ev('!!_coFaltaEnPaso(1, true)')),
         'CONTROL: con todo completo el paso 1 no frena nada');
+
+    /* ── D2. EL MAIL: CAMPO, AVISO DE TIPEO Y QUE NO FRENE ─────────── */
+    console.log('\n' + DIM + '== El mail: obligatorio, y el aviso de tipeo ==' + RST);
+    const campoMail = JSON.parse(await ev('JSON.stringify((function () { var e = document.getElementById("f-mail");' +
+      ' var tel = document.getElementById("f-tel-num").getBoundingClientRect();' +
+      ' return { tipo: e.type, auto: e.getAttribute("autocomplete"), modo: e.getAttribute("inputmode"),' +
+      '   fuente: parseFloat(getComputedStyle(e).fontSize), debajo: e.getBoundingClientRect().top > tel.bottom,' +
+      '   paso: e.closest(".co-paso").getAttribute("data-co-paso"),' +
+      '   linea: e.parentNode.textContent.indexOf("Te mandamos el comprobante y te avisamos cómo avanza tu pedido.") >= 0 }; })())'));
+    chk(campoMail.tipo === 'email' && campoMail.auto === 'email' && campoMail.modo === 'email',
+        'el campo es type=email, autocomplete=email, inputmode=email', JSON.stringify(campoMail));
+    chk(campoMail.fuente >= 16, 'con letra de 16px o mas (el iPhone no hace zoom)', campoMail.fuente + 'px');
+    chk(campoMail.paso === '1' && campoMail.debajo, 'en el paso 1, debajo del celular');
+    chk(campoMail.linea, 'con la linea del comprobante debajo');
+    const tipeo = async (v) => JSON.parse(await ev('JSON.stringify((function () { var e = document.getElementById("f-mail");' +
+      ' e.value = ' + JSON.stringify(v) + '; e.dispatchEvent(new Event("input", { bubbles: true }));' +
+      ' e.dispatchEvent(new Event("blur", { bubbles: true }));' +
+      ' var s = document.getElementById("mail-sug");' +
+      ' return { visible: !!(s && !s.hidden && s.offsetParent), btn: document.getElementById("mail-sug-txt").textContent,' +
+      '   frena: !!_coFaltaEnPaso(1, true) }; })())'));
+    for (const [mal_, bien_] of [['prueba@gmial.com', 'prueba@gmail.com'], ['prueba@hotmial.com', 'prueba@hotmail.com'],
+                                 ['prueba@outlok.com', 'prueba@outlook.com'], ['prueba@yaho.com', 'prueba@yahoo.com']]) {
+      const t = await tipeo(mal_);
+      chk(t.visible && t.btn === bien_, mal_ + ': "¿Quisiste decir ' + bien_ + '?"', t.btn || 'no aviso');
+    }
+    let tg = await tipeo('prueba@gmail.com');
+    chk(!tg.visible, 'CONTROL: un mail bien escrito no muestra el aviso');
+    tg = await tipeo('prueba@maleu.com.ar');
+    chk(!tg.visible && !tg.frena, 'un dominio propio no se toma por error');
+    tg = await tipeo('prueba@gmial.com');
+    chk(!tg.frena, 'si el cliente insiste con lo que escribio, NO lo frena');
+    /* Un toque de verdad (el mouse de Chrome en el centro del boton): si algo
+       lo tapara, el toque le caeria a otra cosa. */
+    const tocar = async (sel) => {
+      const p = JSON.parse(await ev('(function () { var e = document.querySelector(' + JSON.stringify(sel) + '); if (!e) return "null";' +
+        ' e.scrollIntoView({ block: "center" }); var r = e.getBoundingClientRect(); return JSON.stringify({ x: r.left + r.width / 2, y: r.top + r.height / 2 }); })()'));
+      if (!p) return false;
+      await dormir(150);
+      for (const t of ['mousePressed', 'mouseReleased']) await cli.enviar('Input.dispatchMouseEvent', { type: t, x: p.x, y: p.y, button: 'left', clickCount: 1 });
+      return true;
+    };
+    const tq = await tocar('#mail-sug-btn');
+    await dormir(200);
+    const corregido = JSON.parse(await ev('JSON.stringify({ v: document.getElementById("f-mail").value,' +
+      ' s: document.getElementById("mail-sug").hidden })'));
+    chk(tq && corregido.v === 'prueba@gmail.com' && corregido.s, 'un toque en la sugerencia lo corrige y el aviso se va', corregido.v);
+    await ev(LLENAR_DATOS);
 
     /* ── E. ENVIARPEDIDO LLEVA AL PASO ESCONDIDO ─────────────────── */
     console.log('\n' + DIM + '== Si falta algo de otro paso, enviarPedido lleva a ese paso ==' + RST);
@@ -589,18 +642,31 @@ async function main() {
     await abrir({
       maleu_zone: 'estancias',
       /* La clave lleva la zona adentro: asi la escribe guardarDatosCliente. */
-      maleu_cliente_estancias: { nombre: 'Ana Volvio', telefono: '1155667788', zone: 'estancias',
+      maleu_cliente_estancias: { nombre: 'Ana Volvio', telefono: '1155667788', zone: 'estancias', mail: 'ana.volvio@gmail.com',
                        barrioPrivado: 'Estancias del Pilar', barrio: 'Champagnat Alto', lote: '77' },
     });
     await alFormulario();
     e = await pasos();
     chk(e.paso === 2, 'con los datos guardados arranca en el paso 2: el pago', 'paso ' + e.paso);
+    chk(await ev('document.getElementById("f-mail").value') === 'ana.volvio@gmail.com', 'y el mail volvio solo');
     chk(e.puntos[0] === 'hecho', 'y el paso 1 ya figura hecho', e.puntos.join('|'));
     chk(e.volver === true, 'pero puede volver a revisarlos');
     await ev('coVolver()');
     await dormir(200);
     chk(await ev('document.getElementById("f-nombre").value') === 'Ana Volvio',
         'y ahi estan sus datos, cargados solos');
+
+    /* El que compro ANTES del mail (22/10/2026) vuelve con nombre y celular pero
+       sin mail: arranca en el paso 1, porque ahora el mail es obligatorio. */
+    await abrir({
+      maleu_zone: 'estancias',
+      maleu_cliente_estancias: { nombre: 'Ana Sin Mail', telefono: '1155667788', zone: 'estancias',
+                       barrioPrivado: 'Estancias del Pilar', barrio: 'Champagnat Alto', lote: '77' },
+    });
+    await alFormulario();
+    e = await pasos();
+    chk(e.paso === 1 && await ev('document.getElementById("f-nombre").value') === 'Ana Sin Mail',
+        'el que vuelve sin mail guardado arranca en el paso 1, con sus datos puestos', 'paso ' + e.paso);
 
     /* ── J. EL PEDIDO TERMINA EN LA TIENDA ───────────────────────
        Este bloque corria con `?cierre=1` mientras el interruptor estaba
@@ -728,6 +794,10 @@ async function main() {
     chk(!(await ev('document.getElementById("send-overlay").classList.contains("pantalla")')),
         'al volver a la tienda, el overlay deja de ser pantalla completa');
 
+    /* El mail viaja en el POST, como `mail` (22/10/2026). */
+    const bodyCierre = await ev('(window.__posts[0] || {}).body || ""');
+    let mailPost = ''; try { mailPost = JSON.parse(bodyCierre).mail || ''; } catch (e) {}
+    chk(mailPost === 'prueba.checkout@gmail.com', 'el pedido viaja con el mail del cliente', mailPost || 'sin mail');
     const postsDelCierre = await ev('window.__posts.length');
     chk(postsDelCierre === 1, 'y salio UN solo POST, no una cadena de reintentos', String(postsDelCierre));
 
