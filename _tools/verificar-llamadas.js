@@ -158,6 +158,7 @@ const DE_AFUERA = new Set([
   'fetch','setTimeout','setInterval','clearTimeout','clearInterval','requestAnimationFrame',
   'encodeURIComponent','decodeURIComponent','parseInt','parseFloat','isNaN','isFinite',
   'String','Number','Boolean','Array','Object','JSON','Math','Date','RegExp','Error','Promise','Map','Set','Symbol',
+  'Uint8Array',   /* el codigo del seguimiento (19/10/2026), con crypto.getRandomValues */
   'alert','confirm','prompt','open','close','focus','blur','scrollTo','scrollBy','matchMedia',
   'getComputedStyle','structuredClone','queueMicrotask','btoa','atob','gtag',
   /* Los dos los define el <head> del index.html, no app.js: gtag es la cola

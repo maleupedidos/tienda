@@ -166,19 +166,32 @@ const CASOS = [
           'primera: ' + d.primera);
     }
 
-    console.log('\n' + G + '== Las zonas sin hora declarada no cambian ==' + F);
+    console.log('\n' + G + '== Pilar: la franja de Maleu corta, la del vendedor no ==' + F);
+    /* Desde el 22/10/2026 lo que entrega Maleu en Pilar tiene franja fija, 18 a
+       21 hs, asi que el miercoles corta a las 18 como cualquier zona con hora.
+       Lo de un vendedor dice "durante el dia": sin hora no se inventa un corte.
+       Clubes sigue "a coordinar". Quien entrega lo decide _pilarEntregaMaleu();
+       se lo fija desde la pagina para medir las dos ramas con el mismo dia. */
     const pil = await ev(`(function () {
-      /* Pilar y Clubes dicen "A coordinar": sin hora no se inventa un corte,
-         se deja el dia entero como antes. */
-      return JSON.stringify({
-        pilar: ZONAS.pilar.horarios,
-        corte: _cierreDelDiaMs('2026-09-30', 'pilar'),
-        medianoche: Date.UTC(2026, 9, 1, 3, 0, 0, 0)
-      });
+      var orig = _pilarEntregaMaleu, zOrig = currentZone, out = {};
+      currentZone = 'pilar';
+      _pilarEntregaMaleu = function () { return true; };
+      out.maleu = { h: _getHorarioForFecha('pilar', 'Miércoles', '2026-09-30'), corte: _cierreDelDiaMs('2026-09-30', 'pilar') };
+      _pilarEntregaMaleu = function () { return false; };
+      out.vend = { h: _getHorarioForFecha('pilar', 'Viernes', '2026-10-02'), corte: _cierreDelDiaMs('2026-10-02', 'pilar') };
+      _pilarEntregaMaleu = orig; currentZone = zOrig;
+      out.clubes = { h: _getHorarioForFecha('clubes', 'Viernes', '2026-10-02'), corte: _cierreDelDiaMs('2026-10-02', 'clubes') };
+      out.mie18 = Date.UTC(2026, 8, 30, 21, 0, 0, 0);
+      out.vieFin = Date.UTC(2026, 9, 3, 3, 0, 0, 0);
+      return JSON.stringify(out);
     })()`);
     const pd = JSON.parse(pil || '{}');
-    chk(/coordinar/i.test(JSON.stringify(pd.pilar)), 'Pilar sigue diciendo "A coordinar"');
-    chk(pd.corte === pd.medianoche, 'y su corte sigue siendo el fin del dia, como antes');
+    chk(pd.maleu && pd.maleu.h === '18 a 21 hs', 'Pilar de Maleu: el miercoles dice "18 a 21 hs"', pd.maleu && pd.maleu.h);
+    chk(pd.maleu && pd.maleu.corte === pd.mie18, 'y corta a las 18, cuando sale el reparto', pd.maleu && new Date(pd.maleu.corte).toISOString());
+    chk(pd.vend && /durante el d/i.test(pd.vend.h), 'barrio con vendedor: el viernes dice "durante el dia"', pd.vend && pd.vend.h);
+    chk(pd.vend && pd.vend.corte === pd.vieFin, 'y sin hora no inventa corte: el dia entero', pd.vend && new Date(pd.vend.corte).toISOString());
+    chk(pd.clubes && /coordinar/i.test(pd.clubes.h) && pd.clubes.corte === pd.vieFin, 'Clubes sigue igual (a coordinar, dia entero)', pd.clubes && pd.clubes.h);
+    chk(!/coordinar/i.test(JSON.stringify(await ev('JSON.stringify(ZONAS.pilar.horarios)'))), 'ningun dia de Pilar dice "a coordinar"');
 
     const p = await ev(`JSON.stringify(window.__posts || [])`);
     chk(!p || JSON.parse(p).length === 0, 'ningun POST al backend');

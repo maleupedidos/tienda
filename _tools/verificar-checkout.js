@@ -390,8 +390,8 @@ async function main() {
        numero y se olvida del codigo de area. Si no, no les va a llegar y LES
        PUEDE LLEGAR A UNA PERSONA EQUIVOCADA Y DESCONOCIDA".
 
-       Con el cierre en la tienda esto dejo de ser un detalle: la confirmacion
-       sale por WhatsApp al numero que escribio el cliente. La validacion
+       Desde el 22/10/2026 el numero es para que el repartidor ubique al
+       cliente el dia de la entrega: mal escrito, no hay a quien llamar. La validacion
        vieja era ">= 8 digitos", o sea casi nada — en la planilla hay numeros
        guardados como `1554668949`, con el 15 viejo adelante. */
     console.log('\n' + DIM + '== El telefono: 10 digitos o no sale ==' + RST);
@@ -410,7 +410,10 @@ async function main() {
       '   vale: _telLocal().length === TEL_LARGO }; })())'));
 
     let t = await tel('11', '3688 7500');
-    chk(t.viaja === '5491136887500', 'un numero de CABA/GBA sale en el formato de WhatsApp', t.viaja);
+    chk(t.viaja === '5491136887500', 'un numero de CABA/GBA sale en el formato internacional', t.viaja);
+    const _lblTel = JSON.parse(await ev('JSON.stringify({ l: document.querySelector("label[for=f-tel-num]").textContent, err: document.getElementById("err-telefono").textContent })'));
+    chk(_lblTel.l.trim() === 'Celular' && !/WhatsApp/i.test(_lblTel.err), 'el campo se llama "Celular", no "WhatsApp"', _lblTel.l + ' · ' + _lblTel.err);
+    chk(!/te mandamos la confirmaci/i.test(fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8') + fs.readFileSync(path.join(RAIZ, 'app.js'), 'utf8')), 'y no promete "ahi te mandamos la confirmacion" (ni en el HTML ni en app.js)');
     chk(/✓/.test(t.hint), 'y se lo confirma en pantalla', t.hint);
 
     t = await tel('11', '36887500');
@@ -611,13 +614,14 @@ async function main() {
        markup. Sin ese control, leer "Realizar mi compra" probaria
        unicamente que alguien lo escribio en el index. */
     console.log('\n' + DIM + '== El pedido termina en la tienda ==' + RST);
-    chk(await ev('CIERRE_EN_LA_TIENDA === true'), 'el interruptor esta prendido');
+    /* EL INTERRUPTOR SE FUE EL 22/10/2026: el boton viene escrito asi de
+       fabrica y ningun codigo lo cambia. Se mide en las dos puntas —el archivo
+       que se publica y lo que queda en pantalla— para que no se despeguen. */
+    chk(await ev('typeof CIERRE_EN_LA_TIENDA') === 'undefined', 'ya no existe el interruptor del cierre');
     const _htmlDeFabrica = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
-    /* El `<svg>` del logo mide 1,5 KB, asi que no se mide por cercania: se
-       pide la clase en el boton y el texto en el archivo. */
-    chk(/class="whatsapp-btn" id="btn-final"/.test(_htmlDeFabrica) &&
-        _htmlDeFabrica.indexOf('Pedir por WhatsApp') >= 0,
-        'CONTROL: el HTML de fabrica todavia trae el boton de WhatsApp');
+    chk(/id="btn-final">Realizar mi compra<\/button>/.test(_htmlDeFabrica) &&
+        !/WhatsApp<\/button>/.test(_htmlDeFabrica),
+        'el HTML de fabrica trae "Realizar mi compra", sin boton de WhatsApp');
 
     nav++;
     await cli.enviar('Page.navigate', { url: 'http://127.0.0.1:' + PUERTO + '/index.html?n=' + nav +
@@ -669,8 +673,10 @@ async function main() {
       ' cls: document.querySelector(".send-card").className,' +
       ' datos: document.getElementById("send-done-datos").textContent,' +
       ' url: location.href })'));
-    chk(/947/.test(fin.titulo) && /confirmado/i.test(fin.titulo),
-        'y al confirmar el ERP lo dice con su numero', '"' + fin.titulo + '"');
+    /* "Recibimos" y no "confirmado" (22/10/2026): al registrarlo nadie lo
+       reviso todavia. "Confirmado" lo dice el seguimiento cuando el ERP lo dice. */
+    chk(/^Recibimos tu pedido #947$/.test(fin.titulo),
+        'y al registrarlo dice "Recibimos tu pedido" con su numero', '"' + fin.titulo + '"');
     chk(/done/.test(fin.cls), 'la tarjeta pasa al estado de pedido cerrado', fin.cls);
     chk(/Entrega/.test(fin.datos) && /Dirección/.test(fin.datos) && /Total/.test(fin.datos),
         'con la entrega, la direccion y el total, bien escritos');
@@ -710,8 +716,8 @@ async function main() {
         pant.loaderW + 'x' + pant.loaderH);
     chk(pant.items === 3, 'los productos van uno por renglon', String(pant.items));
     chk(/volver a la tienda/i.test(pant.btn), 'hay un boton para volver a la tienda', '"' + pant.btn + '"');
-    chk(/duda/i.test(pant.wa) && /wa\.me/.test(pant.waHref),
-        'y otro para escribirnos si tiene una duda', '"' + pant.wa + '"');
+    chk(/duda/i.test(pant.wa) && /^mailto:pedidos@maleu\.com\.ar\?subject=Pedido%20%23947$/.test(pant.waHref),
+        'y otro para escribirnos si tiene una duda, por mail y con el numero en el asunto', pant.waHref);
     chk(pant.btnAlto >= 44 && pant.waAlto >= 44,
         'los dos se pueden tocar (44px minimo)', pant.btnAlto + ' y ' + pant.waAlto);
 

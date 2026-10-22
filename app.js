@@ -153,10 +153,9 @@ const PRODUCTOS = [
      Lo vigila `node _tools/verificar-pedido.js`, que cruza el catalogo entero
      contra los mapas reales del ERP. */
   { id:30, abbr:"CCo", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Colita de Cuadril", desc:"Jugosa al horno y perfecta a la parrilla. Un corte que nunca falla.", img:"carne-colita.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
-  /* La entrana viene de a DOS tiras por paquete (dato de Lucas, 10/9/2026), y
-     el peso que se ve es el del paquete entero. Sin decirlo, el que elige una
-     de 1,163 kg no sabe si le llega una tira grande o dos. */
-  { id:31, abbr:"CEn", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Entra\u00f1a",           desc:"Fina, sabrosa y r\u00e1pida. La que sale primero de la parrilla.",          img:"carne-entrana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo","2 tiras por paquete"] },
+  /* El chip "2 tiras por paquete" (10/9/2026) se saco el 22/10/2026: Preguntas
+     dice que no se promete cuantas tiras trae, y la ficha no puede decir otra cosa. */
+  { id:31, abbr:"CEn", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Entra\u00f1a",           desc:"Fina, sabrosa y r\u00e1pida. La que sale primero de la parrilla.",          img:"carne-entrana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
   { id:32, abbr:"CLo", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Lomo",  desc:"El corte m\u00e1s tierno. Para la ocasi\u00f3n que se merece el mejor.", img:"carne-lomo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
   { id:33, abbr:"CPi", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Pica\u00f1a",            desc:"El corte brasilero que se volvi\u00f3 infaltable. Con su tapa de grasa.",  img:"carne-picana.jpg", emoji:"\ud83e\udd69", chips:["Fresca, no congelada","Envasada al vac\u00edo"] },
   { id:34, abbr:"CVa", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Vac\u00edo porcionado", desc:"El cl\u00e1sico del asado argentino, en porciones. Paciencia y fuego bajo.", img:"carne-vacio.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Porcionado"] },
@@ -1489,8 +1488,12 @@ const ZONAS = {
        entrega el vendedor que lo tenga declarado en su `dias`. Lo que decide
        quien lo ve es `_diasDeZonaRed()`, no esta lista — acá sólo tiene que
        estar para que el calendario sepa qué horario decir. */
-    horarios: { "Miércoles":"A coordinar", "Viernes":"A coordinar", "Sábado":"A coordinar" },
-    deliveryText: "Entregas: miércoles y viernes · Para el viernes, pedidos hasta el jueves 12 hs",
+    /* 22/10/2026: lo que entrega Maleu tiene franja fija, 18 a 21 hs. Se acabo
+       el "a coordinar": desde el 19/10 no sale ningun WhatsApp con el que
+       coordinar. El sabado y lo de los vendedores dicen "durante el día": lo
+       resuelve _horarioDeZona(), no esta lista. */
+    horarios: { "Miércoles":"18 a 21 hs", "Viernes":"18 a 21 hs", "Sábado":"durante el día" },
+    deliveryText: "Entregas: miércoles y viernes de 18 a 21 hs · Para el viernes, pedidos hasta el jueves 12 hs",
     deliveryTextVendedor: "Entregas: viernes durante el día · Pedidos hasta el jueves 12 hs",
     showStock: false
   },
@@ -1504,7 +1507,23 @@ const ZONAS = {
   }
 };
 
-const WA_NUMBER = "5491155038905";
+/* EL CANAL DEL CLIENTE ES EL MAIL (22/10/2026). Desde el 19/10 no sale ningun
+   WhatsApp de confirmacion (se acabo el cupo de WATI), asi que la compra deja
+   de mandar al cliente a WhatsApp: las dudas, el pedido que la web no llego a
+   registrar y los cambios van a esta casilla. WhatsApp queda solo en
+   contacto.html, como un canal mas. */
+var MAIL_PEDIDOS = 'pedidos@maleu.com.ar';
+function _mailto(asunto, cuerpo) {
+  return 'mailto:' + MAIL_PEDIDOS + '?subject=' + encodeURIComponent(asunto || '') +
+    (cuerpo ? '&body=' + encodeURIComponent(cuerpo) : '');
+}
+/* Una sola puerta para abrir el mail: las redes la reemplazan para ver que se
+   abrio sin que el navegador salga a buscar un programa de correo. */
+function _abrirMail(href) { window.location.href = href; }
+function _pintarDudaMail(n) {
+  var a = $id('send-done-wa');
+  if (a) a.href = _mailto(n ? 'Pedido #' + n : 'Mi pedido');
+}
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxmrG5YVSshcYezk8lXFx_uxb7NFGcb9EfTXc7dsIN4rZyj73CET4mk_aKPFPDY2wNi/exec";
 // Meses del cumpleaños — definido arriba para que initCumpleBlock() (llamado en el init) lo tenga listo.
 var CUMPLE_MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -2461,8 +2480,7 @@ function _cierreDelDiaMs(iso, zone) {
   var y = +parts[0], mes = +parts[1] - 1, dia = +parts[2];
 
   var DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-  var z = ZONAS[zone || currentZone];
-  var franja = (z && z.horarios && z.horarios[DIAS[new Date(Date.UTC(y, mes, dia)).getUTCDay()]]) || '';
+  var franja = _horarioDeZona(zone || currentZone, DIAS[new Date(Date.UTC(y, mes, dia)).getUTCDay()]);
   var hora = franja.match(/(\d{1,2})/);
 
   var d;
@@ -3773,7 +3791,7 @@ function renderWelcomeDateGrid() {
   // Card "Cualquier día" (flexible) — destacada arriba, ancho completo
   html += '<button type="button" class="loc-any-btn" onclick="setDeliveryDate(\'any\',\'\')" aria-label="Cualquier día">'
         + '<span class="any-icon">🤝</span>'
-        + '<span class="any-text"><strong>Cualquier día</strong><small>Sin preferencia, lo coordinamos juntos</small></span>'
+        + '<span class="any-text"><strong>Cualquier día</strong><small>Sin preferencia: el primero que tengamos</small></span>'
         + '</button>';
 
   function cardHTML(d, isNext) {
@@ -3916,7 +3934,7 @@ function _getNextDeliveryDatesGrouped(zone) {
       var ex = extras.filter(function(e) { return e.iso === iso; })[0];
       timeRange = (ex && ex.timeRange) || '19 a 21 hs';
     } else {
-      timeRange = (z.horarios[dayName] || '').replace(/\s*hs/g,'hs');
+      timeRange = _horarioDeZona(zone, dayName).replace(/\s*hs/g,'hs');
     }
     var dms = d.getTime();
     var label;
@@ -4319,7 +4337,7 @@ function _pintarHeroEntregas() {
     var txt;
     if (currentZone === 'pilar' && !_pilarEntregaMaleu()) {
       txt = 'Entregas ' + _diasEnPalabras(_diasDelVendedorActual()) +
-            ' a coordinar · Pedidos hasta el jueves 12 hs';
+            ' durante el día · Pedidos hasta el jueves 12 hs';
     } else {
       txt = z.deliveryText;
     }
@@ -5648,8 +5666,21 @@ function _getHorarioForFecha(zone, dayName, iso) {
   var extras = ENTREGAS_EXTRA[zone] || [];
   var ex = extras.filter(function(e) { return e.iso === iso; })[0];
   if (ex) return ex.timeRange;
+  return _horarioDeZona(zone, dayName);
+}
+
+/* EL HORARIO DE UN DIA, SEGUN QUIEN ENTREGA (22/10/2026). En Pilar la misma
+   zona tiene dos franjas: lo que entrega Maleu va de 18 a 21 hs, y lo de un
+   vendedor va "durante el día" (lo reparte el, en su horario). Una sola
+   respuesta para el calendario, el corte del dia, el pedido y el seguimiento:
+   si cada uno leyera `horarios` por su cuenta, al vendedor le saldria el
+   18 a 21 de Maleu. */
+var HORARIO_VENDEDOR = 'durante el día';
+function _horarioDeZona(zone, dayName) {
   var z = ZONAS[zone];
-  return (z && z.horarios && z.horarios[dayName]) || '';
+  var h = (z && z.horarios && z.horarios[dayName]) || '';
+  if (zone === 'pilar' && currentZone === 'pilar' && !_pilarEntregaMaleu()) return HORARIO_VENDEDOR;
+  return h;
 }
 function onDiaChange() {
   const dia = $id('f-dia').value;
@@ -5696,7 +5727,7 @@ function _zoneHorariosForDayPicker() {
       });
     } else {
       _diasDelVendedorActual().forEach(function (d) {
-        out[d] = (z.horarios && z.horarios[d]) || 'A coordinar';
+        out[d] = HORARIO_VENDEDOR;
       });
     }
     return out;
@@ -5879,7 +5910,7 @@ function _telArmar() {
   if (h && escribio) h.value = local.length === TEL_LARGO ? '549' + local : '';
   var hint = $id('tel-hint');
   if (hint) {
-    if (!local) hint.textContent = 'Sin el 15 y sin el 0. Ah\u00ed te mandamos la confirmaci\u00f3n.';
+    if (!local) hint.textContent = 'Sin el 15 y sin el 0. Es para ubicarte el d\u00eda de la entrega.';
     else if (local.length === TEL_LARGO) hint.textContent = '\u2713 +54 9 ' + _telArea() + ' ' + local.slice(_telArea().length);
     else hint.textContent = 'Te faltan ' + (TEL_LARGO - local.length) + ' n\u00fameros'
        + (local.length > TEL_LARGO ? '' : '');
@@ -5984,9 +6015,9 @@ function filtrarSubBarrios(keepValue) {
 /* ── LOADER OVERLAY DE ENVÍO ──
    Cubre la pantalla mientras el pedido se registra. Estados:
      · default   — registrando (el POST esta en vuelo)
-     · .success  — ✓, el backend CONFIRMO: recien ahi se va a WhatsApp
-     · .fallback — a los 25 s sin confirmacion: se ofrece mandarlo igual por
-                   WhatsApp, con un mensaje que dice que no quedo registrado */
+     · .success  — ✓, el backend CONFIRMO
+     · .fallback — a los 45 s sin confirmacion: se ofrece mandarlo igual por
+                   mail, con un texto que dice que no quedo registrado */
 function showSendLoader() {
   _coBarraArrancar();
   var ov = $id('send-overlay');
@@ -5997,7 +6028,9 @@ function showSendLoader() {
   if (t) t.textContent = 'Registrando tu pedido…';
   if (s) s.textContent = 'Tarda unos segundos. No cierres esta pantalla.';
   var fb = $id('send-wa-btn');
-  if (fb) fb.onclick = null;
+  if (fb) { fb.onclick = null; fb.textContent = 'Mandarlo por mail'; }
+  var fbn = document.querySelector('.send-fallback-nota');
+  if (fbn) fbn.textContent = 'Mientras tanto seguimos intentando: si se registra, te lo mostramos acá.';
   ov.classList.add('active');
   ov.setAttribute('aria-hidden', 'false');
   _fondoQuieto('envio', true);
@@ -6010,7 +6043,7 @@ function setSendLoaderSuccess() {
   if (card) { card.classList.remove('fallback'); card.classList.add('success'); }
   var t = $id('send-title'), s = $id('send-sub');
   if (t) t.textContent = '¡Pedido registrado!';
-  if (s) s.textContent = 'Te llevamos a WhatsApp para que nos lo mandes.';
+  if (s) s.textContent = 'Tu pedido quedó registrado.';
 }
 /* A los 8 s todavia sin confirmacion: casi siempre es la señal. Decirlo evita
    que el cliente crea que se colgo y cierre la pantalla. */
@@ -6018,11 +6051,11 @@ function setSendLoaderLento() {
   var s = $id('send-sub');
   if (s) s.textContent = 'La conexión está lenta. Seguimos intentando…';
 }
-/* A los 25 s el cliente no se queda trabado: lo puede mandar por WhatsApp,
-   que guarda y reenvia el mensaje aunque no haya señal. Ese mensaje dice que
-   el pedido NO quedo registrado y lleva los datos para cargarlo a mano. La
+/* A los 45 s el cliente no se queda trabado: lo puede mandar por MAIL (desde
+   el 22/10/2026; hasta ahi era WhatsApp). El mail sale con el pedido escrito,
+   dice que NO quedo registrado y lleva los datos para cargarlo a mano. La
    tienda sigue intentando mientras tanto: si confirma antes del toque, sigue
-   sola por el camino normal. */
+   sola por el camino normal. Y la cola local reintenta despues igual. */
 function setSendLoaderFallback(alTocar) {
   var ov = $id('send-overlay');
   if (!ov) return;
@@ -6030,9 +6063,28 @@ function setSendLoaderFallback(alTocar) {
   if (card) card.classList.add('fallback');
   var t = $id('send-title'), s = $id('send-sub');
   if (t) t.textContent = 'Todavía no se registró';
-  if (s) s.textContent = 'Podés mandarlo igual por WhatsApp: nos llega con todos tus datos.';
+  if (s) s.textContent = 'Podés mandarlo igual por mail: te lo dejamos escrito con todos tus datos.';
   var fb = $id('send-wa-btn');
-  if (fb) fb.onclick = function () { fb.onclick = null; alTocar(); };
+  if (fb) { fb.textContent = 'Mandarlo por mail'; fb.onclick = function () { fb.onclick = null; alTocar(); }; }
+}
+/* Despues de abrir el mail el cliente se queda en la tienda (el mail no se lleva
+   la pagina, como hacia wa.me). Se le dice que hacer y se le da la salida. */
+function setSendLoaderMailAbierto() {
+  var t = $id('send-title'), s = $id('send-sub');
+  if (t) t.textContent = 'Te abrimos el mail con tu pedido';
+  if (s) s.textContent = 'Mandalo a ' + MAIL_PEDIDOS + '. Si no se abrió, escribinos ahí con tu nombre y lo que pediste.';
+  var n = document.querySelector('.send-fallback-nota');
+  if (n) n.textContent = 'Seguimos intentando registrarlo solo: si llega dos veces, lo cargamos una sola.';
+  var fb = $id('send-wa-btn');
+  if (fb) {
+    fb.textContent = 'Volver a la tienda';
+    fb.onclick = function () {
+      fb.onclick = null;
+      hideSendLoader();
+      try { cerrarCheckout(); } catch (e) {}
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+  }
 }
 /* ═════ EL PEDIDO SE CIERRA EN LA TIENDA — PRENDIDO EL 29/9/2026 ═════
 
@@ -6058,28 +6110,11 @@ function setSendLoaderFallback(alTocar) {
    aviso de Telegram. Recien ahi se prendio. Los dos pedidos de prueba los
    cancelo la sesion Backend.
 
-   Queda `false` como valor posible por una sola razon: `verificar-envio.js` lo
-   apaga desde la pagina para medir el CONTROL —que el mismo pedido, con el
-   interruptor apagado, SI se va a WhatsApp—. Sin ese control, "no fue a
-   WhatsApp" probaria que el pedido no salio. */
-var CIERRE_EN_LA_TIENDA = true;
-
-/* El boton final y su nota. Con el cierre en la tienda el pedido NO va a
-   WhatsApp, asi que el boton no puede seguir diciendo que si: ni el texto, ni
-   el logo, ni el verde. Se pinta una vez al arrancar —el interruptor no cambia
-   en el medio— y el texto va por textContent. */
-function _pintarBotonFinal() {
-  var b = $id('btn-final');
-  if (b && CIERRE_EN_LA_TIENDA) {
-    b.classList.add('en-la-tienda');
-    b.innerHTML = '';
-    b.textContent = 'Realizar mi compra';
-  }
-  var n = $id('form-note');
-  if (n && CIERRE_EN_LA_TIENDA) {
-    n.textContent = 'Al tocar el bot\u00f3n registramos tu pedido y te mostramos c\u00f3mo seguirlo.';
-  }
-}
+   EL INTERRUPTOR SE FUE EL 22/10/2026. `CIERRE_EN_LA_TIENDA` quedaba en `false`
+   como valor posible solo para el control de `verificar-envio.js`, y con el
+   apagado el pedido se iba a wa.me. Desde el 19/10 la confirmacion por WhatsApp
+   no sale (se acabo el cupo de WATI), asi que esa rama prometia algo que no
+   existe. El boton final ya viene escrito asi en el index.html. */
 
 /* La pantalla de pedido cerrado. Los renglones van por `textContent` y no
    concatenados al HTML: la direccion y el detalle salen de lo que escribio el
@@ -6106,7 +6141,11 @@ function setSendLoaderDone(info) {
   /* El numero lo devuelve el backend en `n` y hasta hoy la tienda lo tiraba.
      Es lo que convierte "mandaste un mensaje" en "tenes un pedido". Si por lo
      que sea no vino, el pedido esta igual: no se inventa ninguno. */
-  if (t) t.textContent = info.n ? 'Pedido #' + info.n + ' confirmado' : 'Pedido confirmado';
+  /* "Recibimos", no "confirmado" (22/10/2026). Al llegar aca el pedido esta en
+     el ERP pero nadie lo reviso todavia: decir "confirmado" arriba y "en un rato
+     te lo confirmamos" abajo eran dos cosas a la vez, y una era mentira. El
+     titulo pasa a "confirmado" recien cuando la etapa del ERP lo dice (segPintar). */
+  if (t) t.textContent = info.n ? 'Recibimos tu pedido #' + info.n : 'Recibimos tu pedido';
   /* Desde el 19/10/2026 no se promete el WhatsApp: el cupo de WATI se acabo y
      la confirmacion no salia. Lo que si existe siempre es el seguimiento. */
   if (sub) sub.textContent = info.t ? 'Guardá esta página: acá ves cómo avanza tu pedido.' : 'Tu pedido quedó registrado.';
@@ -6204,9 +6243,9 @@ function setSendLoaderDone(info) {
     pago.hidden = !pago.firstChild;
   }
 
-  var wa = $id('send-done-wa');
-  /* Sin texto precargado: esto es soporte, no el pedido. */
-  if (wa) wa.href = 'https://wa.me/' + (info.wa || WA_NUMBER);
+  /* La duda va por mail desde el 22/10/2026, con el numero en el asunto: es lo
+     primero que hay que saber para contestarla. */
+  _pintarDudaMail(info.n);
 
   var btn = $id('send-done-btn');
   if (btn) {
@@ -6364,13 +6403,18 @@ function segPintar(g, j) {
   var etapas = (j && j.encontrado && j.etapas) ? j.etapas : null;
   var etapa = (j && j.encontrado) ? j.etapa : (g.etapa || 'recibido');
   var fecha = (j && j.fecha) || g.fecha || '';
-  var horario = (j && j.horario) || '';
+  var horario = (j && j.horario) || (g.info && g.info.horario) || '';
   var n = (j && j.n) || g.n || (g.info && g.info.n) || '';
 
   var tit = $id('send-title');
-  /* "confirmado" en el titulo es "lo registramos" —como fue siempre—; la etapa
-     de la linea se llama "Entrega confirmada" para no decir dos veces lo mismo. */
-  if (tit && n) tit.textContent = 'Pedido #' + n + ' ' + ({ cancelado: 'cancelado', entregado: 'entregado' }[etapa] || 'confirmado');
+  /* El titulo dice la etapa del ERP, y nada mas (22/10/2026). Hasta ese dia
+     "confirmado" queria decir "lo registramos", y abajo la nota decia "en un
+     rato te lo confirmamos": dos cosas a la vez. En "recibido" es "Recibimos tu
+     pedido #N"; "confirmado" recien cuando el ERP lo confirmo. */
+  if (tit && n) tit.textContent = etapa === 'recibido' || !etapa
+    ? 'Recibimos tu pedido #' + n
+    : 'Pedido #' + n + ' ' + ({ cancelado: 'cancelado', entregado: 'entregado' }[etapa] || 'confirmado');
+  if (n) _pintarDudaMail(n);
 
   var llega = $id('seg-llega');
   if (llega) {
@@ -6411,11 +6455,11 @@ function segPintar(g, j) {
   var nota = $id('seg-nota');
   if (nota) {
     var NOTAS = {
-      recibido: (j && j.encontrado) ? 'Lo estamos revisando: en un rato te lo confirmamos.' : 'Ya lo tenemos. En un ratito aparece acá cómo avanza.',
+      recibido: 'Te avisamos acá cuando lo confirmemos.',
       confirmado: 'Te lo llevamos el día que elegiste.',
       armado: 'Ya está preparado y listo para salir.',
       hoy: 'Hoy te lo llevamos.',
-      entregado: '', cancelado: 'Si no lo esperabas, escribinos y lo vemos.'
+      entregado: '', cancelado: 'Si no lo esperabas, escribinos a ' + MAIL_PEDIDOS + ' y lo vemos.'
     };
     nota.textContent = NOTAS[etapa] || '';
     nota.hidden = !nota.textContent;
@@ -7078,7 +7122,7 @@ function enviarPedido() {
     diaMensaje = dia + ' ' + _fp[2] + '/' + _fp[1];
   }
   const diaSheets = fechaFull || dia;
-  const entregaStr = diaMensaje + (horarioStr && horarioStr !== 'A coordinar' ? ' de ' + horarioStr : '');
+  const entregaStr = diaMensaje + (horarioStr && !/coordinar/i.test(horarioStr) ? (/^\d/.test(horarioStr) ? ' de ' : ', ') + horarioStr : '');
   const pagoStr = pagoEl.value === 'Efectivo' ? 'Efectivo' : 'Mercado Pago';
 
   // Detectar si barrio tiene vendedor asignado (Pilar + barrio match)
@@ -7266,10 +7310,10 @@ function enviarPedido() {
   // clientOrderId se REUSA → backend dedupea. Fix del 21/06/26 tras duplicados
   // Vie/Sáb 19-20/06 en Estancias que hubo que borrar a mano del Sheets.
   postData.clientOrderId = _clientOrderIdForOrder(postData);
-  /* El mensaje de WhatsApp se arma recien aca, cuando ya existe el
-     clientOrderId. Son DOS versiones:
-       · msgNormal       — el backend confirmo: el pedido ya esta en el ERP.
-       · msgSinConfirmar — a los 25 s no hubo confirmacion y el cliente lo manda
+  /* El texto del pedido sin confirmar se arma recien aca, cuando ya existe el
+     clientOrderId. Hasta el 22/10/2026 habia dos versiones (la normal iba a
+     WhatsApp); hoy queda una sola, la del mail del salvavidas:
+       · msgSinConfirmar — a los 45 s no hubo confirmacion y el cliente lo manda
          igual. Lleva los datos para cargarlo a mano y DICE que la web no lo
          confirmo: sin eso, en WhatsApp se ve igual que uno registrado, que es
          exactamente como se perdio un pedido de $84.600 el 10/9/2026.
@@ -7292,7 +7336,6 @@ function enviarPedido() {
      se usan esos y texto. El ⚠️ se queda: es U+26A0, un caracter simple. */
   var _refPedido = _refDePedido(postData.clientOrderId);
   var _lineaDia = 'Entrega: ' + diaMensaje + (horarioStr && !/coordinar/i.test(horarioStr) ? ' · ' + horarioStr : '');
-  var msgNormal = msgLines.concat(['', _lineaDia], aliasLines).join('\n');
   /* EL TEXTO DEL SIN CONFIRMAR (25/9/2026). Tadeo, viendo uno que le llego:
      "muy feo el detalle del mensaje como queda". Tenia razon, y eran dos cosas:
        · Los rotulos ("A nombre de:", "Direccion:") hacian parecer un formulario
@@ -7338,7 +7381,6 @@ function enviarPedido() {
      WhatsApp. A los 25 s sin confirmacion, el cliente lo puede mandar igual,
      pero con un mensaje que dice que la web no lo confirmo. */
   _enviando = true;
-  const waTarget = vendedorMatch ? vendedorMatch.wa : WA_NUMBER;
   const waBtn = document.querySelector('.whatsapp-btn');
   const waBtnOrig = waBtn ? waBtn.innerHTML : '';
   if (waBtn) { waBtn.disabled = true; waBtn.innerHTML = 'Enviando…'; waBtn.style.background = '#2e7d32'; }
@@ -7352,26 +7394,26 @@ function enviarPedido() {
        Si a los 25 s todavía no dijo que sí, volver a preguntar acá solo le
        suma al cliente otros 6 s de espera para oír lo mismo. Si por algo no
        llegó a arrancar, se pregunta una vez, que es como estaba a la mañana. */
-    if (_vigilado[postData.clientOrderId]) { _fallbackWhatsApp(); return; }
+    if (_vigilado[postData.clientOrderId]) { _fallbackMail(); return; }
     _pedidoEntro(postData.clientOrderId).then(function (entro) {
       if (_terminado) return;
-      if (entro) { _irAWhatsApp(msgNormal, true); return; }
-      _fallbackWhatsApp();
+      if (entro) { _cerrarPedido(true); return; }
+      _fallbackMail();
     });
   }, SEND_FALLBACK_MS);
 
-  function _fallbackWhatsApp() {
+  function _fallbackMail() {
     setSendLoaderFallback(function () {
       /* Ultimo intento antes de irse: el beacon sobrevive a que la pagina
          cambie. Si llega junto con el fetch que sigue en vuelo, el backend
          descarta el repetido por clientOrderId. */
       _beaconPendientes();
-      _irAWhatsApp(msgSinConfirmar, false);
+      _cerrarPedido(false);
     });
   }
 
   /* Vaciar el carrito y dejar el formulario listo para otro pedido. Sale de
-     adentro de `_irAWhatsApp` porque ahora hay dos finales y solo uno cierra la
+     adentro de `_cerrarPedido` porque ahora hay dos finales y solo uno cierra la
      pantalla: cuando el pedido se cierra en la tienda, el overlay se queda
      hasta que el cliente toque "Listo". El carrito se limpia igual en los dos
      — el pedido ya entro al ERP. */
@@ -7428,8 +7470,7 @@ function enviarPedido() {
       premio: _premioActivo()
         ? { codigo: appliedCoupon.codigo, texto: appliedCoupon.mensaje || '' }
         : null,
-      alias: alias,
-      wa: waTarget
+      alias: alias
     };
   }
 
@@ -7446,18 +7487,27 @@ function enviarPedido() {
     }
   }
 
-  function _irAWhatsApp(texto, confirmado, resp) {
+  function _cerrarPedido(confirmado, resp) {
     if (_terminado) return;
     _terminado = true;
     clearTimeout(tLento); clearTimeout(tFallback);
-    if (confirmado) {
-      if (waBtn) waBtn.innerHTML = '✓ Pedido registrado';
-      /* EL PEDIDO TERMINA ACA (29/9/2026). Ver `CIERRE_EN_LA_TIENDA` arriba.
-         La confirmacion se la manda el ERP por el template de UTILITY; la
-         rama de abajo —el salto a wa.me— queda para el CONTROL del test y
-         para el fallback de los 45 s, que es el unico camino en el que el
-         cliente todavia necesita escribirnos el. */
-      if (CIERRE_EN_LA_TIENDA) {
+    /* EL SALVAVIDAS ES POR MAIL (22/10/2026). La web no llego a confirmar: se
+       abre el mail con el pedido escrito y el aviso de que no quedo registrado.
+       El cliente se queda en la tienda (un mailto no se lleva la pagina), asi
+       que el cartel le dice que hacer y le da la salida. La cola local sigue
+       reintentando sola. */
+    if (!confirmado) {
+      _marcarCuponUsado();
+      _abrirMail(_mailto('Pedido sin confirmar (ref. ' + _refPedido + ')', msgSinConfirmar));
+      setSendLoaderMailAbierto();
+      _limpiarTrasPedido(false);
+      return;
+    }
+    if (waBtn) waBtn.innerHTML = '✓ Pedido registrado';
+    /* EL PEDIDO TERMINA ACA (29/9/2026): en la tienda, en su seguimiento.
+       Desde el 22/10/2026 no existe mas el salto a wa.me ni el interruptor
+       CIERRE_EN_LA_TIENDA que lo prendia. */
+    {
         /* SI ARMAR LA PANTALLA FALLA, EL PEDIDO SE CIERRA IGUAL.
 
            Lo encontro reinyectar un bug en `_datosDelCierre`: cuando esa
@@ -7469,7 +7519,7 @@ function enviarPedido() {
            pedido no se puede caer porque falle algo que viene despues de
            guardarlo. Acá la pantalla es lo de después. Se muestra el cierre
            simple —que es el que ya existia— y se limpia igual: el pedido
-           esta, y la confirmacion se la manda el ERP por WhatsApp. */
+           esta, y el seguimiento le dice como avanza. */
         var _pintada = false;
         var _info = null;
         try {
@@ -7477,6 +7527,10 @@ function enviarPedido() {
           /* El seguimiento (19/10/2026): el codigo, el canal y la fecha. */
           if (postData.canal === 'Home' || postData.canal === 'Pilar' || postData.canal === 'Red') {
             _info.t = postData.clientOrderId; _info.canal = postData.canal; _info.fecha = postData.fechaEntrega || '';
+            /* La franja va en el comprobante (22/10/2026): el ERP tarda ~13 s en
+               contestar el seguimiento, y mientras tanto la pantalla decia
+               "Te llega el viernes 30/10" sin la hora. */
+            _info.horario = /coordinar/i.test(postData.horario || '') ? '' : (postData.horario || '');
           }
           setSendLoaderDone(_info); _pintada = true;
         } catch (_ep) {}
@@ -7490,23 +7544,14 @@ function enviarPedido() {
           if (_t) _t.textContent = 'Tu pedido quedó registrado.';
           setTimeout(function () { hideSendLoader(); window.scrollTo({ top: 0, behavior: 'smooth' }); }, 2600);
         }
-        return;
-      }
-      setSendLoaderSuccess();
     }
-    _marcarCuponUsado();
-    // Con confirmacion, un respiro para que se vea el check verde.
-    setTimeout(function () {
-      window.location.href = 'https://wa.me/' + waTarget + '?text=' + encodeURIComponent(texto);
-    }, confirmado ? 800 : 0);
-    setTimeout(function () { _limpiarTrasPedido(true); }, 1800);
   }
 
   /* La confirmacion puede venir del primer intento o de cualquier reintento:
      por eso se escucha por clientOrderId y no la promesa del primer POST. */
   /* `resp` trae el N de pedido que asigno el ERP (`n`). Hasta el 28/9/2026 se
      descartaba: el mensaje de WhatsApp no lo usaba. La pantalla de cierre si. */
-  _alConfirmar(postData.clientOrderId, function (resp) { _irAWhatsApp(msgNormal, true, resp); });
+  _alConfirmar(postData.clientOrderId, function (resp) { _cerrarPedido(true, resp); });
   _sendWithRetry(postData).catch(function () { /* los reintentos siguen solos; a los 25 s decide el fallback */ });
   /* En paralelo al POST: preguntar si entró. Gana el que conteste primero. */
   _vigilarSiEntro(postData.clientOrderId);
@@ -7570,7 +7615,7 @@ var MALEU_FETCH_TIMEOUT_MS = 30000;
    59 s huele a cola de Apps Script y no a trabajo; si Backend la achica, hay
    que volver a medir y recalibrar en vez de dejarlos holgados para siempre. */
 var SEND_LENTO_MS = 25000;      // "la conexion esta lenta" — arriba del p75
-var SEND_FALLBACK_MS = 45000;   // se ofrece mandarlo por WhatsApp sin confirmar
+var SEND_FALLBACK_MS = 45000;   // se ofrece mandarlo por mail sin confirmar
 
 // ── SIGNATURE-BASED IDEMPOTENCY (21/06/26) ────────────────────────────
 // Si el cliente aprieta 'Pedir por WhatsApp' 2 veces con el MISMO pedido
@@ -8210,72 +8255,11 @@ function updateCatNavTop() {
    parpadear. En la compu la clase se pone igual, pero el CSS no la usa. */
 (function () {
   var ultimoY = window.pageYOffset || 0, pendiente = false, UMBRAL = 8;
-  var waUltimoY = ultimoY, waQuieto = null;
-  /* ¿El boton de WhatsApp esta encima de algo que el cliente toca para
-     comprar? Las cuatro esquinas y el centro: un control de 141x44 debajo de
-     un circulo de 54 no se escapa de esa grilla. */
-  function _waTapaUnControl() {
-    var w = $id('wa-float');
-    if (!w) return false;
-    var r = w.getBoundingClientRect();
-    if (!r.width) return false;
-    var pts = [[r.left + 6, r.top + 6], [r.right - 6, r.top + 6],
-               [r.left + 6, r.bottom - 6], [r.right - 6, r.bottom - 6],
-               [r.left + r.width / 2, r.top + r.height / 2]];
-    for (var i = 0; i < pts.length; i++) {
-      var abajo = document.elementsFromPoint(pts[i][0], pts[i][1]) || [];
-      for (var j = 0; j < abajo.length; j++) {
-        var e = abajo[j];
-        if (e === w || w.contains(e) || !e.closest) continue;
-        if (e.closest('.add-btn') || e.closest('.card-qty-controls') ||
-            e.closest('.pz-btn') || e.closest('.res-btn')) return true;
-      }
-    }
-    return false;
-  }
+  /* El boton flotante de WhatsApp se saco el 22/10/2026 (la compra ya no
+     pasa por WhatsApp, y en 390px tapaba el Agregar de las cards). Con el se
+     fueron su escondite al bajar y _waTapaUnControl(). */
   function mirar() {
     pendiente = false;
-
-    /* EL BOTON DE WHATSAPP SE VA MIENTRAS EL CLIENTE BAJA (1/10/2026).
-       Va primero y con su propia cuenta, antes de cualquier `return`: lo de
-       abajo sale temprano cuando la barra no esta pegada, y el boton flota
-       igual en toda la pagina.
-
-       Un flotante siempre tapa algo, y lo que hay debajo son los botones de
-       las cards — medido en los combos, tapaba "Armar combo". Un toque ahi se
-       lleva al cliente FUERA de la tienda. Bajando es cuando esta recorriendo
-       el catalogo; al frenar y subir vuelve. Arriba de todo no se esconde
-       nunca: ahi no hay nada que tapar. */
-    var yw = window.pageYOffset || 0;
-    if (yw <= 120) {
-      document.body.classList.remove('bajando');
-      waUltimoY = yw;
-    } else if (Math.abs(yw - waUltimoY) >= UMBRAL) {
-      document.body.classList.toggle('bajando', yw > waUltimoY);
-      waUltimoY = yw;
-    }
-    /* Y VUELVE CUANDO EL CLIENTE FRENA. Sin esto `bajando` solo se limpiaba al
-       subir o al llegar arriba de todo, asi que bajando quedaba escondido en
-       12 de 14 paradas: el boton que se pidio no se veia casi nunca. El que lo
-       cuida de taparle un boton al cliente es _waTapaUnControl(), no el
-       escondite — asi que al frenar puede volver sin riesgo. */
-    if (waQuieto) clearTimeout(waQuieto);
-    waQuieto = setTimeout(function () {
-      document.body.classList.remove('bajando');
-      document.body.classList.toggle('wa-estorba', _waTapaUnControl());
-    }, 450);
-    /* Y LA REGLA QUE ATACA LA CAUSA: nunca encima de un boton de comprar.
-       Esconderlo al bajar cubre el recorrido, pero no el REPOSO — que es
-       justo cuando se compra. Medido sobre la tienda publicada, parando en
-       26 lugares: en 4 quedaba tapando un "Agregar" o un +/-, o sea 1 de cada
-       7. Las filas de cards se repiten cada ~340px, asi que correrlo mas
-       arriba o mas abajo no resuelve nada: siempre hay una fila ahi.
-
-       Se pregunta por hit-testing en cinco puntos y no comparando contra los
-       40 botones de la pagina: `elementsFromPoint` ya lo resuelve el
-       navegador, y 40 getBoundingClientRect en cada cuadro de scroll si se
-       notarian. */
-    document.body.classList.toggle('wa-estorba', _waTapaUnControl());
 
     var sh = document.querySelector('.sticky-header');
     /* La sombra de la barra del buscador, que solo va cuando esta pegada
@@ -9075,7 +9059,6 @@ try {
     }, 0);
   } else segFranja();
 } catch (e) {}
-_pintarBotonFinal();
 updateCatNavTop();
 window.addEventListener('resize', updateCatNavTop);
 

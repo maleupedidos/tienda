@@ -35,6 +35,7 @@
  * Sale con codigo 1 si algo falla.
  */
 const http = require('http');
+const conPrecios = require('./precios-prueba.js');   /* los precios vienen de stock_full desde el 14/10/2026 */
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -173,7 +174,7 @@ async function main() {
       { width: ANCHO, height: ALTO, deviceScaleFactor: ANCHO < 700 ? 3 : 1, mobile: ANCHO < 700 });
 
     /* ── El backend simulado. Se engancha ANTES de la primera navegacion. ── */
-    let modo = 'ok6', posts = [], navs = [], enVuelo = 0, maxEnVuelo = 0, nFetch = 0, t0 = 0, noBackend = 0;
+    let modo = 'ok6', posts = [], navs = [], waNavs = [], enVuelo = 0, maxEnVuelo = 0, nFetch = 0, t0 = 0, noBackend = 0;
     await cli.enviar('Fetch.enable', { patterns: [
       { urlPattern: '*script.google.com*' }, { urlPattern: '*wa.me*' }, { urlPattern: '*whatsapp*' },
       { urlPattern: '*google-analytics.com*' }, { urlPattern: '*googletagmanager.com*' },
@@ -190,7 +191,9 @@ async function main() {
       const { requestId, request, resourceType, networkId } = m.params;
       const url = request.url;
       if (/wa\.me|whatsapp/.test(url)) {
-        if (/^https:\/\/wa\.me\/\d/.test(url)) navs.push({ t: Date.now() - t0, url });   // no el favicon
+        /* Desde el 22/10/2026 la compra no va a WhatsApp: cualquier salto a
+           wa.me es un error, y se cuenta aparte para exigir que no haya. */
+        if (/^https:\/\/wa\.me\/\d/.test(url)) waNavs.push({ t: Date.now() - t0, url });   // no el favicon
         fulfill(requestId, '<p>whatsapp simulado</p>', 'text/html');
         return;
       }
@@ -198,7 +201,13 @@ async function main() {
         cli.enviar('Fetch.failRequest', { requestId, errorReason: 'BlockedByClient' }).catch(() => {});
         return;
       }
-      if (request.method !== 'POST') { fulfill(requestId, '{"ok":true}'); return; }
+      /* Desde el 14/10/2026 los precios llegan en stock_full: contestar {ok:true}
+         dejaba la tienda en "Cargando los precios" y el test cortaba en
+         "no pude armar el pedido" (rojo anotado el 15/10 como preexistente). */
+      if (request.method !== 'POST') {
+        fulfill(requestId, /action=stock_full/.test(url) ? JSON.stringify(conPrecios({})) : '{"ok":true}');
+        return;
+      }
       noBackend++;   // un POST al backend: lo contesta el simulador, jamas la planilla
       let body = request.postData || '';
       if (!body && request.hasPostData && networkId) {
@@ -278,6 +287,12 @@ async function main() {
         nombre: (document.getElementById('f-nombre')||{}).value || '', dia: (document.getElementById('f-dia')||{}).value || '',
         pago: (document.querySelector('input[name=pago]:checked')||{}).value || '' })`));
       if (!(listo.n > 0 && listo.nombre && listo.dia && listo.pago)) throw new Error('no pude armar el pedido de prueba: ' + JSON.stringify(listo));
+      /* EL MAIL SE ANOTA, NO SE ABRE (22/10/2026). El salvavidas de los 45 s
+         abre un mailto, que no hace ningun pedido de red: CDP no lo ve. La
+         tienda lo abre por una sola puerta, `_abrirMail`, y aca se la cambia por
+         una que anota. Es la misma funcion que llama la tienda: si un camino
+         abriera el mail por otro lado, este test no lo veria y daria rojo. */
+      await ev(`window.__mails = []; _abrirMail = function (u) { window.__mails.push(String(u)); };`);
     }
 
     /* Manda el pedido y anota, cada 200 ms, en que estado esta el cartel. */
@@ -300,7 +315,7 @@ async function main() {
     const umbrales = async () => _umbrales;
 
     async function enviarYMirar(hastaMs, alMirar) {
-      posts = []; navs = []; enVuelo = 0; maxEnVuelo = 0; nFetch = 0;
+      posts = []; navs = []; waNavs = []; enVuelo = 0; maxEnVuelo = 0; nFetch = 0;
       const estados = [];
       t0 = Date.now();
       await ev('enviarPedido();');
@@ -310,15 +325,21 @@ async function main() {
           return JSON.stringify({ activo: !!(ov && ov.classList.contains('active')), cls: c ? c.className : '',
             tit: (document.getElementById('send-title')||{}).textContent || '', sub: (document.getElementById('send-sub')||{}).textContent || '',
             btn: r && r.height > 0 ? { h: Math.round(r.height), w: Math.round(r.width), top: Math.round(r.top), bottom: Math.round(r.bottom) } : null,
-            vh: window.innerHeight, vw: window.innerWidth, scrollW: document.documentElement.scrollWidth }); })()`);
-        if (s) { const o = JSON.parse(s); o.t = Date.now() - t0; estados.push(o); if (alMirar && await alMirar(o)) break; }
+            vh: window.innerHeight, vw: window.innerWidth, scrollW: document.documentElement.scrollWidth,
+            btnTxt: b ? b.textContent : '', mails: (window.__mails || []).slice() }); })()`);
+        if (s) {
+          const o = JSON.parse(s); o.t = Date.now() - t0; estados.push(o);
+          (o.mails || []).slice(navs.length).forEach((u) => navs.push({ t: o.t, url: u }));
+          if (alMirar && await alMirar(o)) break;
+        }
         if (navs.length && Date.now() - t0 > navs[0].t + 400) break;
         await dormir(200);
       }
       return estados;
     }
     /* searchParams ya decodifica: decodificar otra vez rompe con el '%' de "10% OFF". */
-    const textoWA = (u) => { try { return new URL(u).searchParams.get('text') || ''; } catch (e) { return ''; } };
+    const textoWA = (u) => { try { return new URL(u).searchParams.get('body') || ''; } catch (e) { return ''; } };
+    const asuntoDe = (u) => { try { return new URL(u).searchParams.get('subject') || ''; } catch (e) { return ''; } };
     /* CUANDO EL PEDIDO SE DA POR CONFIRMADO (29/9/2026).
        Hasta ese dia la señal era la navegacion a wa.me, porque el pedido
        terminaba ahi. Desde que `CIERRE_EN_LA_TIENDA` esta prendido, el pedido
@@ -357,8 +378,9 @@ async function main() {
       const cerro = cerroEn(est);
       chk(!!cerro && cerro.t >= 6000, 'se da por registrado recien DESPUES de la confirmacion: ' + (cerro ? cerro.t + ' ms' : 'no cerro') + ' (antes: 3.800 ms sin confirmar)');
       chk(!!cerro && cerro.t <= 9500, 'y sin demora de mas despues de confirmar (' + (cerro ? cerro.t : '-') + ' ms)');
-      chk(!!cerro && /confirmado/i.test(cerro.tit), 'con el N que devolvio el ERP: "' + (cerro ? cerro.tit : '-') + '"');
-      chk(navs.length === 0, 'y NO lo manda a WhatsApp: el pedido termina en la tienda (' + navs.length + ' navegaciones)');
+      /* "Recibimos tu pedido #N" desde el 22/10/2026: "confirmado" lo dice el seguimiento. */
+      chk(!!cerro && /^Recibimos tu pedido #999$/.test(cerro.tit), 'con el N que devolvio el ERP: "' + (cerro ? cerro.tit : '-') + '"');
+      chk(navs.length === 0 && waNavs.length === 0, 'y no abre ni mail ni WhatsApp: el pedido termina en la tienda (' + navs.length + ' mails, ' + waNavs.length + ' wa.me)');
       chk(fetches().length === 1 && beacons().length === 0, 'un solo POST al backend (' + fetches().length + ' fetch, ' + beacons().length + ' beacon) — antes eran 3 y hasta 18');
       const coid = (fetches()[0] || {}).coid || '';
       const pend = await pendientes();
@@ -412,17 +434,23 @@ async function main() {
       });
       const nav = navs[0];
       const fb = est.find((e) => /fallback/.test(e.cls));
-      chk(!navs.some((n) => n.t < 24000), 'NO lo manda a WhatsApp como si estuviera registrado (antes: a los 3.800 ms)');
+      chk(!navs.some((n) => n.t < 24000), 'NO abre el mail como si estuviera registrado (antes: a los 3.800 ms)');
       const _fb = _umbrales.fallback;
       chk(!!fb && fb.t >= _fb - 1500 && fb.t <= _fb + 2500,
           'a los ' + Math.round(_fb / 1000) + ' s ofrece mandarlo igual: ' +
           (fb ? fb.t + ' ms · "' + fb.tit + '"' : 'no aparecio'));
-      chk(!!fb && fb.btn && fb.btn.h >= 44, 'el boton de WhatsApp se puede tocar (' + (fb && fb.btn ? fb.btn.h + 'px de alto' : '-') + ')');
+      chk(!!fb && /mail/i.test(fb.btnTxt) && !/whatsapp/i.test(fb.btnTxt + fb.sub), 'ofrece mandarlo por mail, no por WhatsApp: "' + (fb ? fb.btnTxt : '-') + '"');
+      chk(!!fb && fb.btn && fb.btn.h >= 44, 'el boton se puede tocar (' + (fb && fb.btn ? fb.btn.h + 'px de alto' : '-') + ')');
       chk(!!fb && fb.btn && fb.btn.top >= 0 && fb.btn.bottom <= fb.vh, 'y entra en la pantalla');
       chk(!!fb && fb.scrollW <= fb.vw, 'sin desbordar a lo ancho');
-      chk(!!nav && clic && nav.t - clic < 1500, 'al tocarlo va a WhatsApp enseguida (' + (nav && clic ? (nav.t - clic) + ' ms' : '-') + ')');
+      chk(!!nav && clic && nav.t - clic < 1500, 'al tocarlo abre el mail enseguida (' + (nav && clic ? (nav.t - clic) + ' ms' : '-') + ')');
+      chk(waNavs.length === 0, 'y nunca salta a WhatsApp (' + waNavs.length + ')');
       const txt = nav ? textoWA(nav.url) : '';
       const coid = (fetches()[0] || {}).coid || '';
+      chk(!!nav && /^mailto:pedidos@maleu\.com\.ar\?/.test(nav.url), 'dirigido a pedidos@maleu.com.ar', nav ? nav.url.slice(0, 40) : '-');
+      chk(asuntoDe(nav ? nav.url : '').indexOf(refDe(coid)) >= 0, 'con la referencia en el asunto: "' + asuntoDe(nav ? nav.url : '') + '"');
+      const tras = est[est.length - 1] || {};
+      chk(/mail/i.test(tras.tit) && /volver a la tienda/i.test(tras.btnTxt), 'y el cartel dice que se abrio el mail y da la salida: "' + tras.tit + '" / "' + tras.btnTxt + '"');
       /* SE PIDE QUE LO DIGA, NO COMO LO DICE. Estos dos chequeos estuvieron en
          rojo desde `fdadb6d`, que reescribio el mensaje —de "La web no llego a
          confirmar este pedido" a "No me aparecio la confirmacion en la web"— y
@@ -501,7 +529,7 @@ async function main() {
       const _ct = cerroEn(est);
       chk(!!_ct && _ct.t >= _umbrales.fallback,
           'lo cierra sola despues del cartel, sin que nadie toque nada (' + (_ct ? _ct.t : '-') + ' ms)');
-      chk(navs.length === 0, 'y sin mandarlo a WhatsApp (' + navs.length + ' navegaciones)');
+      chk(navs.length === 0 && waNavs.length === 0, 'y sin abrir el mail ni WhatsApp (' + navs.length + ' mails, ' + waNavs.length + ' wa.me)');
     }
 
     // ── cierre ───────────────────────────────────────────────────────────
@@ -524,10 +552,13 @@ async function main() {
          probaria que el pedido no salio. Se APAGA el interruptor desde la
          pagina —al reves de lo que hacia hasta el 29/9, cuando venia apagado
          de fabrica— y el mismo pedido TIENE que irse a wa.me. */
+      /* Desde el 22/10/2026 el interruptor no existe. El control pasa a ser el
+         instrumento: que la anotacion del mail ande en esta misma pagina. Sin
+         eso, "no abrio el mail" probaria que el stub no esta puesto. */
       await prepararPedido();
-      await ev('CIERRE_EN_LA_TIENDA = false');
-      await enviarYMirar(9000);
-      chk(navs.length === 1, 'CONTROL con el interruptor apagado: el pedido se va a WhatsApp (' + navs.length + ' veces)');
+      await ev("_abrirMail('mailto:control@prueba')");
+      const _ctl = await ev('(window.__mails || []).length');
+      chk(_ctl === 1, 'CONTROL: un mail abierto desde la pagina se anota (' + _ctl + ')');
 
       await prepararPedido();
       /* Pago por transferencia: es el unico caso que muestra el alias, que es
@@ -535,10 +566,9 @@ async function main() {
       await ev(`(function(){ var t = document.querySelector('input[name="pago"][value="Transferencia"]');
         if (t) { t.checked = true; t.dispatchEvent(new Event('change', {bubbles:true})); } })()`);
       await dormir(500);
-      await ev('CIERRE_EN_LA_TIENDA = true');
       await enviarYMirar(9000);
 
-      chk(navs.length === 0, 'NO manda al cliente a WhatsApp (' + navs.length + ' navegaciones)');
+      chk(navs.length === 0 && waNavs.length === 0, 'NO saca al cliente de la tienda: ni mail ni WhatsApp (' + navs.length + ' / ' + waNavs.length + ')');
 
       const pant = JSON.parse(await ev(`(function(){
         var ov = document.getElementById('send-overlay');
@@ -613,7 +643,7 @@ async function main() {
          mandarlo de nuevo. Se rompe la funcion a proposito desde la pagina,
          que es la unica forma de ejercitar el catch. */
       await prepararPedido();
-      await ev('CIERRE_EN_LA_TIENDA = true; setSendLoaderDone = function(){ throw new Error("pantalla rota"); };');
+      await ev('setSendLoaderDone = function(){ throw new Error("pantalla rota"); };');
       /* Se mira la PELICULA y no la foto del final: la pantalla de respaldo se
          cierra sola a los 2,6 s, asi que a los 9 s ya no esta. Leer el estado
          final diria "no mostro nada" sobre algo que se mostro bien — la misma

@@ -288,6 +288,8 @@ async function main() {
         seg: !!(seg && !seg.hidden),
         tit: (document.getElementById('send-title') || {}).textContent || '',
         llega: (document.getElementById('seg-llega') || {}).textContent || '',
+        nota: (function () { var x = document.getElementById('seg-nota'); return x && !x.hidden ? x.textContent : ''; })(),
+        duda: (function () { var x = document.getElementById('send-done-wa'); return x ? (x.getAttribute('href') || '') : ''; })(),
         pasos: pasos.length, ok: pasos.filter(function (p) { return p.classList.contains('ok'); }).length,
         actual: (document.querySelector('#seg-pasos .seg-paso.actual .seg-paso-nom') || {}).textContent || '',
         items: document.querySelectorAll('#send-done-items li').length,
@@ -306,13 +308,20 @@ async function main() {
     etapaSeg = 'recibido';
     t0 = Date.now();
     await ev('enviarPedido();');
-    let s = await esperar((x) => x.seg && x.pasos === 5, 12000);
+    /* Se espera la respuesta del ERP (la fecha 31/12 es la suya), no solo la
+       linea de tiempo: la tienda pinta la copia local apenas confirma, y medir
+       en ese instante era una carrera que a 1440px se perdia. */
+    let s = await esperar((x) => x.seg && x.pasos === 5 && /31\/12/.test(x.llega), 12000);
     const coid = (posts.find((p) => p.coid) || {}).coid || '';
     chk(/^co_\d+_[a-z0-9]{16}$/.test(coid), 'el codigo del pedido tiene 16 caracteres al azar: ' + coid);
     chk(s.pantalla && s.seg, 'al confirmar aparece la linea de tiempo en la pantalla del pedido');
     chk(s.url === '/?seguimiento=' + coid, 'la URL pasa a ser la del seguimiento: ' + s.url);
     chk(s.guardado === coid, 'el pedido queda guardado en este navegador');
-    chk(/Pedido #999 confirmado/.test(s.tit), 'el titulo sigue diciendo el numero: "' + s.tit + '"');
+    /* 22/10/2026: en "recibido" el titulo dice lo que es verdad —lo recibimos—,
+       y "confirmado" recien cuando la etapa del ERP lo dice (ver mas abajo). */
+    chk(/^Recibimos tu pedido #999$/.test(s.tit) && !/confirmad/i.test(s.tit), 'recibido: el titulo es "Recibimos tu pedido #999", sin "confirmado": "' + s.tit + '"');
+    chk(/Te avisamos acá cuando lo confirmemos/.test(s.nota) && !/en un rato/i.test(s.nota), 'y abajo una sola cosa: "' + s.nota + '"');
+    chk(/^mailto:pedidos@maleu\.com\.ar\?subject=Pedido%20%23999$/.test(s.duda), 'la duda va por mail a pedidos@, con el numero en el asunto: ' + s.duda);
     chk(s.pasos === 5 && s.ok === 1 && /Recibimos/.test(s.actual), 'cinco pasos, el primero prendido (' + s.ok + '/' + s.pasos + ', actual «' + s.actual + '»)');
     chk(/Te llega el jueves 31\/12, 19 a 21 h/.test(s.llega), 'arriba dice cuando llega: "' + s.llega + '"');
     chk(gets.some((u) => u.indexOf('t=' + encodeURIComponent(coid)) > 0), 'le pregunto al ERP por ESE codigo (' + gets.length + ' consultas)');
@@ -330,7 +339,7 @@ async function main() {
     chk(s.pantalla && s.url === '/?seguimiento=' + coid, 'refrescando sigue en el mismo pedido: ' + s.url);
     chk(s.ok === 3 && s.actual === 'Armado', 'y con la etapa nueva del ERP (' + s.ok + ' prendidos, «' + s.actual + '»)');
     chk(s.items > 0, 'con el comprobante: ' + s.items + ' productos');
-    chk(/confirmado/.test(s.tit), 'y el numero: "' + s.tit + '"');
+    chk(/^Pedido #999 confirmado$/.test(s.tit), 'con la etapa ya confirmada, ahi si dice "confirmado": "' + s.tit + '"');
 
     console.log('\n' + DIM + '-- atras y la franja --' + RST);
     /* El historial de la recarga no tiene entrada anterior de la tienda: se arma

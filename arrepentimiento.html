@@ -102,23 +102,23 @@
     </label>
 
     <button type="submit" class="arr-btn">Enviar el pedido de arrepentimiento</button>
-    <p class="arr-nota">Se abre WhatsApp con tu pedido ya escrito. Solo tenés que mandarlo.</p>
+    <p class="arr-nota">Se abre tu mail con el pedido ya escrito, dirigido a pedidos@maleu.com.ar. Solo tenés que mandarlo.</p>
   </form>
 
   <div class="arr-listo" id="arr-listo" hidden>
     <p class="arr-listo-t">Listo, tu pedido quedó armado.</p>
-    <p>Si WhatsApp no se abrió solo, copiá el texto y mandánoslo por donde te quede más cómodo:</p>
+    <p>Si el mail no se abrió solo, copiá el texto y mandalo a <strong>pedidos@maleu.com.ar</strong>:</p>
     <textarea class="arr-copia" id="arr-copia" rows="8" readonly></textarea>
     <div class="arr-listo-acciones">
       <button type="button" class="pagina-cta" id="arr-copiar" onclick="arrCopiar()">Copiar el texto</button>
-      <a class="pagina-cta pagina-cta-2" id="arr-mail" href="#">Mandarlo por mail</a>
+      <a class="pagina-cta pagina-cta-2" id="arr-mail" href="mailto:pedidos@maleu.com.ar">Abrir el mail otra vez</a>
     </div>
   </div>
 
   <h2>O escribinos directo</h2>
-  <p>No hace falta llenar nada: escribinos por WhatsApp al
-  <a href="https://wa.me/5491155038905">+54 9 11 5503 8905</a> y decinos que te querés arrepentir
-  de tu compra. Con eso alcanza.</p>
+  <p>No hace falta llenar nada: escribinos a
+  <a href="mailto:pedidos@maleu.com.ar">pedidos@maleu.com.ar</a> con tu nombre y tu número de
+  pedido, y decinos que te querés arrepentir de tu compra. Con eso alcanza.</p>
 
   <script>
   function _arrTexto() {
@@ -140,12 +140,14 @@
     e.preventDefault();
     var texto = _arrTexto();
     document.getElementById('arr-copia').value = texto;
-    document.getElementById('arr-mail').href =
-      'mailto:tadeoustariz@maleu.com.ar?subject=' +
+    var mail = 'mailto:pedidos@maleu.com.ar?subject=' +
       encodeURIComponent('Pedido de arrepentimiento') +
       '&body=' + encodeURIComponent(texto);
+    document.getElementById('arr-mail').href = mail;
     document.getElementById('arr-listo').hidden = false;
-    window.open('https://wa.me/5491155038905?text=' + encodeURIComponent(texto), '_blank');
+    /* Desde el 22/10/2026 va por mail, no por WhatsApp. Un mailto no se lleva
+       la pagina: el cartel con el texto y el boton de copiar quedan a la vista. */
+    window.location.href = mail;
     document.getElementById('arr-listo').scrollIntoView({ behavior: 'smooth', block: 'center' });
     return false;
   }
@@ -163,7 +165,7 @@
 
   <div class="pagina-cierre">
     <p>¿Te quedó alguna duda?</p>
-    <a class="pagina-cta" href="https://wa.me/5491155038905" target="_blank" rel="noopener">Escribinos por WhatsApp</a>
+    <a class="pagina-cta" href="mailto:pedidos@maleu.com.ar">Escribinos por mail</a>
     <a class="pagina-cta pagina-cta-2" href="/">Ver la tienda</a>
   </div>
 </main>

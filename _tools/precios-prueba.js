@@ -15,7 +15,12 @@ const PV = {"PMu":11200,"PMa":11500,"PJyQ":11800,"PCC":11500,"PJyM":12000,"PPM":
   "SQB":22100,"SL":22100,"SCo":19800,"SPyP":18300,"SJyQ":18300,"SE":17000,"SCa":16500,"ECaC":20000,"EJyQ":18000,
   "ECyQ":18000,"EV":18000,"TG":26000,"TLC":26000,"TC":26000,"F":9000,"TP":12000,"TJyQ":12000,"TCa":12000,"TV":12000,
   "RC":13000,"RP":13000,"CCo":20750,"CEn":34000,"CLo":33000,"CPi":22875,"CVa":26000,"CVE":25200,"CBC":29250,
-  "COB":30325,"CMa":22825,"CAC":27900,"CAB":27900,"CPe":25025};
+  "COB":30325,"CMa":22825,"CAC":27900,"CAB":27900,"CPe":25025,
+  /* Los wraps de Sevuchitas (ids 42-44, 22/10/2026). Sin ellos `_preciosListos`
+     queda en false y NINGUNA prueba puede agregar nada: verificar-checkout dio
+     21 rojos sobre una tienda que andaba. El precio es el de los wraps viejos
+     (RC/RP), no el de la planilla: aca solo tiene que ser > 0. */
+  "WPo":13000,"WBo":13000,"WVe":13000};
 const COMBOS = { cmb_descubri_semana: 46900, cmb_descubri_finde: 34900, cmb_noche_casa: 23900,
   cmb_mesa_familiar: 45900, cmb_freezer_lleno: 84900 };
 

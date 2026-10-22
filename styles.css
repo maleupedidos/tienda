@@ -528,44 +528,8 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
    ultima palabra del nombre en vez de quedar suelto. */
 .summary-line .sum-x { white-space:nowrap; }
 
-/* ── ESCRIBINOS POR WHATSAPP (1/10/2026) ──────────────────────────────
-   Abajo a la derecha; el carrito flotante va CENTRADO, asi que no se pisan
-   ni a 390px (el carrito ocupa de 105 a 285, este de 318 a 374).
-
-   Se esconde con cualquier panel abierto —carrito, checkout, modal de zona,
-   combo— usando `body.modal-open`, que es la clase que ya pone `_fondoQuieto`
-   para todos. Sobre el checkout taparia el boton de comprar, que es lo ultimo
-   que hay que estorbar; y una sola fuente evita tener que acordarse de este
-   boton cada vez que nazca un panel nuevo. */
-.wa-float {
-  position:fixed; right:1rem; bottom:calc(1.2rem + env(safe-area-inset-bottom, 0px));
-  width:54px; height:54px; border-radius:50%;
-  display:flex; align-items:center; justify-content:center;
-  background:#25D366; color:#fff; z-index:150;
-  box-shadow:0 4px 14px rgba(0,0,0,.22);
-  transition:transform .15s, box-shadow .15s;
-}
-.wa-float svg { width:30px; height:30px; display:block; }
-.wa-float:hover { transform:scale(1.06); box-shadow:0 6px 18px rgba(0,0,0,.28); }
-.wa-float:active { transform:scale(.96); }
-body.modal-open .wa-float { display:none; }
-/* Con "Ver pedido" abajo, el de WhatsApp sube para no quedar pegado a el. */
-body.con-ver-pedido .wa-float { bottom:calc(5.2rem + env(safe-area-inset-bottom, 0px)); }
-
-/* SE VA MIENTRAS EL CLIENTE BAJA, y vuelve apenas sube o llega arriba.
-   Un boton flotante SIEMPRE tapa algo, y lo que hay debajo en esta tienda son
-   los botones de las cards: medido en los combos, tapaba "Armar combo". Un
-   toque ahi no es que no pasa nada — se lleva al cliente FUERA de la tienda,
-   que es el peor resultado posible de un boton de ayuda.
-
-   Bajando es justo cuando el cliente esta recorriendo el catalogo y por tocar
-   un producto; al frenar y subir vuelve a estar. Lo decide el mismo handler
-   de scroll que esconde la franja del 10%: una sola escucha, pasiva y de a un
-   cuadro. No se usa display:none para que la transicion se vea. */
-.wa-float { opacity:1; visibility:visible; transition:transform .15s, box-shadow .15s, opacity .2s ease, visibility 0s linear 0s; }
-body.bajando .wa-float,
-body.wa-estorba .wa-float { opacity:0; visibility:hidden; pointer-events:none;
-                            transition:opacity .2s ease, visibility 0s linear .2s; }
+/* El boton flotante de WhatsApp (1/10/2026) se saco el 22/10/2026: la compra
+   ya no pasa por WhatsApp y en 390px tapaba el Agregar de las cards. */
 
 /* ── REPEAT BLOCK ── */
 
@@ -1463,7 +1427,7 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
 
 /* ── Contacto ── */
 .contacto-grid { display:grid; gap:1rem; margin:1.5rem 0 2rem; }
-@media (min-width:700px) { .contacto-grid { grid-template-columns:1fr 1fr; } }
+@media (min-width:700px) { .contacto-grid { grid-template-columns:repeat(3, 1fr); } }
 .contacto-card { border:1px solid #eee9e4; border-radius:14px; padding:1.3rem; }
 .contacto-card h2 { margin-top:0; }
 .zonas-tabla { border:1px solid #eee9e4; border-radius:14px; overflow:hidden; }

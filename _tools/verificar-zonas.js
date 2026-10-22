@@ -433,6 +433,9 @@ async function main() {
       chk(pPil.barrio === 'Pilara' && pPil.lote === '12', 'con el barrio y el lote (' + pPil.barrio + ' / ' + pPil.lote + ')');
       chk(Number(pPil.envio) === 5000 && Number(pPil.descuento) === 0, 'envio $5.000 y sin descuento en efectivo (' + pPil.envio + ' / ' + pPil.descuento + ')');
       chk(pPil.dia === '16/09/2026' || pPil.fechaEntrega === '2026-09-16', 'para el miercoles 16 (' + pPil.dia + ')');
+      /* 22/10/2026: la franja fija de Maleu en Pilar. Es lo que el ERP guarda en
+         "Horario Cliente" y lo que el seguimiento le dice al cliente. */
+      chk(pPil.horario === '18 a 21 hs', 'con su franja, 18 a 21 hs (horario "' + pPil.horario + '")');
       const carne = (pPil.items || []).filter((it) => it.unidad === 'kg').map((c) => c.abbr + ':' + c.qty + ':' + (c.piezas || []).join('+')).sort();
       chk(JSON.stringify(carne) === JSON.stringify(['CEn:1.163:ENT-01', 'CVa:1.241:VAC-02']), 'con los kilos y las piezas (' + carne.join(', ') + ')');
       chk(Math.abs(pPil.total - (espPil.sub + 5000)) < 2, 'el total cierra (' + pPil.total + ')');

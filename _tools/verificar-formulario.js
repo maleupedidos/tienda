@@ -164,7 +164,11 @@ async function main() {
           requestId: m.params.requestId, responseCode: 200,
           responseHeaders: [{ name: 'Content-Type', value: 'application/json' },
                             { name: 'Access-Control-Allow-Origin', value: '*' }],
-          body: Buffer.from('{"ok":true,"interceptado":true}').toString('base64'),
+          /* Los precios llegan en stock_full desde el 14/10/2026: sin ellos la tienda
+             dice "Cargando los precios" y no deja ni agregar ni mandar nada. */
+          body: Buffer.from(/action=stock_full/.test(m.params.request.url)
+            ? JSON.stringify(require('./precios-prueba.js')({}))
+            : '{"ok":true,"interceptado":true}').toString('base64'),
         });
       } catch (e) { /* la pagina ya se fue */ }
     });

@@ -1,4 +1,4 @@
-/* verificar-card.js — el boton de agregar y el de WhatsApp (1/10/2026)
+/* verificar-card.js — el boton de agregar (1/10/2026; sin el flotante de WhatsApp desde el 22/10/2026)
  *
  *   node _tools/verificar-card.js [ancho]
  *
@@ -158,6 +158,10 @@ const CONTRASTE = `
         (function (of) {
           window.fetch = function (u, o) {
             if (o && (o.method || '').toUpperCase() === 'POST') window.__posts.push(String(u));
+            /* Los precios llegan en stock_full desde el 14/10/2026: sin esto la
+               tienda queda en "Cargando los precios" y "Agregar" no suma nada. */
+            if (String(u).indexOf('action=stock_full') >= 0)
+              return Promise.resolve(new Response(${JSON.stringify(JSON.stringify(require('./precios-prueba.js')({})))}, { status: 200, headers: { 'Content-Type': 'application/json' } }));
             return of.apply(this, arguments);
           };
         })(window.fetch);
@@ -369,149 +373,39 @@ const CONTRASTE = `
     chk(cha.chapasEnTop === 0, 'adentro de "Los mas pedidos" no se repite la chapita', cha.chapasEnTop + ' de ' + cha.cardsEnTop);
     chk(cha.enSuCategoria === true, 'pero el mismo producto SI la lleva en su categoria', cha.nombre);
 
-    /* ─────────── 3. el boton de WhatsApp ─────────── */
-    console.log('\n' + G + '== Escribinos por WhatsApp ==' + F);
-    const w = JSON.parse(await ev(`(function () {
-      var a = document.getElementById('wa-float');
-      if (!a) return JSON.stringify({ hay: false });
-      var r = a.getBoundingClientRect();
-      return JSON.stringify({
-        hay: true, href: a.getAttribute('href') || '',
-        target: a.getAttribute('target') || '', rel: a.getAttribute('rel') || '',
-        rotulo: a.getAttribute('aria-label') || '',
-        w: Math.round(r.width), h: Math.round(r.height),
-        dentro: r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1 && r.left >= 0,
-        display: getComputedStyle(a).display
-      });
+    /* ─────────── 3. sin boton flotante de WhatsApp (22/10/2026) ─────────── */
+    /* El flotante del 1/10 se saco: la compra ya no pasa por WhatsApp (queda solo
+       en contacto.html) y a 390px tapaba el "Agregar" de las cards. Se mide el
+       hecho que importa: parando en toda la pagina, ningun "Agregar" visible
+       tiene otra cosa encima en su centro. */
+    console.log('\n' + G + '== Sin boton flotante, y nada tapa un "Agregar" ==' + F);
+    chk(await ev(`!document.getElementById('wa-float') && !document.querySelector('a[href*="wa.me"]')`),
+        'la tienda no tiene boton ni link a WhatsApp');
+    const barrido = JSON.parse(await ev(`(async function () {
+      var alto = document.documentElement.scrollHeight, vistos = 0, tapados = [];
+      /* La barra de abajo ("Ver pedido") es fija de borde a borde, como la de
+         arriba: lo que pasa por debajo no se ve y no cuenta. */
+      var piso = function () { var f = document.getElementById('float-cart-btn'); var fr = f && f.getBoundingClientRect();
+        return fr && fr.height && getComputedStyle(f).display !== 'none' ? fr.top : innerHeight; };
+      for (var y = 0; y < alto; y += 300) {
+        window.scrollTo(0, y);
+        await new Promise(function (r) { setTimeout(r, 60); });
+        [].forEach.call(document.querySelectorAll('.add-btn'), function (b) {
+          var r = b.getBoundingClientRect();
+          /* Lo que queda debajo de la barra pegada no se ve: no cuenta. */
+          if (!r.width || r.top < _stickyOffsetPx() || r.bottom > piso()) return;
+          vistos++;
+          var e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          if (e && e !== b && !b.contains(e)) tapados.push((e.id || e.className || e.tagName) + '@' + y);
+        });
+      }
+      window.scrollTo(0, 0);
+      return JSON.stringify({ vistos: vistos, tapados: tapados.slice(0, 5), n: tapados.length });
     })()`));
-    chk(w.hay, 'existe el boton flotante');
-    chk(w.href.indexOf('wa.me/' + WA_MALEU) !== -1, 'va al WhatsApp de Maleu, que es el que escucha WATI', w.href.slice(0, 48));
-    /* El mensaje de un pedido arranca con "Quiero hacer un pedido:" y WATI lo
-       reconoce por ahi. Una consulta NO puede empezar igual o se mezclarian. */
-    chk(!/pedido/i.test(decodeURIComponent(w.href)), 'su mensaje no se confunde con el de un pedido',
-        decodeURIComponent((w.href.split('text=')[1] || '')));
-    chk(w.target === '_blank' && /noopener/.test(w.rel), 'abre aparte y con noopener', w.target + ' · ' + w.rel);
-    chk(!!w.rotulo, 'tiene nombre para un lector de pantalla', w.rotulo);
-    chk(w.w >= 44 && w.h >= 44, 'se toca con el dedo', w.w + 'x' + w.h);
-    chk(w.dentro, 'entra entero en la pantalla');
-    /* SE MIDE, NO SE TOCA. Es un <a target="_blank">: un toque de verdad abre
-       una pestaña a wa.me y deja el navegador ocupado — el test se comia los
-       600 s del timeout y no imprimia ni el error. Para "nada lo tapa" alcanza
-       con preguntarle al navegador que hay en ese punto, que es lo mismo que
-       mira el toque antes de disparar.
-       Sin scrollIntoView ademas: es un elemento fijo, y desde el 1/10/2026 un
-       scroll hacia abajo lo esconde. */
-    await ev('window.scrollTo(0, 0)');
-    await dormir(420);
-    const tw = await tocar('#wa-float', true);
-    chk(!!tw && tw.libre, 'nada lo tapa', tw && tw.libre ? 'libre' : 'lo tapa ' + (tw && tw.tapa));
-
-    /* ─────────── 4. no se pisa con "Ver pedido" ─────────── */
-    console.log('\n' + G + '== Con el pedido armado ==' + F);
-    const sol = JSON.parse(await ev(`(function () {
-      var f = document.getElementById('float-cart-btn'), w = document.getElementById('wa-float');
-      var vf = getComputedStyle(f).display !== 'none';
-      var a = f.getBoundingClientRect(), b = w.getBoundingClientRect();
-      var pisa = !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
-      return JSON.stringify({ verPedido: vf, pisa: pisa,
-        separacion: Math.round(Math.min(b.left - a.right, a.top - b.bottom)) });
-    })()`));
-    /* El control: si "Ver pedido" no esta a la vista, que no se pisen no
-       prueba nada — no hay con que pisarse. */
-    chk(sol.verPedido, 'CONTROL: con algo en el carrito, "Ver pedido" esta a la vista');
-    /* No alcanza con que no se toquen: a 8px uno del otro se ve apretado y
-       se toca peor, que era justo el estado del que se salio. */
-    chk(!sol.pisa && sol.separacion >= 12, 'el de WhatsApp queda lejos de "Ver pedido"', 'separados por ' + sol.separacion + 'px (min 12)');
-
-    /* ─────────── 4b. se va mientras el cliente baja ─────────── */
-    console.log('\n' + G + '== Bajando no estorba ==' + F);
-    /* Que no tape los botones de las cards no se puede medir "en general":
-       depende de donde quede cada card. Lo que SI es determinista es la
-       condicion que lo causa — si esta a la vista mientras el cliente baja,
-       antes o despues le cae encima de un boton. Es la misma leccion que la
-       del CLS de la grilla (28/9/2026): un sintoma intermitente no sirve de
-       chequeo, la condicion que lo provoca si. */
-    const verWa = async () => await ev(`(function(){var w=document.getElementById('wa-float');` +
-      `var cs=getComputedStyle(w);return cs.display!=='none'&&cs.visibility!=='hidden'&&+cs.opacity>0;})()`);
-    const scrollA = async (y) => { await ev('window.scrollTo(0,' + y + ')'); await dormir(420); };
-
-    await scrollA(0);
-    chk(await verWa(), 'CONTROL: arriba de todo esta a la vista');
-    /* MIENTRAS BAJA se va, y al FRENAR vuelve. Las dos mitades de la misma
-       regla, y el orden de la medicion es lo que las distingue: el boton
-       reaparece solo despues de que el scroll se queda quieto, asi que medir
-       tarde da siempre "esta a la vista" y el chequeo no probaria nada.
-
-       Los 140ms de abajo son holgados contra los 450 del temporizador, y
-       los 900 que siguen lo superan con margen: si alguien cambia ese tiempo
-       a mas de 900, este chequeo se vuelve rojo y hay que mirarlo. */
-    await ev('window.scrollTo(0, 900)');
-    await dormir(140);                       // en movimiento, antes de que frene
-    chk(!(await verWa()), 'mientras baja se va, que es cuando el cliente recorre');
-    await dormir(900);                       // ya frenado
-    chk(await verWa(), 'y al frenar vuelve: el boton que se pidio tiene que estar cuando se lo mira');
-
-    /* LO QUE DE VERDAD PROTEGE LA VENTA: que en ningun lugar de la pagina
-       quede a la vista encima de un control de compra. Un toque ahi se lleva
-       al cliente FUERA de la tienda.
-
-       Se barre la pagina parando cada 300px y SUBIENDO 30 en cada parada —el
-       flotante se esconde al bajar, asi que sin ese movimiento hacia arriba
-       estaria oculto siempre y el barrido no mediria nada. Antes del arreglo
-       daba 4 paradas de 26; ahora tiene que dar 0.
-
-       El segundo numero es el control: si no se viera NUNCA, cero tapadas no
-       probaria nada — probaria que el boton no existe. */
-    const barrido = JSON.parse(await ev(`(function () {
-      var w = document.getElementById('wa-float');
-      var tapa = function () {
-        var r = w.getBoundingClientRect(), vistos = [];
-        for (var x = r.left + 4; x <= r.right - 4; x += 12)
-          for (var y = r.top + 4; y <= r.bottom - 4; y += 12)
-            (document.elementsFromPoint(x, y) || []).forEach(function (e) {
-              var b = e.closest && (e.closest('.add-btn') || e.closest('.card-qty-controls'));
-              if (b && vistos.indexOf(b.textContent.trim()) === -1) vistos.push(b.textContent.trim());
-            });
-        return vistos;
-      };
-      var esperar = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
-      return (async function () {
-        var alto = document.documentElement.scrollHeight, visibles = 0, tapando = 0, donde = [];
-        for (var y = 800; y < Math.min(alto - 900, 9000); y += 300) {
-          window.scrollTo(0, y); await esperar(120);
-          window.scrollBy(0, -30); await esperar(430);
-          var cs = getComputedStyle(w);
-          if (cs.visibility === 'hidden' || +cs.opacity === 0) continue;
-          visibles++;
-          var t = tapa();
-          if (t.length) { tapando++; if (donde.length < 3) donde.push(Math.round(pageYOffset) + ': ' + t.join('/')); }
-        }
-        return JSON.stringify({ visibles: visibles, tapando: tapando, donde: donde });
-      })();
-    })()`));
-    chk(barrido.visibles >= 5,
-        'CONTROL: en el barrido se lo ve ' + barrido.visibles + ' veces — si no se viera nunca, lo de abajo no probaria nada');
-    chk(barrido.tapando === 0,
-        'y en NINGUNA queda encima de un boton de comprar',
-        barrido.tapando + ' de ' + barrido.visibles + (barrido.donde.length ? ' — ' + barrido.donde.join(' · ') : ''));
-
-    await scrollA(0);
-    chk(await verWa(), 'arriba de todo esta, que es donde no tapa nada');
-
-    /* ─────────── 5. y se va cuando hay un panel abierto ─────────── */
-    console.log('\n' + G + '== Y desaparece con un panel abierto ==' + F);
-    await ev('toggleCart()'); await dormir(500);
-    chk(await ev(`getComputedStyle(document.getElementById('wa-float')).display`) === 'none',
-        'con el carrito abierto no se ve');
-    await ev('toggleCart()'); await dormir(500);
-    chk(await ev(`getComputedStyle(document.getElementById('wa-float')).display`) === 'flex',
-        'al cerrarlo vuelve');
-    await ev('abrirCheckout()'); await dormir(700);
-    chk(await ev(`getComputedStyle(document.getElementById('wa-float')).display`) === 'none',
-        'sobre el checkout tampoco: ahi taparia el boton de comprar');
-    await ev('cerrarCheckout()'); await dormir(600);
-    chk(await ev(`getComputedStyle(document.getElementById('wa-float')).display`) === 'flex',
-        'y vuelve al salir del checkout');
+    chk(barrido.vistos > 10, 'CONTROL: el barrido vio ' + barrido.vistos + ' botones "Agregar"');
+    /* "Ver pedido" (la barra de abajo) aparece con algo en el carrito: el bloque 2
+       ya agrego un producto, asi que si tapara algo tambien saldria aca. */
+    chk(barrido.n === 0, 'ninguno tiene algo encima', barrido.n ? barrido.tapados.join(', ') : '0');
 
     /* ─────────── 6. nada hacia afuera ─────────── */
     console.log('\n' + G + '== Nada salio hacia afuera ==' + F);

@@ -4441,6 +4441,51 @@ El título pasó a *"Pizzas a la parrilla en tu evento"* y se sumó la pregunta
 tiene ningún costo de horno (carbón, aceite y nafta por evento). Los *"al horno"*
 de las fichas y de Tips son instrucciones de cocción para el cliente: quedan.
 
+## La compra ya no pasa por WhatsApp (22/10/2026)
+
+Desde el 19/10 no sale ninguna confirmación por WhatsApp (se acabó el cupo de WATI y
+Tadeo decidió no depender más de eso), pero la tienda la seguía prometiendo. Ese día se
+sacó WhatsApp de toda la compra. **El canal del cliente es `pedidos@maleu.com.ar`**
+(`MAIL_PEDIDOS` en `app.js`).
+
+| | antes | desde el 22/10/2026 |
+|---|---|---|
+| campo teléfono | "WhatsApp" · *"Ahí te mandamos la confirmación"* | **"Celular"** · es para que el repartidor te ubique |
+| título al comprar | "Pedido #N confirmado" + *"en un rato te lo confirmamos"* | **"Recibimos tu pedido #N"** + *"Te avisamos acá cuando lo confirmemos"*. "Confirmado" recién cuando la etapa del ERP lo dice |
+| "¿Tenés una duda?" | wa.me | `mailto:` con **"Pedido #N"** en el asunto |
+| salvavidas de los 45 s | "Mandar por WhatsApp" | **"Mandarlo por mail"**, con el pedido escrito y la ref. en el asunto. El cliente queda en la tienda con "Volver a la tienda". La cola local sigue igual |
+| Pilar que entrega Maleu | "A coordinar" | **18 a 21 hs**, miércoles y viernes. Con vendedor: **"durante el día"** |
+| botón flotante de WhatsApp | en toda la tienda (tapaba "Agregar" a 390px) | **no existe** |
+| pie | número de WhatsApp | `pedidos@maleu.com.ar` + link a Contacto |
+| Arrepentimiento | abría WhatsApp | abre el mail a `pedidos@`, y queda "Copiar el texto" |
+
+- **El horario sale de `_horarioDeZona(zona, día)`**, que sabe quién entrega. Lo usan el
+  calendario, el corte del día, el pedido (`horario`) y el seguimiento. Con eso el
+  miércoles de Pilar de Maleu corta a las 18, y lo del vendedor sigue sin corte inventado.
+- **El comprobante guarda la franja** (`info.horario`): el ERP tarda ~13 s en contestar
+  el seguimiento, y mientras tanto la pantalla decía la fecha sin la hora.
+- **Se fue `CIERRE_EN_LA_TIENDA`** y su rama a wa.me. El botón final viene escrito de
+  fábrica ("Realizar mi compra"); ya no lo pinta `_pintarBotonFinal`.
+- **WhatsApp queda sólo en `contacto.html`** (al lado del mail), en `catering.html` y en
+  `ser-parte.html`, a propósito. El resto que dice "whatsapp" en lo publicado son
+  comentarios y nombres de clase internos (`.whatsapp-btn`, `whatsapp-cta-wrap`).
+- **El mail con el detalle del pedido es el bloque 2** (con Backend): la tienda no lo
+  promete todavía. El mail de avisos del seguimiento (del 19/10) quedó como estaba.
+
+> [!danger] Las redes no podían agregar NADA desde el 22/10 a las 14 hs
+> Los wraps nuevos (WPo, WBo, WVe) no estaban en la foto de precios de las pruebas
+> (`_tools/precios-prueba.js`), así que `_preciosListos` quedaba en false y ningún
+> "Agregar" sumaba. `verificar-checkout` daba 21 rojos sobre una tienda que andaba.
+> **Si sumás un producto al catálogo, sumalo también a esa foto.** Y `verificar-envio`,
+> `verificar-card` y `verificar-formulario` contestaban `stock_full` sin precios desde el
+> 14/10 (de ahí el "no pude armar el pedido de prueba" anotado ese día): ahora usan la
+> misma foto.
+
+Las redes que miden esto: `verificar-checkout` (108), `verificar-seguimiento` (30),
+`verificar-envio` (57: el salvavidas se mide con `_abrirMail` reemplazado, porque un
+`mailto:` no hace pedido de red), `verificar-horario` (21), `verificar-card` (25: sin
+flotante y ningún "Agregar" tapado) y `verificar-zonas` (70, con la franja en el pedido).
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en
