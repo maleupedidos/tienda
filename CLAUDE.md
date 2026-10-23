@@ -4565,6 +4565,22 @@ Redes: `verificar-seguimiento` (48, con el escenario de transferencia y el de ef
 Redes: `verificar-seguimiento` (56) y `verificar-checkout` (135), a 390 y 1440.
 Reinyectados sin logo y sin bloque, los dos dan rojo.
 
+## El pie de una empresa (bloque 5, 23/10/2026)
+
+**El mismo pie (`footer.pie`) en las diez páginas que tienen pie** (todas menos
+`404.html`, que solo redirige, y `ruleta.html`, la pantalla del juego del QR):
+Contacto (pedidos@ + "Te respondemos durante el día"), Instagram @maleu.ar, entregas en
+una línea con "Ver días y horarios" → Contacto, links a Quiénes somos, Preguntas,
+Términos y Privacidad, y el botón de arrepentimiento grande y aparte.
+
+- **Se repite en diez archivos, a mano.** Si se cambia, cambia en los diez (el script del
+  23/10 reemplazaba el bloque entero de `<footer class="pie">` a `</footer>`).
+- **Datos fiscales: el lugar ya está.** `.pie-fiscal` (escondido, con su CSS: texto a la
+  izquierda, QR de Data Fiscal de 64px a la derecha). Cuando estén la razón social, el
+  CUIT y el QR, se completa ahí y se le saca el `hidden`. Sin rediseñar.
+- `verificar-paginas` deja pasar UNA mención del dueño: "a nombre de Tadeo Alberto
+  Ustariz", el titular del alias (decisión del 23/10). Cualquier otra se sigue marcando.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

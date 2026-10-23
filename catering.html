@@ -178,11 +178,41 @@
   </div>
 </main>
 
-<footer class="pagina-footer">
-  <p>Maleu · Comida lista para cocinar · Pilar, Buenos Aires</p>
+<!-- EL PIE (bloque 5, 23/10/2026). El MISMO en las diez paginas: es donde el que
+     no nos conoce busca si detras hay una empresa de verdad. Contacto con la linea de
+     respuesta, Instagram, zonas y dias en una linea, y los links de la empresa.
+     El boton de arrepentimiento sigue grande y aparte (Disposicion 954/2025).
+     DATOS FISCALES: el lugar ya esta (.pie-fiscal, escondido). Cuando esten la razon
+     social, el CUIT y el QR de Data Fiscal de ARCA se completan ahi y se le saca el
+     `hidden`: el CSS ya los acomoda (texto a la izquierda, QR de 64px a la derecha). -->
+<footer class="pie">
+  <a class="pie-logo" href="/"><img src="img/logo-maleu-blanco.png?v=0327ed85" alt="Maleu" width="620" height="120" /></a>
+  <p class="pie-tag">Rico y listo en minutos.</p>
+  <div class="pie-cols">
+    <div class="pie-col">
+      <p class="pie-label">Contacto</p>
+      <p><a href="mailto:pedidos@maleu.com.ar">pedidos@maleu.com.ar</a></p>
+      <p class="pie-dato">Te respondemos durante el día.</p>
+    </div>
+    <div class="pie-col">
+      <p class="pie-label">Instagram</p>
+      <p><a href="https://www.instagram.com/maleu.ar/" target="_blank" rel="noopener">@maleu.ar</a></p>
+    </div>
+    <div class="pie-col pie-col-ancha">
+      <p class="pie-label">Entregas</p>
+      <p>Estancias del Pilar y del Río: lun, mié, vie, sáb y dom · Pilar y alrededores: mié y vie</p>
+      <p><a href="/contacto.html">Ver días y horarios</a></p>
+    </div>
+  </div>
+  <nav class="pie-links" aria-label="La empresa">
+    <a href="/nosotros.html">Quiénes somos</a>
+    <a href="/preguntas.html">Preguntas</a>
+    <a href="/terminos.html">Términos</a>
+    <a href="/privacidad.html">Privacidad</a>
+  </nav>
   <a class="arr-link" href="/arrepentimiento.html">Botón de arrepentimiento</a>
-  <a class="legal-link" href="/terminos.html">Términos y Condiciones</a>
-  <a class="legal-link" href="/privacidad.html">Política de Privacidad</a>
+  <div class="pie-fiscal" id="pie-fiscal" hidden></div>
+  <p class="pie-copy">© 2026 Maleu · Pilar, Buenos Aires</p>
 </footer>
 
 <script>

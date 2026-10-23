@@ -655,6 +655,39 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
 .footer-hr { border:none; border-top:1px solid rgba(255,255,255,.1); margin:1rem 0; }
 .footer-copy { font-size:.7rem; color:rgba(255,255,255,.35); }
 
+/* ── EL PIE DE UNA EMPRESA (bloque 5, 23/10/2026) ──
+   El mismo en las diez paginas. Celular primero: todo en una columna; desde 700px
+   Contacto e Instagram lado a lado y las Entregas abajo a lo ancho. Los links
+   llegan a 44px de alto (minimo tactil) y el texto chico esta arriba de 4,5 de
+   contraste sobre el marron. */
+footer.pie { background: var(--brown); color: #fff; padding: 2.2rem 1.25rem calc(1.4rem + env(safe-area-inset-bottom, 0px));
+  text-align: center; border-top: 0; }
+.pie-logo { display: inline-block; line-height: 0; }
+.pie-logo img { width: min(170px, 50vw); height: auto; aspect-ratio: 620/120; display: block; }
+.pie-tag { margin: .35rem 0 1.6rem; font-size: .82rem; color: rgba(255,255,255,.72); }
+.pie-cols { display: grid; grid-template-columns: 1fr; gap: 1.1rem; max-width: 760px; margin: 0 auto 1.2rem; text-align: center; }
+@media (min-width: 700px) {
+  .pie-cols { grid-template-columns: 1fr 1fr; }
+  .pie-col-ancha { grid-column: 1 / -1; }
+}
+.pie-label { margin: 0 0 .25rem; font-size: .7rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.66); }
+.pie-col p { margin: 0; font-size: .9rem; line-height: 1.5; color: rgba(255,255,255,.9); }
+.pie-col a { color: #fff; font-weight: 600; text-decoration: underline; text-underline-offset: 3px;
+  display: inline-flex; align-items: center; min-height: 44px; }
+.pie-col p.pie-dato { font-size: .8rem; color: rgba(255,255,255,.72); margin-top: -.45rem; }
+.pie-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 .4rem; max-width: 760px;
+  margin: 0 auto .6rem; padding-top: .8rem; border-top: 1px solid rgba(255,255,255,.14); }
+.pie-links a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 .55rem; font-size: .85rem;
+  color: rgba(255,255,255,.88); text-decoration: underline; text-underline-offset: 3px; }
+.pie-links a:hover, .pie-col a:hover { color: #fff; }
+footer.pie .arr-link { margin: .5rem auto .9rem; }
+/* Lugar reservado para los datos fiscales: texto + QR de Data Fiscal de 64px. */
+.pie-fiscal { display: flex; align-items: center; justify-content: center; gap: .8rem; max-width: 760px;
+  margin: 0 auto .8rem; font-size: .75rem; line-height: 1.45; color: rgba(255,255,255,.72); text-align: left; }
+.pie-fiscal[hidden] { display: none; }
+.pie-fiscal img { width: 64px; height: auto; flex: none; background: #fff; border-radius: 6px; padding: 3px; }
+.pie-copy { margin: 0; font-size: .74rem; color: rgba(255,255,255,.6); }
+
 /* ── TOAST ── */
 .toast { position:fixed; bottom:5rem; left:50%; transform:translateX(-50%) translateY(20px); background:var(--brown); color:#fff; padding:.6rem 1.2rem; border-radius:10px; font-size:.82rem; font-weight:600; opacity:0; transition:all .25s; pointer-events:none; z-index:300; white-space:nowrap; }
 .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }

@@ -39,7 +39,11 @@ const RED = '\x1b[31m', VER = '\x1b[32m', DIM = '\x1b[2m', RST = '\x1b[0m';
    ignora en dos dias. */
 const MARCAS = [
   { re: /class\s*=\s*["'][^"']*borrador/i,  que: 'un recuadro de borrador' },
-  { re: /\bTadeo\b|\bUstariz\b/,            que: 'el nombre del dueño en el texto' },
+  /* Con UNA excepcion, decidida por Tadeo el 23/10/2026: el titular del alias de
+     Mercado Pago ("a nombre de Tadeo Alberto Ustariz") se muestra a proposito,
+     porque el que transfiere ve a nombre de quien sale. Cualquier otra mencion
+     sigue marcandose. */
+  { re: /(?<!a nombre de (<strong>)?)\bTadeo\b|(?<!Tadeo Alberto )\bUstariz\b/, que: 'el nombre del dueño en el texto' },
   { re: /falta(n)?\s+definir/i,             que: 'un "falta definir" a la vista del cliente' },
   /* Con `\bTODO\b` esto marcaba "MÉTODO": en JS la tilde NO es un caracter de
      palabra, asi que la E acentuada abre un limite y "TODO" queda suelto. Un
