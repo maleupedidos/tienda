@@ -6363,8 +6363,17 @@ function setSendLoaderDone(info) {
 var SEG_KEY = 'maleu_seguimiento_v1';
 var SEG_DIAS = 15;
 var SEG_POLL_MS = 60000;
-var SEG_POLL_MAX = 40;
-var _segT = '', _segPolls = 0, _segTimer = null, _segUlt = null;
+/* MIENTRAS EL ERP TODAVIA NO LO TIENE, cada 5 s el primer minuto (22/10/2026).
+   Medido con un pedido real (#2038): la primera consulta sale antes de que la
+   fila exista, contesta "no encontrado", y con 60 s de espera el cliente miraba
+   "Recibimos tu pedido" SIN numero mas de un minuto. Apenas aparece, o pasado
+   el primer minuto, vuelve a 60 s. Se mide con performance.now(): las redes
+   congelan Date a proposito. */
+var SEG_POLL_RAPIDO_MS = 5000;
+var SEG_RAPIDO_VENTANA_MS = 60000;
+/* 40 consultas de a 60 s, mas las 12 rapidas del primer minuto. */
+var SEG_POLL_MAX = 52;
+var _segT = '', _segPolls = 0, _segTimer = null, _segUlt = null, _segDesde = 0, _segEncontrado = false;
 var SEG_NOMBRES = { recibido: 'Recibimos tu pedido', confirmado: 'Entrega confirmada', armado: 'Armado',
                     hoy: 'Hoy es el día', entregado: 'Entregado' };
 var SEG_DIAS_SEM = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
@@ -6434,7 +6443,7 @@ function _segParar() { clearTimeout(_segTimer); _segTimer = null; }
 function segPreguntar(t, primera) {
   _segT = t;
   _segParar();
-  if (primera) _segPolls = 0;
+  if (primera) { _segPolls = 0; _segDesde = performance.now(); _segEncontrado = false; }
   if (_segPolls++ >= SEG_POLL_MAX) return;
   fetch(APPS_SCRIPT_URL + '?action=seguimiento&t=' + encodeURIComponent(t), { cache: 'no-store' })
     .then(function (r) { return r.json(); })
@@ -6442,6 +6451,7 @@ function segPreguntar(t, primera) {
       if (_segT !== t) return;
       if (j && j.ok) {
         _segUlt = j;
+        if (j.encontrado) _segEncontrado = true;
         var g = _segLeer();
         if (g && g.t === t && j.encontrado) {
           g.etapa = j.etapa; if (j.n) g.n = j.n; if (j.fecha) g.fecha = j.fecha;
@@ -6458,7 +6468,9 @@ function _segProgramar(t) {
   if (j && (j.etapa === 'entregado' || j.etapa === 'cancelado')) return;
   var ov = $id('send-overlay');
   if (!ov || !ov.classList.contains('pantalla')) return;
-  _segTimer = setTimeout(function () { if (!document.hidden) segPreguntar(t, false); else _segProgramar(t); }, SEG_POLL_MS);
+  var rapido = !_segEncontrado && performance.now() - _segDesde < SEG_RAPIDO_VENTANA_MS;
+  _segTimer = setTimeout(function () { if (!document.hidden) segPreguntar(t, false); else _segProgramar(t); },
+    rapido ? SEG_POLL_RAPIDO_MS : SEG_POLL_MS);
 }
 document.addEventListener('visibilitychange', function () {
   if (!document.hidden && _segT) {

@@ -159,7 +159,7 @@ async function main() {
       { width: ANCHO, height: ALTO, deviceScaleFactor: ANCHO < 700 ? 3 : 1, mobile: ANCHO < 700 });
 
     /* ── El backend simulado. Se engancha ANTES de la primera navegacion. ── */
-    let gets = [], mails = [], etapaSeg = 'recibido', mailSeg = '';
+    let gets = [], getsT = [], mails = [], etapaSeg = 'recibido', mailSeg = '', noEncontrar = 0, nEnPost = true;
     const PASOS = ['recibido', 'confirmado', 'armado', 'hoy', 'entregado'];
     const SEG = () => ({ ok: true, encontrado: true, n: '999', canal: 'Home', nombre: 'Prueba', fecha: '2026-12-31', horario: '19 a 21 h', total: 1,
       cancelado: etapaSeg === 'cancelado', etapa: etapaSeg, mail: mailSeg,
@@ -190,7 +190,11 @@ async function main() {
         return;
       }
       if (request.method !== 'POST') {
-        if (/[?&]action=seguimiento&/.test(url)) { gets.push(url); fulfill(requestId, JSON.stringify(SEG())); return; }
+        if (/[?&]action=seguimiento&/.test(url)) {
+          gets.push(url); getsT.push(Date.now());
+          if (noEncontrar > 0) { noEncontrar--; fulfill(requestId, JSON.stringify({ ok: true, encontrado: false, ahora: Date.now() })); return; }
+          fulfill(requestId, JSON.stringify(SEG())); return;
+        }
         fulfill(requestId, '{"ok":true}'); return;
       }
       noBackend++;   // un POST al backend: lo contesta el simulador, jamas la planilla
@@ -212,7 +216,7 @@ async function main() {
       setTimeout(() => {
         enVuelo--;
         if (plan.que === 'falla') { cli.enviar('Fetch.failRequest', { requestId, errorReason: 'ConnectionFailed' }).catch(() => {}); return; }
-        fulfill(requestId, plan.que === 'ok' ? '{"ok":true,"n":"999","oc":"no-corresponde"}' : '{"ok":false,"error":"LockTimeout","retry":true}');
+        fulfill(requestId, plan.que === 'ok' ? (nEnPost ? '{"ok":true,"n":"999","oc":"no-corresponde"}' : '{"ok":true}') : '{"ok":false,"error":"LockTimeout","retry":true}');
       }, plan.en);
     });
 
@@ -400,6 +404,31 @@ async function main() {
     chk(mails.length === antes + 1 && mails[mails.length - 1].mail === '', 'el link de baja le pide al ERP borrar el mail');
     s = await estado();
     chk(s.url === '/?seguimiento=' + coid, 'y la URL queda sin el &baja (si refresca no se vuelve a dar de baja)');
+
+    /* EL ERP TODAVIA NO LO TIENE (22/10/2026). Es el caso del pedido real #2038:
+       la respuesta del POST vino sin numero y la primera consulta del seguimiento
+       salio antes de que existiera la fila. Con 60 s de espera el cliente miro
+       "Recibimos tu pedido" sin numero mas de un minuto. Ahora pregunta cada 5 s
+       el primer minuto: con 3 "no encontrado" el numero aparece a los ~15 s. */
+    console.log('\n' + DIM + '-- el ERP todavia no lo tiene --' + RST);
+    etapaSeg = 'recibido'; mailSeg = ''; noEncontrar = 3; nEnPost = false;
+    await prepararPedido();
+    gets = []; getsT = [];
+    await ev('enviarPedido();');
+    s = await esperar((x) => x.pantalla && x.seg, 12000);
+    const tConf = Date.now();
+    chk(s.pantalla && !/#\d/.test(s.tit), 'CONTROL: al confirmar todavia no hay numero (el POST no lo trajo): "' + s.tit + '"');
+    s = await esperar((x) => /#999/.test(x.tit), 30000);
+    const tNum = Date.now() - tConf;
+    chk(/^Recibimos tu pedido #999$/.test(s.tit) && tNum >= 12000 && tNum <= 20000,
+        'el numero aparece a los ~15 s, despues de 3 "no encontrado": ' + Math.round(tNum / 1000) + ' s');
+    const gaps = getsT.slice(1).map((t, i) => t - getsT[i]);
+    chk(getsT.length === 4 && gaps.every((g) => g >= 4000 && g <= 7000),
+        'pregunto 4 veces, de a 5 s (' + gaps.map((g) => (g / 1000).toFixed(1)).join(' / ') + ' s)');
+    const antesQuieto = getsT.length;
+    await dormir(12000);
+    chk(getsT.length === antesQuieto, 'y una vez encontrado vuelve a 60 s: en 12 s no pregunto de nuevo (' + (getsT.length - antesQuieto) + ')');
+    nEnPost = true;
 
     /* UNA PESTAÑA VIEJA: un pedido hecho antes del mail obligatorio no tiene
        mail ni en el navegador ni en el ERP. Ahi sigue apareciendo la caja. */

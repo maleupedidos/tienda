@@ -4495,7 +4495,11 @@ flotante y ningún "Agregar" tapado) y `verificar-zonas` (70, con la franja en e
 >
 > **Visto en esa prueba:** el título quedó "Recibimos tu pedido" SIN número durante más
 > de un minuto (el ERP ya lo tenía como #2038 "confirmado"). La primera consulta del
-> seguimiento no lo encontró y la siguiente es a los 60 s.
+> seguimiento no lo encontró y la siguiente era a los 60 s. **Arreglado esa misma noche:**
+> mientras el ERP no lo encuentra, pregunta cada 5 s el primer minuto
+> (`SEG_POLL_RAPIDO_MS`) y después vuelve a 60. `verificar-seguimiento` lo mide con 3
+> "no encontrado": el número aparece a los 15 s (con la versión anterior, a los 30 s
+> todavía no estaba).
 
 Hasta ese día el mail era opcional y se pedía DESPUÉS de comprar, en el seguimiento: lo
 dejaba 1 de cada 7. Sin mail el cliente no tiene comprobante. Backend manda el
