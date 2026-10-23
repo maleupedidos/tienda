@@ -160,10 +160,16 @@ async function main() {
 
     /* ── El backend simulado. Se engancha ANTES de la primera navegacion. ── */
     let gets = [], getsT = [], mails = [], etapaSeg = 'recibido', mailSeg = '', noEncontrar = 0, nEnPost = true;
-    const PASOS = ['recibido', 'confirmado', 'armado', 'hoy', 'entregado'];
-    const SEG = () => ({ ok: true, encontrado: true, n: '999', canal: 'Home', nombre: 'Prueba', fecha: '2026-12-31', horario: '19 a 21 h', total: 1,
+    /* Como contesta el ERP desde @994 (23/10/2026): con transferencia hay un paso
+       "pago" despues de "confirmado" y un objeto `pago`; en efectivo, no. */
+    let formaSeg = 'Efectivo', cobradoSeg = false;
+    const pasosDe = () => formaSeg === 'Transferencia'
+      ? ['recibido', 'confirmado', 'pago', 'armado', 'hoy', 'entregado'] : ['recibido', 'confirmado', 'armado', 'hoy', 'entregado'];
+    const SEG = () => { const P = pasosDe(); return { ok: true, encontrado: true, n: '999', canal: 'Home', nombre: 'Prueba', fecha: '2026-12-31', horario: '19 a 21 h', total: 1,
       cancelado: etapaSeg === 'cancelado', etapa: etapaSeg, mail: mailSeg,
-      etapas: PASOS.map((k, i) => ({ k: k, ok: etapaSeg !== 'cancelado' && i <= PASOS.indexOf(etapaSeg), cuando: i <= PASOS.indexOf(etapaSeg) ? '19/10 22:0' + i : '' })) });
+      pago: { forma: formaSeg, cobrado: cobradoSeg, cuando: cobradoSeg ? '23/10 10:15' : '' },
+      etapas: P.map((k, i) => ({ k: k, ok: etapaSeg !== 'cancelado' && (k === 'pago' ? cobradoSeg : i <= P.indexOf(etapaSeg)),
+        cuando: k === 'pago' ? (cobradoSeg ? '23/10 10:15' : '') : (i <= P.indexOf(etapaSeg) ? '19/10 22:0' + i : '') })) }; };
     let modo = 'cierre', posts = [], navs = [], enVuelo = 0, maxEnVuelo = 0, nFetch = 0, t0 = 0, noBackend = 0;
     await cli.enviar('Fetch.enable', { patterns: [
       { urlPattern: '*script.google.com*' }, { urlPattern: '*wa.me*' }, { urlPattern: '*whatsapp*' },
@@ -295,6 +301,9 @@ async function main() {
         nota: (function () { var x = document.getElementById('seg-nota'); return x && !x.hidden ? x.textContent : ''; })(),
         duda: (function () { var x = document.getElementById('send-done-wa'); return x ? (x.getAttribute('href') || '') : ''; })(),
         pasos: pasos.length, ok: pasos.filter(function (p) { return p.classList.contains('ok'); }).length,
+        nombres: pasos.map(function (p) { var n = p.querySelector('.seg-paso-nom'); var c = p.querySelector('.seg-paso-cuando');
+          return (n ? n.textContent : '') + (p.classList.contains('ok') ? '+' : '') + (c ? '@' + c.textContent : ''); }),
+        pagoTxt: (function () { var x = document.getElementById('send-done-pago'); return x && !x.hidden ? x.textContent : ''; })(),
         actual: (document.querySelector('#seg-pasos .seg-paso.actual .seg-paso-nom') || {}).textContent || '',
         items: document.querySelectorAll('#send-done-items li').length,
         form: !!(document.getElementById('seg-mail') && !document.getElementById('seg-mail').hidden),
@@ -332,6 +341,7 @@ async function main() {
         'en vez de la caja: "' + s.mailOk + '"');
     chk(posts.some((p) => p.mail === 'prueba.envio@gmail.com'), 'y el pedido viajo con ese mail');
     chk(s.pasos === 5 && s.ok === 1 && /Recibimos/.test(s.actual), 'cinco pasos, el primero prendido (' + s.ok + '/' + s.pasos + ', actual «' + s.actual + '»)');
+    chk(!s.nombres.some((n) => /pago/i.test(n)), 'en efectivo NO aparece el paso del pago (' + s.nombres.join(' · ') + ')');
     chk(/Te llega el jueves 31\/12, 19 a 21 h/.test(s.llega), 'arriba dice cuando llega: "' + s.llega + '"');
     chk(gets.some((u) => u.indexOf('t=' + encodeURIComponent(coid)) > 0), 'le pregunto al ERP por ESE codigo (' + gets.length + ' consultas)');
     chk(s.anchoOk, 'nada se desborda a lo ancho');
@@ -432,6 +442,34 @@ async function main() {
 
     /* UNA PESTAÑA VIEJA: un pedido hecho antes del mail obligatorio no tiene
        mail ni en el navegador ni en el ERP. Ahi sigue apareciendo la caja. */
+    /* POR TRANSFERENCIA (23/10/2026, ERP @994). El paso "Recibimos tu pago" va
+       despues de "Entrega confirmada", se marca con su hora cuando el ERP dice
+       cobrado, y la caja del pago muestra cada alias con su titular. */
+    console.log('\n' + DIM + '-- por transferencia --' + RST);
+    formaSeg = 'Transferencia'; cobradoSeg = false; etapaSeg = 'confirmado'; mailSeg = ''; noEncontrar = 0; nEnPost = true;
+    await prepararPedido();
+    await ev(`(function(){ var t = document.querySelector('input[name="pago"][value="Transferencia"]'); t.checked = true; t.dispatchEvent(new Event('change', {bubbles:true})); })()`);
+    await dormir(300);
+    const paso2 = await ev("(document.getElementById('mp-alias') || {}).textContent || ''");
+    chk(/maleump/.test(paso2) && /Tadeo Alberto Ustariz/.test(paso2) && /maleubru/.test(paso2) && /Lucas Moresco/.test(paso2),
+        'paso 2: cada alias con su titular');
+    chk(/Cuando veamos tu transferencia te avisamos acá y por mail\./.test(paso2), 'y la linea del aviso');
+    await ev('enviarPedido();');
+    s = await esperar((x) => x.seg && x.pasos === 6, 15000);
+    chk(s.pasos === 6 && s.nombres[2] === 'Recibimos tu pago', 'aparece "Recibimos tu pago" despues de "Entrega confirmada" (' + s.nombres.join(' · ') + ')');
+    chk(!s.nombres.some((n) => /^pago/.test(n)), 'y nunca la clave en crudo "pago"');
+    chk(!/\+/.test(s.nombres[2]), 'sin cobrar, el paso esta apagado');
+    chk(/Tadeo Alberto Ustariz/.test(s.pagoTxt) && /Lucas Moresco/.test(s.pagoTxt) && /Cuando veamos tu transferencia/.test(s.pagoTxt),
+        'la confirmacion muestra los alias con su titular y el aviso');
+    cobradoSeg = true; etapaSeg = 'pago';
+    await ev('segPreguntar(_segT, false)');
+    s = await esperar((x) => /\+/.test(x.nombres[2] || ''), 8000);
+    chk(s.nombres[2] === 'Recibimos tu pago+@23/10 10:15' && s.actual === 'Recibimos tu pago',
+        'cuando el ERP dice cobrado, se marca con su hora (' + s.nombres[2] + ', actual «' + s.actual + '»)');
+    chk(/Recibimos tu transferencia \(23\/10 10:15\)/.test(s.pagoTxt) && !/maleump|Copiar/.test(s.pagoTxt),
+        'y la caja del pago deja de pedir que transfiera: "' + s.pagoTxt + '"');
+    formaSeg = 'Efectivo'; cobradoSeg = false;
+
     console.log('\n' + DIM + '-- un pedido de antes del mail --' + RST);
     etapaSeg = 'confirmado'; mailSeg = '';
     await ev("(function(){ var g = JSON.parse(localStorage.getItem('maleu_seguimiento_v1')); if (g && g.info) delete g.info.mail; localStorage.setItem('maleu_seguimiento_v1', JSON.stringify(g)); })()");

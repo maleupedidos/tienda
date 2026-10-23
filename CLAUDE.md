@@ -4526,6 +4526,26 @@ Redes: `verificar-checkout` (125), `verificar-seguimiento` (35), `verificar-dato
 no viaja en el POST, no se guarda): los tres dan rojo. `verificar-datos-cliente` también
 contestaba `stock_full` sin precios desde el 14/10 (3 rojos anotados como del test).
 
+## La transferencia da confianza (bloque 3, 23/10/2026)
+
+El ERP @994 (23/10 9:27) agregó al seguimiento la etapa **`pago`**, sólo en pedidos por
+transferencia y después de `confirmado`, más un objeto `pago: { forma, cobrado, cuando }`.
+Hasta que la tienda la conoció, la mostraba en crudo como "pago".
+
+- **`SEG_NOMBRES.pago = 'Recibimos tu pago'`**, con su hora cuando el ERP lo marca. En
+  efectivo no aparece porque el ERP no lo manda. Mientras el ERP no contesta, la lista
+  local lo incluye si el comprobante tiene alias (o sea, si es transferencia).
+- **Ya cobrada, la caja del pago deja de mostrar los alias** y dice "✓ Recibimos tu
+  transferencia (dd/mm hh:mm). ¡Gracias!": con los alias a la vista después de cobrar,
+  alguien transfiere dos veces.
+- **`ALIAS_MALEU` lleva el titular** (decisión de Tadeo): maleump a nombre de Tadeo
+  Alberto Ustariz, maleubru a nombre de Lucas Moresco, socio de Maleu. Se ve en el paso 2,
+  en la confirmación, en Términos y en Preguntas.
+- **No se pide el comprobante**: "Cuando veamos tu transferencia te avisamos acá y por mail."
+
+Redes: `verificar-seguimiento` (48, con el escenario de transferencia y el de efectivo) y
+`verificar-checkout` (128), a 390 y 1440. Reinyectado el paso del pago en efectivo, da rojo.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

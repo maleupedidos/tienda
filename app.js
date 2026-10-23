@@ -6300,6 +6300,12 @@ function setSendLoaderDone(info) {
         fila.className = 'send-done-alias';
         var txt = document.createElement('span');
         txt.textContent = (c.banco ? c.banco + ': ' : '') + c.alias;
+        if (c.titular) {
+          var tit = document.createElement('small');
+          tit.className = 'send-done-titular';
+          tit.textContent = 'a nombre de ' + c.titular;
+          txt.appendChild(tit);
+        }
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.textContent = 'Copiar';
@@ -6307,6 +6313,11 @@ function setSendLoaderDone(info) {
         fila.appendChild(txt); fila.appendChild(btn);
         pago.appendChild(fila);
       });
+      /* No le pedimos el comprobante: la transferencia la vemos nosotros (23/10/2026). */
+      var av = document.createElement('p');
+      av.className = 'send-done-aviso-pago';
+      av.textContent = 'Cuando veamos tu transferencia te avisamos acá y por mail.';
+      pago.appendChild(av);
     }
     /* Escondido solo si no quedo NADA adentro. Con un `else` colgado del
        alias, la nota de la reserva en efectivo se pintaba y se volvia a tapar
@@ -6374,7 +6385,10 @@ var SEG_RAPIDO_VENTANA_MS = 60000;
 /* 40 consultas de a 60 s, mas las 12 rapidas del primer minuto. */
 var SEG_POLL_MAX = 52;
 var _segT = '', _segPolls = 0, _segTimer = null, _segUlt = null, _segDesde = 0, _segEncontrado = false;
-var SEG_NOMBRES = { recibido: 'Recibimos tu pedido', confirmado: 'Entrega confirmada', armado: 'Armado',
+/* `pago` existe desde el 23/10/2026 (ERP @994): solo en pedidos por transferencia,
+   despues de "confirmado", y se marca cuando el ERP lo da por cobrado. Sin nombre
+   aca la pantalla mostraba la clave en crudo, "pago". */
+var SEG_NOMBRES = { recibido: 'Recibimos tu pedido', confirmado: 'Entrega confirmada', pago: 'Recibimos tu pago', armado: 'Armado',
                     hoy: 'Hoy es el día', entregado: 'Entregado' };
 var SEG_DIAS_SEM = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
@@ -6516,7 +6530,10 @@ function segPintar(g, j) {
   if (ol) {
     ol.innerHTML = '';
     ol.hidden = etapa === 'cancelado';
-    var lista = etapas || ['recibido', 'confirmado', 'armado', 'hoy', 'entregado'].map(function (k) {
+    /* Mientras el ERP no contesta, la lista sale de lo que sabe el navegador: con
+       transferencia (hay alias en el comprobante) va tambien el paso del pago. */
+    var _esTransf = !!(g.info && g.info.alias && g.info.alias.length);
+    var lista = etapas || ['recibido', 'confirmado'].concat(_esTransf ? ['pago'] : [], ['armado', 'hoy', 'entregado']).map(function (k) {
       return { k: k, ok: k === 'recibido', cuando: '' };
     });
     lista.forEach(function (p) {
@@ -6536,11 +6553,25 @@ function segPintar(g, j) {
     });
   }
 
+  /* YA COBRADA, la caja del pago deja de pedir que transfieran (23/10/2026): con
+     los alias a la vista despues de cobrar, alguien transfiere dos veces. Solo
+     transferencia: el efectivo se cobra en la puerta y no tiene caja. */
+  var _pg = j && j.pago, _caja = $id('send-done-pago');
+  if (_caja && _pg && _pg.cobrado && /transferencia/i.test(_pg.forma || '')) {
+    _caja.innerHTML = '';
+    var _ok = document.createElement('p');
+    _ok.className = 'send-done-cobrado';
+    _ok.textContent = '✓ Recibimos tu transferencia' + (_pg.cuando ? ' (' + _pg.cuando + ')' : '') + '. ¡Gracias!';
+    _caja.appendChild(_ok);
+    _caja.hidden = false;
+  }
+
   var nota = $id('seg-nota');
   if (nota) {
     var NOTAS = {
       recibido: 'Te avisamos acá cuando lo confirmemos.',
       confirmado: 'Te lo llevamos el día que elegiste.',
+      pago: 'Ya vimos tu transferencia. Te lo llevamos el día que elegiste.',
       armado: 'Ya está preparado y listo para salir.',
       hoy: 'Hoy te lo llevamos.',
       entregado: '', cancelado: 'Si no lo esperabas, escribinos a ' + MAIL_PEDIDOS + ' y lo vemos.'
@@ -9575,9 +9606,12 @@ function updateShippingBar() {
 /* Las cuentas de Maleu para transferir. El cliente elige la que le quede
    comoda: son las mismas dos que el ERP tiene dadas de alta.
    Una sola lista: la usan el formulario y el mensaje de WhatsApp. */
+/* Con el TITULAR desde el 23/10/2026 (decision de Tadeo): el que transfiere ve
+   a nombre de quien sale, y eso da confianza. maleubru esta a nombre de Lucas,
+   socio de Maleu. */
 const ALIAS_MALEU = [
-  { banco: 'Mercado Pago', alias: 'maleump' },
-  { banco: 'Brubank',      alias: 'maleubru' }
+  { banco: 'Mercado Pago', alias: 'maleump',  titular: 'Tadeo Alberto Ustariz' },
+  { banco: 'Brubank',      alias: 'maleubru', titular: 'Lucas Moresco' }
 ];
 
 /* ¿A QUE ALIAS TRANSFIERE EL CLIENTE? (30/9/2026)
@@ -9641,7 +9675,8 @@ function _pintarAliasMaleu() {
      pantallas cambiaban y esta no, asi que el chequeo daba verde. */
   cont.innerHTML = _aliasParaTransferir().map(function (c) {
     return '<div class="mp-alias-row">' +
-      '<span><span class="mp-alias-banco">' + c.banco + '</span> <strong>' + c.alias + '</strong></span>' +
+      '<span><span class="mp-alias-banco">' + c.banco + '</span> <strong>' + c.alias + '</strong>' +
+        (c.titular ? '<span class="mp-alias-titular">a nombre de ' + c.titular + '</span>' : '') + '</span>' +
       '<button type="button" class="mp-copy-btn" onclick="copyAlias(\'' + c.alias + '\')">Copiar</button>' +
     '</div>';
   }).join('');

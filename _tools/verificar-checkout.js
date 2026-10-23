@@ -798,6 +798,13 @@ async function main() {
     const bodyCierre = await ev('(window.__posts[0] || {}).body || ""');
     let mailPost = ''; try { mailPost = JSON.parse(bodyCierre).mail || ''; } catch (e) {}
     chk(mailPost === 'prueba.checkout@gmail.com', 'el pedido viaja con el mail del cliente', mailPost || 'sin mail');
+    /* Por transferencia, cada alias con su titular y el aviso (23/10/2026). */
+    const pagoCierre = await ev('(document.getElementById("send-done-pago") || {}).textContent || ""');
+    chk(/maleump/.test(pagoCierre) && /Tadeo Alberto Ustariz/.test(pagoCierre) && /maleubru/.test(pagoCierre) && /Lucas Moresco/.test(pagoCierre),
+        'la confirmacion muestra cada alias con su titular');
+    chk(/Cuando veamos tu transferencia te avisamos acá y por mail\./.test(pagoCierre), 'y "Cuando veamos tu transferencia te avisamos aca y por mail"');
+    const paso2Tr = await ev('(document.getElementById("mp-alias") || {}).textContent || ""');
+    chk(/Tadeo Alberto Ustariz/.test(paso2Tr) && /Lucas Moresco/.test(paso2Tr), 'y en el paso 2 tambien estan los titulares');
     const postsDelCierre = await ev('window.__posts.length');
     chk(postsDelCierre === 1, 'y salio UN solo POST, no una cadena de reintentos', String(postsDelCierre));
 

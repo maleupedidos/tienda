@@ -935,6 +935,10 @@ footer { background:var(--brown); color:#fff; padding:2rem 1.5rem 1rem; text-ali
   font-weight: 700; color: var(--brown); font-size: .95rem;
   -webkit-user-select: text; user-select: text; -webkit-touch-callout: default;
 }
+.send-done-pago p.send-done-cobrado { margin: 0; font-size: .95rem; font-weight: 700; color: #2e7d32; }
+.send-done-titular { display: block; font-size: .78rem; font-weight: 400; color: #6b5a52; }
+.send-done-alias + .send-done-alias { margin-top: .5rem; }
+.send-done-pago p.send-done-aviso-pago { margin: .7rem 0 0; font-weight: 600; color: var(--brown); }
 .send-done-alias button {
   margin-left: auto; flex: none; min-height: 36px; padding: 0 .8rem;
   border: 1px solid #E3D3C5; border-radius: 9px; background: #fff;
@@ -2019,6 +2023,9 @@ body.busqueda-activa .cat-nav-btn.cat-nav-combos.active { background:var(--brown
 .mp-alias-banco  { color: #1565C0; font-weight: 600; }
 .mp-alias-lista  { display: flex; flex-direction: column; gap: .35rem; }
 #mp-alias-lista .mp-alias-row + .mp-alias-row { margin-top: .35rem; }
+/* El titular de cada cuenta (23/10/2026): a nombre de quien sale la transferencia. */
+.mp-alias-titular { display: block; font-size: .78rem; font-weight: 400; color: #5a6470; }
+.mp-alias-aviso { display: block; margin-top: .45rem; font-weight: 600; color: #1565C0; }
 
 /* El desglose de pesos en el resumen del formulario, en voz baja: el dato es
    el peso total, esto es el detalle. En su propio renglon porque al envolver
