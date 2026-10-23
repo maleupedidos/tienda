@@ -9611,7 +9611,7 @@ function updateShippingBar() {
    socio de Maleu. */
 const ALIAS_MALEU = [
   { banco: 'Mercado Pago', alias: 'maleump',  titular: 'Tadeo Alberto Ustariz' },
-  { banco: 'Brubank',      alias: 'maleubru', titular: 'Lucas Moresco' }
+  { banco: 'Brubank',      alias: 'maleubru', titular: 'Lucas Moresco, socio de Maleu' }
 ];
 
 /* ¿A QUE ALIAS TRANSFIERE EL CLIENTE? (30/9/2026)
