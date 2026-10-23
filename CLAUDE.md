@@ -4546,6 +4546,25 @@ Hasta que la tienda la conoció, la mostraba en crudo como "pago".
 Redes: `verificar-seguimiento` (48, con el escenario de transferencia y el de efectivo) y
 `verificar-checkout` (128), a 390 y 1440. Reinyectado el paso del pago en efectivo, da rojo.
 
+## La confirmación con marca y «Cómo te llega» (bloque 4, 23/10/2026)
+
+- **El logo arriba de la confirmación** (`#send-marca`), en celular y en compu, sólo en
+  el estado `pantalla`. Lleva a la tienda por el mismo camino que "Volver a la tienda".
+  En la compu era una página blanca sin marca y parecía un formulario suelto.
+- **«Cómo te llega»**, debajo del detalle: tres renglones (cómo llega · si no estás ·
+  cambios). **El mismo texto** va en el «Más info» del paso 3 (un `<details>`, sin JS),
+  y `verificar-checkout` exige que las dos listas sean idénticas. Preguntas y Términos
+  dicen lo mismo con las mismas palabras.
+- **Lo que NO se promete** (decisión de Tadeo): ni "cadena de frío", ni "bolsa térmica",
+  ni "conservadora". Llega congelado, en una bolsa, en el recorrido del día. **La carne
+  llega fresca**, y el renglón lo aclara entre paréntesis: "congelado" a secas le
+  mentía al que compró carne.
+- La "cadena de frío" que queda en Términos es la condición legal para devolver un
+  producto (arrepentimiento), no una promesa de cómo llega. No se tocó.
+
+Redes: `verificar-seguimiento` (56) y `verificar-checkout` (135), a 390 y 1440.
+Reinyectados sin logo y sin bloque, los dos dan rojo.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

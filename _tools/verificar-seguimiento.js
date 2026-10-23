@@ -340,6 +340,33 @@ async function main() {
     chk(/^Te mandamos el detalle a pr\*\*\*@gmail\.com\. Cambiar$/.test(s.mailOk) && !s.form,
         'en vez de la caja: "' + s.mailOk + '"');
     chk(posts.some((p) => p.mail === 'prueba.envio@gmail.com'), 'y el pedido viajo con ese mail');
+    /* LA MARCA Y "COMO TE LLEGA" (23/10/2026). */
+    const marca = JSON.parse(await ev(`(function(){ var ov = document.getElementById('send-overlay'); ov.scrollTop = 0;
+      var a = document.getElementById('send-marca'), img = a && a.querySelector('img'), r = img ? img.getBoundingClientRect() : null;
+      var l = document.getElementById('send-done-llega'), lr = l ? l.getBoundingClientRect() : null;
+      var items = l ? [].map.call(l.querySelectorAll('li'), function (x) { return x.textContent.replace(/\\s+/g, ' ').trim(); }) : [];
+      var det = document.getElementById('send-done-items'), dr = det ? det.getBoundingClientRect() : null;
+      return JSON.stringify({ href: a ? a.getAttribute('href') : '', alto: r ? Math.round(r.height) : 0, top: r ? Math.round(r.top) : -1,
+        visible: !!(r && r.height > 0 && getComputedStyle(a).display !== 'none'), alt: img ? img.alt : '',
+        llegaVis: !!(lr && lr.height > 0), debajo: !!(lr && dr && lr.top > dr.bottom), items: items,
+        tit: l ? (l.querySelector('h4') || {}).textContent : '' }); })()`));
+    chk(marca.visible && marca.alto >= 24 && marca.top >= 0 && marca.top < 120 && marca.alt === 'Maleu',
+        'arriba de todo esta el logo de Maleu (' + marca.alto + 'px, a ' + marca.top + 'px del borde)');
+    chk(marca.href === '/', 'y lleva a la tienda');
+    chk(marca.llegaVis && marca.debajo && marca.tit === 'Cómo te llega' && marca.items.length === 3,
+        'debajo del detalle, "Como te llega" con tres renglones');
+    chk(/Congelado, en una bolsa/.test(marca.items[0]) && /recorrido del día/.test(marca.items[0]) && /apenas lo recibís/.test(marca.items[0]),
+        'como llega: "' + (marca.items[0] || '') + '"');
+    chk(/10 minutos/.test(marca.items[1]) && /alguien de la casa/.test(marca.items[1]) && /guardia/.test(marca.items[1]) && /sin cargo/.test(marca.items[1]),
+        'si no estas: "' + (marca.items[1] || '').slice(0, 60) + '..."');
+    chk(/pedidos@maleu\.com\.ar/.test(marca.items[2]) && /reparto no haya salido/.test(marca.items[2]) && /sin costo/.test(marca.items[2]),
+        'cambios: "' + (marca.items[2] || '').slice(0, 60) + '..."');
+    chk(!marca.items.some((x) => /cadena de frío|térmica|conservadora/i.test(x)), 'sin prometer cadena de frio ni bolsa termica');
+    await ev("document.getElementById('send-marca').click()");
+    s = await esperar((x) => !x.pantalla, 4000);
+    chk(!s.pantalla && s.url === '/', 'tocar el logo vuelve a la tienda (' + s.url + ')');
+    await ev("document.getElementById('seg-banner').click()");
+    s = await esperar((x) => x.pantalla && x.seg, 8000);
     chk(s.pasos === 5 && s.ok === 1 && /Recibimos/.test(s.actual), 'cinco pasos, el primero prendido (' + s.ok + '/' + s.pasos + ', actual «' + s.actual + '»)');
     chk(!s.nombres.some((n) => /pago/i.test(n)), 'en efectivo NO aparece el paso del pago (' + s.nombres.join(' · ') + ')');
     chk(/Te llega el jueves 31\/12, 19 a 21 h/.test(s.llega), 'arriba dice cuando llega: "' + s.llega + '"');

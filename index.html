@@ -690,6 +690,19 @@
         <span class="field-error" id="err-dia">⚠ Elegí un día</span>
       </div>
       <p class="horario-hint" id="horario-hint"></p>
+      <!-- La entrega, en corto (23/10/2026). "Mas info" despliega lo mismo que el
+           bloque "Como te llega" de la confirmacion. -->
+      <div class="llega-corto" id="llega-corto">
+        <p class="llega-linea">Llega congelado en el recorrido del día. Si no estás, te esperamos 10 minutos.</p>
+        <details class="llega-mas" id="llega-mas">
+          <summary>Más info</summary>
+          <ul class="llega-lista">
+            <li><strong>Congelado, en una bolsa.</strong> Sale del freezer en el recorrido del día (la carne, fresca). Guardalo apenas lo recibís.</li>
+            <li><strong>Si no estás,</strong> te esperamos 10 minutos. Si no, se lo dejamos a alguien de la casa o a la guardia, si lo autorizaste. Si tampoco, lo reprogramamos sin cargo para la próxima entrega.</li>
+            <li><strong>Cambios o cancelación:</strong> escribinos a <a href="mailto:pedidos@maleu.com.ar">pedidos@maleu.com.ar</a> mientras el reparto no haya salido, sin costo.</li>
+          </ul>
+        </details>
+      </div>
 
       <!-- BLOQUE CUMPLEAÑOS — se guarda atado al cliente al confirmar el pedido -->
       <div class="cumple-block" id="cumple-block">
@@ -792,6 +805,14 @@
 <!-- Loader de envío del pedido (overlay con spinner + barra progreso) -->
 <div class="send-overlay" id="send-overlay" aria-hidden="true">
   <div class="send-card">
+    <!-- LA MARCA ARRIBA (23/10/2026). En la compu la confirmacion era una pagina
+         blanca sin logo: parecia un formulario suelto. Solo se ve en el estado
+         `pantalla`; mientras se registra sigue siendo el cartel. Lleva a la tienda
+         por el mismo camino que "Volver a la tienda". -->
+    <a class="send-marca" id="send-marca" href="/" aria-label="Maleu, volver a la tienda"
+       onclick="var b = document.getElementById('send-done-btn'); if (b) { b.click(); return false; }">
+      <img src="img/logo-maleu.png?v=80e04e45" alt="Maleu" width="620" height="120" />
+    </a>
     <div class="send-loader">
       <div class="send-ring"></div>
       <img src="img/logo-icono.png?v=d8163724" alt="" class="send-logo">
@@ -829,6 +850,17 @@
       <ul class="send-done-items" id="send-done-items"></ul>
       <dl class="send-done-datos" id="send-done-datos"></dl>
       <div class="send-done-pago" id="send-done-pago" hidden></div>
+      <!-- COMO TE LLEGA (23/10/2026). Tres renglones: como llega, si no estas y
+           como cambiarlo. Dice lo mismo que el "Mas info" del paso 3, Preguntas y
+           Terminos. Sin "cadena de frio" ni "bolsa termica": no lo hacemos. -->
+      <section class="llega" id="send-done-llega" aria-labelledby="llega-tit">
+        <h4 class="llega-tit" id="llega-tit">Cómo te llega</h4>
+        <ul class="llega-lista">
+          <li><strong>Congelado, en una bolsa.</strong> Sale del freezer en el recorrido del día (la carne, fresca). Guardalo apenas lo recibís.</li>
+          <li><strong>Si no estás,</strong> te esperamos 10 minutos. Si no, se lo dejamos a alguien de la casa o a la guardia, si lo autorizaste. Si tampoco, lo reprogramamos sin cargo para la próxima entrega.</li>
+          <li><strong>Cambios o cancelación:</strong> escribinos a <a href="mailto:pedidos@maleu.com.ar">pedidos@maleu.com.ar</a> mientras el reparto no haya salido, sin costo.</li>
+        </ul>
+      </section>
       <div class="send-done-acciones">
         <button type="button" class="send-done-btn" id="send-done-btn">Volver a la tienda</button>
         <!-- La duda es un BOTON y no un renglon de texto: hasta hoy era un link

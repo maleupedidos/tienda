@@ -625,6 +625,25 @@ async function main() {
     await ev('(function () { var c = document.querySelector("#day-picker .dp-cell.available"); if (c) c.click(); })()');
     await dormir(300);
     chk((await pasos()).paso === 3, 'estamos en el paso 3, con el dia elegido');
+    /* LA ENTREGA EN CORTO, debajo del calendario (23/10/2026). */
+    const corto = JSON.parse(await ev('JSON.stringify((function () {' +
+      ' var c = document.getElementById("llega-corto"), cal = document.getElementById("day-picker");' +
+      ' var r = c ? c.getBoundingClientRect() : null, rc = cal.getBoundingClientRect();' +
+      ' return { vis: !!(r && r.height > 0), debajo: !!(r && r.top >= rc.bottom),' +
+      '   linea: c ? (c.querySelector(".llega-linea") || {}).textContent : "",' +
+      '   abierto: !!(document.getElementById("llega-mas") || {}).open }; })())'));
+    chk(corto.vis && corto.debajo, 'debajo del calendario hay una linea de como llega');
+    chk(corto.linea === 'Llega congelado en el recorrido del día. Si no estás, te esperamos 10 minutos.', 'que dice: "' + corto.linea + '"');
+    chk(!corto.abierto, 'y "Mas info" arranca cerrado');
+    await tocar('#llega-mas summary');
+    await dormir(250);
+    const mas = JSON.parse(await ev('JSON.stringify((function () {' +
+      ' var t = function (sel) { return [].map.call(document.querySelectorAll(sel), function (x) { return x.textContent.replace(/\\s+/g, " ").trim(); }); };' +
+      ' var d = document.getElementById("llega-mas");' +
+      ' return { abierto: !!d.open, items: t("#llega-mas li"), conf: t("#send-done-llega li") }; })())'));
+    chk(mas.abierto && mas.items.length === 3, 'un toque en "Mas info" despliega los tres renglones');
+    chk(JSON.stringify(mas.items) === JSON.stringify(mas.conf), 'y dicen exactamente lo mismo que "Como te llega" de la confirmacion');
+    await ev('document.getElementById("llega-mas").open = false');
     await ev('document.getElementById("f-nombre").value = ""');
     const antesE = await ev('window.__posts.length');
     await ev('enviarPedido()');
@@ -769,6 +788,9 @@ async function main() {
       '   wa: wa ? wa.textContent.trim() : "", waHref: wa ? wa.getAttribute("href") : "",' +
       '   waAlto: wa ? Math.round(wa.getBoundingClientRect().height) : 0 };' +
       '})())'));
+    const marcaCierre = await ev('(function () { var a = document.getElementById("send-marca"); var r = a && a.querySelector("img").getBoundingClientRect(); return !!(r && r.height > 0); })()');
+    chk(marcaCierre, 'la confirmacion lleva el logo de Maleu arriba');
+    chk(await ev('(function () { var l = document.getElementById("send-done-llega"); return !!(l && l.getBoundingClientRect().height > 0); })()'), 'y el bloque "Como te llega"');
     chk(/pantalla/.test(pant.clase), 'la confirmacion ocupa la pantalla, no es un cartel', pant.clase);
     /* Contra el ancho UTIL de la pantalla, no el de la ventana: desde el
        seguimiento (19/10/2026) la pantalla es mas alta que la ventana y en

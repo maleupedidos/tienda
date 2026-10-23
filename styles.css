@@ -2428,6 +2428,35 @@ body.busqueda-activa .cat-nav-btn.cat-nav-combos.active { background:var(--brown
 /* flex:0 0 84px y no solo el width: el card es una columna flex y le comia
    12px de alto, dejando el circulo ovalado igual (84x72). */
 .send-overlay.pantalla .send-title-done { font-size: 1.5rem; }
+/* La marca arriba de la confirmacion (23/10/2026): solo como pantalla. El logo
+   reserva su alto con width/height en el HTML, asi no mueve nada al cargar. */
+.send-marca { display: none; }
+.send-overlay.pantalla .send-marca {
+  display: block; align-self: center; width: auto; max-width: none;
+  margin: -1rem auto 1.4rem; padding: .3rem .4rem; line-height: 0;
+}
+.send-overlay.pantalla .send-marca img { display: block; height: 30px; width: auto; }
+@media (min-width: 768px) { .send-overlay.pantalla .send-marca img { height: 38px; } }
+
+/* "Como te llega": tres renglones, no un texto largo. La misma lista va en la
+   confirmacion y en el "Mas info" del paso 3. */
+.llega { margin: 1.4rem 0 0; padding: 1rem 1rem .9rem; border: 1px solid #F0E4D8; border-radius: 14px;
+  background: #FFFBF6; text-align: left; }
+.llega-tit { margin: 0 0 .55rem; font-size: .95rem; font-weight: 700; color: var(--brown); }
+.llega-lista { list-style: none; margin: 0; padding: 0; }
+.llega-lista li { position: relative; padding-left: 1.05rem; font-size: .86rem; line-height: 1.45; color: #5b4a43; }
+.llega-lista li + li { margin-top: .5rem; }
+.llega-lista li::before { content: ''; position: absolute; left: 0; top: .55em; width: 6px; height: 6px;
+  border-radius: 50%; background: var(--orange); }
+.llega-lista strong { color: var(--brown); }
+.llega-lista a { color: var(--orange-ink); font-weight: 600; white-space: nowrap; }
+.llega-corto { margin: .4rem 0 1rem; }
+.llega-linea { margin: 0; font-size: .86rem; line-height: 1.45; color: #5b4a43; }
+.llega-mas summary { display: inline-flex; align-items: center; min-height: 44px; cursor: pointer;
+  font-size: .86rem; font-weight: 700; color: var(--orange-ink); text-decoration: underline; list-style: none; }
+.llega-mas summary::-webkit-details-marker { display: none; }
+.llega-mas[open] summary { margin-bottom: .2rem; }
+.llega-mas .llega-lista { padding: .8rem .9rem; border: 1px solid #F0E4D8; border-radius: 12px; background: #FFFBF6; }
 
 /* La lista de productos: un comprobante, no un renglon con saltos de linea. */
 .send-done-items { list-style: none; margin: 1.6rem 0 0; padding: 0; text-align: left; }
