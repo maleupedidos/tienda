@@ -6389,7 +6389,7 @@ var _segT = '', _segPolls = 0, _segTimer = null, _segUlt = null, _segDesde = 0, 
    despues de "confirmado", y se marca cuando el ERP lo da por cobrado. Sin nombre
    aca la pantalla mostraba la clave en crudo, "pago". */
 var SEG_NOMBRES = { recibido: 'Recibimos tu pedido', confirmado: 'Entrega confirmada', pago: 'Recibimos tu pago', armado: 'Armado',
-                    hoy: 'Hoy es el día', entregado: 'Entregado' };
+                    hoy: 'Hoy es el día', llegando: '🛵 Está llegando', entregado: 'Entregado' };
 var SEG_DIAS_SEM = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
 function _segEsCodigo(t) { return /^co_\d{10,14}_[a-z0-9]{6,40}$/.test(String(t || '')); }
@@ -6519,6 +6519,8 @@ function segPintar(g, j) {
     var txt;
     if (etapa === 'cancelado') txt = 'Este pedido se canceló.';
     else if (etapa === 'entregado') txt = '¡Entregado! Que lo disfrutes.';
+    /* «Llegando» (24/10/2026): el repartidor lo marca desde Ruta al salir para la casa. */
+    else if (etapa === 'llegando') txt = '🛵 ¡Está llegando! En unos minutos estamos en tu casa.';
     else if (fecha && fecha === _segHoyIso()) txt = 'Llega hoy' + (horario ? ', ' + horario : '');
     else if (fecha) txt = 'Te llega el ' + _segDia(fecha) + (horario ? ', ' + horario : '');
     else txt = (g.info && g.info.entrega) ? 'Entrega: ' + g.info.entrega : 'Recibimos tu pedido';
