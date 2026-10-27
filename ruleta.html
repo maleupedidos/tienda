@@ -368,7 +368,15 @@
   function confirmar() { confirmados = true; var f = alConfirmar; alConfirmar = []; f.forEach(function (g) { g(); }); }
   function cargar() {
     dibujar();
-    fetch(API + '?action=ruleta&t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+    /* (181) La base primero (tienda_ruleta, publica: solo activa y premios); en 5 s o con error, Apps Script. */
+    var apps = function () { return fetch(API + '?action=ruleta&t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json(); }); };
+    var ctl = (typeof AbortController === 'function') ? new AbortController() : null, reloj = ctl ? setTimeout(function () { ctl.abort(); }, 5000) : 0;
+    (ctl ? fetch('https://xhaxmyvhygxynwjqrarm.supabase.co/rest/v1/rpc/tienda_ruleta', { method: 'POST', cache: 'no-store', signal: ctl.signal,
+        headers: { apikey: 'sb_publishable_IVIVgOV-t_ugcQz1zQNwsw_U-4yOMZG', Authorization: 'Bearer sb_publishable_IVIVgOV-t_ugcQz1zQNwsw_U-4yOMZG', 'Content-Type': 'application/json' }, body: '{}' })
+        .then(function (r) { if (!r.ok) throw new Error('base ' + r.status); return r.json(); })
+        .then(function (d) { if (!d || !Array.isArray(d.premios)) throw new Error('sin forma'); return d; })
+        .catch(apps).finally(function () { clearTimeout(reloj); })
+      : apps()).then(function (d) {
       if (d && d.ok && Array.isArray(d.premios) && d.premios.length) {
         premios = d.premios;
         try { localStorage.setItem('maleu_ruleta_premios', JSON.stringify(d.premios)); } catch (e) {}

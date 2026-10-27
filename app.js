@@ -1533,12 +1533,13 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxmrG5YVSshcYez
    siempre: la tienda nunca se queda sin stock por la base. */
 const SB_URL_TIENDA = "https://xhaxmyvhygxynwjqrarm.supabase.co";
 const SB_KEY_TIENDA = "sb_publishable_IVIVgOV-t_ugcQz1zQNwsw_U-4yOMZG";
-function _deLaBaseOApps(rpc, accion) {
-  const apps = () => fetch(APPS_SCRIPT_URL + '?action=' + accion + '&t=' + Date.now(), { cache: 'no-store' }).then(r => r.json());
+/* `args` (180-184): el cuerpo para la base ({p: {...}}) y `qs` lo mismo para Apps Script («&tel=…»). */
+function _deLaBaseOApps(rpc, accion, args, qs) {
+  const apps = () => fetch(APPS_SCRIPT_URL + '?action=' + accion + (qs || '') + '&t=' + Date.now(), { cache: 'no-store' }).then(r => r.json());
   if (typeof AbortController !== 'function') return apps();
   const ctl = new AbortController(), reloj = setTimeout(() => ctl.abort(), 5000);
   return fetch(SB_URL_TIENDA + '/rest/v1/rpc/' + rpc, { method: 'POST', cache: 'no-store', signal: ctl.signal,
-      headers: { apikey: SB_KEY_TIENDA, Authorization: 'Bearer ' + SB_KEY_TIENDA, 'Content-Type': 'application/json' }, body: '{}' })
+      headers: { apikey: SB_KEY_TIENDA, Authorization: 'Bearer ' + SB_KEY_TIENDA, 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}) })
     .then(r => { if (!r.ok) throw new Error('la base contesto ' + r.status); return r.json(); })
     .then(d => { if (!d || typeof d !== 'object' || Array.isArray(d)) throw new Error('sin forma'); return d; })
     .catch(() => apps())
@@ -2609,8 +2610,8 @@ function checkSaldoCliente() {
     if (_saldoCliente.tel === tel && (Date.now() - _saldoCliente.ultimoFetch) < 30000) return;
     _saldoCliente.tel = tel;
     _saldoCliente.ultimoFetch = Date.now();
-    fetch(APPS_SCRIPT_URL + '?action=saldoCliente&tel=' + encodeURIComponent(tel) + '&t=' + Date.now())
-      .then(function(r){ return r.json(); })
+    /* (180) La base primero (tienda_saldo_cliente: solo con el teléfono, solo el saldo). */
+    _deLaBaseOApps('tienda_saldo_cliente', 'saldoCliente', { p: { tel: tel } }, '&tel=' + encodeURIComponent(tel))
       .then(function(data){
         if (data && data.ok) {
           _saldoCliente.saldo = Number(data.saldo) || 0;
@@ -2929,8 +2930,8 @@ function fetchVendedores() {
      arrancar y la copia cuando el fetch falla— pasan por aca. Estaba escrito
      dos veces; dos formas de armar el mismo mapa es como se despegan las cosas
      en este repo. */
-  fetch(APPS_SCRIPT_URL + '?action=vendedores', { cache: 'no-store' })
-    .then(r => r.json())
+  /* (182) La base primero (tienda_vendedores). */
+  _deLaBaseOApps('tienda_vendedores', 'vendedores')
     .then(d => {
       _vendedoresPoner(d.vendedores || []);
       _vendedoresGuardarCopia(vendedoresRed);
@@ -7905,8 +7906,24 @@ function _postPedido(data) {
  * cliente ve el fallback de siempre. El tope es corto a propósito — ya esperó
  * 25 s, y esto se suma a esa espera. */
 var PEDIDO_ENTRO_TIMEOUT_MS = 6000;
+/* (184) Primero la base: si dice que entró, entró (el candidato se registra con la fila escrita, o la
+   base ya le dio número). Si dice que no, puede estar atrasada: se pregunta a Apps Script como siempre. */
 function _pedidoEntro(coid) {
   if (!coid) return Promise.resolve(false);
+  return _pedidoEntroBase(coid).then(function (si) { return si ? true : _pedidoEntroApps(coid); });
+}
+function _pedidoEntroBase(coid) {
+  if (typeof AbortController !== 'function') return Promise.resolve(false);
+  var ctl = new AbortController(), reloj = setTimeout(function () { ctl.abort(); }, 4000);
+  return fetch(SB_URL_TIENDA + '/rest/v1/rpc/tienda_pedido_entro', { method: 'POST', cache: 'no-store', signal: ctl.signal,
+      headers: { apikey: SB_KEY_TIENDA, Authorization: 'Bearer ' + SB_KEY_TIENDA, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p: { coid: coid } }) })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) { return !!(d && d.ok === true && d.entro === true); })
+    .catch(function () { return false; })
+    .finally(function () { clearTimeout(reloj); });
+}
+function _pedidoEntroApps(coid) {
   var ctrl = null, tid = null;
   try { ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null; } catch (e) {}
   var opts = ctrl ? { signal: ctrl.signal } : {};
