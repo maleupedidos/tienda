@@ -1533,15 +1533,19 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxmrG5YVSshcYez
    siempre: la tienda nunca se queda sin stock por la base. */
 const SB_URL_TIENDA = "https://xhaxmyvhygxynwjqrarm.supabase.co";
 const SB_KEY_TIENDA = "sb_publishable_IVIVgOV-t_ugcQz1zQNwsw_U-4yOMZG";
-/* `args` (180-184): el cuerpo para la base ({p: {...}}) y `qs` lo mismo para Apps Script («&tel=…»). */
-function _deLaBaseOApps(rpc, accion, args, qs) {
-  const apps = () => fetch(APPS_SCRIPT_URL + '?action=' + accion + (qs || '') + '&t=' + Date.now(), { cache: 'no-store' }).then(r => r.json());
+/* `args` (180-184): el cuerpo para la base ({p: {...}}) y `qs` lo mismo para Apps Script («&tel=…»).
+   `soloSi` (185/186): la base vale solo si contesta eso (un cupón válido, un pedido encontrado); si no,
+   puede estar atrasada (un cupón recién cargado, un pedido que la réplica todavía no subió) y se
+   pregunta a Apps Script como siempre. El anti-caché va en `_` y no en `t`: en seguimiento `t` es el código. */
+function _deLaBaseOApps(rpc, accion, args, qs, soloSi) {
+  const apps = () => fetch(APPS_SCRIPT_URL + '?action=' + accion + (qs || '') + '&_=' + Date.now(), { cache: 'no-store' }).then(r => r.json());
   if (typeof AbortController !== 'function') return apps();
   const ctl = new AbortController(), reloj = setTimeout(() => ctl.abort(), 5000);
   return fetch(SB_URL_TIENDA + '/rest/v1/rpc/' + rpc, { method: 'POST', cache: 'no-store', signal: ctl.signal,
       headers: { apikey: SB_KEY_TIENDA, Authorization: 'Bearer ' + SB_KEY_TIENDA, 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}) })
     .then(r => { if (!r.ok) throw new Error('la base contesto ' + r.status); return r.json(); })
     .then(d => { if (!d || typeof d !== 'object' || Array.isArray(d)) throw new Error('sin forma'); return d; })
+    .then(d => { if (soloSi && !soloSi(d)) throw new Error('la base no lo tiene'); return d; })
     .catch(() => apps())
     .finally(() => clearTimeout(reloj));
 }
@@ -2838,11 +2842,10 @@ function applyCoupon() {
   _showCouponMsg('', '');
 
   var items = _itemsInCart();
-  var url = APPS_SCRIPT_URL + '?action=validarCupon&codigo=' + encodeURIComponent(code)
-          + '&itemsJson=' + encodeURIComponent(JSON.stringify(items))
-          + '&t=' + Date.now();
-  fetch(url, { cache: 'no-store' })
-    .then(function(r) { return r.json(); })
+  /* (185) La base primero (tienda_validar_cupon: solo por código); si no lo da por válido, Apps Script. */
+  var itemsJson = JSON.stringify(items);
+  _deLaBaseOApps('tienda_validar_cupon', 'validarCupon', { p: { codigo: code, itemsJson: itemsJson } },
+      '&codigo=' + encodeURIComponent(code) + '&itemsJson=' + encodeURIComponent(itemsJson), function (d) { return d.ok === true; })
     .then(function(d) {
       btn.disabled = false; btn.textContent = 'Aplicar';
       if (!d.ok) {
@@ -6479,8 +6482,9 @@ function segPreguntar(t, primera) {
   _segParar();
   if (primera) { _segPolls = 0; _segDesde = performance.now(); _segEncontrado = false; }
   if (_segPolls++ >= SEG_POLL_MAX) return;
-  fetch(APPS_SCRIPT_URL + '?action=seguimiento&t=' + encodeURIComponent(t), { cache: 'no-store' })
-    .then(function (r) { return r.json(); })
+  /* (186) La base primero (tienda_seguimiento: solo por código); si no lo encuentra, Apps Script
+     (el alta rápida contesta antes de que la fila llegue a la base). */
+  _deLaBaseOApps('tienda_seguimiento', 'seguimiento', { p: { t: t } }, '&t=' + encodeURIComponent(t), function (d) { return d.ok === true && d.encontrado === true; })
     .then(function (j) {
       if (_segT !== t) return;
       if (j && j.ok) {
@@ -10099,8 +10103,8 @@ function _premioActivo() {
        dijera por que (24/9/2026). Lo mismo le pasaria a MARCOS10, que es la
        base entera de la politica nueva de los vendedores. */
   if (!/^[A-Z0-9][A-Z0-9-]{2,23}$/.test(cod)) return;
-  fetch(APPS_SCRIPT_URL + '?action=validarCupon&codigo=' + encodeURIComponent(cod) + '&t=' + Date.now(), { cache: 'no-store' })
-    .then(function (r) { return r.json(); })
+  /* (185) La base primero; si no lo da por válido, Apps Script. */
+  _deLaBaseOApps('tienda_validar_cupon', 'validarCupon', { p: { codigo: cod } }, '&codigo=' + encodeURIComponent(cod), function (d) { return d.ok === true; })
     .then(function (d) {
       if (!d || !d.ok) {
         try { localStorage.removeItem(CUPON_GUARDADO); } catch (e) {}
