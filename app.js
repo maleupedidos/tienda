@@ -954,8 +954,7 @@ function piezasAgrupadas() {
    tienda no tiene.) Devuelve true solo si llego un inventario de verdad: es lo
    que decide si se puede conciliar el carrito contra el. */
 function fetchPiezas() {
-  return fetch(APPS_SCRIPT_URL + '?action=piezas_full&t=' + Date.now(), { cache: 'no-store' })
-    .then(function (r) { return r.json(); })
+  return _deLaBaseOApps('tienda_piezas', 'piezas_full')
     .then(function (d) {
       /* Se pide FORMA, no que la respuesta exista: un {ok:false, err:"..."}
          tiene claves y pasaria un chequeo de "vino algo". Es el mismo error
@@ -1525,6 +1524,26 @@ function _pintarDudaMail(n) {
   if (a) a.href = _mailto(n ? 'Pedido #' + n : 'Mi pedido');
 }
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxmrG5YVSshcYezk8lXFx_uxb7NFGcb9EfTXc7dsIN4rZyj73CET4mk_aKPFPDY2wNi/exec";
+/* EL STOCK Y LAS PIEZAS SALEN DE LA BASE (27/10/2026, migracion 170). Apps Script tardaba 4 a 13 s
+   en cada una; la base contesta sin pasar por Apps Script. `tienda_stock` y `tienda_piezas` son lo UNICO que
+   la base le abre a la tienda (sin login): devuelven lo mismo que `stock_full` y `piezas_full`
+   menos lo que la tienda no usa, y nada de costo, proveedor ni pedidos. La clave es la publica
+   (`sb_publishable_`): esta hecha para ir en el codigo del navegador.
+   Si la base no contesta en 5 s, o contesta algo que no tiene forma, se pide a Apps Script como
+   siempre: la tienda nunca se queda sin stock por la base. */
+const SB_URL_TIENDA = "https://xhaxmyvhygxynwjqrarm.supabase.co";
+const SB_KEY_TIENDA = "sb_publishable_IVIVgOV-t_ugcQz1zQNwsw_U-4yOMZG";
+function _deLaBaseOApps(rpc, accion) {
+  const apps = () => fetch(APPS_SCRIPT_URL + '?action=' + accion + '&t=' + Date.now(), { cache: 'no-store' }).then(r => r.json());
+  if (typeof AbortController !== 'function') return apps();
+  const ctl = new AbortController(), reloj = setTimeout(() => ctl.abort(), 5000);
+  return fetch(SB_URL_TIENDA + '/rest/v1/rpc/' + rpc, { method: 'POST', cache: 'no-store', signal: ctl.signal,
+      headers: { apikey: SB_KEY_TIENDA, Authorization: 'Bearer ' + SB_KEY_TIENDA, 'Content-Type': 'application/json' }, body: '{}' })
+    .then(r => { if (!r.ok) throw new Error('la base contesto ' + r.status); return r.json(); })
+    .then(d => { if (!d || typeof d !== 'object' || Array.isArray(d)) throw new Error('sin forma'); return d; })
+    .catch(() => apps())
+    .finally(() => clearTimeout(reloj));
+}
 // Meses del cumpleaños — definido arriba para que initCumpleBlock() (llamado en el init) lo tenga listo.
 var CUMPLE_MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const STOCK_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTOq210U9LeSxvXbx_sdglHS0K9DZP8H_5pGXC-WwlMo8AE4UacIN0bpagQqAr79XeJNQ1Nm1eql271/pub?gid=792614962&single=true&output=csv';
@@ -8428,9 +8447,7 @@ async function fetchStock() {
      necesita al otro. */
   const piezasListas = _refrescarPiezas();
   try {
-    const bust = '?action=stock_full&_=' + Date.now();
-    const res = await fetch(APPS_SCRIPT_URL + bust, { cache: 'no-store' });
-    const full = await res.json();
+    const full = await _deLaBaseOApps('tienda_stock', 'stock_full');
     PRODUCTOS.forEach(p => {
       const abbr = PROD_ABBR[p.id];
       /* Sin `f` no hay dato de stock (solo precio): no se inventa un 0. */
