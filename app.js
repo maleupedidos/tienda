@@ -1460,6 +1460,7 @@ function combosInCart() { return Object.keys(comboCart).length > 0; }
 function descontableSubtotal() { return productsSubtotal() + piezasSubtotal(); }
 
 /* ── ZONAS ── */
+const TAKEAWAY_HORARIO = "Takeaway · horario a coordinar";
 const ZONAS = {
   /* 14/9/2026: Estancias del Río volvió a esta zona (desde el 10/8 estaba en
      "Otra zona de Pilar"). Tadeo: "son los 2 barrios a atacar, son muy
@@ -1469,9 +1470,13 @@ const ZONAS = {
     nombre: "Estancias del Pilar y Estancias del Río",
     envio: 0,
     canal: "Home",
-    horarios: { "Lunes":"18 a 19 hs", "Miércoles":"19 a 21 hs", "Viernes":"19 a 21 hs", "Sábado":"19 a 21 hs", "Domingo":"11 a 13 hs" },
-    deliveryText: "Entregas: Lun · Mié · Vie · Sáb · Dom",
-    schedule: "Lunes 18 a 19hs · Miércoles, Viernes y Sábado 19 a 21hs · Domingo 11 a 13hs",
+    /* 29/10/2026: martes y jueves, TAKEAWAY (el cliente lo pasa a buscar, sin envío y con el
+       horario a coordinar). Sin hora escrita, `_cierreDelDiaMs` deja pedir el día entero, así que
+       un jueves se puede pedir para ese mismo jueves. El texto viaja como `horario` y el ERP lo
+       guarda en «Horario Cliente»: «Takeaway» es la marca de que no va en el reparto. */
+    horarios: { "Lunes":"18 a 19 hs", "Martes":TAKEAWAY_HORARIO, "Miércoles":"19 a 21 hs", "Jueves":TAKEAWAY_HORARIO, "Viernes":"19 a 21 hs", "Sábado":"19 a 21 hs", "Domingo":"11 a 13 hs" },
+    deliveryText: "Entregas: Lun · Mié · Vie · Sáb · Dom · Takeaway: Mar · Jue",
+    schedule: "Lunes 18 a 19hs · Miércoles, Viernes y Sábado 19 a 21hs · Domingo 11 a 13hs · Martes y Jueves takeaway (lo pasás a buscar)",
     showStock: false
   },
   pilar: {
