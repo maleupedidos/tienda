@@ -30,6 +30,7 @@ var IMG_V = {
   "carne-entrana.jpg": "c9bbf036",
   "carne-lomo.jpg": "7f188d99",
   "carne-matambre.jpg": "0bd57d07",
+  "carne-matambrito-cerdo.jpg": "9e7f86f4",
   "carne-ojo-bife.jpg": "819ef24d",
   "carne-peceto.jpg": "2bb317d2",
   "carne-picana.jpg": "05684de8",
@@ -168,6 +169,9 @@ const PRODUCTOS = [
   { id:39, abbr:"CAC", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Asado Costilla Especial", desc:"El asado en placa, con su hueso. Fuego bajo y sin apuro.", img:"carne-asado-cotilla.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
   { id:40, abbr:"CAB", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Asado Banderita", desc:"Tiras con el hueso cruzado. Se hace r\u00e1pido y queda crocante.", img:"carne-asado-banderita.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
   { id:41, abbr:"CPe", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Peceto feteado", desc:"Magro y tierno, ya cortado en fetas. Para milanesas o a la plancha.", img:"carne-peceto.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Feteado"] },
+  /* Matambrito de cerdo, de Carm\u00edn y Fuegos (29/10/2026). `sinVendedor`: todav\u00eda no tiene comisi\u00f3n de Red y no
+     est\u00e1 en la hoja Red, as\u00ed que en un barrio con representante no se ofrece. */
+  { id:45, abbr:"CMC", cat:"Carnes", porPeso:true, sinVendedor:true, nuevo:true, zonas:["estancias","pilar"], nombre:"Matambrito de cerdo", desc:"Tierno y jugoso. A la parrilla o al horno, con lim\u00f3n o a la pizza.", img:"carne-matambrito-cerdo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Cerdo"] },
 ];
 
 const CATEGORIAS = [
@@ -643,7 +647,7 @@ function piezasDe(abbr) {
    mayor a menor margen, medido en el ERP: sugerir primero lo que menos deja
    seria empujar justo la venta que menos conviene. Los numeros no van aca:
    el repo es publico. Un corte nuevo que no este en la lista entra al final. */
-var SUG_CARNE_ORDEN = ['CVE', 'CBC', 'COB', 'CAC', 'CAB', 'CPe', 'CMa', 'CPi', 'CCo', 'CLo', 'CEn', 'CVa'];
+var SUG_CARNE_ORDEN = ['CVE', 'CBC', 'COB', 'CAC', 'CAB', 'CPe', 'CMa', 'CPi', 'CCo', 'CLo', 'CEn', 'CVa', 'CMC'];
 var SUG_CARNE_MAX = 2;
 
 function _sugerenciaCarne() {
@@ -2538,6 +2542,7 @@ const PROD_ABBR = {
   24:'TP', 25:'TJyQ', 26:'TCa', 27:'TV',
   28:'RC', 29:'RP',
   42:'WPo', 43:'WBo', 44:'WVe',   // Wraps Sevuchitas x2 (22/10/2026)
+  45:'CMC',                        // Matambrito de cerdo (29/10/2026)
   // Clubes (IDs string)
   'pmu':'PMu', 'pma':'PMa', 'pjq':'PJyQ', 'pcc':'PCC', 'pjm':'PJyM',
   'pp1':'PPM', 'pp2':'PPJyQ', 'pp3':'PPCyQ',
