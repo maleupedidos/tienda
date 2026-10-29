@@ -7865,9 +7865,35 @@ function _confirmado(key, resp) {
   cbs.forEach(function (cb) { try { cb(resp); } catch (e) {} });
 }
 
-/* Un intento: POST por fetch con tope de 30 s. Resuelve SOLO con {ok:true} del
-   backend — un dedup tambien es ok: quiere decir que el pedido ya estaba. */
+/* Un intento. (287, 29/10/2026) Primero la base (`pedido_alta_directo`, como la ruleta): con
+   ALTA_TIENDA_DIRECTO la acepta, le da el número y deja la orden para el aplicador. Con `directo:false`
+   (palanca apagada, tope, un carrito que tiene que ir por Apps Script), un 404, un error o 8 s sin
+   respuesta: el POST de siempre con el MISMO clientOrderId — si la base ya lo había aceptado, Apps Script
+   le pide el número con ese id y le da el mismo: no queda un pedido repetido. */
 function _postPedido(data) {
+  return _postPedidoBase(data).then(function (d) { return d || _postPedidoApps(data); });
+}
+/* SOLO desde maleu.com.ar: las redes sirven la tienda en localhost y varias cortan nada más los POST a
+   Apps Script, así que desde ahí un alta de prueba entraría de verdad. Una prueba de este camino lo pide
+   a propósito con `window.__altaBaseForzar` (y responde la base ella misma). */
+function _altaBaseVa() {
+  var h = String((typeof location !== 'undefined' && location.hostname) || '');
+  return (typeof window !== 'undefined' && window.__altaBaseForzar === true) || h === 'maleu.com.ar' || h === 'www.maleu.com.ar';
+}
+function _postPedidoBase(data) {
+  if (typeof AbortController !== 'function' || !_altaBaseVa()) return Promise.resolve(null);
+  var ctl = new AbortController(), reloj = setTimeout(function () { ctl.abort(); }, 8000);
+  return fetch(SB_URL_TIENDA + '/rest/v1/rpc/pedido_alta_directo', { method: 'POST', cache: 'no-store', signal: ctl.signal,
+      headers: { apikey: SB_KEY_TIENDA, Authorization: 'Bearer ' + SB_KEY_TIENDA, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p: data }) })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) { return (d && d.ok === true && d.directo === true && d.n) ? d : null; })
+    .catch(function () { return null; })
+    .finally(function () { clearTimeout(reloj); });
+}
+/* El POST de siempre a Apps Script, con tope de 30 s. Resuelve SOLO con {ok:true} del
+   backend — un dedup tambien es ok: quiere decir que el pedido ya estaba. */
+function _postPedidoApps(data) {
   var ctrl = null, tid = null;
   try { ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null; } catch (e) {}
   if (ctrl) tid = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, MALEU_FETCH_TIMEOUT_MS);
