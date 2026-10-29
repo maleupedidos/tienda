@@ -4830,8 +4830,11 @@ function _fechasPosteriores() {
               (selectedPilarBarrio || '') + '|' + Math.floor(Date.now() / 60000);
   if (!_fechasCache || _fechasCache.clave !== clave) {
     var g = _getNextDeliveryDatesGrouped(currentZone);
+    /* (29/10/2026) Al que eligió un día CON envío no se le propone un takeaway: "Pedir para el
+       mar 3" le cambiaría el envío por ir a buscarlo, sin que la pregunta lo diga. */
+    var conEnvio = _horarioDeZona(currentZone, selectedDeliveryDayName) !== TAKEAWAY_HORARIO;
     var todas = g.thisWeek.concat(g.nextWeek, g.later)
-      .filter(function (f) { return f.iso > selectedDeliveryDate; })
+      .filter(function (f) { return f.iso > selectedDeliveryDate && !(conEnvio && f.timeRange === TAKEAWAY_HORARIO); })
       .map(function (f) { return { f: f, modo: getStockMode(f.iso) }; });
     _fechasCache = { clave: clave, fechas: todas };
   }
