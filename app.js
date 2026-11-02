@@ -9489,13 +9489,28 @@ function _cumpleSaveBackend(valor) {
     } catch(e) {}
   }
   if (!tel || tel.replace(/\D/g, '').length < 8) return; // sin teléfono → se guarda al hacer el pedido
-  try {
-    fetch(APPS_SCRIPT_URL, {
-      method: 'POST', mode: 'cors', keepalive: true,
-      headers: { 'Content-Type': 'text/plain' }, // evita preflight CORS (igual que el pedido)
-      body: JSON.stringify({ action: 'guardarCumpleCliente', tel: tel, cumple: valor })
-    }).catch(function(){});
-  } catch(e) {}
+  var porApps = function () {
+    try {
+      fetch(APPS_SCRIPT_URL, {
+        method: 'POST', mode: 'cors', keepalive: true,
+        headers: { 'Content-Type': 'text/plain' }, // evita preflight CORS (igual que el pedido)
+        body: JSON.stringify({ action: 'guardarCumpleCliente', tel: tel, cumple: valor })
+      }).catch(function(){});
+    } catch(e) {}
+  };
+  /* (313, corte parte 4 — 2/11/2026) Primero la base (`tienda_cumple`, con CUMPLE_DIRECTO): la ficha queda con el cumple
+     al toque y la planilla la escribe el aplicador. Con `directo:false` (palanca apagada, formato raro, tope de 30 en
+     10 min), un error o 8 s sin respuesta: Apps Script con el mismo pedido, como siempre. Solo desde maleu.com.ar
+     (`_altaBaseVa`, el mismo guardia que el alta): una tienda servida en otro lado no escribe en la base. */
+  if (typeof AbortController !== 'function' || typeof _altaBaseVa !== 'function' || !_altaBaseVa()) { porApps(); return; }
+  var ctl = new AbortController(), reloj = setTimeout(function () { ctl.abort(); }, 8000);
+  fetch(SB_URL_TIENDA + '/rest/v1/rpc/tienda_cumple', { method: 'POST', keepalive: true, cache: 'no-store', signal: ctl.signal,
+      headers: { apikey: SB_KEY_TIENDA, Authorization: 'Bearer ' + SB_KEY_TIENDA, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p: { tel: tel, cumple: valor } }) })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) { if (!(d && d.ok === true && d.directo !== false)) porApps(); })
+    .catch(function () { porApps(); })
+    .finally(function () { clearTimeout(reloj); });
 }
 
 /* ══════════════════════════════════════════════════
