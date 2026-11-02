@@ -157,6 +157,29 @@
              placeholder="Empez&aacute; a escribir tu barrio&hellip;" oninput="dirBuscar()">
       <div class="dir-lista" id="dir-lista"></div>
     </div>
+    <!-- «Mi barrio no está en la lista» (2/11/2026): en qué zona queda su casa. Las tarjetas las arma `_dirOtro`
+         con las zonas de Maleu y las de cada representante (salen de la hoja Vendedores). -->
+    <div class="loc-step" id="loc-step-otrazona" style="display:none">
+      <img src="img/logo-icono.png?v=d8163724" alt="Maleu" />
+      <h2>¿En qué zona queda tu casa?</h2>
+      <p>Elegí tu zona y después escribís tu barrio tal cual.</p>
+      <div class="loc-barrios-grid" id="otrazona-grid"></div>
+      <button class="loc-back-btn" onclick="welcomeBackToZone()">← Volver a buscar mi barrio</button>
+    </div>
+    <!-- Todavía no llegamos (2/11/2026): nunca un pedido con un barrio que no es el suyo; queda como lead. -->
+    <div class="loc-step" id="loc-step-lead" style="display:none">
+      <img src="img/logo-icono.png?v=d8163724" alt="Maleu" />
+      <h2>Todavía no llegamos a tu zona</h2>
+      <p>Estamos sumando barrios. Avisale a tu representante o escribinos, y dejanos tu teléfono: te avisamos apenas lleguemos.</p>
+      <div class="lead-form">
+        <input class="dir-input" type="text" id="lead-nombre" autocomplete="name" autocapitalize="words" placeholder="Tu nombre">
+        <input class="dir-input" type="tel" id="lead-tel" autocomplete="tel" inputmode="tel" placeholder="Teléfono con código de área">
+        <input class="dir-input" type="text" id="lead-barrio" autocapitalize="words" placeholder="Tu barrio (por ejemplo Belgrano C)">
+        <button type="button" class="lead-btn" id="lead-btn" onclick="leadEnviar()">Avisame cuando lleguen</button>
+        <div class="lead-msg" id="lead-msg" aria-live="polite"></div>
+      </div>
+      <button class="loc-back-btn" onclick="welcomeBackToZone()">← Volver a buscar mi barrio</button>
+    </div>
     <!-- PASO 2: Zona de Pilar (solo Pilar) -->
     <div class="loc-step" id="loc-step-barrio" style="display:none">
       <img src="img/logo-icono.png?v=d8163724" alt="Maleu" />

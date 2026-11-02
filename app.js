@@ -2131,6 +2131,28 @@ function _vendedoresPoner(lista) {
       };
     });
   });
+  _zonasDeLosDatos();
+}
+/* LAS ZONAS SALEN DE LOS DATOS (2/11/2026, Tadeo: una sola tienda y Maleu reparte por zona). Cada representante
+   activo de la hoja Vendedores es una zona: la col «Barrios» empieza con el nombre de la zona y sigue con sus barrios
+   (es la misma convencion que el ruteo). Las que ya estan escritas abajo en `BARRIOS_PILAR_MODAL` conservan lo que
+   tienen de mas (los dias, la region); un representante nuevo aparece solo, con viernes como dia. Se agregan antes
+   de la «Otra zona de Pilar», que queda ultima. Los barrios se editan desde el ERP, Ajustes > Usuarios. */
+function _zonasDeLosDatos() {
+  (vendedoresRed || []).forEach(function (v) {
+    var zc = String((v.barrios || [])[0] || '').trim();
+    if (!zc) return;
+    if (BARRIOS_PILAR_MODAL.some(function (b) { return _dirNorm(b.val) === _dirNorm(zc); })) return;
+    var subs = (v.barrios || []).slice(1).map(function (x) { return String(x).trim(); }).filter(Boolean);
+    var z = { val: zc, nombre: zc, isRed: true, deLosDatos: true,
+              badge: String(v.nombre || '').trim().split(/\s+/)[0],
+              subBarrios: subs.slice(0, 6).join(' \u00b7 ') + (subs.length > 6 ? ' \u00b7 \u2026' : ''),
+              subBarriosList: subs.length ? subs : [zc] };
+    if (v.partido && String(v.partido).trim() !== 'Pilar') z.region = String(v.partido).trim();
+    var i = -1;
+    for (var k = 0; k < BARRIOS_PILAR_MODAL.length; k++) if (BARRIOS_PILAR_MODAL[k].isOther) { i = k; break; }
+    if (i < 0) BARRIOS_PILAR_MODAL.push(z); else BARRIOS_PILAR_MODAL.splice(i, 0, z);
+  });
 }
 function _vendedoresGuardarCopia(lista) {
   try {
@@ -2994,8 +3016,10 @@ function renderPilarBarrios() {
   });
   // 'Otra zona de Pilar' agrega opción "Otro barrio" con input libre para
   // que el cliente escriba la dirección exacta (ej. calle + número).
-  if (zona.isOther && !restricted) {
-    sel.innerHTML += '<option value="__otro__">Otro barrio (escribo la dirección)</option>';
+  /* (2/11/2026) Tambien en la zona de un representante: el cliente escribe su barrio tal cual (Belgrano C, Palermo)
+     y el pedido va igual a esa zona (`_vendedorDeBarrio` cae a la zona elegida). */
+  if ((zona.isOther || zona.isRed) && !restricted) {
+    sel.innerHTML += '<option value="__otro__">' + (zona.isOther ? 'Otro barrio (escribo la dirección)' : 'Otro barrio de esta zona (lo escribo)') + '</option>';
   }
 
   // Preservar la selección del cliente si sigue siendo válida en la zona nueva
@@ -3659,7 +3683,78 @@ function _dirElegir(d) {
    28/9: "el envio sera miercoles o viernes". Es el mismo destino que ya existia
    como "Otra zona de Pilar > Otro barrio", con la diferencia de que ahora se
    llega en un toque en vez de en cuatro. */
+/* «MI BARRIO NO ESTA EN LA LISTA» PREGUNTA LA ZONA (2/11/2026). Hasta hoy armaba un pedido de Pilar con lo que se
+   escribiera: asi entro Hock con «Palermo» y Salvador eligio Santa Barbara viviendo en Belgrano C. Ahora el cliente
+   elige en que zona queda su casa —las de Maleu y las de cada representante, que salen de los datos— y adentro
+   escribe su barrio tal cual. Si no cae en ninguna, «todavia no llegamos» y deja su telefono como lead: nunca un
+   pedido con un barrio que no es el suyo. */
 function _dirOtro() {
+  _hideAllSteps();
+  var step = $id('loc-step-otrazona');
+  if (!step) { _dirOtroPilar(); return; }
+  step.style.display = '';
+  var grid = $id('otrazona-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  var tarjeta = function (titulo, sub, badge, cls, alTocar) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'loc-zona-card ' + (cls || '');
+    var h = document.createElement('div'); h.className = 'loc-zona-head';
+    var n = document.createElement('span'); n.className = 'loc-zona-name'; n.textContent = titulo;   // de la planilla: nunca por innerHTML
+    h.appendChild(n);
+    if (badge) { var bd = document.createElement('span'); bd.className = 'loc-zona-vendedor' + (cls === 'is-other' ? ' is-maleu' : ''); bd.textContent = badge; h.appendChild(bd); }
+    b.appendChild(h);
+    if (sub) { var s = document.createElement('span'); s.className = 'loc-zona-sub'; s.textContent = sub; b.appendChild(s); }
+    b.onclick = alTocar;
+    grid.appendChild(b);
+  };
+  BARRIOS_PILAR_MODAL.forEach(function (z, i) {
+    if (!z.isRed || _barrioOculto(z.val)) return;
+    tarjeta(z.nombre, (z.region || 'Pilar') + (z.subBarrios ? ' \u00b7 ' + z.subBarrios : ''), z.badge, 'is-red', function () { _dirOtroEnZona(i); });
+  });
+  tarjeta('Otro barrio de Pilar', 'Lo entregamos nosotros \u00b7 mi\u00e9rcoles y viernes', 'Maleu', 'is-other', _dirOtroPilar);
+  tarjeta('Mi zona no est\u00e1', 'Todav\u00eda no llegamos: dejanos tu tel\u00e9fono y te avisamos', '', 'is-sin-zona', _dirSinZona);
+}
+function _dirOtroEnZona(i) {
+  var z = BARRIOS_PILAR_MODAL[i];
+  if (!z) return;
+  var inp = $id('dir-input'), escrito = (inp && inp.value || '').trim();
+  currentZone = 'pilar';
+  zonaProvisoria = false;
+  try { localStorage.setItem('maleu_zone', 'pilar'); } catch (e) {}
+  _track('select_zone', { zone: 'pilar', origen: _zonaOrigen, barrio: 'otro:' + z.val });
+  applyZone();
+  _guardarPilarZona(z.val, z.nombre);
+  if (typeof renderPilarBarrios === 'function') renderPilarBarrios();
+  setPilarSubBarrio('__otro__', 'Otro barrio');
+  var libre = $id('f-direccion');
+  if (escrito && libre && !libre.value) { libre.value = escrito; libre.dispatchEvent(new Event('input', { bubbles: true })); }
+}
+function _dirSinZona() {
+  _hideAllSteps();
+  var step = $id('loc-step-lead');
+  if (step) step.style.display = '';
+  var inp = $id('dir-input'), b = $id('lead-barrio');
+  if (b && inp && !b.value) b.value = (inp.value || '').trim();
+  var m = $id('lead-msg'); if (m) { m.textContent = ''; m.className = 'lead-msg'; }
+}
+function leadEnviar() {
+  var nom = ($id('lead-nombre') || {}).value || '', tel = String(($id('lead-tel') || {}).value || '').replace(/\D/g, ''),
+      bar = String(($id('lead-barrio') || {}).value || '').trim(), m = $id('lead-msg'), btn = $id('lead-btn');
+  var decir = function (txt, ok) { if (m) { m.textContent = txt; m.className = 'lead-msg' + (ok ? ' ok' : ' err'); } };
+  if (tel.length < 10) { decir('Poné tu teléfono con el código de área (por ejemplo 11 3688 7500).'); return; }
+  if (!bar) { decir('Contanos tu barrio.'); return; }
+  if (btn) btn.disabled = true;
+  fetch(APPS_SCRIPT_URL, { method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'tiendaLead', nombre: String(nom).trim(), tel: tel, barrio: bar }) })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (d && d.ok) { decir('¡Listo! Te avisamos apenas lleguemos a ' + bar + '.', true); _track('lead_sin_zona', { barrio: bar }); }
+      else { decir((d && d.error) || 'No lo pudimos guardar. Probá de nuevo.'); if (btn) btn.disabled = false; }
+    })
+    .catch(function () { decir('No lo pudimos guardar. Probá de nuevo.'); if (btn) btn.disabled = false; });
+}
+function _dirOtroPilar() {
   var inp = $id('dir-input');
   var escrito = (inp && inp.value || '').trim();
   currentZone = 'pilar';
@@ -3701,7 +3796,7 @@ function welcomeBackToZone() {
   welcomeShowZoneStep();
 }
 function _hideAllSteps() {
-  var ids = ['loc-step-zone', 'loc-step-barrio', 'loc-step-subbarrio', 'loc-step-date'];
+  var ids = ['loc-step-zone', 'loc-step-barrio', 'loc-step-subbarrio', 'loc-step-date', 'loc-step-otrazona', 'loc-step-lead'];
   ids.forEach(function(id) { var el = $id(id); if (el) el.style.display = 'none'; });
 }
 function welcomeShowZoneStep() {

@@ -2673,3 +2673,13 @@ body.busqueda-activa .cat-nav-btn.cat-nav-combos.active { background:var(--brown
   .tel-area-wrap { flex: 0 0 4.8rem; }
   .tel-pais { padding: 0 .45rem; font-size: .88rem; }
 }
+
+/* «Todavía no llegamos» (2/11/2026) */
+.loc-zona-card.is-sin-zona { border-style: dashed; }
+.lead-form { display: flex; flex-direction: column; gap: 10px; margin: 6px 0 4px; }
+.lead-form .dir-input { margin: 0; }
+.lead-btn { background: var(--brown); color: #fff; border: 0; border-radius: 12px; padding: 14px; font-size: 16px; font-weight: 700; cursor: pointer; }
+.lead-btn:disabled { opacity: .55; cursor: default; }
+.lead-msg { font-size: .9rem; min-height: 1.2em; }
+.lead-msg.ok { color: #2e7d32; font-weight: 700; }
+.lead-msg.err { color: #c62828; }
