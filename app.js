@@ -7988,15 +7988,24 @@ function _altaBaseVa() {
   var h = String((typeof location !== 'undefined' && location.hostname) || '');
   return (typeof window !== 'undefined' && window.__altaBaseForzar === true) || h === 'maleu.com.ar' || h === 'www.maleu.com.ar';
 }
+/* (2/11/2026) POR QUE NO FUE A LA BASE: si el alta cae a Apps Script, el motivo viaja en `_noDirecto` y Apps Script lo
+   anota en Log Tiempos (fase «apps: <motivo>»), como las directas del ERP. Se pone DESPUES de llamar a la base. */
 function _postPedidoBase(data) {
-  if (typeof AbortController !== 'function' || !_altaBaseVa()) return Promise.resolve(null);
+  var _altaNoDirecto = function (d, m) { try { if (d && typeof d === 'object') d._noDirecto = String(m || '?').slice(0, 80); } catch (e) {} };
+  if (typeof AbortController !== 'function') { _altaNoDirecto(data, 'sin-abort'); return Promise.resolve(null); }
+  if (!_altaBaseVa()) return Promise.resolve(null);
   var ctl = new AbortController(), reloj = setTimeout(function () { ctl.abort(); }, 8000);
+  var cuerpo = JSON.stringify({ p: data });
   return fetch(SB_URL_TIENDA + '/rest/v1/rpc/pedido_alta_directo', { method: 'POST', cache: 'no-store', signal: ctl.signal,
       headers: { apikey: SB_KEY_TIENDA, Authorization: 'Bearer ' + SB_KEY_TIENDA, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ p: data }) })
-    .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (d) { return (d && d.ok === true && d.directo === true && d.n) ? d : null; })
-    .catch(function () { return null; })
+      body: cuerpo })
+    .then(function (r) { if (!r.ok) { _altaNoDirecto(data, 'http-' + r.status); return null; } return r.json(); })
+    .then(function (d) {
+      if (d && d.ok === true && d.directo === true && d.n) return d;
+      if (d) _altaNoDirecto(data, 'base:' + (d.motivo || d.err || d.error || (d.directo === false ? 'directo-false' : 'sin-numero')));
+      return null;
+    })
+    .catch(function (e) { _altaNoDirecto(data, (e && e.name === 'AbortError') ? 'tiempo-8s' : 'red'); return null; })
     .finally(function () { clearTimeout(reloj); });
 }
 /* El POST de siempre a Apps Script, con tope de 30 s. Resuelve SOLO con {ok:true} del
