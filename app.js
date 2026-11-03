@@ -3620,11 +3620,13 @@ function _dirCoinciden(texto) {
   if (!q) return todos;
   /* Los que EMPIEZAN con lo escrito van primero: quien tipea "los" espera
      "Los Alcanfores" antes que "Ayres del Pilar". */
+  /* (3/11/2026) Tambien sin letras dobles ni puntos: «Azurra» tiene que encontrar «Azzurra». */
+  var q2 = _barrioLoose(texto);
   var empieza = [], contiene = [];
   todos.forEach(function (d) {
-    var n = _dirNorm(d.txt);
-    if (n.indexOf(q) === 0) empieza.push(d);
-    else if (n.indexOf(q) >= 0) contiene.push(d);
+    var n = _dirNorm(d.txt), n2 = _barrioLoose(d.txt);
+    if (n.indexOf(q) === 0 || (q2 && n2.indexOf(q2) === 0)) empieza.push(d);
+    else if (n.indexOf(q) >= 0 || (q2 && n2.indexOf(q2) >= 0)) contiene.push(d);
   });
   return empieza.concat(contiene);
 }
