@@ -2116,42 +2116,119 @@ function _barrioOculto(val) {
 var VENDEDORES_COPIA = 'maleu_vendedores';
 var VENDEDORES_COPIA_MS = 7 * 24 * 3600 * 1000;
 
+/* UN BARRIO PUEDE TENER VARIOS REPRESENTANTES (3/11/2026). Tadeo: Lourdes y Marcos en Tortugas, «es competencia».
+   La tienda tiene que mostrar lo mismo que decide el backend al entrar el pedido (`_pdZonaPrio_` + `_pdReparteBarrio_`
+   de Code.js): de los representantes que cubren el barrio, el de menor «Prioridad» (la lista ya llega ordenada; vacia =
+   despues, y entre iguales el orden de la hoja). Cubrir = la misma comparacion del backend: sin mayusculas, tildes,
+   puntos ni letras dobles («Azurra.» = «Azzurra»), sin «y alrededores», y uno contiene al otro. Antes el ultimo de la
+   lista pisaba al primero y el cartel decia Marcos aunque el pedido fuera a Lourdes. */
+function _barrioLoose(t) {
+  return _dirNorm(String(t || '').replace(/\s+y alrededores\s*$/i, ''))
+    .replace(/^barrio (cerrado |privado )?/, '')
+    .replace(/[^a-z0-9 ]+/g, ' ').replace(/([a-z])\1+/g, '$1').replace(/\s+/g, ' ').trim();
+}
+function _repCubre(v, barrio) {
+  var bp = _barrioLoose(barrio);
+  if (!bp) return false;
+  var l = v.barrios || [];
+  for (var i = 0; i < l.length; i++) {
+    var b = _barrioLoose(l[i]);
+    if (b.length < 4) continue;
+    if (bp === b || bp.indexOf(b) >= 0 || (bp.length >= 4 && b.indexOf(bp) >= 0)) return true;
+  }
+  return false;
+}
+function _repsPorPrioridad(lista) {
+  return (lista || []).map(function (v, i) { return { v: v, i: i }; }).sort(function (a, b) {
+    var pa = (a.v.prioridad != null && a.v.prioridad !== '') ? Number(a.v.prioridad) : 1e9;
+    var pb = (b.v.prioridad != null && b.v.prioridad !== '') ? Number(b.v.prioridad) : 1e9;
+    return (pa - pb) || (a.i - b.i);
+  }).map(function (x) { return x.v; });
+}
+/* El representante que se muestra (y al que va el pedido) para un barrio, o null. */
+function _repDeBarrio(barrio) {
+  for (var i = 0; i < vendedoresRed.length; i++) if (_repCubre(vendedoresRed[i], barrio)) return vendedoresRed[i];
+  return null;
+}
 function _vendedoresPoner(lista) {
-  vendedoresRed = lista || [];
+  vendedoresRed = _repsPorPrioridad(lista);
   barrioToVendedor = {};
+  /* Primero las zonas: cada representante cae en la zona de su primer barrio, o en una nueva. */
+  _zonasDeLosDatos();
   vendedoresRed.forEach(function (v) {
     /* Convencion de la col "Barrios" de la hoja Vendedores: el PRIMER item es
        la ZONA canonica ("Tortugas y alrededores"). Los demas son sub-barrios,
-       que tambien matchean por retro-compatibilidad. */
-    var zonaCanon = (v.barrios || [])[0] || '';
+       que tambien matchean por retro-compatibilidad. Si esa zona ya existe con
+       otro nombre (Lourdes: «Tortugas»), la canonica es la de la tarjeta. */
+    var zonaCanon = v._zona || (v.barrios || [])[0] || '';
     (v.barrios || []).forEach(function (b) {
-      barrioToVendedor[String(b).toLowerCase()] = {
-        nombre: v.nombre, wa: v.wa, alias: v.alias || '', partido: v.partido,
-        localidad: v.localidad, barrio: b, zonaCanon: zonaCanon
+      var k = String(b).toLowerCase();
+      if (barrioToVendedor[k]) return;
+      var d = _repDeBarrio(b) || v;
+      barrioToVendedor[k] = {
+        nombre: d.nombre, wa: d.wa, alias: d.alias || '', partido: d.partido,
+        localidad: d.localidad, barrio: b, zonaCanon: d._zona || zonaCanon
       };
     });
   });
-  _zonasDeLosDatos();
 }
 /* LAS ZONAS SALEN DE LOS DATOS (2/11/2026, Tadeo: una sola tienda y Maleu reparte por zona). Cada representante
    activo de la hoja Vendedores es una zona: la col «Barrios» empieza con el nombre de la zona y sigue con sus barrios
    (es la misma convencion que el ruteo). Las que ya estan escritas abajo en `BARRIOS_PILAR_MODAL` conservan lo que
    tienen de mas (los dias, la region); un representante nuevo aparece solo, con viernes como dia. Se agregan antes
-   de la «Otra zona de Pilar», que queda ultima. Los barrios se editan desde el ERP, Ajustes > Usuarios. */
+   de la «Otra zona de Pilar», que queda ultima. Los barrios se editan desde el ERP, Ajustes > Representantes.
+   (3/11/2026) UNA ZONA POR BARRIO, NO POR REPRESENTANTE: si el primer barrio de un representante ya es una zona o un
+   barrio de una zona (Lourdes: «Tortugas» → «Tortugas y alrededores»), se suma a ESA tarjeta con los barrios que le
+   falten, sin repetidos. La tarjeta lleva el nombre del primero por prioridad que la cubre. */
+function _zonaDeBarrio(zc) {
+  var k = _barrioLoose(zc);
+  if (!k) return null;
+  for (var i = 0; i < BARRIOS_PILAR_MODAL.length; i++) {
+    var z = BARRIOS_PILAR_MODAL[i];
+    if (z.isOther) continue;
+    if (_barrioLoose(z.val) === k) return z;
+    if ((z.subBarriosList || []).some(function (s) { return _barrioLoose(s) === k; })) return z;
+  }
+  return null;
+}
 function _zonasDeLosDatos() {
+  var conDueno = {};
   (vendedoresRed || []).forEach(function (v) {
     var zc = String((v.barrios || [])[0] || '').trim();
     if (!zc) return;
-    if (BARRIOS_PILAR_MODAL.some(function (b) { return _dirNorm(b.val) === _dirNorm(zc); })) return;
     var subs = (v.barrios || []).slice(1).map(function (x) { return String(x).trim(); }).filter(Boolean);
-    var z = { val: zc, nombre: zc, isRed: true, deLosDatos: true,
+    var z = _zonaDeBarrio(zc);
+    if (z) {
+      v._zona = z.val;
+      (conDueno[z.val] = conDueno[z.val] || []).push(v);
+      var lista = (z.subBarriosList || []).slice(), suma = 0;
+      [zc].concat(subs).forEach(function (b) {
+        if (_barrioLoose(b) === _barrioLoose(z.val)) return;
+        if (lista.some(function (s) { return _barrioLoose(s) === _barrioLoose(b); })) return;
+        lista.push(b); suma++;
+      });
+      if (suma) {
+        z.subBarriosList = lista;
+        z.subBarrios = lista.slice(0, 6).join(' · ') + (lista.length > 6 ? ' · …' : '');
+      }
+      return;
+    }
+    v._zona = zc;
+    conDueno[zc] = [v];
+    var nz = { val: zc, nombre: zc, isRed: true, deLosDatos: true,
               badge: String(v.nombre || '').trim().split(/\s+/)[0],
-              subBarrios: subs.slice(0, 6).join(' \u00b7 ') + (subs.length > 6 ? ' \u00b7 \u2026' : ''),
+              subBarrios: subs.slice(0, 6).join(' · ') + (subs.length > 6 ? ' · …' : ''),
               subBarriosList: subs.length ? subs : [zc] };
-    if (v.partido && String(v.partido).trim() !== 'Pilar') z.region = String(v.partido).trim();
+    if (v.partido && String(v.partido).trim() !== 'Pilar') nz.region = String(v.partido).trim();
     var i = -1;
     for (var k = 0; k < BARRIOS_PILAR_MODAL.length; k++) if (BARRIOS_PILAR_MODAL[k].isOther) { i = k; break; }
-    if (i < 0) BARRIOS_PILAR_MODAL.push(z); else BARRIOS_PILAR_MODAL.splice(i, 0, z);
+    if (i < 0) BARRIOS_PILAR_MODAL.push(nz); else BARRIOS_PILAR_MODAL.splice(i, 0, nz);
+  });
+  /* En una zona compartida la chapita nombra al primero por prioridad (el que recibe al cliente que no es de nadie);
+     en las de un solo representante queda la que estaba escrita («Rufo», no «Rufino»). */
+  BARRIOS_PILAR_MODAL.forEach(function (z) {
+    var rs = conDueno[z.val];
+    if (rs && rs.length > 1) z.badge = String(rs[0].nombre || '').trim().split(/\s+/)[0] || z.badge;
   });
 }
 function _vendedoresGuardarCopia(lista) {
@@ -3476,6 +3553,7 @@ function _dirDestinos() {
   BARRIOS_PILAR_MODAL.forEach(function (b) {
     if (_barrioOculto(b.val)) return;
     (b.subBarriosList || []).forEach(function (sub) {
+      if (out.some(function (d) { return _barrioLoose(d.txt) === _barrioLoose(sub); })) return;   /* (3/11/2026) Azurra = Azzurra */
       out.push({ txt: sub, zona: 'pilar', pz: b.val, pzNombre: b.nombre, sub: sub,
                  grupo: b.region || 'Pilar' });
     });
@@ -3496,7 +3574,7 @@ function _dirDestinos() {
     var v = barrioToVendedor[k];
     if (!v || !v.barrio) return;
     if (v.zonaCanon && _dirNorm(v.barrio) === _dirNorm(v.zonaCanon)) return;
-    var ya = out.some(function (d) { return _dirNorm(d.txt) === _dirNorm(v.barrio); });
+    var ya = out.some(function (d) { return _barrioLoose(d.txt) === _barrioLoose(v.barrio); });
     if (ya) return;
     var zc = v.zonaCanon || '__otro__';
     var zona = BARRIOS_PILAR_MODAL.filter(function (b) { return b.val === zc; })[0];
