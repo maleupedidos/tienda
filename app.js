@@ -7822,10 +7822,14 @@ function enviarPedido() {
   function _marcarCuponUsado() {
     if (_cuponVa && appliedCoupon && appliedCoupon.tipo === 'REGALO') { try { localStorage.removeItem(CUPON_GUARDADO); } catch (_e) {} }
     if (_cuponVa && appliedCoupon) {
+      /* (4/11/2026, Supa 451) El uso del cupón lo cuenta la BASE (`tienda_usar_cupon`): solo si hay un alta de la tienda
+         de las últimas 2 h con ese cupón que todavía no lo contó, así un POST suelto ya no gasta usos. Antes iba por
+         sendBeacon a Apps Script. Fetch y no sendBeacon: la base pide headers. Sin respaldo a Apps Script: si se cayera
+         y fuera a los dos lados, contaría dos veces. */
       try {
-        var blob = new Blob([JSON.stringify({ action: 'usarCupon', codigo: appliedCoupon.codigo })], { type: 'text/plain;charset=utf-8' });
-        if (navigator.sendBeacon) navigator.sendBeacon(APPS_SCRIPT_URL, blob);
-        else fetch(APPS_SCRIPT_URL, { method:'POST', body: blob, mode:'no-cors', keepalive: true }).catch(function(){});
+        fetch(SB_URL_TIENDA + '/rest/v1/rpc/tienda_usar_cupon', { method: 'POST', keepalive: true, cache: 'no-store',
+          headers: { apikey: SB_KEY_TIENDA, Authorization: 'Bearer ' + SB_KEY_TIENDA, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ p: { codigo: appliedCoupon.codigo } }) }).catch(function () {});
       } catch(_e) {}
     }
   }
