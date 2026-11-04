@@ -26,8 +26,8 @@ function fn(nombre) {
   for (; j < src.length; j++) { if (src[j] === '{') n++; else if (src[j] === '}' && --n === 0) break; }
   return src.slice(i, j + 1);
 }
-const piezas = ['_altaBaseVa', '_postPedido', '_postPedidoBase', '_postPedidoApps'].map(fn);
-if (piezas.some((p) => !p)) { console.log('  MAL no están las cuatro funciones en ' + APP); process.exit(1); }
+const piezas = ['_altaBaseVa', '_tiendaNoAnotar', '_postPedido', '_postPedidoBase', '_postPedidoApps'].map(fn);
+if (piezas.some((p) => !p)) { console.log('  MAL no están las cinco funciones en ' + APP); process.exit(1); }
 
 const APPS = 'https://script.google.com/macros/s/PRUEBA/exec', SB = 'https://xhaxmyvhygxynwjqrarm.supabase.co';
 function armar(host, base, forzar) {
@@ -42,6 +42,7 @@ function armar(host, base, forzar) {
         no: { ok: false, directo: false, motivo: 'palanca' }, sinNum: { ok: true, directo: true } }[base] || {};
       return Promise.resolve({ ok: st === 200, status: st, json: () => Promise.resolve(cuerpo), text: () => Promise.resolve(JSON.stringify(cuerpo)) });
     }
+    if (url.indexOf('/rpc/directa_no_anotar') >= 0) return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true }) });   // (4/11) el motivo a la base
     if (url === APPS) return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve(JSON.stringify({ ok: true, n: 2202 })) });
     throw new Error('fetch sin simular: ' + url);
   };

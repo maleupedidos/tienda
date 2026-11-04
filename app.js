@@ -8063,15 +8063,25 @@ function _confirmado(key, resp) {
    la base; si sigue, el intento falla y el reintento de siempre (`_sendWithRetry`) vuelve a la base con backoff, y a los
    45 s el cliente ve el cartel con el pedido ya escrito. Apps Script queda solo si la palanca de la tienda está apagada a
    propósito (ALTA_TIENDA_DIRECTO = no) o fuera de maleu.com.ar (pruebas en localhost). */
+/* (4/11/2026, Supa 444) POR QUÉ NO FUE A LA BASE, anotado en la base (`directa_no_anotar`: acepta anon, tiene tope y nunca
+   falla). El motivo quedaba solo en el navegador del cliente. */
+function _tiendaNoAnotar(accion, motivo, detalle) {
+  try {
+    fetch(SB_URL_TIENDA + '/rest/v1/rpc/directa_no_anotar', { method: 'POST', keepalive: true, cache: 'no-store',
+      headers: { apikey: SB_KEY_TIENDA, Authorization: 'Bearer ' + SB_KEY_TIENDA, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p: { accion: accion, motivo: String(motivo || '?').slice(0, 80), detalle: String(detalle || '').slice(0, 200), fuente: 'tienda' } }) }).catch(function () {});
+  } catch (e) {}
+}
 function _postPedido(data) {
   if (!_altaBaseVa()) return _postPedidoApps(data);
   var palancaApagada = function () { return /^base:palanca/.test(String(data._noDirecto || '')); };
   return _postPedidoBase(data).then(function (d) {
     if (d) return d;
-    if (palancaApagada()) return _postPedidoApps(data);
+    if (palancaApagada()) { _tiendaNoAnotar('altaPedido', data._noDirecto, 'palanca'); return _postPedidoApps(data); }
     return new Promise(function (ok) { setTimeout(ok, 1500); }).then(function () { return _postPedidoBase(data); }).then(function (d2) {
       if (d2) return d2;
-      if (palancaApagada()) return _postPedidoApps(data);
+      if (palancaApagada()) { _tiendaNoAnotar('altaPedido', data._noDirecto, 'palanca'); return _postPedidoApps(data); }
+      _tiendaNoAnotar('altaPedido', data._noDirecto, 'la base fallo dos veces: no se va a Apps Script');
       throw new Error('la base no tomó el pedido (' + (data._noDirecto || '?') + ')');
     });
   });
@@ -9688,7 +9698,8 @@ function _cumpleSaveBackend(valor) {
     } catch(e) {}
   }
   if (!tel || tel.replace(/\D/g, '').length < 8) return; // sin teléfono → se guarda al hacer el pedido
-  var porApps = function () {
+  var porApps = function (motivo) {
+    try { _tiendaNoAnotar('guardarCumpleCliente', motivo || '?', ''); } catch (eA) {}
     try {
       fetch(APPS_SCRIPT_URL, {
         method: 'POST', mode: 'cors', keepalive: true,
@@ -9701,14 +9712,14 @@ function _cumpleSaveBackend(valor) {
      al toque y la planilla la escribe el aplicador. Con `directo:false` (palanca apagada, formato raro, tope de 30 en
      10 min), un error o 8 s sin respuesta: Apps Script con el mismo pedido, como siempre. Solo desde maleu.com.ar
      (`_altaBaseVa`, el mismo guardia que el alta): una tienda servida en otro lado no escribe en la base. */
-  if (typeof AbortController !== 'function' || typeof _altaBaseVa !== 'function' || !_altaBaseVa()) { porApps(); return; }
+  if (typeof AbortController !== 'function' || typeof _altaBaseVa !== 'function' || !_altaBaseVa()) { porApps('fuera de maleu.com.ar'); return; }
   var ctl = new AbortController(), reloj = setTimeout(function () { ctl.abort(); }, 8000);
   fetch(SB_URL_TIENDA + '/rest/v1/rpc/tienda_cumple', { method: 'POST', keepalive: true, cache: 'no-store', signal: ctl.signal,
       headers: { apikey: SB_KEY_TIENDA, Authorization: 'Bearer ' + SB_KEY_TIENDA, 'Content-Type': 'application/json' },
       body: JSON.stringify({ p: { tel: tel, cumple: valor } }) })
-    .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (d) { if (!(d && d.ok === true && d.directo !== false)) porApps(); })
-    .catch(function () { porApps(); })
+    .then(function (r) { return r.ok ? r.json() : { _http: r.status }; })
+    .then(function (d) { if (!(d && d.ok === true && d.directo !== false)) porApps(d && d._http ? 'http-' + d._http : 'base:' + ((d && (d.motivo || d.err)) || 'directo-false')); })
+    .catch(function (e) { porApps((e && e.name === 'AbortError') ? 'tiempo-8s' : 'red'); })
     .finally(function () { clearTimeout(reloj); });
 }
 
