@@ -3825,9 +3825,7 @@ function leadEnviar() {
   if (tel.length < 10) { decir('Poné tu teléfono con el código de área (por ejemplo 11 3688 7500).'); return; }
   if (!bar) { decir('Contanos tu barrio.'); return; }
   if (btn) btn.disabled = true;
-  fetch(APPS_SCRIPT_URL, { method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'tiendaLead', nombre: String(nom).trim(), tel: tel, barrio: bar }) })
-    .then(function (r) { return r.json(); })
+  _tiendaEscribir('tienda_lead', 'tiendaLead', { nombre: String(nom).trim(), tel: tel, barrio: bar })
     .then(function (d) {
       if (d && d.ok) { decir('¡Listo! Te avisamos apenas lleguemos a ' + bar + '.', true); _track('lead_sin_zona', { barrio: bar }); }
       else { decir((d && d.error) || 'No lo pudimos guardar. Probá de nuevo.'); if (btn) btn.disabled = false; }
@@ -6833,9 +6831,7 @@ function segMandarMail(ev) {
   if (!_segT) return false;
   if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
   if (msg) msg.textContent = '';
-  fetch(APPS_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'seguimientoMail', t: _segT, mail: mail }) })
-    .then(function (r) { return r.json(); })
+  _tiendaEscribir('tienda_seguimiento_mail', 'seguimientoMail', { t: _segT, mail: mail })
     .then(function (j) {
       if (btn) { btn.disabled = false; btn.textContent = 'Avisarme'; }
       if (j && j.ok) {
@@ -6878,9 +6874,7 @@ function segFranja() {
 
 /* "No quiero mas avisos" del mail: se da de baja y se muestra el seguimiento. */
 function _segBaja(t) {
-  fetch(APPS_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'seguimientoMail', t: t, mail: '' }) })
-    .then(function (r) { return r.json(); })
+  _tiendaEscribir('tienda_seguimiento_mail', 'seguimientoMail', { t: t, mail: '' })
     .then(function (j) { if (j && j.ok) { toast('Listo: no te mandamos más mails de este pedido', 3500); if (_segUlt) _segUlt.mail = ''; segPreguntar(t, false); } })
     .catch(function () {});
 }
@@ -8069,6 +8063,18 @@ function _confirmado(key, resp) {
    propósito (ALTA_TIENDA_DIRECTO = no) o fuera de maleu.com.ar (pruebas en localhost). */
 /* (4/11/2026, Supa 444) POR QUÉ NO FUE A LA BASE, anotado en la base (`directa_no_anotar`: acepta anon, tiene tope y nunca
    falla). El motivo quedaba solo en el navegador del cliente. */
+/* (4/11/2026, Supa 451/452) LAS ESCRITURAS DE LA TIENDA VAN A LA BASE. Desde maleu.com.ar, la RPC anónima (sin respaldo a
+   Apps Script: si fuera a los dos lados podría contar dos veces); fuera de ahí (las redes en localhost), Apps Script con
+   la acción de siempre, como el alta. Devuelve el JSON de la respuesta. */
+function _tiendaEscribir(rpc, accion, p) {
+  if (typeof _altaBaseVa === 'function' && _altaBaseVa()) {
+    return fetch(SB_URL_TIENDA + '/rest/v1/rpc/' + rpc, { method: 'POST', cache: 'no-store',
+      headers: { apikey: SB_KEY_TIENDA, Authorization: 'Bearer ' + SB_KEY_TIENDA, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p: p }) }).then(function (r) { return r.json(); });
+  }
+  return fetch(APPS_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(Object.assign({ action: accion }, p)) }).then(function (r) { return r.json(); });
+}
 function _tiendaNoAnotar(accion, motivo, detalle) {
   try {
     fetch(SB_URL_TIENDA + '/rest/v1/rpc/directa_no_anotar', { method: 'POST', keepalive: true, cache: 'no-store',
