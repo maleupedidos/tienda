@@ -61,10 +61,17 @@ const aApps = (l) => l.filter((x) => x.url === APPS);
   chk('maleu.com.ar, la base acepta: una llamada a la base y NINGUNA a Apps Script', aBase(t.llamadas).length === 1 && aApps(t.llamadas).length === 0, t.llamadas);
   chk('   la tienda recibe ok y el número de la base', r && r.ok === true && r.n === 2201, r);
   chk('   a la base le llega el pedido entero, con su clientOrderId', JSON.parse(aBase(t.llamadas)[0].body).p.clientOrderId === 'co_prueba_1', aBase(t.llamadas)[0]);
-  for (const caso of ['no', '404', '500', 'corte', 'sinNum', 'cuelga']) {
-    t = armar('maleu.com.ar', caso); r = await t.api._postPedido(PEDIDO);
-    const ap = aApps(t.llamadas);
-    chk('maleu.com.ar, base «' + caso + '»: Apps Script una vez, con el MISMO cuerpo', ap.length === 1 && ap[0].body === JSON.stringify(PEDIDO) && r && r.n === 2202, { llamadas: t.llamadas, r });
+  /* La palanca apagada a propósito (directo:false, motivo palanca): Apps Script, como siempre. */
+  t = armar('maleu.com.ar', 'no'); r = await t.api._postPedido(PEDIDO);
+  let ap = aApps(t.llamadas);
+  chk('maleu.com.ar, base «no» (palanca apagada): Apps Script una vez, con el MISMO cuerpo', ap.length === 1 && ap[0].body === JSON.stringify(PEDIDO) && r && r.n === 2202, { llamadas: t.llamadas, r });
+  /* (4/11/2026) Cualquier otra falla: la base dos veces, NINGUNA a Apps Script, y el intento falla (lo reintenta
+     `_sendWithRetry` y a los 45 s sale el cartel). De 15:25 a 16:55 del 4/11 la base rechazó toda alta y la caída a
+     Apps Script, sin cuota, perdió los pedidos en silencio. */
+  for (const caso of ['404', '500', 'corte', 'sinNum', 'cuelga']) {
+    t = armar('maleu.com.ar', caso); let err = null; r = null;
+    try { r = await t.api._postPedido(PEDIDO); } catch (e) { err = e; }
+    chk('maleu.com.ar, base «' + caso + '»: la base dos veces, Apps Script ninguna, y el error sube', aBase(t.llamadas).length === 2 && aApps(t.llamadas).length === 0 && !!err && !r, { llamadas: t.llamadas.map((x) => x.url.slice(-30)), r, err: err && err.message });
   }
   t = armar('www.maleu.com.ar', 'si'); r = await t.api._postPedido(PEDIDO);
   chk('www.maleu.com.ar también va a la base', aBase(t.llamadas).length === 1 && aApps(t.llamadas).length === 0, t.llamadas);

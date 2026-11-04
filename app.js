@@ -8058,8 +8058,23 @@ function _confirmado(key, resp) {
    (palanca apagada, tope, un carrito que tiene que ir por Apps Script), un 404, un error o 8 s sin
    respuesta: el POST de siempre con el MISMO clientOrderId — si la base ya lo había aceptado, Apps Script
    le pide el número con ese id y le da el mismo: no queda un pedido repetido. */
+/* (4/11/2026) LA BASE ES EL ÚNICO CAMINO. De 15:25 a 16:55 la base rechazó toda alta (un permiso) y la tienda caía a
+   Apps Script, que estaba sin cuota: ningún pedido entró y nadie se enteró. Ahora, si la base falla, se reintenta contra
+   la base; si sigue, el intento falla y el reintento de siempre (`_sendWithRetry`) vuelve a la base con backoff, y a los
+   45 s el cliente ve el cartel con el pedido ya escrito. Apps Script queda solo si la palanca de la tienda está apagada a
+   propósito (ALTA_TIENDA_DIRECTO = no) o fuera de maleu.com.ar (pruebas en localhost). */
 function _postPedido(data) {
-  return _postPedidoBase(data).then(function (d) { return d || _postPedidoApps(data); });
+  if (!_altaBaseVa()) return _postPedidoApps(data);
+  var palancaApagada = function () { return /^base:palanca/.test(String(data._noDirecto || '')); };
+  return _postPedidoBase(data).then(function (d) {
+    if (d) return d;
+    if (palancaApagada()) return _postPedidoApps(data);
+    return new Promise(function (ok) { setTimeout(ok, 1500); }).then(function () { return _postPedidoBase(data); }).then(function (d2) {
+      if (d2) return d2;
+      if (palancaApagada()) return _postPedidoApps(data);
+      throw new Error('la base no tomó el pedido (' + (data._noDirecto || '?') + ')');
+    });
+  });
 }
 /* SOLO desde maleu.com.ar: las redes sirven la tienda en localhost y varias cortan nada más los POST a
    Apps Script, así que desde ahí un alta de prueba entraría de verdad. Una prueba de este camino lo pide
