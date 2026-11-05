@@ -8117,10 +8117,13 @@ function _postPedidoBase(data) {
     .then(function (r) { if (!r.ok) { _altaNoDirecto(data, 'http-' + r.status); return null; } return r.json(); })
     .then(function (d) {
       if (d && d.ok === true && d.directo === true && d.n) return d;
+      /* (5/11/2026) EL VIERNES YA CERRO (barrio de representante, jueves 12:00): la base lo rechaza aunque el formulario
+         haya quedado abierto desde antes. No se reintenta ni se va a Apps Script: se le dice al cliente. */
+      if (d && d.corte) { var eC = new Error(String(d.err || 'Ese viernes ya cerró.')); eC.corte = true; throw eC; }
       if (d) _altaNoDirecto(data, 'base:' + (d.motivo || d.err || d.error || (d.directo === false ? 'directo-false' : 'sin-numero')));
       return null;
     })
-    .catch(function (e) { _altaNoDirecto(data, (e && e.name === 'AbortError') ? 'tiempo-8s' : 'red'); return null; })
+    .catch(function (e) { if (e && e.corte) throw e; _altaNoDirecto(data, (e && e.name === 'AbortError') ? 'tiempo-8s' : 'red'); return null; })
     .finally(function () { clearTimeout(reloj); });
 }
 /* El POST de siempre a Apps Script, con tope de 30 s. Resuelve SOLO con {ok:true} del
@@ -8274,6 +8277,11 @@ function _sendWithRetry(data) {
     return resp;
   }, function (err) {
     delete _enVuelo[key];
+    if (err && err.corte) {
+      var mC = _pendingMap(); delete mC[key]; _pendingSave(mC);
+      try { alert('⚠️ ' + err.message + '\n\nTu pedido NO se registró. Volvé a hacerlo eligiendo otro día.'); } catch (eA) {}
+      throw err;
+    }
     var map = _pendingMap();
     if (map[key]) {
       map[key].tries = (map[key].tries || 0) + 1;
