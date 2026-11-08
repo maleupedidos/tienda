@@ -25,12 +25,14 @@ var IMG_V = {
   "carne-asado-banderita.jpg": "e6311475",
   "carne-asado-cotilla.jpg": "60ca58d9",
   "carne-bife-chorizo.jpg": "ec9ec4b4",
+  "carne-chorizo.jpg": "6b0bb9b7",
   "carne-colita.jpg": "7b2882a1",
   "carne-cortes.jpg": "ada9a490",
   "carne-entrana.jpg": "c9bbf036",
   "carne-lomo.jpg": "7f188d99",
   "carne-matambre.jpg": "0bd57d07",
   "carne-matambrito-cerdo.jpg": "9e7f86f4",
+  "carne-morcilla.jpg": "ece7d169",
   "carne-ojo-bife.jpg": "819ef24d",
   "carne-peceto.jpg": "2bb317d2",
   "carne-picana.jpg": "05684de8",
@@ -172,6 +174,10 @@ const PRODUCTOS = [
   /* Matambrito de cerdo, de Carm\u00edn y Fuegos (29/10/2026). `sinVendedor`: todav\u00eda no tiene comisi\u00f3n de Red y no
      est\u00e1 en la hoja Red, as\u00ed que en un barrio con representante no se ofrece. */
   { id:45, abbr:"CMC", cat:"Carnes", porPeso:true, sinVendedor:true, nuevo:true, zonas:["estancias","pilar"], nombre:"Matambrito de cerdo", desc:"Tierno y jugoso. A la parrilla o al horno, con lim\u00f3n o a la pizza.", img:"carne-matambrito-cerdo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Cerdo"] },
+  /* Chorizo y morcilla, de Carm\u00edn y Fuegos (8/11/2026). Por PAQUETE, no por kilo: van en su propia categor\u00eda
+     para no caer en la grilla de piezas de Carnes. Se venden en todos los canales (Red incluida), as\u00ed que sin `sinVendedor`. */
+  { id:47, abbr:"Cho", cat:"Chorizo y Morcilla", nuevo:true, zonas:["estancias","pilar"], nombre:"Chorizo", desc:"El cl\u00e1sico que abre el asado. Directo a la parrilla, o en un chori con pan.", img:"carne-chorizo.jpg", emoji:"\ud83c\udf2d", chips:["Por paquete","Para la parrilla"] },
+  { id:48, abbr:"Mor", cat:"Chorizo y Morcilla", nuevo:true, zonas:["estancias","pilar"], nombre:"Morcilla", desc:"La que no puede faltar en la previa del asado. Fuego suave y paciencia.", img:"carne-morcilla.jpg", emoji:"\ud83c\udf2d", chips:["Por paquete","Para la parrilla"] },
 ];
 
 const CATEGORIAS = [
@@ -185,6 +191,7 @@ const CATEGORIAS = [
      Desde el 14/9 es carne a la parrilla, cortada (la paso Tadeo): las demas
      categorias muestran el producto cocinado, y la carne cruda desentonaba. */
   { nombre:"Carnes",              icono:"🥩", nota:"Cortes frescos de Maleu Carnes · Elegís vos la pieza que te llevás y sabés su peso exacto antes de pedirla", img:"categoria-carnes.jpg" },
+  { nombre:"Chorizo y Morcilla",  icono:"🌭", nota:"Por paquete · Para arrancar el asado", img:"carne-chorizo.jpg" },
   { nombre:"Wraps",               icono:"🌯", nota:"Pre-cocidos · Listos al horno en pocos minutos" },
   { nombre:"Empanadas",           icono:"🥟", nota:"x8 unidades · Congeladas, listas para el horno · Cocinar hasta dorar" },
   { nombre:"Sorrentinos",         icono:"🍝", nota:"600g · 16 unidades · Rinde 3 porciones · Solo 4 minutos de cocción", tip:"Hervir agua · Agregar sorrentinos · 4 min con olla destapada · Retirar con espumadera y servir" },
@@ -2642,6 +2649,7 @@ const PROD_ABBR = {
   28:'RC', 29:'RP',
   42:'WPo', 43:'WBo', 44:'WVe',   // Wraps Sevuchitas x2 (22/10/2026)
   45:'CMC',                        // Matambrito de cerdo (29/10/2026)
+  47:'Cho', 48:'Mor',               // Chorizo y Morcilla, por paquete (8/11/2026)
   // Clubes (IDs string)
   'pmu':'PMu', 'pma':'PMa', 'pjq':'PJyQ', 'pcc':'PCC', 'pjm':'PJyM',
   'pp1':'PPM', 'pp2':'PPJyQ', 'pp3':'PPCyQ',
