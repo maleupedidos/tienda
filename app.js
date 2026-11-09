@@ -8821,6 +8821,9 @@ function _aplicarPrecios(full) {
   PRODUCTOS.forEach(function (p) {
     /* La carne no esta en PROD_ABBR: cada corte trae su `abbr`. */
     var abbr = PROD_ABBR[p.id] || p.abbr, pv = abbr && full[abbr] ? Number(full[abbr].pv) : 0;
+    /* (620, 9/11/2026) Dado de baja: lo dice la base (`b`), que se toca desde Productos en el ERP. */
+    var bj = abbr && full[abbr] ? full[abbr].b : undefined;
+    if (typeof bj === 'boolean' && !!p.baja !== bj) { p.baja = bj; cambio = true; }
     if (pv > 0) { if (p.precio !== pv) { p.precio = pv; cambio = true; } }
     else if (!(p.precio > 0)) faltan++;
   });
