@@ -127,7 +127,7 @@ async function main() {
     let giro = { en: 2000, r: { ok: true, nombre: 'Juana', lead: 'L-0099', premio: { i: 1, txt: '6 empanadas de regalo', nada: false, min: 0 }, cupon: 'RUL-AB12', vence: '22/10/2026' } };
     let cupon = { ok: true, codigo: 'RUL-AB12', tipo: 'REGALO', valor: 0, scope: 'TODO', mensaje: '6 empanadas de regalo', stack: true, descuento: 0, pending: false, minimo: 0 };
     const posts = [], navs = [];
-    await cli.enviar('Fetch.enable', { patterns: [{ urlPattern: '*script.google.com*' }, { urlPattern: '*wa.me*' }, { urlPattern: '*google-analytics.com*' },
+    await cli.enviar('Fetch.enable', { patterns: [{ urlPattern: '*script.google.com*' }, { urlPattern: '*rpc/ruleta_girar*' }, { urlPattern: '*rpc/tienda_ruleta*' }, { urlPattern: '*wa.me*' }, { urlPattern: '*google-analytics.com*' },
       { urlPattern: '*googletagmanager.com*' }, { urlPattern: '*facebook.com*' }, { urlPattern: '*facebook.net*' }, { urlPattern: '*fonts.g*' }] });
     const fulfill = (requestId, body, tipo) => cli.enviar('Fetch.fulfillRequest', { requestId, responseCode: 200,
       responseHeaders: [{ name: 'Content-Type', value: tipo || 'application/json' }, { name: 'Access-Control-Allow-Origin', value: '*' }],
@@ -135,6 +135,33 @@ async function main() {
     cli.on(async (m) => {
       if (m.method !== 'Fetch.requestPaused') return;
       const { requestId, request, networkId } = m.params, url = request.url;
+      /* (9/11/2026, 612) El giro va a la base (`ruleta_girar`): se contesta igual que el POST viejo a Apps Script. */
+      if (/rpc\/(ruleta_girar|tienda_ruleta)/.test(url)) {
+        /* El navegador pregunta antes (CORS, por los encabezados apikey/Authorization): se le dice que sí, acá mismo. */
+        if (request.method === 'OPTIONS') {
+          cli.enviar('Fetch.fulfillRequest', { requestId, responseCode: 204, responseHeaders: [{ name: 'Access-Control-Allow-Origin', value: '*' },
+            { name: 'Access-Control-Allow-Headers', value: '*' }, { name: 'Access-Control-Allow-Methods', value: 'POST, OPTIONS' }] }).catch(() => {});
+          return;
+        }
+        /* La lista de premios (la base, 181): la del escenario, con su demora. Sin esto la rueda dibujaba los premios REALES. */
+        if (/rpc\/tienda_ruleta/.test(url)) {
+          const lista = JSON.stringify({ ok: true, activa: true, premios: listaServidor });
+          if (demoraGet) { setTimeout(() => fulfill(requestId, lista), demoraGet); return; }
+          return fulfill(requestId, lista);
+        }
+      }
+      if (/rpc\/ruleta_girar/.test(url)) {
+        if (request.method === 'OPTIONS') {
+          cli.enviar('Fetch.fulfillRequest', { requestId, responseCode: 204, responseHeaders: [{ name: 'Access-Control-Allow-Origin', value: '*' },
+            { name: 'Access-Control-Allow-Headers', value: '*' }, { name: 'Access-Control-Allow-Methods', value: 'POST, OPTIONS' }] }).catch(() => {});
+          return;
+        }
+        let cuerpo = request.postData || '';
+        if (!cuerpo && request.hasPostData && networkId) { try { cuerpo = (await cli.enviar('Network.getRequestPostData', { requestId: networkId })).postData || ''; } catch (e) {} }
+        let dd = {}; try { dd = (JSON.parse(cuerpo) || {}).p || {}; } catch (e) {}
+        posts.push(Object.assign({ action: 'ruletaGirar' }, dd));
+        setTimeout(() => fulfill(requestId, JSON.stringify(giro.r)), giro.en); return;
+      }
       if (/wa\.me/.test(url)) { navs.push(url); fulfill(requestId, '<p>whatsapp simulado</p>', 'text/html'); return; }
       if (!/script\.google\.com/.test(url)) { cli.enviar('Fetch.failRequest', { requestId, errorReason: 'BlockedByClient' }).catch(() => {}); return; }
       if (request.method === 'GET') {
