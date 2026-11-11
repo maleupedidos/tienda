@@ -176,8 +176,8 @@ const PRODUCTOS = [
   { id:45, abbr:"CMC", cat:"Carnes", porPeso:true, sinVendedor:true, nuevo:true, zonas:["estancias","pilar"], nombre:"Matambrito de cerdo", desc:"Tierno y jugoso. A la parrilla o al horno, con lim\u00f3n o a la pizza.", img:"carne-matambrito-cerdo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Cerdo"] },
   /* Chorizo y morcilla, de Carm\u00edn y Fuegos (8/11/2026). Por PAQUETE, no por kilo: van en su propia categor\u00eda
      para no caer en la grilla de piezas de Carnes. Se venden en todos los canales (Red incluida), as\u00ed que sin `sinVendedor`. */
-  { id:47, abbr:"Cho", cat:"Chorizo y Morcilla", nuevo:true, ancha:true, zonas:["estancias","pilar"], nombre:"Chorizo", desc:"El cl\u00e1sico que abre el asado. Directo a la parrilla, o en un chori con pan.", img:"carne-chorizo.jpg", emoji:"\ud83c\udf2d", chips:["Paquete x 4","Para la parrilla"] },
-  { id:48, abbr:"Mor", cat:"Chorizo y Morcilla", nuevo:true, ancha:true, zonas:["estancias","pilar"], nombre:"Morcilla", desc:"La que no puede faltar en la previa del asado. Fuego suave y paciencia.", img:"carne-morcilla.jpg", emoji:"\ud83c\udf2d", chips:["Paquete x 4","Para la parrilla"] },
+  { id:47, abbr:"Cho", cat:"Carnes", nuevo:true, ancha:true, zonas:["estancias","pilar"], nombre:"Chorizo", desc:"El cl\u00e1sico que abre el asado. Directo a la parrilla, o en un chori con pan.", img:"carne-chorizo.jpg", emoji:"\ud83c\udf2d", chips:["Paquete x 4","Para la parrilla"] },
+  { id:48, abbr:"Mor", cat:"Carnes", nuevo:true, ancha:true, zonas:["estancias","pilar"], nombre:"Morcilla", desc:"La que no puede faltar en la previa del asado. Fuego suave y paciencia.", img:"carne-morcilla.jpg", emoji:"\ud83c\udf2d", chips:["Paquete x 4","Para la parrilla"] },
 ];
 
 const CATEGORIAS = [
@@ -190,8 +190,7 @@ const CATEGORIAS = [
      es ninguno de los cortes que se venden; del 13 al 14/9, la colita cruda.
      Desde el 14/9 es carne a la parrilla, cortada (la paso Tadeo): las demas
      categorias muestran el producto cocinado, y la carne cruda desentonaba. */
-  { nombre:"Carnes",              icono:"🥩", nota:"Cortes frescos de Maleu Carnes · Elegís vos la pieza que te llevás y sabés su peso exacto antes de pedirla", img:"categoria-carnes.jpg" },
-  { nombre:"Chorizo y Morcilla",  icono:"🌭", nota:"Paquete x 4 · Para arrancar el asado", img:"carne-chorizo.jpg" },
+  { nombre:"Carnes",              icono:"🥩", nota:"Cortes frescos de Maleu Carnes, chorizo y morcilla · Los cortes los elegís por pieza y sabés su peso exacto antes de pedirlos", img:"categoria-carnes.jpg" },
   { nombre:"Wraps",               icono:"🌯", nota:"Pre-cocidos · Listos al horno en pocos minutos" },
   { nombre:"Empanadas",           icono:"🥟", nota:"x8 unidades · Congeladas, listas para el horno · Cocinar hasta dorar" },
   { nombre:"Sorrentinos",         icono:"🍝", nota:"600g · 16 unidades · Rinde 3 porciones · Solo 4 minutos de cocción", tip:"Hervir agua · Agregar sorrentinos · 4 min con olla destapada · Retirar con espumadera y servir" },
