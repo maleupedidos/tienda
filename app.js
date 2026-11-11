@@ -2613,10 +2613,21 @@ function _deliveryStartMs(iso) {
 
    Se renombro a proposito: el nombre viejo decia "fin de la entrega" y hacia
    otra cosa, y eso es exactamente lo que dejo pasar el bug. */
+/* EXCEPCIONES POR FECHA AL CORTE DEL DÍA (11/11/2026). Tadeo mandó una campaña por WhatsApp el miércoles 11/11 y
+   ese día se reparte de 19 a 21: con la regla de arriba (el corte es el INICIO de la franja) hoy se cerraba a las
+   19:00 justo cuando llegaban los pedidos. Fecha ISO → hora de corte AR («HH:MM»), para las zonas con hora declarada.
+   Para volver atrás: borrar la fecha de acá y publicar. Si queda como regla fija lo decide Tadeo. */
+var CIERRE_ESPECIAL = { '2026-11-11': '20:30' };
 function _cierreDelDiaMs(iso, zone) {
   if (!iso || iso === 'any') return null;
   var parts = iso.split('-'); if (parts.length !== 3) return null;
   var y = +parts[0], mes = +parts[1] - 1, dia = +parts[2];
+  var esp = CIERRE_ESPECIAL[iso] && String(CIERRE_ESPECIAL[iso]).match(/^(\d{1,2}):(\d{2})$/);
+  if (esp) {
+    var de = new Date(Date.UTC(y, mes, dia));
+    de.setUTCHours(+esp[1] + 3, +esp[2], 0, 0);
+    return de.getTime();
+  }
 
   var DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
   var franja = _horarioDeZona(zone || currentZone, DIAS[new Date(Date.UTC(y, mes, dia)).getUTCDay()]);
