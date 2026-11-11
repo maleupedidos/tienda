@@ -137,6 +137,23 @@ function prep(piezas, zona, extra) {
   var orig = window.fetch;
   window.fetch = function (url, opts) {
     var u = String(url);
+    /* Las lecturas de la tienda van primero a la base, por POST a /rest/v1/rpc/
+       (_deLaBaseOApps). Antes caian en la rama de abajo: quedaban colgadas para
+       siempre (la promesa no escucha el abort), la tienda no terminaba de
+       cargar, y __post guardaba un pedido de stock como si fuera el pedido.
+       Las piezas se contestan con el escenario; el resto se rechaza, la tienda
+       cae a Apps Script como cuando la base no esta, y ninguna RPC sale. */
+    if (u.indexOf('/rest/v1/rpc/') >= 0) {
+      if (u.indexOf('/rpc/tienda_piezas') >= 0) {
+        return Promise.resolve(new Response(JSON.stringify(PIEZAS),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }));
+      }
+      /* Stock (con los precios) y vendedores son LECTURAS y salen a la base de
+         verdad: desde el corte de la planilla Apps Script ya no trae precios, y
+         sin ellos la tienda no deja agregar nada ("Cargando los precios…"). */
+      if (/\\/rpc\\/(tienda_stock|tienda_vendedores)$/.test(u)) return orig.apply(this, arguments);
+      return Promise.reject(new TypeError('base cortada en la prueba'));
+    }
     if (opts && String(opts.method || '').toUpperCase() === 'POST') {
       window.__post = String(opts.body || '');
       return new Promise(function () {});
@@ -174,6 +191,9 @@ const COMPRAR = `(async function () {
 
   document.getElementById('f-nombre').value = 'PRUEBA Automatica';
   document.getElementById('f-telefono').value = '1155038905';
+  /* El mail es obligatorio desde que el pedido se cierra en la tienda: sin el,
+     enviarPedido frena en la validacion y no sale nada. */
+  var _mail = document.getElementById('f-mail'); if (_mail) _mail.value = 'prueba.pedido@gmail.com';
   var bp = document.getElementById('f-barrio-privado');
   bp.value = 'Estancias del Pilar'; bp.dispatchEvent(new Event('change'));
   await dormir(120);
@@ -197,7 +217,13 @@ const COMPRAR = `(async function () {
 
   enviarPedido();
   for (var i = 0; i < 40 && !window.__post; i++) await dormir(100);
-  return JSON.stringify({ post: window.__post, esperado: esperado });
+  /* Si no salio nada, que diga por que: el aviso a la vista y el modal abierto. */
+  var diag = window.__post ? null : {
+    aviso: [].slice.call(document.querySelectorAll('.toast, #toast, .form-error, .error-msg')).map(function (e) { return (e.textContent || '').trim(); }).filter(Boolean).slice(0, 3),
+    modales: [].slice.call(document.querySelectorAll('[id$=-modal], .modal')).filter(function (e) { return e.offsetParent !== null; }).map(function (e) { return e.id || e.className; }).slice(0, 3),
+    carrito: Object.keys(cart || {}).length, piezas: Object.keys(piezaCart || {}).length
+  };
+  return JSON.stringify({ post: window.__post, esperado: esperado, diag: diag });
 })()`;
 
 const ESCENARIOS = [
@@ -228,9 +254,11 @@ function revisar(p, esp, mapas, conCarne) {
   /* La regla del 10%: el backend la RECALCULA sobre subtotalSinDescuento, asi
      que si la tienda manda otro numero el cliente ve un total y la planilla
      guarda otro. Tadeo confirmo el 10/9 que la carne entra en el descuento. */
+  /* Desde el 15/10/2026 no hay descuento automatico en ningun medio de pago
+     (_descAutoPedido_ guarda 0): un pedido nuevo sin cupon va con descuento 0. */
   if (esp.pago === 'Efectivo') {
-    const debe = Math.round(p.subtotalSinDescuento * 0.10);
-    ok(p.descuento === debe, 'el descuento es ' + p.descuento + ' y el backend va a recalcular ' + debe);
+    const debe = 0;
+    ok(p.descuento === debe, 'el descuento es ' + p.descuento + ' y el backend va a guardar ' + debe);
   }
   ok(Math.abs(p.total - (p.subtotalSinDescuento + (p.envio || 0) - p.descuento)) < 2,
      'el total no cierra: ' + p.total);
@@ -274,7 +302,28 @@ function revisar(p, esp, mapas, conCarne) {
    Pilar se mira contra Red tambien. Salvo lo marcado `sinVendedor` (la carne,
    desde el 14/9/2026): la tienda no lo ofrece en esos barrios, y eso se prueba
    EN LA PANTALLA mas abajo, no se da por hecho. */
-function revisarZonas(prods, mapas) {
+/* Desde el corte de la planilla (8/11/2026) el pedido de maleu.com.ar entra por
+   la base (pedido_alta_directo), no por las columnas de Code.js, y la base
+   RECHAZA lo que no sabe escribir (migracion 606): no hay "cobrado sin
+   guardarse". Un producto que la base conoce (viene en tienda_stock, la lectura
+   publica de la tienda) esta cubierto aunque la hoja vieja no tenga columna —
+   es el caso de Chorizo y Morcilla, que nacieron despues del corte. Si la base
+   no contesta, el cruce vuelve a ser el estricto de antes. */
+async function enLaBase() {
+  try {
+    const app = fs.readFileSync(path.join(RAIZ, 'app.js'), 'utf8');
+    const url = (app.match(/SB_URL_TIENDA *= *"([^"]+)"/) || [])[1];
+    const key = (app.match(/SB_KEY_TIENDA *= *"([^"]+)"/) || [])[1];
+    if (!url || !key) return null;
+    const r = await fetch(url + '/rest/v1/rpc/tienda_stock', { method: 'POST',
+      headers: { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' }, body: '{}' });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return new Set(Object.keys(d || {}).filter((k) => k[0] !== '_'));
+  } catch (e) { return null; }
+}
+
+function revisarZonas(prods, mapas, base) {
   const problemas = [];
   if (!mapas) return problemas;
   const destino = { estancias: [['Home', mapas.home]],
@@ -290,6 +339,7 @@ function revisarZonas(prods, mapas) {
     zonas.forEach((z) => {
       (destino[z] || []).forEach(([hoja, mapa]) => {
         if (hoja === 'Red' && c.sinVendedor) return;
+        if (base && c.abbr && base.has(c.abbr)) return;
         if (mapa && !mapa[c.id]) {
           problemas.push(c.nombre + ' se ofrece en "' + z + '", y un pedido de ahi puede caer en la hoja ' +
             hoja + ', que no tiene columna para el id ' + c.id + ': se cobraria sin guardarse');
@@ -348,7 +398,7 @@ async function main() {
       }
       const o = JSON.parse(r.result.value);
       if (o.error) { console.log(RED + '  MAL  ' + esc.nombre + ': ' + o.error + RST); malas++; continue; }
-      if (!o.post) { console.log(RED + '  MAL  ' + esc.nombre + ': el boton no disparo ningun POST' + RST); malas++; continue; }
+      if (!o.post) { console.log(RED + '  MAL  ' + esc.nombre + ': el boton no disparo ningun POST ' + JSON.stringify(o.diag || {}) + RST); malas++; continue; }
 
       /* Que el escenario sea el que dice ser: sin este control, un fallo al
          inyectar el inventario pasa como verde sobre una tienda sin carne. */
@@ -379,9 +429,9 @@ async function main() {
        premium a Estancias y este chequeo, acotado a `cat==='Carnes'`, no los
        habria mirado. */
     const rc = await cli.enviar('Runtime.evaluate', {
-      expression: "JSON.stringify(PRODUCTOS.map(function(p){return {id:p.id,nombre:p.nombre,zonas:p.zonas||null,sinVendedor:!!p.sinVendedor};}))",
+      expression: "JSON.stringify(PRODUCTOS.map(function(p){return {id:p.id,abbr:p.abbr||null,nombre:p.nombre,zonas:p.zonas||null,sinVendedor:!!p.sinVendedor};}))",
       returnByValue: true });
-    const problemas = revisarZonas(JSON.parse(rc.result.value || '[]'), mapas);
+    const problemas = revisarZonas(JSON.parse(rc.result.value || '[]'), mapas, await enLaBase());
     if (problemas.length) {
       malas += problemas.length;
       console.log(RED + '  MAL  zonas donde se ofrece cada producto' + RST);

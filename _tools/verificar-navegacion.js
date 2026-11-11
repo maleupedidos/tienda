@@ -115,6 +115,14 @@ function prep(piezas) {
   var orig = window.fetch;
   window.fetch = function (url, opts) {
     var u = String(url);
+    /* Desde que la tienda lee de la base primero (_deLaBaseOApps), el
+       inventario llega por POST a rpc/tienda_piezas. Sin esto, el POST de
+       abajo le contestaba {ok:true} y el escenario "backend caido" medía
+       un inventario vacio que respondio bien. */
+    if (u.indexOf('/rpc/tienda_piezas') >= 0) {
+      return Promise.resolve(new Response(JSON.stringify(PIEZAS),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    }
     if (opts && String(opts.method || '').toUpperCase() === 'POST') {
       return Promise.resolve(new Response('{"ok":true}', { status: 200 }));
     }
@@ -175,7 +183,11 @@ const REVISION = `(async function () {
   }
   window.scrollTo = real;
   return JSON.stringify({ chips: chips.length, tiles: tiles.length, secciones: secciones.length,
-    tieneCarnes: chips.indexOf('carnes') >= 0, fallas: fallas });
+    /* Desde el 11/11/2026 Chorizo y Morcilla viven en Carnes y van por unidad: la
+       categoria aparece aunque no haya inventario de piezas. Lo que el escenario
+       mide es si se dibujan CORTES (.carne-card), no si existe el chip. */
+    tieneCarnes: chips.indexOf('carnes') >= 0 && document.querySelectorAll('#cat-carnes .carne-card').length > 0,
+    diag: { estado: typeof piezasEstado !== 'undefined' ? piezasEstado : '?', cortes: [].slice.call(document.querySelectorAll('#cat-carnes .carne-card')).map(function (c) { return c.dataset.id; }) }, fallas: fallas });
 })()`;
 
 /* Los tres tienen que andar: el bug de los id corridos aparecia justo cuando
@@ -258,7 +270,7 @@ async function main() {
       if (conCarne !== hayCarne) {
         malas++;
         console.log(RED + '  MAL  ' + esc.nombre + ': el escenario no se aplico — la categoria Carnes ' +
-          (hayCarne ? 'aparece y no deberia' : 'no aparece y deberia') + RST);
+          (hayCarne ? 'aparece y no deberia' : 'no aparece y deberia') + ' ' + JSON.stringify(o.diag) + RST);
         continue;
       }
       if (o.fallas.length) {
