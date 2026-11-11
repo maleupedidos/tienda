@@ -2620,8 +2620,14 @@ function _deliveryStartMs(iso) {
    pedir hasta CIERRE_HOY de ese mismo día. La hora se edita desde el ERP: Ajustes › Config operativa ›
    TIENDA_CIERRE_HOY (llega en `stock_full._cierreHoy`, ver _aplicarPrecios); 21:30 hasta que llegue.
    Lo de arriba sobre «el corte es el inicio de la franja» quedó como historia: Tadeo eligió aceptar el pedido y
-   resolverlo en el recorrido. */
-var CIERRE_HOY = '21:30';
+   resolverlo en el recorrido.
+
+   SEGUNDA VUELTA, EL MISMO 11/11: no es una hora fija sino MINUTOS DESPUÉS DEL FIN DE LA FRANJA. Con «21:30» para
+   todos los días, un domingo (franja de 11 a 13) se habría vendido «para hoy» ocho horas después del reparto. Lo que
+   Tadeo quiso decir con 21:30 era «media hora después de que termina el de 19 a 21». Hoy: 30 minutos, o sea
+   mié/vie/sáb 21:30 y dom 13:30. TIENDA_CIERRE_HOY guarda los minutos («30»); si alguien escribe una hora («21:30»)
+   también se entiende, como hora fija. Franja sin fin escrito («19hs»): se toma su inicio. */
+var CIERRE_HOY = '30';
 function _cierreDelDiaMs(iso, zone) {
   if (!iso || iso === 'any') return null;
   var parts = iso.split('-'); if (parts.length !== 3) return null;
@@ -2630,13 +2636,20 @@ function _cierreDelDiaMs(iso, zone) {
   var DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
   var franja = _horarioDeZona(zone || currentZone, DIAS[new Date(Date.UTC(y, mes, dia)).getUTCDay()]);
   var hora = franja.match(/(\d{1,2})/);
-  var hc = String(CIERRE_HOY || '').match(/^(\d{1,2}):(\d{2})$/);
+  var horas = franja.match(/(\d{1,2})(?:[:.](\d{2}))?\s*(?:a|-|–)\s*(\d{1,2})(?:[:.](\d{2}))?/);
+  var cfg = String(CIERRE_HOY || '').trim();
+  var hc = cfg.match(/^(\d{1,2}):(\d{2})$/), mins = /^\d{1,3}$/.test(cfg) ? +cfg : null;
 
   var d;
   if (hora && hc) {
-    /* AR es UTC-3: las 21:30 de allá son las 00:30 UTC del día siguiente; el Date avanza solo. */
+    /* Una hora fija («21:30»). AR es UTC-3: las 21:30 de allá son las 00:30 UTC del día siguiente. */
     d = new Date(Date.UTC(y, mes, dia));
     d.setUTCHours(+hc[1] + 3, +hc[2], 0, 0);
+  } else if (hora && mins !== null) {
+    /* Minutos después del FIN de la franja: «19 a 21hs» + 30 → 21:30. Sin fin escrito, desde el inicio. */
+    var hFin = horas ? +horas[3] : +hora[1], mFin = horas && horas[4] ? +horas[4] : 0;
+    d = new Date(Date.UTC(y, mes, dia));
+    d.setUTCHours(hFin + 3, mFin + mins, 0, 0);
   } else if (hora) {
     /* AR es UTC-3: las 18 de alla son las 21 UTC. Si la suma pasa de 24, el
        Date avanza de dia solo, que es lo correcto. */
@@ -8844,8 +8857,8 @@ function _aplicarPrecios(full) {
     else if (!(p.precio > 0)) faltan++;
   });
   /* (11/11/2026) La hora de cierre del día, editable desde Ajustes › Config (TIENDA_CIERRE_HOY). */
-  if (typeof full._cierreHoy === 'string' && /^\d{1,2}:\d{2}$/.test(full._cierreHoy) && full._cierreHoy !== CIERRE_HOY) {
-    CIERRE_HOY = full._cierreHoy; cambio = true;
+  if (typeof full._cierreHoy === 'string' && /^(\d{1,2}:\d{2}|\d{1,3})$/.test(full._cierreHoy.trim()) && full._cierreHoy.trim() !== CIERRE_HOY) {
+    CIERRE_HOY = full._cierreHoy.trim(); cambio = true;
   }
   var cb = full._combos || {};
   COMBOS.forEach(function (c) {
