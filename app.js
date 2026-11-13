@@ -22,6 +22,10 @@
    se sirve sin query — el comportamiento de antes, nunca un link roto. */
 /* IMG_V:INICIO */
 var IMG_V = {
+  "aceite-arbosana-1l.jpg": "e3bab6e6",
+  "aceite-arbosana-500.jpg": "5f512ce4",
+  "aceite-coratina-1l.jpg": "2c94d208",
+  "aceite-coratina-500.jpg": "03b550b8",
   "carne-asado-banderita.jpg": "e6311475",
   "carne-asado-cotilla.jpg": "60ca58d9",
   "carne-bife-chorizo.jpg": "ec9ec4b4",
@@ -75,6 +79,7 @@ var IMG_V = {
   "tarta-verdura.jpg": "253ea9ae",
   "torta-coco.jpg": "6713d6d8",
   "torta-golosa.jpg": "7a2cba95",
+  "torta-la-bo.jpg": "7be6808c",
   "torta-lemon.jpg": "4a545bf8",
   "wrap-carne.jpg": "9515ce4f",
   "wrap-pollo.jpg": "9a5102fd"
@@ -123,6 +128,16 @@ const PRODUCTOS = [
   { id:14, cat:"Tortas", nombre:"Torta Golosa",                  desc:"Masa de chocolate, dulce de leche, mousse de chocolate y almendras acarameladas.", img:"torta-golosa.jpg", emoji:"🎂", chips:["Para 8–10 personas","Torta entera","Lista para cortar y servir"] },
   { id:15, cat:"Tortas", nombre:"Torta Lemon Crumble",           desc:"Base sablée, relleno de limón y crumble crocante espolvoreado.",                 img:"torta-lemon.jpg", emoji:"🎂", chips:["Para 8–10 personas","Torta entera","Lista para cortar y servir"] },
   { id:16, cat:"Tortas", nombre:"Torta Coco",                    desc:"Base crocante, dulce de leche y relleno de coco. Generosa y sin vueltas.",       img:"torta-coco.jpg", emoji:"🎂", chips:["Para 8–10 personas","Torta entera","Lista para cortar y servir"] },
+  /* Torta "La Bo", de Flor de Postres (13/11/2026). Id 53 del ERP (TLB). No es redonda: es un rollo, por eso no
+     dice "Para 8–10 personas" como las otras — la porción no está confirmada. */
+  { id:53, abbr:"TLB", cat:"Tortas", nuevo:true, nombre:"Torta \"La Bo\"",            desc:"Un clásico uruguayo de chocolate y galletitas crocantes, con relleno de dulce de leche.", img:"torta-la-bo.jpg", emoji:"🎂", chips:["Un clásico uruguayo","Lista para cortar y servir"] },
+  /* ═══ ALMACÉN — aceite de oliva Estilo Oliva (13/11/2026) ═══
+     Ids 49-52 del ERP. Categoría "Almacén" y no "Aceites": Maleu es distribuidora, y lo próximo que no sea
+     congelado (sal, conservas, lo que sea) entra acá sin renombrar nada. Se vende en todos los canales. */
+  { id:49, abbr:"AdO500Ar", cat:"Almacén", nuevo:true, nombre:"Aceite de Oliva Arbosana 500 ml", desc:"Aceite de oliva virgen extra de sabor suave y frutado, con un toque a almendra. Es el más liviano de los dos: acompaña la comida sin taparla.", img:"aceite-arbosana-500.jpg", emoji:"🫒", chips:["500 ml","Botella de vidrio","Sabor suave"] },
+  { id:50, abbr:"AdO500Co", cat:"Almacén", nuevo:true, nombre:"Aceite de Oliva Coratina 500 ml", desc:"Aceite de oliva virgen extra de sabor intenso, con notas verdes y más cuerpo. Para quienes buscan un aceite que se sienta en cada plato.", img:"aceite-coratina-500.jpg", emoji:"🫒", chips:["500 ml","Botella de vidrio","Sabor intenso"] },
+  { id:51, abbr:"AdO1LAr", cat:"Almacén", nuevo:true, nombre:"Aceite de Oliva Arbosana 1 L", desc:"Aceite de oliva virgen extra de sabor suave, en botella de un litro. Rinde más y sirve para rellenar la de vidrio.", img:"aceite-arbosana-1l.jpg", emoji:"🫒", chips:["1 litro","Botella PET","Sabor suave"] },
+  { id:52, abbr:"AdO1LCo", cat:"Almacén", nuevo:true, nombre:"Aceite de Oliva Coratina 1 L", desc:"Aceite de oliva virgen extra de sabor más intenso, en botella de un litro. Rinde más y sirve para rellenar la de vidrio.", img:"aceite-coratina-1l.jpg", emoji:"🫒", chips:["1 litro","Botella PET","Sabor intenso"] },
   /* ═══ CARNES — Maleu Carnes (Lucas Moresco) ════════════════
      Se venden POR KILO y por PIEZA: el cliente elige la pieza que se lleva,
      con su peso exacto. Ver el bloque PIEZAS mas abajo.
@@ -199,6 +214,7 @@ const CATEGORIAS = [
   { nombre:"Tartas",              icono:"🥧", nota:"Pre-cocidas · 16cm · Listas al horno en 10 min", tip:"Precalentar horno al máximo 10 min · Hornear 10 min · Servir" },
   { nombre:"Franuis",             icono:"🍫", nota:"Frambuesas bañadas en chocolate · Listas para servir" },
   { nombre:"Tortas",              icono:"🎂", nota:"Tortas enteras · Listas para cortar y servir" },
+  { nombre:"Almacén",             icono:"🫒", nota:"Aceite de oliva virgen extra · Para tener siempre en la cocina", img:"aceite-arbosana-500.jpg" },
 ];
 
 /* ── PRODUCTOS CLUBES (precios especiales, solo pizzas) ── */
@@ -692,7 +708,7 @@ var _sugVistas = {};
 /* Como se nombra una categoria adentro de una frase. Una categoria nueva que no
    este aca entra con su nombre en minuscula: se lee raro, pero no se pierde. */
 var SUG_GRUPO = { 'Pizzas Individuales': 'pizzas', 'Pack Pizzas x2': 'pizzas', 'Sorrentinos': 'sorrentinos',
-  'Empanadas': 'empanadas', 'Tartas': 'tartas', 'Wraps': 'wraps', 'Franuis': 'postres', 'Tortas': 'postres' };
+  'Empanadas': 'empanadas', 'Tartas': 'tartas', 'Wraps': 'wraps', 'Franuis': 'postres', 'Tortas': 'postres', 'Almacén': 'aceite de oliva' };
 function _sugGrupo(cat) { return SUG_GRUPO[cat] || String(cat || '').toLowerCase(); }
 function _hayParaLaFecha(p) {
   var cap = getStockCap(p.id);
@@ -2679,6 +2695,7 @@ const PROD_ABBR = {
   42:'WPo', 43:'WBo', 44:'WVe',   // Wraps Sevuchitas x2 (22/10/2026)
   45:'CMC',                        // Matambrito de cerdo (29/10/2026)
   47:'Cho', 48:'Mor',               // Chorizo y Morcilla, por paquete (8/11/2026)
+  49:'AdO500Ar', 50:'AdO500Co', 51:'AdO1LAr', 52:'AdO1LCo', 53:'TLB',  // Aceites y Torta La Bo (13/11/2026)
   // Clubes (IDs string)
   'pmu':'PMu', 'pma':'PMa', 'pjq':'PJyQ', 'pcc':'PCC', 'pjm':'PJyM',
   'pp1':'PPM', 'pp2':'PPJyQ', 'pp3':'PPCyQ',

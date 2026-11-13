@@ -20,7 +20,9 @@ const PV = {"PMu":11200,"PMa":11500,"PJyQ":11800,"PCC":11500,"PJyM":12000,"PPM":
      queda en false y NINGUNA prueba puede agregar nada: verificar-checkout dio
      21 rojos sobre una tienda que andaba. El precio es el de los wraps viejos
      (RC/RP), no el de la planilla: aca solo tiene que ser > 0. */
-  "WPo":13000,"WBo":13000,"WVe":13000};
+  "WPo":13000,"WBo":13000,"WVe":13000,
+  /* Aceites de oliva y Torta La Bo (13/11/2026), precios del ERP de ese día. */
+  "AdO500Ar":14750,"AdO500Co":20900,"AdO1LAr":27200,"AdO1LCo":34000,"TLB":20000};
 const COMBOS = { cmb_descubri_semana: 46900, cmb_descubri_finde: 34900, cmb_noche_casa: 23900,
   cmb_mesa_familiar: 45900, cmb_freezer_lleno: 84900 };
 
