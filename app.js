@@ -87,6 +87,7 @@ var IMG_V = {
 /* IMG_V:FIN */
 function fotoUrl(nombre) {
   var n = String(nombre || '');
+  if (/^https?:\/\//.test(n)) return n;   /* (703) una foto cargada desde el ERP como dirección entera */
   return 'img/' + n + (IMG_V[n] ? '?v=' + IMG_V[n] : '');
 }
 
@@ -216,6 +217,44 @@ const CATEGORIAS = [
   { nombre:"Tortas",              icono:"🎂", nota:"Listas para cortar y servir" },
   { nombre:"Almacén",             icono:"🫒", nota:"Aceite de oliva virgen extra · Para tener siempre en la cocina", img:"aceite-arbosana-500.jpg" },
 ];
+
+/* ── EL CATÁLOGO VIENE DE LA BASE (703, 14/11/2026) ──
+   Tadeo: «Dar de alta» deja el producto listo en todos lados, sin tocar código. `catalogo_tienda` (pública, solo lo
+   de vidriera: nombre, categoría, foto, descripción, chips…; nada de costo ni stock) devuelve los mismos objetos que
+   la lista de arriba, que queda de RESPALDO: primer arranque sin red, o la base sin contestar. Medido el día que se
+   cargó: 52 de 52 idénticos y en el mismo orden.
+   Se cambia EN EL LUGAR (`PRODUCTOS` es el mismo arreglo) y cada producto conserva lo que la tienda le agrega al
+   andar (el precio, el stock): eso sigue llegando de `tienda_stock`, como siempre. `_catBaja` = el dueño lo sacó de
+   la tienda, y le gana al «dado de baja» del stock. Al abrir se usa la copia de la última visita (`maleu_cat_tienda`). */
+const _CAT_DEF = ['id','cat','nombre','desc','img','emoji','top','chips','unid','unidQue','nuevo','baja','abbr','porPeso','zonas','sinVendedor','ancha','_catBaja'];
+function _catTiendaArmar(l) {
+  if (!Array.isArray(l) || l.length < 20) return null;
+  if (!l.every(function (x) { return x && Number(x.id) > 0 && x.nombre && x.cat; })) return null;
+  var viejo = {}; PRODUCTOS.forEach(function (p) { viejo[p.id] = p; });
+  return l.map(function (x) {
+    var p = {};
+    Object.keys(x).forEach(function (k) { if (k !== 'baja') p[k] = x[k]; });
+    p.id = Number(x.id);
+    if (x.baja) { p.baja = true; p._catBaja = true; }
+    var v = viejo[p.id];
+    if (v) Object.keys(v).forEach(function (k) { if (_CAT_DEF.indexOf(k) < 0 && !(k in p)) p[k] = v[k]; });   /* precio, stock… */
+    return p;
+  });
+}
+function _catTiendaFirma(arr) {
+  return JSON.stringify(arr.map(function (p) { var o = {}; _CAT_DEF.forEach(function (k) { if (k in p && k !== '_catBaja' && k !== 'abbr') o[k] = (k === 'baja') ? !!p[k] : p[k]; }); return o; }));
+}
+function _catTiendaAplicar(l) {
+  var nueva = _catTiendaArmar(l); if (!nueva) return false;
+  if (_catTiendaFirma(nueva) === _catTiendaFirma(PRODUCTOS)) {
+    /* Igual de vidriera: solo se anota quién está fuera de la tienda (por si después lo pisa el stock). */
+    nueva.forEach(function (n) { var p = PRODUCTOS.filter(function (x) { return x.id === n.id; })[0]; if (p && n._catBaja) p._catBaja = true; if (p && n.abbr && !p.abbr) p.abbr = n.abbr; });
+    return false;
+  }
+  PRODUCTOS.length = 0; nueva.forEach(function (p) { PRODUCTOS.push(p); });
+  return true;
+}
+try { _catTiendaAplicar(JSON.parse(localStorage.getItem('maleu_cat_tienda') || 'null')); } catch (e) {}
 
 /* ── PRODUCTOS CLUBES (precios especiales, solo pizzas) ── */
 const PRODUCTOS_CLUBES = [
@@ -2701,6 +2740,32 @@ const PROD_ABBR = {
   'pp1':'PPM', 'pp2':'PPJyQ', 'pp3':'PPCyQ',
   'ecac':'ECaC', 'ejyq':'EJyQ', 'ecyq':'ECyQ', 'evc':'EV',
 };
+/* (703) Un producto que vino de la base trae su `abbr`: así el stock y el precio lo encuentran sin tocar esta lista. */
+function _catTiendaMapas() {
+  Object.keys(PROD_MAP).forEach(function (k) { delete PROD_MAP[k]; });
+  PRODUCTOS.forEach(function (p) { PROD_MAP[p.id] = p; if (p.abbr && !PROD_ABBR[p.id]) PROD_ABBR[p.id] = p.abbr; });
+  PRODUCTOS_CLUBES.forEach(function (p) { PROD_MAP[p.id] = p; });
+}
+_catTiendaMapas();
+function _catTiendaPedir() {
+  if (typeof AbortController !== 'function') return;
+  const ctl = new AbortController(), reloj = setTimeout(() => ctl.abort(), 8000);
+  fetch(SB_URL_TIENDA + '/rest/v1/rpc/catalogo_tienda', { method: 'POST', cache: 'no-store', signal: ctl.signal,
+      headers: { apikey: SB_KEY_TIENDA, Authorization: 'Bearer ' + SB_KEY_TIENDA, 'Content-Type': 'application/json' }, body: '{}' })
+    .then(r => { if (!r.ok) throw new Error('la base contesto ' + r.status); return r.json(); })
+    .then(d => {
+      const l = d && d.productos; if (!Array.isArray(l)) return;
+      try { localStorage.setItem('maleu_cat_tienda', JSON.stringify(l)); } catch (e) {}
+      if (!_catTiendaAplicar(l)) return;
+      _catTiendaMapas();
+      const sinPrecio = PRODUCTOS.some(p => !p.baja && !(p.precio > 0));
+      try { renderCatalog(); } catch (e1) {}
+      try { updateUI(); } catch (e2) {}
+      if (sinPrecio) { try { fetchStock(); } catch (e3) {} }   /* un producto nuevo: que traiga su precio ya */
+    })
+    .catch(() => {})   /* sin la base: queda la lista de la última visita, o la escrita */
+    .finally(() => clearTimeout(reloj));
+}
 
 /* ── HELPERS ── */
 function $id(id) { return document.getElementById(id); }
@@ -8871,7 +8936,7 @@ function _aplicarPrecios(full) {
     var abbr = PROD_ABBR[p.id] || p.abbr, pv = abbr && full[abbr] ? Number(full[abbr].pv) : 0;
     /* (620, 9/11/2026) Dado de baja: lo dice la base (`b`), que se toca desde Productos en el ERP. */
     var bj = abbr && full[abbr] ? full[abbr].b : undefined;
-    if (typeof bj === 'boolean' && !!p.baja !== bj) { p.baja = bj; cambio = true; }
+    if (typeof bj === 'boolean' && !!p.baja !== (bj || !!p._catBaja)) { p.baja = bj || !!p._catBaja; cambio = true; }
     if (pv > 0) { if (p.precio !== pv) { p.precio = pv; cambio = true; } }
     else if (!(p.precio > 0)) faltan++;
   });
@@ -9534,6 +9599,7 @@ function agregarLoMismo(sufijo) {
 
 /* ── INIT ── */
 renderCatalog();   // repinta tambien el nav y los tiles
+_catTiendaPedir();   /* (703) el catálogo de la base; si cambió, repinta */
 /* EL QUE RECARGA ESTANDO EN /checkout vuelve por 404.html, que lo manda a
    `/?ir=checkout`. Se retoma ahi mismo en vez de dejarlo en el catalogo
    preguntandose que paso con su pedido — el carrito y sus datos siguen

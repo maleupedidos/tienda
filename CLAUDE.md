@@ -108,6 +108,20 @@ cada 60 s: un cambio en la planilla llega solo, sin publicar la tienda.
 regenera (sin precios en `app.js` lo dejaría vacío) y el Portal Red lee
 `action=precios` del backend.
 
+## El catálogo sale de la base (desde el 14/11/2026, migración 703)
+
+**Un producto nuevo ya no se agrega a `PRODUCTOS` de `app.js`.** Se da de alta en el ERP (Ajustes › Producto nuevo, con
+foto y descripción) y la tienda lo toma de `catalogo_tienda` (pública, solo lo de vidriera). El dueño lo prende o apaga
+en Productos › «Dónde se ve cada producto». La lista `PRODUCTOS` de `app.js` queda como **respaldo**: primer arranque
+sin red o la base sin contestar. El día que se cargó era idéntica a la de la base (52 de 52, mismo orden).
+
+- Se cambia **en el lugar** y cada producto conserva lo que la tienda le suma al andar (precio, stock). Los precios
+  siguen llegando de `tienda_stock`, como siempre.
+- `_catBaja`: el dueño lo sacó de la tienda. Le gana al «dado de baja» del stock (`_aplicarPrecios`).
+- Copia de la última visita en `localStorage` › `maleu_cat_tienda`; una copia rota no se usa.
+- Una foto puede ser el nombre de un archivo de `img/` o una dirección entera (`fotoUrl`).
+- La foto nueva todavía hay que subirla a `img/` a mano (o cargarla como dirección). Lo que no hace falta es tocar código.
+
 ## Qué hay acá
 
 | Archivo | Qué es |
