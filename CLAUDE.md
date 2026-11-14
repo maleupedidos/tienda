@@ -120,7 +120,8 @@ sin red o la base sin contestar. El día que se cargó era idéntica a la de la 
 - `_catBaja`: el dueño lo sacó de la tienda. Le gana al «dado de baja» del stock (`_aplicarPrecios`).
 - Copia de la última visita en `localStorage` › `maleu_cat_tienda`; una copia rota no se usa.
 - Una foto puede ser el nombre de un archivo de `img/` o una dirección entera (`fotoUrl`).
-- La foto nueva todavía hay que subirla a `img/` a mano (o cargarla como dirección). Lo que no hace falta es tocar código.
+- **La foto se sube desde el ERP (706, 14/11/2026):** Productos › «Dónde se ve cada producto» › «Subir foto». Se achica igual que `_tools/fotos-producto.py` (767×767, la carne 1100×619, hasta 100 KB) y queda en el depósito público `productos` de Supabase Storage, como dirección entera. Ya no hace falta pasar por `img/` ni por git. Las fotos que ya estaban en `img/` siguen igual.
+- **El orden** también se cambia desde ahí (↑ ↓ dentro de la categoría), y la tienda lo respeta.
 
 ## Qué hay acá
 
