@@ -125,12 +125,12 @@ const PRODUCTOS = [
   { id:28, cat:"Wraps",    nombre:"Wrap Carne",                    desc:"Wrap relleno de carne. Bien condimentado, listo al horno.",                                                       img:"wrap-carne.jpg", emoji:"🌯", baja:true, chips:["Para 1–2 personas","Listo al horno en 10 min"] },
   { id:29, cat:"Wraps",    nombre:"Wrap Pollo",                    desc:"Wrap relleno de pollo. Sabroso y rendidor.",                                                                      img:"wrap-pollo.jpg", emoji:"🌯", baja:true, chips:["Para 1–2 personas","Listo al horno en 10 min"] },
   { id:13, cat:"Franuis", nombre:"Franui Leche",            desc:"Frambuesas bañadas en chocolate con leche y blanco. El cierre perfecto.",        img:"franui-new.jpg", emoji:"🍫", chips:["Para 2–3 personas","Listo para servir"] },
-  { id:14, cat:"Tortas", nombre:"Torta Golosa",                  desc:"Masa de chocolate, dulce de leche, mousse de chocolate y almendras acarameladas.", img:"torta-golosa.jpg", emoji:"🎂", chips:["Para 8–10 personas","Torta entera","Lista para cortar y servir"] },
-  { id:15, cat:"Tortas", nombre:"Torta Lemon Crumble",           desc:"Base sablée, relleno de limón y crumble crocante espolvoreado.",                 img:"torta-lemon.jpg", emoji:"🎂", chips:["Para 8–10 personas","Torta entera","Lista para cortar y servir"] },
-  { id:16, cat:"Tortas", nombre:"Torta Coco",                    desc:"Base crocante, dulce de leche y relleno de coco. Generosa y sin vueltas.",       img:"torta-coco.jpg", emoji:"🎂", chips:["Para 8–10 personas","Torta entera","Lista para cortar y servir"] },
-  /* Torta "La Bo", de Flor de Postres (13/11/2026). Id 53 del ERP (TLB). No es redonda: es un rollo, por eso no
-     dice "Para 8–10 personas" como las otras — la porción no está confirmada. */
-  { id:53, abbr:"TLB", cat:"Tortas", nuevo:true, nombre:"Torta \"La Bo\"",            desc:"Un clásico uruguayo de chocolate y galletitas crocantes, con relleno de dulce de leche.", img:"torta-la-bo.jpg", emoji:"🎂", chips:["Un clásico uruguayo","Lista para cortar y servir"] },
+  { id:14, cat:"Tortas", nombre:"Torta Golosa",                  desc:"Masa de chocolate, dulce de leche, mousse de chocolate y almendras acarameladas.", img:"torta-golosa.jpg", emoji:"🎂", chips:["Para 8–10 personas","Lista para cortar y servir"] },
+  { id:15, cat:"Tortas", nombre:"Torta Lemon Crumble",           desc:"Base sablée, relleno de limón y crumble crocante espolvoreado.",                 img:"torta-lemon.jpg", emoji:"🎂", chips:["Para 8–10 personas","Lista para cortar y servir"] },
+  { id:16, cat:"Tortas", nombre:"Torta Coco",                    desc:"Base crocante, dulce de leche y relleno de coco. Generosa y sin vueltas.",       img:"torta-coco.jpg", emoji:"🎂", chips:["Para 8–10 personas","Lista para cortar y servir"] },
+  /* Torta "La Bo", de Flor de Postres (13/11/2026). Id 53 del ERP (TLB). Es un rollo; la porción la dio Tadeo
+     ("como las demás"). Ese día salió "Torta entera" de las cuatro: no suma nada. */
+  { id:53, abbr:"TLB", cat:"Tortas", nuevo:true, nombre:"Torta \"La Bo\"",            desc:"Un clásico uruguayo de chocolate y galletitas crocantes, con relleno de dulce de leche.", img:"torta-la-bo.jpg", emoji:"🎂", chips:["Para 8–10 personas","Lista para cortar y servir"] },
   /* ═══ ALMACÉN — aceite de oliva Estilo Oliva (13/11/2026) ═══
      Ids 49-52 del ERP. Categoría "Almacén" y no "Aceites": Maleu es distribuidora, y lo próximo que no sea
      congelado (sal, conservas, lo que sea) entra acá sin renombrar nada. Se vende en todos los canales. */
@@ -213,7 +213,7 @@ const CATEGORIAS = [
   { nombre:"Sorrentinos",         icono:"🍝", nota:"600g · 16 unidades · Rinde 3 porciones · Solo 4 minutos de cocción", tip:"Hervir agua · Agregar sorrentinos · 4 min con olla destapada · Retirar con espumadera y servir" },
   { nombre:"Tartas",              icono:"🥧", nota:"Pre-cocidas · 16cm · Listas al horno en 10 min", tip:"Precalentar horno al máximo 10 min · Hornear 10 min · Servir" },
   { nombre:"Franuis",             icono:"🍫", nota:"Frambuesas bañadas en chocolate · Listas para servir" },
-  { nombre:"Tortas",              icono:"🎂", nota:"Tortas enteras · Listas para cortar y servir" },
+  { nombre:"Tortas",              icono:"🎂", nota:"Listas para cortar y servir" },
   { nombre:"Almacén",             icono:"🫒", nota:"Aceite de oliva virgen extra · Para tener siempre en la cocina", img:"aceite-arbosana-500.jpg" },
 ];
 
