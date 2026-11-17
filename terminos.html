@@ -87,9 +87,8 @@
 
   <h2>Cómo se paga</h2>
   <ul>
-    <li><strong>Transferencia</strong> a cualquiera de nuestros dos alias:
-    <strong>maleump</strong> (Mercado Pago), a nombre de Tadeo Alberto Ustariz, o
-    <strong>maleubru</strong> (Brubank), a nombre de Lucas Moresco, socio de Maleu. No hace
+    <li><strong>Transferencia</strong> a nuestra cuenta:
+    <span class="cuentas-maleu-txt"><strong>maleu.ar</strong> (Galicia), a nombre de Tadeo Alberto Ustariz, la cuenta de Maleu.</span> No hace
     falta mandar el comprobante: cuando vemos la transferencia te avisamos en el
     seguimiento del pedido y por mail.</li>
     <li><strong>Efectivo</strong> cuando te lo entregamos.</li>
@@ -224,5 +223,21 @@ document.addEventListener('keydown', function (e) {
 });
 </script>
 
+<script>
+/* (17/11/2026, migración 741) La cuenta para clientes sale de la base (tienda_cuentas). El texto de arriba es el respaldo:
+   si la cuenta cambia, esta página la dice sin tocarla. */
+(function () { try {
+  var U = 'https://xhaxmyvhygxynwjqrarm.supabase.co', K = 'sb_publishable_IVIVgOV-t_ugcQz1zQNwsw_U-4yOMZG';
+  var e = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  fetch(U + '/rest/v1/rpc/tienda_cuentas', { method: 'POST', cache: 'no-store', headers: { apikey: K, Authorization: 'Bearer ' + K, 'Content-Type': 'application/json' }, body: '{}' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (l) {
+      if (!Array.isArray(l) || !l.length || !l.every(function (c) { return c && c.alias; })) return;
+      var item = function (c) { return '<strong>' + e(c.alias) + '</strong>' + (c.banco ? ' (' + e(c.banco) + ')' : '') + (c.titular ? ', a nombre de ' + e(c.titular) : ''); };
+      document.querySelectorAll('ul.cuentas-maleu').forEach(function (u) { u.innerHTML = l.map(function (c) { return '<li>' + item(c) + '. Es la cuenta de Maleu.</li>'; }).join(''); });
+      document.querySelectorAll('.cuentas-maleu-txt').forEach(function (s) { s.innerHTML = l.map(item).join(' o ') + ', la cuenta de Maleu.'; });
+    }).catch(function () {});
+} catch (x) {} })();
+</script>
 </body>
 </html>

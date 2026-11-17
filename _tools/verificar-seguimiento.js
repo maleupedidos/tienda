@@ -478,22 +478,22 @@ async function main() {
     await ev(`(function(){ var t = document.querySelector('input[name="pago"][value="Transferencia"]'); t.checked = true; t.dispatchEvent(new Event('change', {bubbles:true})); })()`);
     await dormir(300);
     const paso2 = await ev("(document.getElementById('mp-alias') || {}).textContent || ''");
-    chk(/maleump/.test(paso2) && /Tadeo Alberto Ustariz/.test(paso2) && /maleubru/.test(paso2) && /Lucas Moresco, socio de Maleu/.test(paso2),
-        'paso 2: cada alias con su titular');
+    chk(/maleu\.ar/.test(paso2) && /Tadeo Alberto Ustariz/.test(paso2) && !/maleump|maleubru/.test(paso2),
+        'paso 2: la cuenta para clientes (maleu.ar) con su titular');   /* 741, 17/11/2026 */
     chk(/Cuando veamos tu transferencia te avisamos acá y por mail\./.test(paso2), 'y la linea del aviso');
     await ev('enviarPedido();');
     s = await esperar((x) => x.seg && x.pasos === 6, 15000);
     chk(s.pasos === 6 && s.nombres[2] === 'Recibimos tu pago', 'aparece "Recibimos tu pago" despues de "Entrega confirmada" (' + s.nombres.join(' · ') + ')');
     chk(!s.nombres.some((n) => /^pago/.test(n)), 'y nunca la clave en crudo "pago"');
     chk(!/\+/.test(s.nombres[2]), 'sin cobrar, el paso esta apagado');
-    chk(/Tadeo Alberto Ustariz/.test(s.pagoTxt) && /Lucas Moresco, socio de Maleu/.test(s.pagoTxt) && /Cuando veamos tu transferencia/.test(s.pagoTxt),
-        'la confirmacion muestra los alias con su titular y el aviso');
+    chk(/Tadeo Alberto Ustariz/.test(s.pagoTxt) && !/Lucas Moresco/.test(s.pagoTxt) && /Cuando veamos tu transferencia/.test(s.pagoTxt),
+        'la confirmacion muestra la cuenta con su titular y el aviso');   /* 741 */
     cobradoSeg = true; etapaSeg = 'pago';
     await ev('segPreguntar(_segT, false)');
     s = await esperar((x) => /\+/.test(x.nombres[2] || ''), 8000);
     chk(s.nombres[2] === 'Recibimos tu pago+@23/10 10:15' && s.actual === 'Recibimos tu pago',
         'cuando el ERP dice cobrado, se marca con su hora (' + s.nombres[2] + ', actual «' + s.actual + '»)');
-    chk(/Recibimos tu transferencia \(23\/10 10:15\)/.test(s.pagoTxt) && !/maleump|Copiar/.test(s.pagoTxt),
+    chk(/Recibimos tu transferencia \(23\/10 10:15\)/.test(s.pagoTxt) && !/maleu\.ar|maleump|Copiar/.test(s.pagoTxt),
         'y la caja del pago deja de pedir que transfiera: "' + s.pagoTxt + '"');
     formaSeg = 'Efectivo'; cobradoSeg = false;
 

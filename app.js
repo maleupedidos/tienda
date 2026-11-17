@@ -6674,6 +6674,12 @@ function setSendLoaderDone(info) {
           tit.textContent = 'a nombre de ' + c.titular;
           txt.appendChild(tit);
         }
+        if (c.sub) {
+          var sub = document.createElement('small');
+          sub.className = 'send-done-titular';
+          sub.textContent = c.sub;
+          txt.appendChild(sub);
+        }
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.textContent = 'Copiar';
@@ -10098,9 +10104,10 @@ function updateShippingBar() {
 /* Con el TITULAR desde el 23/10/2026 (decision de Tadeo): el que transfiere ve
    a nombre de quien sale, y eso da confianza. maleubru esta a nombre de Lucas,
    socio de Maleu. */
+/* (17/11/2026) El RESPALDO: lo que se muestra si la base no contesta y no hay copia. La de verdad viene de la base
+   (`_cuentasBase`, ver `_aliasParaTransferir`). Hasta hoy eran maleump (MP, Tadeo) y maleubru (Brubank, Lucas). */
 const ALIAS_MALEU = [
-  { banco: 'Mercado Pago', alias: 'maleump',  titular: 'Tadeo Alberto Ustariz' },
-  { banco: 'Brubank',      alias: 'maleubru', titular: 'Lucas Moresco, socio de Maleu' }
+  { banco: 'Galicia', alias: 'maleu.ar', titular: 'Tadeo Alberto Ustariz' }
 ];
 
 /* ¿A QUE ALIAS TRANSFIERE EL CLIENTE? (30/9/2026)
@@ -10121,8 +10128,30 @@ const ALIAS_MALEU = [
 
    `vendedorMatch.alias` se sigue recibiendo de la planilla y no se toca: el ERP
    lo usa para liquidar. Lo unico que cambio es que no se le muestra al cliente. */
+/* (17/11/2026, migración 741) LA CUENTA PARA CLIENTES SALE DE LA BASE. Desde hoy todos los clientes pagan a la cuenta
+   compartida de Galicia (alias maleu.ar); MP y Brubank siguen existiendo en el ERP para lo que entre igual, pero no se
+   le muestran al cliente. La base dice cuál es (`tienda_cuentas`: alias, banco y titular de la cuenta marcada «Para
+   clientes»). La copia de la última visita (`maleu_cuentas_cli`) y, sin ninguna, ALIAS_MALEU de respaldo. */
+var _cuentasBase = null;
+try { var _cbL = JSON.parse(localStorage.getItem('maleu_cuentas_cli') || 'null'); if (_cuentasValidas(_cbL)) _cuentasBase = _cbL; } catch (e) {}
+function _cuentasValidas(l) { return Array.isArray(l) && l.length > 0 && l.every(function (c) { return c && typeof c.alias === 'string' && c.alias.trim(); }); }
+(function _cuentasPedir() {
+  if (typeof AbortController !== 'function') return;
+  var ctl = new AbortController(), reloj = setTimeout(function () { ctl.abort(); }, 8000);
+  fetch(SB_URL_TIENDA + '/rest/v1/rpc/tienda_cuentas', { method: 'POST', cache: 'no-store', signal: ctl.signal,
+      headers: { apikey: SB_KEY_TIENDA, Authorization: 'Bearer ' + SB_KEY_TIENDA, 'Content-Type': 'application/json' }, body: '{}' })
+    .then(function (r) { if (!r.ok) throw new Error('la base contesto ' + r.status); return r.json(); })
+    .then(function (l) {
+      if (!_cuentasValidas(l)) return;
+      _cuentasBase = l.map(function (c) { return { banco: String(c.banco || ''), alias: String(c.alias).trim(), titular: String(c.titular || '') }; });
+      try { localStorage.setItem('maleu_cuentas_cli', JSON.stringify(_cuentasBase)); } catch (e) {}
+      try { if (!$id('mp-alias').classList.contains('hidden')) _pintarAliasMaleu(); } catch (e2) {}
+    })
+    .catch(function () {})
+    .then(function () { clearTimeout(reloj); });
+})();
 function _aliasParaTransferir() {
-  return ALIAS_MALEU.slice();
+  return (_cuentasBase || ALIAS_MALEU).map(function (c) { return { banco: c.banco, alias: c.alias, titular: c.titular, sub: 'Cuenta de Maleu' }; });
 }
 function _barrioPilarTieneVendedor() {
   if (currentZone !== 'pilar') return null;
@@ -10165,7 +10194,8 @@ function _pintarAliasMaleu() {
   cont.innerHTML = _aliasParaTransferir().map(function (c) {
     return '<div class="mp-alias-row">' +
       '<span><span class="mp-alias-banco">' + c.banco + '</span> <strong>' + c.alias + '</strong>' +
-        (c.titular ? '<span class="mp-alias-titular">a nombre de ' + c.titular + '</span>' : '') + '</span>' +
+        (c.titular ? '<span class="mp-alias-titular">a nombre de ' + c.titular + '</span>' : '') +
+        (c.sub ? '<span class="mp-alias-titular">' + c.sub + '</span>' : '') + '</span>' +
       '<button type="button" class="mp-copy-btn" onclick="copyAlias(\'' + c.alias + '\')">Copiar</button>' +
     '</div>';
   }).join('');

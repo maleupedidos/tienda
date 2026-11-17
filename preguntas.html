@@ -80,7 +80,7 @@
     </details>
     <details class="faq-item">
       <summary class="faq-q">¿Cómo pago?</summary>
-      <div class="faq-a"><p>Por transferencia a cualquiera de nuestros dos alias, o en efectivo cuando te lo entregamos:</p><ul><li><strong>maleump</strong> (Mercado Pago), a nombre de <strong>Tadeo Alberto Ustariz</strong>.</li><li><strong>maleubru</strong> (Brubank), a nombre de <strong>Lucas Moresco</strong>, socio de Maleu.</li></ul><p>No hace falta que nos mandes el comprobante: la transferencia la vemos nosotros, y cuando la veamos te avisamos en el seguimiento de tu pedido y por mail.</p><p>En los barrios de Pilar que tienen vendedor de Maleu, la transferencia va igual a nuestros alias; el efectivo se lo pagás a la persona que te entrega.</p></div>
+      <div class="faq-a"><p>Por transferencia a nuestra cuenta, o en efectivo cuando te lo entregamos:</p><ul class="cuentas-maleu"><li><strong>maleu.ar</strong> (Galicia), a nombre de <strong>Tadeo Alberto Ustariz</strong>. Es la cuenta de Maleu.</li></ul><p>No hace falta que nos mandes el comprobante: la transferencia la vemos nosotros, y cuando la veamos te avisamos en el seguimiento de tu pedido y por mail.</p><p>En los barrios de Pilar que tienen vendedor de Maleu, la transferencia va igual a nuestros alias; el efectivo se lo pagás a la persona que te entrega.</p></div>
     </details>
     <details class="faq-item">
       <summary class="faq-q">¿Viene congelado?</summary>
@@ -185,5 +185,21 @@ document.addEventListener('keydown', function (e) {
 });
 </script>
 
+<script>
+/* (17/11/2026, migración 741) La cuenta para clientes sale de la base (tienda_cuentas). El texto de arriba es el respaldo:
+   si la cuenta cambia, esta página la dice sin tocarla. */
+(function () { try {
+  var U = 'https://xhaxmyvhygxynwjqrarm.supabase.co', K = 'sb_publishable_IVIVgOV-t_ugcQz1zQNwsw_U-4yOMZG';
+  var e = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  fetch(U + '/rest/v1/rpc/tienda_cuentas', { method: 'POST', cache: 'no-store', headers: { apikey: K, Authorization: 'Bearer ' + K, 'Content-Type': 'application/json' }, body: '{}' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (l) {
+      if (!Array.isArray(l) || !l.length || !l.every(function (c) { return c && c.alias; })) return;
+      var item = function (c) { return '<strong>' + e(c.alias) + '</strong>' + (c.banco ? ' (' + e(c.banco) + ')' : '') + (c.titular ? ', a nombre de ' + e(c.titular) : ''); };
+      document.querySelectorAll('ul.cuentas-maleu').forEach(function (u) { u.innerHTML = l.map(function (c) { return '<li>' + item(c) + '. Es la cuenta de Maleu.</li>'; }).join(''); });
+      document.querySelectorAll('.cuentas-maleu-txt').forEach(function (s) { s.innerHTML = l.map(item).join(' o ') + ', la cuenta de Maleu.'; });
+    }).catch(function () {});
+} catch (x) {} })();
+</script>
 </body>
 </html>

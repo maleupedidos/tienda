@@ -594,8 +594,8 @@ async function main() {
       '  delVendedor: (barrioToVendedor["el lucero"] || {}).alias || "" });' +
       '})()'));
     chk(al.cajaMaleu === true, 'en un barrio con vendedor se ve la caja de alias de Maleu');
-    chk(/maleump/.test(al.txtMaleu) && /maleubru/.test(al.txtMaleu),
-        'con maleump y maleubru', al.txtMaleu.replace(/[\s\u00a0]+/g, ' ').slice(0, 70));
+    chk(/maleu\.ar/.test(al.txtMaleu) && !/maleump|maleubru/.test(al.txtMaleu),
+        'con la cuenta para clientes (maleu.ar), sin las viejas', al.txtMaleu.replace(/[\s\u00a0]+/g, ' ').slice(0, 70));
     chk(al.delVendedor && al.txtMaleu.indexOf(al.delVendedor) < 0,
         'y NO el alias personal del vendedor', 'el suyo es ' + al.delVendedor);
     chk(al.notaVendedor === false, 'el cartel con el alias del vendedor no se muestra mas');

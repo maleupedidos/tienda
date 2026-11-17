@@ -558,12 +558,12 @@ async function main() {
       'document.execCommand = function () { llamo++; return true; };' +
       'copyAlias("maleubru"); await dormir(150); var t2 = document.getElementById("toast").textContent;' +
       'Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: function () { return Promise.resolve(); } } });' +
-      'document.execCommand = ex0; copyAlias("maleump"); await dormir(150); var t3 = document.getElementById("toast").textContent;' +
+      'document.execCommand = ex0; copyAlias("maleu.ar"); await dormir(150); var t3 = document.getElementById("toast").textContent;' +
       'return JSON.stringify({ t1: t1, t2: t2, t3: t3, llamo: llamo });' +
       '})()'));
     chk(/maleubru/.test(copia.t1) && /mantené apretado/.test(copia.t1), 'si no se puede copiar, lo dice con el alias escrito: "' + copia.t1 + '"');
     chk(/copiado: maleubru/.test(copia.t2), 'si el portapapeles falla, prueba el metodo viejo: "' + copia.t2 + '"');
-    chk(/copiado: maleump/.test(copia.t3), 'con portapapeles, copia como siempre: "' + copia.t3 + '"');
+    chk(/copiado: maleu\.ar/.test(copia.t3), 'con portapapeles, copia como siempre: "' + copia.t3 + '"');
 
     /* ── 5. EL FORMULARIO, EL PAGO Y LOS TAMAÑOS ─────────────────────── */
     console.log('\n' + DIM + '== Formulario y medidas ==' + RST);
