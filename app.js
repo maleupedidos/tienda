@@ -10191,7 +10191,10 @@ function _pintarAliasMaleu() {
      afuera de la unificacion del 30/9/2026 a la mañana. Lo delato el control del
      test: con el bug reinyectado —devolver el alias del vendedor— las otras tres
      pantallas cambiaban y esta no, asi que el chequeo daba verde. */
-  cont.innerHTML = _aliasParaTransferir().map(function (c) {
+  /* (17/11/2026) El título según cuántas cuentas haya: con Galicia sola decía «Transferí a cualquiera de las dos». */
+  var _lst = _aliasParaTransferir(), _tit = document.querySelector('#mp-alias .mp-alias-titulo');
+  if (_tit) _tit.textContent = _lst.length > 1 ? 'Transferí a cualquiera de las dos:' : 'Transferí a nuestra cuenta:';
+  cont.innerHTML = _lst.map(function (c) {
     return '<div class="mp-alias-row">' +
       '<span><span class="mp-alias-banco">' + c.banco + '</span> <strong>' + c.alias + '</strong>' +
         (c.titular ? '<span class="mp-alias-titular">a nombre de ' + c.titular + '</span>' : '') +
