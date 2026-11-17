@@ -4957,6 +4957,44 @@ function carneCardHTML(p) {
   '</article>';
 }
 
+/* «VER MÁS» EN LA DESCRIPCIÓN (17/11/2026). La descripción va a 3 renglones (2 en «Lo más pedido» y «Lo último»), y la
+   que no entraba quedaba cortada sin forma de leerla (los 4 aceites de Estilo Oliva). Se MIDE, no se cuenta: el botón
+   aparece solo si el texto se corta de verdad (scrollHeight > clientHeight) con el ancho y la letra de ese momento.
+   Una descripción oculta (otra sección, sin ancho) no se mide: se mide cuando se ve. Corre después de cada repintado
+   (un MutationObserver sobre los contenedores de cards) y al cambiar el ancho. Al tocarlo se despliega ahí mismo. */
+var _dvmPend = 0;
+function descVerMas() {
+  _dvmPend = 0;
+  document.querySelectorAll('.product-desc').forEach(function (d) {
+    if (d.classList.contains('desc-abierta')) return;
+    var alto = d.clientHeight;
+    if (!alto) return;   /* oculta: se mide cuando se vea */
+    var corta = d.scrollHeight > alto + 1, b = d.nextElementSibling, tiene = !!(b && b.classList.contains('desc-mas'));
+    if (corta && !tiene) d.insertAdjacentHTML('afterend', '<button type="button" class="desc-mas" aria-expanded="false">Ver más</button>');
+    else if (!corta && tiene) b.remove();
+  });
+}
+function _descVerMasLuego() { if (!_dvmPend) _dvmPend = requestAnimationFrame(descVerMas); }
+document.addEventListener('click', function (ev) {
+  var b = ev.target && ev.target.closest && ev.target.closest('.desc-mas');
+  if (!b) return;
+  ev.preventDefault(); ev.stopPropagation();   /* no abre nada ni suma al carrito */
+  var d = b.previousElementSibling; if (!d || !d.classList.contains('product-desc')) return;
+  var abrir = !d.classList.contains('desc-abierta');
+  d.classList.toggle('desc-abierta', abrir);
+  b.textContent = abrir ? 'Ver menos' : 'Ver más';
+  b.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+}, true);
+try {
+  new MutationObserver(function (ms) {
+    for (var i = 0; i < ms.length; i++) if (ms[i].addedNodes.length && !(ms[i].target.classList && ms[i].target.classList.contains('desc-mas'))) { _descVerMasLuego(); return; }
+  }).observe(document.documentElement, { childList: true, subtree: true });
+} catch (e) {}
+window.addEventListener('resize', _descVerMasLuego);
+try { document.fonts.ready.then(_descVerMasLuego); } catch (e) {}
+/* Una sección que estaba oculta y se muestra (cambiar de categoría) no agrega nodos: se mide también al tocar. */
+document.addEventListener('click', function () { setTimeout(_descVerMasLuego, 50); });
+
 function productCardHTML(p) {
   if (esPorPeso(p)) return carneCardHTML(p);
   /* Las chapitas van SOBRE la foto y no en el cuerpo: es lo primero que se

@@ -1188,6 +1188,16 @@ footer.pie .arr-link { margin: .5rem auto .9rem; }
 .product-desc { display:-webkit-box; -webkit-line-clamp:3;
                 -webkit-box-orient:vertical; overflow:hidden; }
 
+/* «VER MÁS» (17/11/2026). Los 4 aceites de Estilo Oliva cortaban en «Es el más liviano de los dos:…» sin forma de
+   leer el resto. El botón lo pone `descVerMas()` SOLO donde el texto de verdad se corta (scrollHeight > clientHeight),
+   y despliega ahí mismo: sin modal y sin salir de la grilla. La card sigue con el precio y el botón abajo
+   (`.product-footer{margin-top:auto}`); la fila crece pareja porque la grilla estira a todas. */
+.product-desc.desc-abierta { display:block; -webkit-line-clamp:unset; overflow:visible; }
+.desc-mas { align-self:flex-start; background:none; border:0; padding:.15rem 0 .35rem; margin:-.3rem 0 .2rem;
+            font-family:var(--font); font-size:.72rem; font-weight:700; color:var(--orange-ink); cursor:pointer;
+            text-decoration:underline; text-underline-offset:2px; min-height:28px; line-height:1.2; }
+.desc-mas:focus-visible { outline:2px solid var(--orange-ink); outline-offset:2px; border-radius:4px; }
+
 /* 4. EL PRECIO — es lo segundo que se mira despues de la foto y estaba
       al mismo tamaño que el nombre del producto. */
 .product-price { font-size:1.15rem; letter-spacing:-.02em; }
