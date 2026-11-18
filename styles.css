@@ -515,6 +515,10 @@ header { background:var(--cream); z-index:100; padding:.7rem 1.2rem; display:fle
 .qty-val { font-weight:700; font-size:.85rem; min-width:1rem; text-align:center; }
 .cart-foot { padding:1rem 1.2rem; border-top:1px solid #f0f0f0; }
 .cart-total-row { display:flex; justify-content:space-between; font-size:.85rem; padding:.3rem 0; }
+/* Los kilos de carne: va arriba de la plata y separado, porque no es un monto
+   (18/11/2026). */
+.cart-total-row.cart-carne-row { color:var(--brown); font-weight:600; font-variant-numeric:tabular-nums; border-bottom:1px dashed #e6dcd6; padding-bottom:.45rem; margin-bottom:.2rem; }
+.summary-line.summary-carne { color:var(--brown); font-weight:600; font-variant-numeric:tabular-nums; border-top:1px dashed #e6dcd6; padding-top:.4rem; margin-top:.25rem; }
 .cart-total-row.grand { font-weight:700; font-size:1rem; border-top:1px solid #eee; padding-top:.6rem; margin-top:.3rem; }
 .go-form-btn { display:block; width:100%; padding:.8rem; background:var(--orange); color:#fff; border:none; border-radius:12px; font-family:var(--font); font-weight:700; font-size:.95rem; cursor:pointer; margin-top:.7rem; transition:background .15s; }
 .go-form-btn:hover { background:var(--hover-orange); }

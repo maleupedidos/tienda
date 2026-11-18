@@ -4596,6 +4596,23 @@ Términos y Privacidad, y el botón de arrepentimiento grande y aparte.
 - `verificar-paginas` deja pasar UNA mención del dueño: "a nombre de Tadeo Alberto
   Ustariz", el titular del alias (decisión del 23/10). Cualquier otra se sigue marcando.
 
+## Cuánta carne lleva en total (18/11/2026)
+
+Pedido de un cliente: «cuando alguien va sumando cortes, es clave saber cuántos kilos está comprando en total».
+`carneEnCarrito()` / `carneTotalTexto()` suman los cortes por peso (piezas y reservas) y lo dicen en tres lados: el
+renglón **«Carne en total»** del carrito (arriba del subtotal, solo con carne), el resumen del checkout y el aviso
+al agregar desde la segunda pieza («· llevás 2,821 kg de carne») o al sacar una. No toca plata.
+
+- **Sin «aprox.» con piezas**: están pesadas y se cobran por ese peso, así que la suma es exacta y va con gramos.
+  Con una reserva sí: «aprox.» y redondeado al décimo.
+- **Chorizo y morcilla quedan afuera**: van por «Paquete x 4» y no tienen peso cargado. No inventarles uno.
+- Red: `node _tools/verificar-carne-total.js [ancho]`, con el **inventario real de la base** (lecturas) y todo lo
+  que escribe cortado, igual que el píxel y Analytics. `URL=https://maleu.com.ar` la corre contra la viva;
+  `REINYECTAR=1` mete el bug (7 rojos). Ojo: con `CAPTURAS` puesto, la corrida con el bug pisa la captura buena.
+- **Al 18/11/2026 `verificar-piezas`, `verificar-reserva`, `verificar-checkout` y `verificar-carrito` dan rojos
+  también contra HEAD** (14, 12, 21 y 1): simulan el inventario por `action=piezas_full` de Apps Script y la tienda
+  lo lee de la base. Son redes viejas, no bugs; hay que pasarlas a interceptar las RPC de la base.
+
 ## Lo que NO está acá
 
 - **Las reglas de la tienda** (stock, cutoffs, zonas, días de entrega): están en

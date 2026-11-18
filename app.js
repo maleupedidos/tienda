@@ -886,7 +886,9 @@ function togglePieza(abbr, piezaId) {
   if (piezaCart[piezaId]) {
     var fuera = piezaCart[piezaId];
     delete piezaCart[piezaId];
-    toast('Sacaste ' + fuera.nombre + ' de ' + kgTexto(fuera.kg));
+    var queda = carneEnCarrito();
+    toast('Sacaste ' + fuera.nombre + ' de ' + kgTexto(fuera.kg) +
+          (queda.cortes ? ' · te quedan ' + carneTotalTexto(queda) + ' de carne' : ''));
   } else {
     var prod = PRODUCTOS.filter(function (x) { return x.abbr === abbr; })[0];
     var pz = (piezasMap[abbr] || []).filter(function (x) { return x.id === piezaId; })[0];
@@ -896,7 +898,12 @@ function togglePieza(abbr, piezaId) {
     if (!prod || !pz) { toast('⚠️ Esa pieza ya no está disponible', 3000); return; }
     piezaCart[piezaId] = { abbr: abbr, id: prod.id, kg: pz.kg,
                            precio: piezaPrecio(prod, pz.kg), nombre: prod.nombre };
-    toast('✓ ' + prod.nombre + ' de ' + kgTexto(pz.kg) + ' agregado');
+    /* Desde la segunda pieza dice cuanto va sumando: es el momento en que el
+       cliente arma el asado y saca la cuenta. Con la primera repetiria el
+       mismo numero dos veces. */
+    var lleva = carneEnCarrito();
+    toast('✓ ' + prod.nombre + ' de ' + kgTexto(pz.kg) + ' agregado' +
+          (Object.keys(piezaCart).length > 1 ? ' · llevás ' + carneTotalTexto(lleva) + ' de carne' : ''));
     _track('add_to_cart', { id: prod.abbr || prod.id, item_name: prod.nombre + ' ' + kgTexto(pz.kg),
                             price: piezaCart[piezaId].precio, zone: currentZone });
   }
@@ -1015,6 +1022,30 @@ function piezasAgrupadas() {
       total: lista.reduce(function (t, x) { return t + x.precio; }, 0)
     };
   });
+}
+
+/* CUANTA CARNE LLEVA EN TOTAL (18/11/2026). Un cliente, armando el asado: «es
+   clave saber cuantos kilos de carne estoy comprando en total». Cada corte ya
+   decia sus kilos; la suma no estaba en ningun lado.
+
+   Suma los cortes por peso (piezas y reservas). Chorizo y morcilla quedan
+   afuera: van por paquete y no tienen peso cargado, y uno inventado haria
+   mentir al total.
+
+   Las piezas estan PESADAS (se pesan en RECIBIR CARNE y se cobran por ese
+   peso), asi que su suma es exacta y se dice con los gramos, igual que cada
+   pieza. Solo una reserva la vuelve aproximada: ahi se redondea al decimo,
+   porque tres decimales de algo que todavia no se peso es precision falsa. */
+function carneEnCarrito() {
+  var kg = 0, aprox = false, cortes = 0;
+  piezasAgrupadas().forEach(function (g) { kg += g.kg; cortes++; if (g.reserva) aprox = true; });
+  return { kg: kg, aprox: aprox, cortes: cortes };
+}
+function carneTotalTexto(c) {
+  c = c || carneEnCarrito();
+  return c.aprox
+    ? String(Math.round(c.kg * 10) / 10).replace('.', ',') + ' kg aprox.'
+    : kgTexto(c.kg);
 }
 
 /* Traer el inventario del backend: `piezas_full`, el equivalente publico de
@@ -5830,6 +5861,12 @@ function updateUI() {
     bodyEl.innerHTML = comboLines + prodLinesHtml + piezaLinesHtml + '<div id="cart-sug" hidden></div>';
     _pintarSugerencia();
     $id('cart-subtotal').textContent = ars(subtotal);
+    /* Los kilos de carne, arriba de la plata. Solo con carne en el carrito. */
+    var carneRow = $id('cart-carne-row'), carneTot = carneEnCarrito();
+    if (carneRow) {
+      carneRow.style.display = carneTot.cortes ? '' : 'none';
+      if (carneTot.cortes) $id('cart-carne').textContent = carneTotalTexto(carneTot);
+    }
     const discRow = $id('cart-discount-row');
     if (discount > 0) {
       discRow.style.display = '';
@@ -5944,6 +5981,12 @@ function updateFormSummary() {
     return '<div class="summary-line"><span>' + g.nombre + ' <strong>' + kgTexto(g.kg) + '</strong>' +
       detalle + '</span><span>' + ars(g.total) + '</span></div>';
   }).join('');
+  /* El mismo total de kilos que el carrito: si uno lo dice y el otro no, el
+     cliente lo busca en el resumen y no lo encuentra. */
+  var carneRes = carneEnCarrito();
+  if (carneRes.cortes) {
+    html += '<div class="summary-line summary-carne"><span>Carne en total</span><span>' + carneTotalTexto(carneRes) + '</span></div>';
+  }
 
   // Sub Total: solo si hay descuentos (deja claro de qué monto sale el 10%/cupón).
   if (totalDesc > 0) {
