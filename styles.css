@@ -922,6 +922,19 @@ footer.pie .arr-link { margin: .5rem auto .9rem; }
   cursor: pointer; touch-action: manipulation;
 }
 .send-wa-btn:hover { background: #20BD5A; }
+/* (17/11/2026, 751) «Reintentar» va primero, en el naranja de la marca; con él a la vista, el mail pasa a ser la
+   segunda salida (contorno). `[hidden]` necesita su regla: `display:flex` le gana. */
+.send-reintentar-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; min-height: 48px; padding: .8rem; margin-bottom: .6rem;
+  background: var(--orange); color: #fff; border: none; border-radius: 12px;
+  font-family: var(--font); font-weight: 700; font-size: 1rem;
+  cursor: pointer; touch-action: manipulation;
+}
+.send-reintentar-btn:hover { background: var(--hover-orange); }
+.send-reintentar-btn[hidden] { display: none; }
+.send-reintentar-btn:not([hidden]) + .send-wa-btn { background: transparent; color: var(--brown); border: 1.5px solid #d9cdb8; }
+.send-reintentar-btn:not([hidden]) + .send-wa-btn:hover { background: #f6f0e2; }
 .send-card .send-fallback-nota { font-size: .78rem; color: #6b5a52; margin: .7rem 0 0; }
 
 /* ── ESTADO `done`: EL PEDIDO QUEDA CERRADO ACA (28/9/2026) ──

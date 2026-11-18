@@ -6496,16 +6496,38 @@ function setSendLoaderLento() {
    dice que NO quedo registrado y lleva los datos para cargarlo a mano. La
    tienda sigue intentando mientras tanto: si confirma antes del toque, sigue
    sola por el camino normal. Y la cola local reintenta despues igual. */
-function setSendLoaderFallback(alTocar) {
+/* (17/11/2026, 751) «Reintentar» va primero: el carrito sigue intacto (se vacía recién cuando el pedido
+   entra) y un toque lo vuelve a mandar con el MISMO clientOrderId, así que no puede entrar dos veces. El
+   mail queda como segunda salida. */
+function setSendLoaderFallback(alTocar, alReintentar) {
   var ov = $id('send-overlay');
   if (!ov) return;
   var card = ov.querySelector('.send-card');
   if (card) card.classList.add('fallback');
   var t = $id('send-title'), s = $id('send-sub');
   if (t) t.textContent = 'Todavía no se registró';
-  if (s) s.textContent = 'Podés mandarlo igual por mail: te lo dejamos escrito con todos tus datos.';
+  if (s) s.textContent = alReintentar
+    ? 'Tu carrito sigue acá, no se perdió nada. Probá de nuevo; si sigue sin entrar, mandalo por mail con todos tus datos.'
+    : 'Podés mandarlo igual por mail: te lo dejamos escrito con todos tus datos.';
+  var rb = $id('send-reintentar-btn');
+  if (rb) {
+    rb.hidden = !alReintentar;
+    rb.disabled = false;
+    rb.textContent = 'Reintentar';
+    rb.onclick = alReintentar ? function () { rb.onclick = null; alReintentar(); } : null;
+  }
   var fb = $id('send-wa-btn');
   if (fb) { fb.textContent = 'Mandarlo por mail'; fb.onclick = function () { fb.onclick = null; alTocar(); }; }
+}
+/* De vuelta a «Registrando…» después de tocar «Reintentar». */
+function setSendLoaderReintentando() {
+  var ov = $id('send-overlay');
+  if (!ov) return;
+  var card = ov.querySelector('.send-card');
+  if (card) card.classList.remove('fallback');
+  var t = $id('send-title'), s = $id('send-sub');
+  if (t) t.textContent = 'Registrando tu pedido…';
+  if (s) s.textContent = 'Probando de nuevo. No cierres esta pantalla.';
 }
 /* Despues de abrir el mail el cliente se queda en la tienda (el mail no se lleva
    la pagina, como hacia wa.me). Se le dice que hacer y se le da la salida. */
@@ -7905,12 +7927,21 @@ function enviarPedido() {
   }, SEND_FALLBACK_MS);
 
   function _fallbackMail() {
+    if (_terminado) return;
+    clearTimeout(tFallback);
     setSendLoaderFallback(function () {
       /* Ultimo intento antes de irse: el beacon sobrevive a que la pagina
          cambie. Si llega junto con el fetch que sigue en vuelo, el backend
          descarta el repetido por clientOrderId. */
       _beaconPendientes();
       _cerrarPedido(false);
+    }, function () {
+      /* (17/11/2026, 751) Reintentar: el mismo pedido, ya. Si entra, `_alConfirmar` lo cierra como siempre;
+         si a los SEND_REINTENTO_MS sigue sin entrar (o falla enseguida), vuelve este cartel. */
+      setSendLoaderReintentando();
+      if (_programado[postData.clientOrderId]) { clearTimeout(_programado[postData.clientOrderId]); delete _programado[postData.clientOrderId]; }
+      _sendWithRetry(postData).catch(function (err) { if (!_terminado && _falloRapido(err)) _fallbackMail(); });
+      tFallback = setTimeout(_fallbackMail, SEND_REINTENTO_MS);
     });
   }
 
@@ -8059,7 +8090,9 @@ function enviarPedido() {
   /* `resp` trae el N de pedido que asigno el ERP (`n`). Hasta el 28/9/2026 se
      descartaba: el mensaje de WhatsApp no lo usaba. La pantalla de cierre si. */
   _alConfirmar(postData.clientOrderId, function (resp) { _cerrarPedido(true, resp); });
-  _sendWithRetry(postData).catch(function () { /* los reintentos siguen solos; a los 25 s decide el fallback */ });
+  /* Los reintentos siguen solos. Si se agotó el tiempo, a los 45 s decide el fallback (el vigilante puede encontrarlo
+     adentro). Si la base CONTESTÓ con un error (17/11/2026, 751), nadie espera 45 s mirando un cartel: «Reintentar» ya. */
+  _sendWithRetry(postData).catch(function (err) { if (!_terminado && _falloRapido(err)) _fallbackMail(); });
   /* En paralelo al POST: preguntar si entró. Gana el que conteste primero. */
   _vigilarSiEntro(postData.clientOrderId);
 }
@@ -8123,6 +8156,34 @@ var MALEU_FETCH_TIMEOUT_MS = 30000;
    que volver a medir y recalibrar en vez de dejarlos holgados para siempre. */
 var SEND_LENTO_MS = 25000;      // "la conexion esta lenta" — arriba del p75
 var SEND_FALLBACK_MS = 45000;   // se ofrece mandarlo por mail sin confirmar
+var SEND_REINTENTO_MS = 20000;  // (751) después de tocar «Reintentar», cuánto se espera antes de volver a ofrecerlo
+
+/* (17/11/2026, 751) ¿El intento falló RÁPIDO? Rápido = la base contestó con un error, o no hay red: no tiene sentido
+   que el cliente mire el cartel 45 s. Un tiempo agotado no es rápido: el pedido puede estar entrando (el vigilante
+   pregunta), y para eso está el fallback de los 45 s. El corte del viernes tiene su propio aviso. */
+function _falloRapido(err) {
+  if (!err || err.corte) return false;
+  var m = String(err.message || err);
+  return !/tiempo-8s|AbortError|abort/i.test(m);
+}
+
+/* (17/11/2026, 751) CADA INTENTO FALLIDO QUEDA ANOTADO EN LA BASE: hora, ref, nombre, teléfono, canal, total, el
+   carrito y el error (`tienda_alta_fallida_anotar`, anónima, nunca falla). La primera falla de un pedido le levanta
+   una alerta a Backend con los datos para llamar, y si después entra, la alerta se resuelve sola. Solo desde
+   maleu.com.ar (o una prueba que lo fuerza): las pruebas en localhost no ensucian la tabla. */
+function _altaFallidaAnotar(data, err, intento) {
+  try {
+    if (!data || !data.clientOrderId || typeof _altaBaseVa !== 'function' || !_altaBaseVa()) return;
+    var items = (Array.isArray(data.items) ? data.items : []).slice(0, 40).map(function (i) {
+      return { id: String(i && i.id || ''), nombre: String(i && i.nombre || ''), qty: Number(i && i.qty) || 0 };
+    });
+    fetch(SB_URL_TIENDA + '/rest/v1/rpc/tienda_alta_fallida_anotar', { method: 'POST', keepalive: true, cache: 'no-store',
+      headers: { apikey: SB_KEY_TIENDA, Authorization: 'Bearer ' + SB_KEY_TIENDA, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p: { ref: data.clientOrderId, nombre: String(data.nombre || '').slice(0, 80),
+        telefono: String(data.telefono || '').slice(0, 30), canal: String(data.canal || ''), total: Math.round(Number(data.total) || 0),
+        items: items, error: String((err && err.message) || err || '?').slice(0, 300), intento: Number(intento) || 0 } }) }).catch(function () {});
+  } catch (e) {}
+}
 
 // ── SIGNATURE-BASED IDEMPOTENCY (21/06/26) ────────────────────────────
 // Si el cliente aprieta 'Pedir por WhatsApp' 2 veces con el MISMO pedido
@@ -8452,6 +8513,7 @@ function _sendWithRetry(data) {
       map[key].tries = (map[key].tries || 0) + 1;
       map[key].lastError = String((err && err.message) || err);
       _pendingSave(map);
+      _altaFallidaAnotar(data, err, map[key].tries);
       if (map[key].tries < MALEU_MAX_TRIES) {
         var delay = MALEU_RETRY_DELAYS[Math.min(map[key].tries - 1, MALEU_RETRY_DELAYS.length - 1)];
         _programado[key] = setTimeout(function () {
