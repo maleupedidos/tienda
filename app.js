@@ -183,15 +183,12 @@ const PRODUCTOS = [
   { id:35, abbr:"CVE", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Vac\u00edo entero", desc:"La pieza entera, como la pide el asador. Para una parrillada en serio.", img:"carne-vacio-entero.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Pieza entera"] },
   { id:36, abbr:"CBC", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Bife de Chorizo", desc:"Jugoso y con su borde de grasa. El cl\u00e1sico de la parrilla.", img:"carne-bife-chorizo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
   { id:37, abbr:"COB", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Ojo de Bife", desc:"Bien marmolado, tierno y lleno de sabor. Vuelta y vuelta.", img:"carne-ojo-bife.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
-  /* (13/11/2026, Tadeo) Matambre FUERA DE LA TIENDA: `zonas:[]` lo saca del catálogo, de Carnes y de las sugerencias
-     (`_zonaPermite`). En el ERP sigue vendible (quedan 2 piezas). Para volver: zonas:["estancias","pilar"]. */
-  { id:38, abbr:"CMa", cat:"Carnes", porPeso:true, zonas:[], nombre:"Matambre entero", desc:"A la parrilla, a la pizza o arrollado. Rinde un mont\u00f3n.", img:"carne-matambre.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Pieza entera"] },
+  /* 18/11/2026: todos los cortes disponibles se ofrecen en Home y barrios de Pilar, incluidos representantes. */
+  { id:38, abbr:"CMa", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Matambre entero", desc:"A la parrilla, a la pizza o arrollado. Rinde un mont\u00f3n.", img:"carne-matambre.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Pieza entera"] },
   { id:39, abbr:"CAC", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Asado Costilla Especial", desc:"El asado en placa, con su hueso. Fuego bajo y sin apuro.", img:"carne-asado-cotilla.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
   { id:40, abbr:"CAB", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Asado Banderita", desc:"Tiras con el hueso cruzado. Se hace r\u00e1pido y queda crocante.", img:"carne-asado-banderita.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
   { id:41, abbr:"CPe", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Peceto feteado", desc:"Magro y tierno, ya cortado en fetas. Para milanesas o a la plancha. Viene congelado.", img:"carne-peceto.jpg", emoji:"\ud83e\udd69", chips:["Congelado","Envasado al vac\u00edo","Feteado"] },
-  /* Matambrito de cerdo, de Carm\u00edn y Fuegos (29/10/2026). `sinVendedor`: todav\u00eda no tiene comisi\u00f3n de Red y no
-     est\u00e1 en la hoja Red, as\u00ed que en un barrio con representante no se ofrece. */
-  { id:45, abbr:"CMC", cat:"Carnes", porPeso:true, sinVendedor:true, nuevo:true, zonas:["estancias","pilar"], nombre:"Matambrito de cerdo", desc:"Tierno y jugoso. A la parrilla o al horno, con lim\u00f3n o a la pizza.", img:"carne-matambrito-cerdo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Cerdo"] },
+  { id:45, abbr:"CMC", cat:"Carnes", porPeso:true, nuevo:true, zonas:["estancias","pilar"], nombre:"Matambrito de cerdo", desc:"Tierno y jugoso. A la parrilla o al horno, con lim\u00f3n o a la pizza.", img:"carne-matambrito-cerdo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Cerdo"] },
   /* Chorizo y morcilla, de Carm\u00edn y Fuegos (8/11/2026). Por PAQUETE, no por kilo: van en su propia categor\u00eda
      para no caer en la grilla de piezas de Carnes. Se venden en todos los canales (Red incluida), as\u00ed que sin `sinVendedor`. */
   { id:47, abbr:"Cho", cat:"Carnes", nuevo:true, ancha:true, zonas:["estancias","pilar"], nombre:"Chorizo", desc:"El cl\u00e1sico que abre el asado. Directo a la parrilla, o en un chori con pan.", img:"carne-chorizo.jpg", emoji:"\ud83c\udf2d", chips:["Paquete x 4","Para la parrilla"] },
@@ -710,7 +707,7 @@ function piezasDe(abbr) {
    mayor a menor margen, medido en el ERP: sugerir primero lo que menos deja
    seria empujar justo la venta que menos conviene. Los numeros no van aca:
    el repo es publico. Un corte nuevo que no este en la lista entra al final. */
-var SUG_CARNE_ORDEN = ['CVE', 'CBC', 'COB', 'CAC', 'CAB', 'CPe', 'CPi', 'CCo', 'CLo', 'CEn', 'CVa', 'CMC'];   /* (13/11) sin CMa: fuera de la tienda */
+var SUG_CARNE_ORDEN = ['CVE', 'CBC', 'COB', 'CAC', 'CAB', 'CPe', 'CPi', 'CCo', 'CLo', 'CEn', 'CVa', 'CMa', 'CMC'];
 var SUG_CARNE_MAX = 2;
 
 function _sugerenciaCarne() {

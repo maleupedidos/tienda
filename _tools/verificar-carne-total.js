@@ -318,6 +318,27 @@ async function main() {
     chk(!(await ev("!!document.querySelector('.summary-line.summary-carne')")), 'ni en el resumen');
     await ev("cart = {}; updateUI();");
 
+    // 18/11: los cortes disponibles no desaparecen al elegir un barrio de representante.
+    const zonasCarne = await ev(`(function(){
+      var previo = {z:currentZone,b:selectedPilarBarrio,n:selectedPilarBarrioName};
+      var casos = ['estancias','pilar'], faltan=[];
+      casos.forEach(function(z){
+        currentZone=z;
+        var barrios=z==='pilar'?Object.keys(barrioToVendedor).concat(['__otro__']):[''];
+        barrios.forEach(function(b){
+          selectedPilarBarrio=b;selectedPilarBarrioName=b;
+          var activos=getActiveProducts();
+          renderCatalog();
+          [38,45].forEach(function(id){
+            if(!activos.some(function(p){return p.id===id;}) || !document.querySelector('.carne-card[data-id="'+id+'"]'))faltan.push(z+':'+b+':'+id);
+          });
+        });
+      });
+      currentZone=previo.z;selectedPilarBarrio=previo.b;selectedPilarBarrioName=previo.n;
+      return {faltan:faltan,barrios:Object.keys(barrioToVendedor).length};
+    })()`);
+    chk(zonasCarne.faltan.length===0 && zonasCarne.barrios>0, 'matambres en Home y '+zonasCarne.barrios+' barrios: '+JSON.stringify(zonasCarne.faltan));
+
     chk(escrituras.length === 0, 'no salio ninguna escritura (' + (escrituras.join(', ') || 'ninguna') + ')');
     chk(lecturas.has('tienda_piezas'), 'las piezas vinieron de la base de verdad (' + [...lecturas].join(', ') + ')');
   } catch (e) {
