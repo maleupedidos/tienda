@@ -184,7 +184,7 @@ const PRODUCTOS = [
   { id:36, abbr:"CBC", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Bife de Chorizo", desc:"Jugoso y con su borde de grasa. El cl\u00e1sico de la parrilla.", img:"carne-bife-chorizo.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
   { id:37, abbr:"COB", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Ojo de Bife", desc:"Bien marmolado, tierno y lleno de sabor. Vuelta y vuelta.", img:"carne-ojo-bife.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
   /* 18/11/2026: todos los cortes disponibles se ofrecen en Home y barrios de Pilar, incluidos representantes. */
-  { id:38, abbr:"CMa", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Matambre entero", desc:"A la parrilla, a la pizza o arrollado. Rinde un mont\u00f3n.", img:"carne-matambre.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo","Pieza entera"] },
+  { id:38, abbr:"CMa", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Matambre entero", desc:"A la parrilla, a la pizza o arrollado. Rinde un mont\u00f3n. Viene congelado.", img:"carne-matambre.jpg", emoji:"\ud83e\udd69", chips:["Congelado","Envasado al vac\u00edo","Pieza entera"] },   /* (18/11/2026, Tadeo) congelado, igual que el peceto: desc y chip (en la base, la 792) */
   { id:39, abbr:"CAC", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Asado Costilla Especial", desc:"El asado en placa, con su hueso. Fuego bajo y sin apuro.", img:"carne-asado-cotilla.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
   { id:40, abbr:"CAB", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Asado Banderita", desc:"Tiras con el hueso cruzado. Se hace r\u00e1pido y queda crocante.", img:"carne-asado-banderita.jpg", emoji:"\ud83e\udd69", chips:["Fresco, no congelado","Envasado al vac\u00edo"] },
   { id:41, abbr:"CPe", cat:"Carnes", porPeso:true, zonas:["estancias","pilar"], nombre:"Peceto feteado", desc:"Magro y tierno, ya cortado en fetas. Para milanesas o a la plancha. Viene congelado.", img:"carne-peceto.jpg", emoji:"\ud83e\udd69", chips:["Congelado","Envasado al vac\u00edo","Feteado"] },
@@ -205,7 +205,7 @@ const CATEGORIAS = [
      es ninguno de los cortes que se venden; del 13 al 14/9, la colita cruda.
      Desde el 14/9 es carne a la parrilla, cortada (la paso Tadeo): las demas
      categorias muestran el producto cocinado, y la carne cruda desentonaba. */
-  { nombre:"Carnes",              icono:"🥩", nota:"Cortes frescos de Maleu Carnes (el peceto, congelado), chorizo y morcilla · Los cortes los elegís por pieza y sabés su peso exacto antes de pedirlos", img:"categoria-carnes.jpg" },
+  { nombre:"Carnes",              icono:"🥩", nota:"Cortes frescos de Maleu Carnes (el peceto y el matambre, congelados), chorizo y morcilla · Los cortes los elegís por pieza y sabés su peso exacto antes de pedirlos", img:"categoria-carnes.jpg" },
   { nombre:"Wraps",               icono:"🌯", nota:"Pre-cocidos · Listos al horno en pocos minutos" },
   { nombre:"Empanadas",           icono:"🥟", nota:"x8 unidades · Congeladas, listas para el horno · Cocinar hasta dorar" },
   { nombre:"Sorrentinos",         icono:"🍝", nota:"600g · 16 unidades · Rinde 3 porciones · Solo 4 minutos de cocción", tip:"Hervir agua · Agregar sorrentinos · 4 min con olla destapada · Retirar con espumadera y servir" },
