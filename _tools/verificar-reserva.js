@@ -151,6 +151,11 @@ const PREP = '(function () {' +
   'var json = function (o) { return Promise.resolve(new Response(JSON.stringify(o), { status: 200, headers: { "Content-Type": "application/json" } })); };' +
   'window.fetch = function (url, opts) {' +
   '  var u = String(url);' +
+  /* (18/11/2026) La tienda lee de la base primero (`_deLaBaseOApps`): una RPC conocida se responde con el mismo
+     mock que su accion de Apps Script. Sin esto la tienda traia lo REAL de la base y la red media otra cosa. */
+  '  var _rpc = (u.match(/\\/rest\\/v1\\/rpc\\/([a-z_]+)/) || [])[1];' +
+  '  var _act = _rpc && {tienda_piezas:\"piezas_full\",tienda_stock:\"stock_full\",tienda_vendedores:\"vendedores\",tienda_validar_cupon:\"validarCupon\",tienda_saldo_cliente:\"saldoCliente\",tienda_seguimiento:\"seguimiento\"}[_rpc];' +
+  '  if (_act) { u = "https://script.google.com/simulado?action=" + _act; opts = undefined; }' +
   '  if (opts && String(opts.method || "").toUpperCase() === "POST" && u.indexOf("script.google") >= 0) {' +
   '    var body = String(opts.body || ""); window.__posts.push({ body: body });' +
   '    var d = {}; try { d = JSON.parse(body); } catch (e) {}' +
@@ -294,7 +299,11 @@ async function main() {
        con carteles de "no hay". Un corte que SE PUEDE RESERVAR si se dibuja —
        no esta agotado, hay carne en camino y se vende hoy. */
     chk(dormida.grises === 0, 'sin reserva y con la entraña en el freezer, los otros cuatro no se dibujan (' + dormida.grises + ' grises)');
-    chk(/1 opci[oó]n/.test(dormida.tile || ''), 'el tile de Carnes cuenta 1 opcion ("' + dormida.tile + '")');
+    /* Desde que hay chorizo y morcilla (Carnes, por paquete y no por peso) el tile los cuenta tambien: la cuenta
+       esperada son los cortes MAS esos, medidos en la pagina (18/11/2026). */
+    const sinPeso = await ev('document.querySelectorAll("#cat-carnes .product-card:not(.carne-card)").length');
+    const opc = (n) => new RegExp('(^|\\D)' + n + ' opci(o|ó)n');
+    chk(opc(1 + sinPeso).test(dormida.tile || ''), 'el tile de Carnes cuenta 1 corte + ' + sinPeso + ' por paquete ("' + dormida.tile + '")');
 
     /* ── 2. CON `_reserva`: QUE SE VE ─────────────────────────────────── */
     console.log('\n' + DIM + '== Con _reserva: los cortes sin piezas se reservan ==' + RST);
@@ -312,7 +321,7 @@ async function main() {
        se dibuja. */
     chk(vista.cards.indexOf('CPi:X') < 0 && vista.cards.indexOf('CPi:R') < 0,
         'y la picaña no aparece: 0,7 kg no llegan al minimo, asi que no hay nada que venderle');
-    chk(/4 opciones/.test(vista.tile), 'el tile de Carnes cuenta 4 opciones ("' + vista.tile + '")');
+    chk(opc(4 + sinPeso).test(vista.tile), 'el tile de Carnes cuenta 4 cortes + ' + sinPeso + ' por paquete ("' + vista.tile + '")');
     const sEnt = await cardSel('CEn');
     const ent = JSON.parse(await ev('(function () { var c = document.querySelector(' + JSON.stringify(sEnt) + ');' +
       'var antes = cartCount(); cambiarReserva("CEn", 0.5);' +
@@ -375,7 +384,7 @@ async function main() {
     chk(/transferí cuando te confirmemos el total/.test(hint), 'por transferencia: transferir cuando se confirme el total ("' + hint + '")');
     const esp = JSON.parse(await ev('(async function () {' +
       'var dormir = function (ms) { return new Promise(function (s) { setTimeout(s, ms); }); };' +
-      'var c = { "f-nombre": "PRUEBA Reserva", "f-telefono": "1155038905", "f-lote": "77" };' +
+      'var c = { "f-nombre": "PRUEBA Reserva", "f-telefono": "1155038905", "f-lote": "77", "f-mail": "prueba.reserva@gmail.com" };' +
       'var bp = document.getElementById("f-barrio-privado"); bp.value = "Estancias del Río"; bp.dispatchEvent(new Event("change", { bubbles: true }));' +
       'Object.keys(c).forEach(function (id) { var e = document.getElementById(id); e.value = c[id]; e.dispatchEvent(new Event("change", { bubbles: true })); });' +
       'var ef = document.querySelector("input[name=pago][value=Efectivo]"); ef.checked = true; ef.dispatchEvent(new Event("change", { bubbles: true }));' +
@@ -419,7 +428,7 @@ async function main() {
       '   items: (document.getElementById("send-done-items") || {}).textContent || "",' +
       '   filas: filas.join(" | "),' +
       '   pago: pago && !pago.hidden ? pago.textContent : "" }); })()'));
-    chk(cie.done && /confirmado/i.test(cie.titulo), 'el ERP confirma y queda la pantalla de cierre ("' + cie.titulo + '")');
+    chk(cie.done && /^Recibimos tu pedido #999$/.test(cie.titulo), 'el ERP confirma y queda la pantalla de cierre, con su numero ("' + cie.titulo + '")');
     chk(whatsapps.length === 0, 'sin mandarlo a WhatsApp: el pedido termina aca');
     chk(/Vac[ií]o[\s\S]{0,40}reserva de 1,5 kg/.test(cie.items), 'el vacio dice "reserva de 1,5 kg" (' + cie.items.replace(/\s+/g, ' ').slice(0, 80) + ')');
     chk(/Total=Aprox\. \$/.test(cie.filas), 'el total se muestra como aproximado (' + (cie.filas.match(/Total=[^|]*/) || [''])[0] + ')');
@@ -452,7 +461,7 @@ async function main() {
     const frenado = JSON.parse(await ev('(async function () {' +
       'var dormir = function (ms) { return new Promise(function (s) { setTimeout(s, ms); }); };' +
       'var bp = document.getElementById("f-barrio-privado"); bp.value = "Estancias del Río"; bp.dispatchEvent(new Event("change", { bubbles: true }));' +
-      '["f-nombre:PRUEBA Fecha", "f-telefono:1155038905", "f-lote:9"].forEach(function (x) { var k = x.split(":"); var e = document.getElementById(k[0]); e.value = k[1]; e.dispatchEvent(new Event("change", { bubbles: true })); });' +
+      '["f-nombre:PRUEBA Fecha", "f-telefono:1155038905", "f-lote:9", "f-mail:prueba.reserva@gmail.com"].forEach(function (x) { var k = x.split(":"); var e = document.getElementById(k[0]); e.value = k[1]; e.dispatchEvent(new Event("change", { bubbles: true })); });' +
       'var ef = document.querySelector("input[name=pago][value=Efectivo]"); ef.checked = true; ef.dispatchEvent(new Event("change", { bubbles: true }));' +
       'document.getElementById("f-dia").value = "Miércoles"; document.getElementById("f-dia-fecha").value = "2026-09-16";' +
       'var antes = window.__posts.length; enviarPedido(); await dormir(600);' +

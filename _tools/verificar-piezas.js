@@ -130,6 +130,10 @@ function prep(piezas) {
   window.fetch = function (url, opts) {
     var u = String(url);
     var metodo = String((opts && opts.method) || 'GET').toUpperCase();
+    /* (18/11/2026) La tienda lee las piezas de la base primero: la RPC se responde como su accion. */
+    var _rpc = (u.match(/\\/rest\\/v1\\/rpc\\/([a-z_]+)/) || [])[1];
+    var _act = _rpc && {tienda_piezas:"piezas_full",tienda_stock:"stock_full",tienda_vendedores:"vendedores",tienda_validar_cupon:"validarCupon",tienda_saldo_cliente:"saldoCliente",tienda_seguimiento:"seguimiento"}[_rpc];
+    if (_act) { u = 'https://script.google.com/simulado?action=' + _act; metodo = 'GET'; }
     if (metodo === 'GET' && u.indexOf('action=piezas_full') >= 0) {
       return Promise.resolve(new Response(JSON.stringify(R),
         { status: 200, headers: { 'Content-Type': 'application/json' } }));

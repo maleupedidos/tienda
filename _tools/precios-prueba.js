@@ -22,7 +22,10 @@ const PV = {"PMu":11200,"PMa":11500,"PJyQ":11800,"PCC":11500,"PJyM":12000,"PPM":
      (RC/RP), no el de la planilla: aca solo tiene que ser > 0. */
   "WPo":13000,"WBo":13000,"WVe":13000,
   /* Aceites de oliva y Torta La Bo (13/11/2026), precios del ERP de ese día. */
-  "AdO500Ar":14750,"AdO500Co":20900,"AdO1LAr":27200,"AdO1LCo":34000,"TLB":20000};
+  "AdO500Ar":14750,"AdO500Co":20900,"AdO1LAr":27200,"AdO1LCo":34000,"TLB":20000,
+  /* Matambrito de cerdo, chorizo y morcilla (18/11/2026, precios de la base de ese día). Faltaban y nadie lo vio:
+     las redes recibían los precios REALES de la base, porque simulaban solo Apps Script. */
+  "CMC":27500,"Cho":10570,"Mor":9290};
 const COMBOS = { cmb_descubri_semana: 46900, cmb_descubri_finde: 34900, cmb_noche_casa: 23900,
   cmb_mesa_familiar: 45900, cmb_freezer_lleno: 84900 };
 

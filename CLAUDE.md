@@ -4609,9 +4609,13 @@ al agregar desde la segunda pieza («· llevás 2,821 kg de carne») o al sacar 
 - Red: `node _tools/verificar-carne-total.js [ancho]`, con el **inventario real de la base** (lecturas) y todo lo
   que escribe cortado, igual que el píxel y Analytics. `URL=https://maleu.com.ar` la corre contra la viva;
   `REINYECTAR=1` mete el bug (7 rojos). Ojo: con `CAPTURAS` puesto, la corrida con el bug pisa la captura buena.
-- **Al 18/11/2026 `verificar-piezas`, `verificar-reserva`, `verificar-checkout` y `verificar-carrito` dan rojos
-  también contra HEAD** (14, 12, 21 y 1): simulan el inventario por `action=piezas_full` de Apps Script y la tienda
-  lo lee de la base. Son redes viejas, no bugs; hay que pasarlas a interceptar las RPC de la base.
+- **Las redes que simulan el backend tienen que simular también la base** (arreglado el 18/11/2026). La tienda lee
+  stock, piezas y vendedores de la base primero (`_deLaBaseOApps`), así que `verificar-piezas`, `-reserva`,
+  `-checkout` y `-carrito`, que simulaban solo `?action=X` de Apps Script, recibían los datos REALES y daban rojo
+  siempre (14, 12, 21 y 1). Ahora traducen la RPC (`tienda_piezas` → `piezas_full`, etc.) al mismo mock. De paso:
+  `precios-prueba.js` no tenía matambrito, chorizo ni morcilla (`_preciosListos` en false), y reserva no completaba
+  el mail. Verdes a 390 y 1440, y cada una agarra un bug de lo suyo. **Una red nueva que simule el backend: copiá
+  ese bloque `_rpc`.**
 
 ## Lo que NO está acá
 

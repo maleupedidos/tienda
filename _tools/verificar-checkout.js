@@ -142,6 +142,11 @@ const PREP = '(function () {' +
   'var json = function (o) { return Promise.resolve(new Response(JSON.stringify(o), { status: 200, headers: { "Content-Type": "application/json" } })); };' +
   'window.fetch = function (url, opts) {' +
   '  var u = String(url);' +
+  /* (18/11/2026) La tienda lee de la base primero (`_deLaBaseOApps`): una RPC conocida se responde con el mismo
+     mock que su accion de Apps Script. Sin esto la tienda traia lo REAL de la base y la red media otra cosa. */
+  '  var _rpc = (u.match(/\\/rest\\/v1\\/rpc\\/([a-z_]+)/) || [])[1];' +
+  '  var _act = _rpc && {tienda_piezas:\"piezas_full\",tienda_stock:\"stock_full\",tienda_vendedores:\"vendedores\",tienda_validar_cupon:\"validarCupon\",tienda_saldo_cliente:\"saldoCliente\",tienda_seguimiento:\"seguimiento\"}[_rpc];' +
+  '  if (_act) { u = "https://script.google.com/simulado?action=" + _act; opts = undefined; }' +
   '  if (opts && String(opts.method || "").toUpperCase() === "POST" && u.indexOf("script.google") >= 0) { window.__posts.push({ body: String(opts.body || "") }); return new Promise(function () {}); }' +
   '  if (u.indexOf("action=stock_full") >= 0) return json(' + JSON.stringify(conPrecios(STOCK)) + ');' +
   '  if (u.indexOf("action=piezas_full") >= 0) return json(' + JSON.stringify(PIEZAS) + ');' +
