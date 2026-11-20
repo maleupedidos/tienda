@@ -479,7 +479,7 @@ async function main() {
     await dormir(300);
     const paso2 = await ev("(document.getElementById('mp-alias') || {}).textContent || ''");
     chk(/maleu\.ar/.test(paso2) && /Tadeo Alberto Ustariz/.test(paso2) && !/maleump|maleubru/.test(paso2),
-        'paso 2: la cuenta para clientes (maleu.ar) con su titular');   /* 741, 17/11/2026 */
+        'paso 2: la cuenta para clientes (maleu26) con su titular');   /* 741, 17/11/2026 */
     chk(/Cuando veamos tu transferencia te avisamos acá y por mail\./.test(paso2), 'y la linea del aviso');
     await ev('enviarPedido();');
     s = await esperar((x) => x.seg && x.pasos === 6, 15000);

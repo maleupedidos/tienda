@@ -10236,8 +10236,10 @@ function updateShippingBar() {
    socio de Maleu. */
 /* (17/11/2026) El RESPALDO: lo que se muestra si la base no contesta y no hay copia. La de verdad viene de la base
    (`_cuentasBase`, ver `_aliasParaTransferir`). Hasta hoy eran maleump (MP, Tadeo) y maleubru (Brubank, Lucas). */
+/* (20/11/2026) El alias cambió a «maleu26» (Tadeo). Este respaldo se cambia a mano: no puede leer la base, es justo para
+   cuando la base no contesta. Lo de siempre viene de `tienda_cuentas`. */
 const ALIAS_MALEU = [
-  { banco: 'Galicia', alias: 'maleu.ar', titular: 'Tadeo Alberto Ustariz' }
+  { banco: 'Galicia', alias: 'maleu26', titular: 'Tadeo Alberto Ustariz' }
 ];
 
 /* ¿A QUE ALIAS TRANSFIERE EL CLIENTE? (30/9/2026)
@@ -10259,7 +10261,7 @@ const ALIAS_MALEU = [
    `vendedorMatch.alias` se sigue recibiendo de la planilla y no se toca: el ERP
    lo usa para liquidar. Lo unico que cambio es que no se le muestra al cliente. */
 /* (17/11/2026, migración 741) LA CUENTA PARA CLIENTES SALE DE LA BASE. Desde hoy todos los clientes pagan a la cuenta
-   compartida de Galicia (alias maleu.ar); MP y Brubank siguen existiendo en el ERP para lo que entre igual, pero no se
+   compartida de Galicia (su alias sale de la base); MP y Brubank siguen existiendo en el ERP para lo que entre igual, pero no se
    le muestran al cliente. La base dice cuál es (`tienda_cuentas`: alias, banco y titular de la cuenta marcada «Para
    clientes»). La copia de la última visita (`maleu_cuentas_cli`) y, sin ninguna, ALIAS_MALEU de respaldo. */
 var _cuentasBase = null;
