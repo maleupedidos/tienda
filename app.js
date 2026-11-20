@@ -1676,8 +1676,29 @@ const ENTREGAS_EXTRA = {
   estancias: [
     { iso: '2026-11-22', dayName: 'Domingo', timeRange: '17 a 19 hs' },
     { iso: '2026-11-23', dayName: 'Lunes', timeRange: '11 a 13 hs' }
+  ],
+  /* Los Alcanfores (Tadeo, 20/11 11:56: la historia es para los 3 barrios privados): las mismas franjas que Estancias, solo
+     este fin de semana. Es de «Otra zona de Pilar», que entrega miércoles y viernes de 18 a 21: `barrios` hace que la
+     entrada valga SOLO para ese barrio (Pilara, El Ocho y el resto no cambian). El martes 24 vuelve sola. */
+  pilar: [
+    { iso: '2026-11-20', dayName: 'Viernes', timeRange: '19 a 21 hs', barrios: ['Los Alcanfores'] },
+    { iso: '2026-11-21', dayName: 'Sábado', timeRange: '19 a 21 hs', barrios: ['Los Alcanfores'] },
+    { iso: '2026-11-22', dayName: 'Domingo', timeRange: '17 a 19 hs', barrios: ['Los Alcanfores'] },
+    { iso: '2026-11-23', dayName: 'Lunes', timeRange: '11 a 13 hs', barrios: ['Los Alcanfores'] }
   ]
 };
+/* (20/11/2026) Las entregas extra de una zona; las que dicen `barrios`, solo si el cliente eligió uno de esos. */
+function _barrioElegidoExtra() {
+  var sel = (typeof $id === 'function') ? $id('f-pilar-barrio') : null;
+  return (sel && sel.value) || selectedPilarBarrio || selectedPilarBarrioName || '';
+}
+function _extrasDe(zone) {
+  return (ENTREGAS_EXTRA[zone] || []).filter(function (e) {
+    if (!e.barrios) return true;
+    return zone === currentZone && e.barrios.indexOf(_barrioElegidoExtra()) !== -1;
+  });
+}
+function _esEntregaExtra(zone, iso) { return _extrasDe(zone).some(function (e) { return e.iso === iso; }); }
 /* Stock estricto extendido: entregas Home dentro de esta ventana topan
    al stock real aunque la fecha esté a >24hs. Pensado para semanas con
    feriado donde no se puede reponer al proveedor. Después del timestamp
@@ -1734,6 +1755,7 @@ function _zonaDependeDelCutoffViernes(zone) {
    ofrecible mientras el cliente no estaba mirando. */
 function _fechaBloqueadaPorCutoff(zone, iso) {
   if (!iso || iso === 'any') return false;
+  if (_esEntregaExtra(zone, iso)) return false;   /* (20/11/2026) la entrega extra no tiene el corte del jueves */
   if (!_zonaDependeDelCutoffViernes(zone)) return false;
   if (!_isFridayCutoffPast()) return false;
   var nowAR = new Date(Date.now() - 3 * 3600 * 1000);
@@ -4252,7 +4274,7 @@ function _getNextDeliveryDatesGrouped(zone) {
   // zona elegida tampoco se ofrece: ver _pilarEntregaMaleu.
   var pilarRedOnly = (zone === 'pilar' && !_pilarEntregaMaleu());
   var feriados = FERIADOS_BLOQUEADOS[zone] || [];
-  var extras = ENTREGAS_EXTRA[zone] || [];
+  var extras = _extrasDe(zone);
   // Cutoff del Vie de esta semana: si ya pasó, bloquear el Vie en thisWeek.
   // Aplica a Pilar y a Clubes — los dos salen en el recorrido del viernes.
   var pilarFridayBloqueadoFlag = (_zonaDependeDelCutoffViernes(zone) && _isFridayCutoffPast());
@@ -4286,7 +4308,7 @@ function _getNextDeliveryDatesGrouped(zone) {
        tambien a los barrios que entregamos nosotros. */
     if (zone === 'pilar' && !pilarRedOnly && dayName === 'Sábado' && !isExtra) continue;
     // Cutoff Pilar Vie de esta semana ya vencido → no ofrecer ese Vie
-    if (pilarFridayBloqueadoFlag && inThisWeek && dayName === 'Viernes') continue;
+    if (pilarFridayBloqueadoFlag && inThisWeek && dayName === 'Viernes' && !isExtra) continue;   /* una entrega extra no tiene el corte del jueves */
     // timeRange: usar el de extra si aplica, sino el del horario normal
     var timeRange;
     if (isExtra) {
@@ -6077,7 +6099,7 @@ function goToForm() {
 function _getHorarioForFecha(zone, dayName, iso) {
   // Si la fecha es una entrega extra puntual (ej. Jue 30/4 por feriado),
   // devolver el horario de la entrega extra. Sino, el horario normal de la zona.
-  var extras = ENTREGAS_EXTRA[zone] || [];
+  var extras = _extrasDe(zone);
   var ex = extras.filter(function(e) { return e.iso === iso; })[0];
   if (ex) return ex.timeRange;
   return _horarioDeZona(zone, dayName);
@@ -6176,7 +6198,7 @@ function renderDayPicker() {
   html += '<div class="dp-grid">';
 
   var feriadosDP = FERIADOS_BLOQUEADOS[currentZone] || [];
-  var extrasDP = ENTREGAS_EXTRA[currentZone] || [];
+  var extrasDP = _extrasDe(currentZone);
 
   for (var i = 0; i < 14; i++) {
     var d = new Date(monday);
@@ -6189,7 +6211,7 @@ function renderDayPicker() {
     var isExtraDP = extrasDP.some(function(e) { return e.iso === iso; });
     var available = (!!horarios[dayName]) || isExtraDP;
     if (feriadosDP.indexOf(iso) !== -1) available = false;
-    var isRedCutoff = redCutoffFriday !== null && d.getTime() === redCutoffFriday;
+    var isRedCutoff = redCutoffFriday !== null && d.getTime() === redCutoffFriday && !isExtraDP;
 
     var cls = 'dp-cell';
     var disabled = false;
