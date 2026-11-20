@@ -1668,9 +1668,14 @@ const STOCK_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTOq210U9
 const FERIADOS_BLOQUEADOS = {
   // Vacío — no hay días bloqueados esta semana
 };
+/* Fin de semana largo del 20 al 23/11/2026 (Tadeo, 20/11; historia de Instagram publicada). Estancias del Pilar y del
+   Río: viernes 20 y sábado 21 de 19 a 21 (lo de siempre), DOMINGO 22 de 17 a 19 (en vez de 11 a 13) y LUNES 23, feriado,
+   de 11 a 13. Por fecha: el martes 24 vuelve sola la regla semanal. El corte del día (`_cierreDelDiaMs`) también mira
+   esta lista: si no, el domingo cerraba a las 13:30 aunque se entregue a las 17. */
 const ENTREGAS_EXTRA = {
   estancias: [
-    { iso: '2026-04-30', dayName: 'Jueves', timeRange: '19 a 21 hs' }
+    { iso: '2026-11-22', dayName: 'Domingo', timeRange: '17 a 19 hs' },
+    { iso: '2026-11-23', dayName: 'Lunes', timeRange: '11 a 13 hs' }
   ]
 };
 /* Stock estricto extendido: entregas Home dentro de esta ventana topan
@@ -2719,7 +2724,8 @@ function _cierreDelDiaMs(iso, zone) {
   var y = +parts[0], mes = +parts[1] - 1, dia = +parts[2];
 
   var DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-  var franja = _horarioDeZona(zone || currentZone, DIAS[new Date(Date.UTC(y, mes, dia)).getUTCDay()]);
+  /* (20/11/2026) La franja DE ESA FECHA: una entrega extra (ENTREGAS_EXTRA) cambia el horario y con él el corte. */
+  var franja = _getHorarioForFecha(zone || currentZone, DIAS[new Date(Date.UTC(y, mes, dia)).getUTCDay()], iso);
   var hora = franja.match(/(\d{1,2})/);
   var horas = franja.match(/(\d{1,2})(?:[:.](\d{2}))?\s*(?:a|-|–)\s*(\d{1,2})(?:[:.](\d{2}))?/);
   var cfg = String(CIERRE_HOY || '').trim();
@@ -4285,7 +4291,7 @@ function _getNextDeliveryDatesGrouped(zone) {
     var timeRange;
     if (isExtra) {
       var ex = extras.filter(function(e) { return e.iso === iso; })[0];
-      timeRange = (ex && ex.timeRange) || '19 a 21 hs';
+      timeRange = ((ex && ex.timeRange) || '19 a 21 hs').replace(/\s*hs/g,'hs');   /* mismo formato que los otros días */
     } else {
       timeRange = _horarioDeZona(zone, dayName).replace(/\s*hs/g,'hs');
     }
