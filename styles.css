@@ -2014,9 +2014,16 @@ body.busqueda-activa .cat-nav-btn.cat-nav-combos.active { background:var(--brown
    `white-space:nowrap` porque "ELEGI TU PIEZA" partido se lee como un error. */
 .pz-rotulo > span:first-child { white-space: nowrap; }
 
-/* En pantallas muy angostas la foto al costado deja poco lugar: vuelve arriba. */
-@media (max-width: 430px) {
+/* En pantallas angostas la foto al costado deja poco lugar: vuelve arriba.
+   (21/11/2026) El corte era 430px: un iPhone con el zoom de Safari al 85% o en «sitio de escritorio» queda en ~460px, caía
+   en la fila y la grilla de piezas (auto-fill 120px) entraba de a UNA, angosta y con la letra chica (el iPhone del hermano
+   de Tadeo). Con la foto al 40%, dos piezas al costado piden ~500px; el corte va en 640 para que todo celular, con
+   cualquier zoom, vea la foto arriba y las piezas de a dos. verificar-piezas.js lo mide a 460. */
+@media (max-width: 640px) {
   .carne-card { flex-direction: column; }
+  /* Con la foto arriba, las piezas van de a dos como en cualquier celular: a lo ancho, `auto-fill` metía 3 entre 460 y
+     640px y la card se veía distinta en cada teléfono. */
+  .carne-card .pz-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .carne-card .product-thumb { flex: 0 0 auto; aspect-ratio: 16 / 9; }
 }
 
@@ -2026,7 +2033,7 @@ body.busqueda-activa .cat-nav-btn.cat-nav-combos.active { background:var(--brown
 .card-ancha .product-thumb { flex: 0 0 40%; aspect-ratio: auto; min-height: 190px; }
 .card-ancha .product-thumb-img { position: absolute; inset: 0; }
 .card-ancha .product-body { flex: 1 1 auto; min-width: 0; }
-@media (max-width: 430px) {
+@media (max-width: 640px) {   /* (21/11/2026) el mismo corte que la carne */
   .products-grid .card-ancha { flex-direction: column; }
   .card-ancha .product-thumb { flex: 0 0 auto; aspect-ratio: 16 / 9; min-height: 0; }
 }

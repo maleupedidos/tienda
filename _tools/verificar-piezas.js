@@ -288,6 +288,14 @@ async function main() {
     await ev(IR_A("window.pageYOffset + " + card('CVa') + ".getBoundingClientRect().top - 70"));
     await dormir(200);
     let v = await L('CVa');
+    /* (21/11/2026) CAPTURA=<carpeta>: la card del vacío como la ve el cliente a este ancho (foto arriba o al costado). */
+    if (process.env.CAPTURA) {
+      await ev(IR_A("window.pageYOffset + " + card('CVa') + ".getBoundingClientRect().top - 10")); await dormir(400);
+      const img = await cli.enviar('Page.captureScreenshot', { format: 'png' });
+      fs.mkdirSync(process.env.CAPTURA, { recursive: true });
+      fs.writeFileSync(path.join(process.env.CAPTURA, 'carne-card-' + ANCHO + '.png'), Buffer.from(img.data, 'base64'));
+      await ev(IR_A("window.pageYOffset + " + card('CVa') + ".getBoundingClientRect().top - 70")); await dormir(300);
+    }
     chk(!!v, 'se dibuja la card del vacio');
     if (!v) throw new Error('sin card del vacio: lo de abajo no mediria nada');
     const vis = v.filas.filter((f) => f.visible);
