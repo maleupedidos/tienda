@@ -2290,6 +2290,25 @@ function _vendedoresPoner(lista) {
       };
     });
   });
+  _zonasChapita();
+}
+/* (25/11/2026) LA CHAPITA DE CADA ZONA SALE DE QUIÉN LA ATIENDE HOY. Fini dejó de ser representante y la tarjeta «Ayres y
+   alrededores» seguía diciendo «Fini»: la chapita escrita a mano se pisaba solo cuando la zona tenía dos representantes.
+   Ahora: si la zona tiene DUEÑO en los datos (un representante activo cuyo primer barrio es esa zona), queda la chapita
+   que ya le puso `_zonasDeLosDatos` (la escrita, con su apodo: «Rufo»; o la del primero por prioridad si son varios).
+   Si no tiene dueño, la del primero por prioridad que atiende alguno de sus barrios («Ayres y alrededores» → Lourdes);
+   y si nadie, «Maleu» (la zona la entrega Maleu). */
+function _zonasChapita() {
+  BARRIOS_PILAR_MODAL.forEach(function (z) {
+    if (z.isOther) return;
+    var dueno = (vendedoresRed || []).some(function (v) { return _zonaDeBarrio(String((v.barrios || [])[0] || '')) === z; });
+    if (dueno) return;
+    var claves = [z.val].concat(z.subBarriosList || []).map(_barrioLoose);
+    var r = (vendedoresRed || []).filter(function (v) {
+      return (v.barrios || []).some(function (b) { return claves.indexOf(_barrioLoose(b)) >= 0; });
+    })[0];
+    z.badge = r ? (String(r.nombre || '').trim().split(/\s+/)[0] || 'Maleu') : 'Maleu';
+  });
 }
 /* LAS ZONAS SALEN DE LOS DATOS (2/11/2026, Tadeo: una sola tienda y Maleu reparte por zona). Cada representante
    activo de la hoja Vendedores es una zona: la col «Barrios» empieza con el nombre de la zona y sigue con sus barrios
