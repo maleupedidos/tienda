@@ -4748,6 +4748,8 @@ function _pintarHeroEntregas() {
 }
 function applyZone() {
   const z = ZONAS[currentZone];
+  /* (851) Otra zona, otro domicilio: la respuesta de «¿es una casa nueva?» ya no vale. */
+  _conocio = { clave: '', preguntar: false, pidiendo: '' }; _conocioPintar();
   _updateZoneChip();
   _updateZonaCta();
   /* El chip de fecha tambien, y no solo cuando hay fecha: desde el 23/9/2026
@@ -7225,6 +7227,84 @@ var CO_ULTIMO = 3;
    errores: sirve para PREGUNTAR si el paso esta completo (el que vuelve y ya
    tiene sus datos) sin pintarle la pantalla de rojo a alguien que todavia no
    toco nada. */
+/* ══ ¿CÓMO NOS CONOCISTE? (25/11/2026, migración 851) ═════════════════════
+   Solo a una CASA NUEVA. Lo decide la base (`casa_es_nueva`): pregunta si ni el teléfono ni el domicilio compraron antes,
+   y sin un teléfono de 10 dígitos contesta «no preguntar». La tienda pregunta cuando el teléfono y el domicilio están
+   completos (al salir de cada campo). Si la base no contesta, NO se pregunta: no se le alarga el checkout a nadie por dudar.
+   Si aparece, es obligatoria y es un toque. */
+var _conocio = { clave: '', preguntar: false, pidiendo: '' };
+function _conocioDomicilio() {
+  if (currentZone === 'estancias') {
+    var bp = ($id('f-barrio-privado') || {}).value || '';
+    return { sub: bp === 'Estancias del Pilar' ? (($id('f-barrio') || {}).value || '') : bp, lote: (($id('f-lote') || {}).value || '').trim() };
+  }
+  if (currentZone === 'clubes') return null;
+  var pb = ($id('f-pilar-barrio') || {}).value || '';
+  if (pb === '__otro__') pb = (($id('f-direccion') || {}).value || '').trim();
+  return { sub: pb, lote: (($id('f-lote-pilar') || {}).value || '').trim() };
+}
+function _conocioPintar() {
+  var w = $id('f-conocio-wrap'); if (!w) return;
+  w.hidden = !_conocio.preguntar;
+  if (!_conocio.preguntar) clearError('f-conocio', 'err-conocio');
+}
+function _conocioChequear() {
+  var tel = (typeof _telLocal === 'function') ? _telLocal() : '';
+  var dom = _conocioDomicilio();
+  if (!dom || tel.length !== TEL_LARGO || !dom.sub || !dom.lote) { if (!dom) { _conocio.preguntar = false; _conocioPintar(); } return; }
+  var clave = tel + '|' + dom.sub + '|' + dom.lote;
+  if (clave === _conocio.clave || clave === _conocio.pidiendo) return;
+  if (typeof AbortController !== 'function' || typeof SB_URL_TIENDA === 'undefined') return;
+  _conocio.pidiendo = clave;
+  var ctl = new AbortController(), reloj = setTimeout(function () { ctl.abort(); }, 5000);
+  fetch(SB_URL_TIENDA + '/rest/v1/rpc/casa_es_nueva', { method: 'POST', cache: 'no-store', signal: ctl.signal,
+      headers: { apikey: SB_KEY_TIENDA, Authorization: 'Bearer ' + SB_KEY_TIENDA, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p: { tel: tel, sub: dom.sub, lote: dom.lote } }) })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) {
+      if (_conocio.pidiendo !== clave) return;   /* cambió el dato mientras se preguntaba */
+      _conocio.clave = clave; _conocio.preguntar = !!(d && d.ok === true && d.preguntar === true);
+      _conocioPintar();
+      if (_conocio.preguntar) _track('conocio_pregunta', { zone: currentZone });
+    })
+    .catch(function () {})
+    .then(function () { clearTimeout(reloj); if (_conocio.pidiendo === clave) _conocio.pidiendo = ''; });
+}
+function conocioElegir() {
+  var el = document.querySelector('input[name="conocio"]:checked'), v = el ? el.value : '';
+  var quien = $id('f-conocio-quien'), vend = $id('f-conocio-vend');
+  if (quien) quien.hidden = v !== 'recomendacion';
+  if (vend) {
+    vend.hidden = v !== 'vendedor';
+    if (v === 'vendedor' && !vend.options.length) {
+      /* Los representantes que la tienda ya conoce (`action=vendedores`), primero el de su barrio. */
+      var dom = _conocioDomicilio() || {}, suyo = (typeof _vendedorDeBarrio === 'function' && dom.sub) ? _vendedorDeBarrio(dom.sub) : null;
+      var vistos = {}, nombres = [];
+      var poner = function (n) { n = String(n || '').trim(); if (n && !vistos[n.toLowerCase()]) { vistos[n.toLowerCase()] = 1; nombres.push(n); } };
+      if (suyo) poner(suyo.nombre);
+      Object.keys(barrioToVendedor || {}).forEach(function (k) { poner((barrioToVendedor[k] || {}).nombre); });
+      vend.innerHTML = '';
+      var op0 = document.createElement('option'); op0.value = ''; op0.textContent = '¿Cuál? (si te acordás)'; vend.appendChild(op0);
+      nombres.forEach(function (n) { var o = document.createElement('option'); o.value = n; o.textContent = n; vend.appendChild(o); });
+    }
+  }
+  clearError('f-conocio', 'err-conocio');
+}
+function _conocioFalta() { return !!_conocio.preguntar && !document.querySelector('input[name="conocio"]:checked'); }
+function _conocioValor() {
+  if (!_conocio.preguntar) return null;
+  var el = document.querySelector('input[name="conocio"]:checked'); if (!el) return null;
+  var d = el.value === 'recomendacion' ? (($id('f-conocio-quien') || {}).value || '') : el.value === 'vendedor' ? (($id('f-conocio-vend') || {}).value || '') : '';
+  return { v: el.value, d: String(d).trim().slice(0, 80) };
+}
+/* Se pregunta al salir de los campos que deciden si la casa es nueva (delegado: no depende de cuándo se dibujan). */
+['focusout', 'change'].forEach(function (ev) {
+  document.addEventListener(ev, function (e) {
+    var id = e.target && e.target.id;
+    if (id && /^(f-tel-num|f-tel-area|f-tel-otro|f-lote|f-lote-pilar|f-barrio|f-barrio-privado|f-pilar-barrio|f-direccion)$/.test(id)) _conocioChequear();
+  }, true);
+});
+
 function _coFaltaEnPaso(n, callado) {
   var primero = null;
   function mal(id, errId) {
@@ -7266,6 +7346,8 @@ function _coFaltaEnPaso(n, callado) {
     if (_telLocal().length !== TEL_LARGO) mal('f-tel-num', 'err-telefono');
     bien('f-mail', 'err-mail');
     if (!_mailValido(_mailLimpio())) mal('f-mail', 'err-mail');
+    bien('f-conocio', 'err-conocio');
+    if (_conocioFalta()) mal('f-conocio', 'err-conocio');
     return primero;
   }
 
@@ -7404,6 +7486,7 @@ function abrirCheckout() {
   _fondoQuieto('checkout', true);
   coArranque();
   sec.scrollTop = 0;
+  _conocioChequear();   /* (851) el que vuelve con los datos ya cargados no toca ningún campo */
   /* LA URL CAMBIA A /checkout, como en cualquier tienda seria. No se recarga
      nada —la tienda sigue siendo un solo archivo—, pero Analytics lo cuenta
      como pantalla, el "atras" del telefono vuelve al catalogo, y se puede
@@ -7607,6 +7690,7 @@ function enviarPedido() {
     if(!primerInvalido) primerInvalido=_dpRoot || $id('f-dia');
   }
   if (!pagoEl) { $id('err-pago').classList.add('visible'); if(!primerInvalido) primerInvalido=$id('pago-group'); }
+  if (_conocioFalta()) { showError('f-conocio', 'err-conocio'); if (!primerInvalido) primerInvalido = $id('f-conocio-wrap'); }
   if (primerInvalido) {
     /* Si el campo que falta vive en un paso que no se ve, primero hay que ir
        a ese paso: sin esto se scrollea a un display:none y el cliente ve el
@@ -7892,6 +7976,10 @@ function enviarPedido() {
      ERP lo anota en la columna Campaña del pedido; no decide de quien es. */
   var _camp = _campaniaVigente();
   if (_camp) postData.campania = _camp;
+  /* (25/11/2026, 851) ¿Cómo nos conociste?: solo si se preguntó (casa nueva). «Un vendedor» es una sugerencia: el ERP lo
+     anota en `como_nos_conocio` y no toca quién lo trajo, la comisión ni el bono. */
+  var _con = _conocioValor();
+  if (_con) { postData.comoNosConocio = _con.v; if (_con.d) postData.comoNosConocioDetalle = _con.d; }
   /* Y si lo trajo un vendedor, su usuario. El ERP ya tenia donde anotarlo
      (`redTrajoCliente`: Vendedor / Maleu / vacio) y vacio NO es Vendedor: sin
      esto un pedido no le paga a nadie. Lo que faltaba no era el concepto,
@@ -8198,9 +8286,32 @@ function _refDePedido(coid) {
 /* Dispara solo el sendBeacon con el postData. Devuelve true si el navegador
    lo ACEPTO EN SU COLA — no quiere decir que haya llegado, y por eso nunca
    cuenta como confirmacion (asi se perdieron pedidos hasta el 11/9/2026). */
+/* ══ EL CANDADO DEL ALTA FUERA DE maleu.com.ar (25/11/2026) ══════════════════
+   Ese día una prueba servida en localhost creyó cortar el alta reemplazando `fetch` en la página, pero su script no se
+   inyectó (le faltó Page.enable): el fetch quedó NATIVO, entraron dos pedidos reales (Home #2585 y #2586) y WATI mandó
+   dos confirmaciones, una a un número inventado. La regla de este repo (cortar por CDP o servir con el backend
+   falso) era de palabra: acá se hace cumplir.
+   Fuera de maleu.com.ar, un alta que iría al backend REAL con el fetch/sendBeacon NATIVOS (o sea, sin que ninguna
+   prueba los haya interceptado) NO sale, y se dice en la consola. Las redes de _tools no se enteran: las que sirven con
+   el backend falso no van a la dirección real, y las que interceptan en la página ya no tienen el fetch nativo.
+   Para un alta real a propósito desde afuera: `window.__permitirAltaReal = true`. */
+var _ALTA_REAL = ['xhaxmyvhygxynwjqrarm.supabase.co', 'AKfycbxmrG5YVSshcYezk8lXFx_uxb7NFGcb9EfTXc7dsIN4rZyj73CET4mk_aKPFPDY2wNi'];
+function _esNativa(f) { try { return typeof f === 'function' && /\[native code\]/.test(Function.prototype.toString.call(f)); } catch (e) { return false; } }
+function _altaRealBloqueada(url, fn) {
+  var h = String((typeof location !== 'undefined' && location.hostname) || '');
+  if (/^(www\.)?maleu\.com\.ar$/.test(h)) return false;
+  if (typeof window !== 'undefined' && window.__permitirAltaReal === true) return false;
+  var u = String(url || '');
+  if (!_ALTA_REAL.some(function (x) { return u.indexOf(x) >= 0; })) return false;
+  if (!_esNativa(fn)) return false;   /* una prueba lo interceptó: es responsabilidad de ella */
+  try { console.warn('[tienda] alta REAL bloqueada fuera de maleu.com.ar (' + h + '). Para hacerla a propósito: window.__permitirAltaReal = true'); } catch (e) {}
+  return true;
+}
+
 function _tryBeaconOnly(postData) {
   try {
     if (typeof navigator === 'undefined' || !navigator.sendBeacon) return false;
+    if (_altaRealBloqueada(APPS_SCRIPT_URL, navigator.sendBeacon)) return false;
     var blob = new Blob([JSON.stringify(postData)], { type: 'text/plain;charset=UTF-8' });
     return navigator.sendBeacon(APPS_SCRIPT_URL, blob) === true;
   } catch (e) { return false; }
@@ -8422,6 +8533,7 @@ function _postPedidoBase(data) {
   var _altaNoDirecto = function (d, m) { try { if (d && typeof d === 'object') d._noDirecto = String(m || '?').slice(0, 80); } catch (e) {} };
   if (typeof AbortController !== 'function') { _altaNoDirecto(data, 'sin-abort'); return Promise.resolve(null); }
   if (!_altaBaseVa()) return Promise.resolve(null);
+  if (_altaRealBloqueada(SB_URL_TIENDA, window.fetch)) return Promise.reject(new Error('alta real bloqueada fuera de maleu.com.ar'));
   var ctl = new AbortController(), reloj = setTimeout(function () { ctl.abort(); }, 8000);
   var cuerpo = JSON.stringify({ p: data });
   return fetch(SB_URL_TIENDA + '/rest/v1/rpc/pedido_alta_directo', { method: 'POST', cache: 'no-store', signal: ctl.signal,
@@ -8451,6 +8563,7 @@ function _postPedidoApps(data) {
     body: JSON.stringify(data)
   };
   if (ctrl) opts.signal = ctrl.signal;
+  if (_altaRealBloqueada(APPS_SCRIPT_URL, window.fetch)) { if (tid) clearTimeout(tid); return Promise.reject(new Error('alta real bloqueada fuera de maleu.com.ar')); }
   return fetch(APPS_SCRIPT_URL, opts).then(function (r) {
     if (!r.ok) throw new Error('http ' + r.status);
     return r.text();

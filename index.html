@@ -667,6 +667,23 @@
         <small class="tel-hint">Te mandamos el comprobante y te avisamos cómo avanza tu pedido.</small>
         <span class="field-error" id="err-mail">&#9888; Revisá el mail: algo como nombre@gmail.com</span>
       </div>
+
+      <!-- ¿CÓMO NOS CONOCISTE? (25/11/2026). Solo a una casa nueva: la base decide (casa_es_nueva, con el teléfono y el
+           domicilio). Al que ya compró no le aparece y su checkout no se alarga. Si aparece, es obligatoria y es un toque. -->
+      <fieldset class="field-group conocio" id="f-conocio-wrap" hidden>
+        <legend class="pago-label">¿Cómo nos conociste?</legend>
+        <div class="radio-row conocio-ops" id="f-conocio">
+          <div class="radio-opt"><input type="radio" id="con-instagram" name="conocio" value="instagram" onchange="conocioElegir()"><label for="con-instagram"><strong>Instagram</strong></label></div>
+          <div class="radio-opt"><input type="radio" id="con-anuncio" name="conocio" value="anuncio" onchange="conocioElegir()"><label for="con-anuncio"><strong>Un anuncio</strong></label></div>
+          <div class="radio-opt"><input type="radio" id="con-folleto" name="conocio" value="folleto" onchange="conocioElegir()"><label for="con-folleto"><strong>Folleto o imán</strong></label></div>
+          <div class="radio-opt"><input type="radio" id="con-recomendacion" name="conocio" value="recomendacion" onchange="conocioElegir()"><label for="con-recomendacion"><strong>Me lo recomendaron</strong></label></div>
+          <div class="radio-opt"><input type="radio" id="con-vendedor" name="conocio" value="vendedor" onchange="conocioElegir()"><label for="con-vendedor"><strong>Un vendedor</strong></label></div>
+          <div class="radio-opt"><input type="radio" id="con-otro" name="conocio" value="otro" onchange="conocioElegir()"><label for="con-otro"><strong>Otro</strong></label></div>
+        </div>
+        <input type="text" id="f-conocio-quien" class="conocio-det" maxlength="60" autocomplete="off" placeholder="¿Quién? (opcional)" aria-label="Quién te lo recomendó" hidden>
+        <select id="f-conocio-vend" class="conocio-det" aria-label="Qué vendedor" hidden></select>
+        <span class="field-error" id="err-conocio">&#9888; Elegí una opción: es un toque</span>
+      </fieldset>
       </div>
       
       <div class="co-paso" data-co-paso="2" hidden>

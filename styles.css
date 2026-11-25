@@ -2728,3 +2728,9 @@ body.busqueda-activa .cat-nav-btn.cat-nav-combos.active { background:var(--brown
 .lead-msg { font-size: .9rem; min-height: 1.2em; }
 .lead-msg.ok { color: #2e7d32; font-weight: 700; }
 .lead-msg.err { color: #c62828; }
+
+/* ¿Cómo nos conociste? (25/11/2026): las opciones de pago, de a dos por fila. */
+.conocio { border:0; padding:0; margin-top:.4rem; }
+.conocio-ops { display:grid; grid-template-columns:1fr 1fr; gap:.5rem; }
+.conocio-ops .radio-opt label { padding:.6rem .4rem; min-height:44px; justify-content:center; }
+.conocio-det { width:100%; margin-top:.5rem; font-size:16px; }
