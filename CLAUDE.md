@@ -308,6 +308,22 @@ habría durado hasta el séptimo camino.
 > que un cliente de Estancias no podía pedir hoy están en su catálogo, así que el
 > cliente los carga solo.
 
+## El candado del alta fuera de maleu.com.ar (25/11/2026)
+
+> [!danger] Una prueba en localhost creó dos pedidos reales y WATI le escribió a un número inventado
+> Probando «¿Cómo nos conociste?», un script cortaba el alta reemplazando `fetch` en la página, pero **no se inyectó**
+> (faltaba `Page.enable` antes de `addScriptToEvaluateOnNewDocument`): el fetch quedó nativo, entraron **Home #2585 y
+> #2586** (se cancelaron) y salieron dos `confirmacion_pedido_v2`, una a un teléfono inventado.
+
+Desde ese día lo frena el código, no la palabra: **`_altaRealBloqueada(url, fn)`** en `app.js`. Fuera de
+maleu.com.ar, un alta que iría al backend **real** (base o Apps Script) con `fetch`/`sendBeacon` **nativos** no sale y
+lo dice en la consola. Las redes de `_tools` no se enteran: las que sirven con el backend falso no apuntan a la
+dirección real, y las que interceptan en la página ya no tienen el fetch nativo. Para un alta real a propósito desde
+afuera: `window.__permitirAltaReal = true`.
+
+**Datos de prueba: siempre «PRUEBA Robot» y el teléfono del robot** (en el formulario: área «Otro» `0000` + `0000001`).
+Nunca uno inventado ni el de Tadeo: WATI le escribe al que sea.
+
 ## Deploy
 
 El push a `main` **ES** la publicación (GitHub Pages). Si sale mal, sale mal en
