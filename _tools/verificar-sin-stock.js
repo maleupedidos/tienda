@@ -150,6 +150,9 @@ const PREP = '(function () {' +
   '  if (opts && String(opts.method || "").toUpperCase() === "POST" && u.indexOf("script.google") >= 0) { window.__post++; (window.__posts = window.__posts || []).push(u.slice(0, 80) + " " + String(opts.body || "").slice(0, 160)); return new Promise(function () {}); }' +
   '  if (u.indexOf("action=stock_full") >= 0) return json(' + JSON.stringify(conPrecios(STOCK)) + ');' +
   '  if (u.indexOf("action=piezas_full") >= 0) return json({});' +
+  /* (26/11) La tienda lee stock, piezas y vendedores primero de la base (_deLaBaseOApps) y cae a Apps Script si falla: */
+  /* se hace fallar la base para que lea lo simulado de esta prueba, no lo real. */
+  '  if (u.indexOf("/rpc/tienda_stock") >= 0 || u.indexOf("/rpc/tienda_piezas") >= 0 || u.indexOf("/rpc/tienda_vendedores") >= 0) return Promise.reject(new Error("la prueba simula Apps Script"));' +
   '  if (u.indexOf("script.google") >= 0) return json({ ok: true });' +
   '  return orig.apply(this, arguments);' +
   '};' +

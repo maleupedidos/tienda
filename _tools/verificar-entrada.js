@@ -158,6 +158,9 @@ const PREP = '(function () {' +
   '  if (opts && String(opts.method || "").toUpperCase() === "POST" && u.indexOf("script.google") >= 0) { window.__post++; return new Promise(function () {}); }' +
   '  if (u.indexOf("action=stock_full") >= 0) return json(' + JSON.stringify(conPrecios(STOCK)) + ');' +
   '  if (u.indexOf("action=piezas_full") >= 0) return json(' + JSON.stringify(PIEZAS) + ');' +
+  /* (26/11) La tienda lee stock, piezas y vendedores primero de la base (_deLaBaseOApps) y cae a Apps Script si falla: */
+  /* se hace fallar la base para que lea lo simulado de esta prueba, no lo real. */
+  '  if (u.indexOf("/rpc/tienda_stock") >= 0 || u.indexOf("/rpc/tienda_piezas") >= 0 || u.indexOf("/rpc/tienda_vendedores") >= 0) return Promise.reject(new Error("la prueba simula Apps Script"));' +
   '  if (u.indexOf("script.google") >= 0) return json({ ok: true });' +
   '  return orig.apply(this, arguments);' +
   '};' +
@@ -204,7 +207,7 @@ async function main() {
           await cli.enviar('Fetch.continueRequest', { requestId: m.params.requestId });
           return;
         }
-        escapados.push(r.method + ' ' + r.url.slice(0, 60));
+        if (String(r.url).indexOf('maleu_canario=') < 0) escapados.push(r.method + ' ' + r.url.slice(0, 60));
         await cli.enviar('Fetch.failRequest', { requestId: m.params.requestId, errorReason: 'BlockedByClient' });
       } catch (e) { /* la pagina ya se fue */ }
     });
@@ -217,6 +220,11 @@ async function main() {
       }
       return r.result.value;
     };
+    /* (26/11/2026) El candado de la tienda (25/11) frena el alta con fetch nativo fuera de maleu.com.ar. Esta red corta
+       por CDP: lo abre SOLO para Apps Script y solo despues de probar con el canario que el corte esta activo. */
+    const can = await require('./corte-cdp.js').abrirCandadoSiCorta(cli);
+    chk(can.ok, 'el corte por CDP de los pedidos esta activo (canario)');
+    if (!can.ok) { console.log('\n' + RED + 'CORTA: sin corte comprobado no se prueba el alta. ' + (can.motivo || '') + RST); process.exit(1); }
     const esperar = async (expr, ms) => {
       for (let i = 0; i < ms / 100; i++) { if (await ev(expr).catch(() => false)) return true; await dormir(100); }
       return false;

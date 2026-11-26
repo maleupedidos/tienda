@@ -189,6 +189,8 @@ const MANDAR = `(async function () {
   var tr = document.querySelector('input[name="pago"][value="Transferencia"]');
   tr.checked = true; tr.dispatchEvent(new Event('change', { bubbles: true }));
   await dormir(200);
+  /* (26/11) «¿Cómo nos conociste?» (851): la casa de prueba es nueva para la base real. Se contesta. */
+  await (async function () { for (var k = 0; k < 50 && _conocio.pidiendo; k++) await new Promise(function (s) { setTimeout(s, 100); }); if (_conocio.preguntar) { var co = document.getElementById("con-otro"); co.checked = true; conocioElegir(); } return 1; })();
   enviarPedido();
   for (var i = 0; i < 40 && !window.__post; i++) await dormir(100);
   return window.__post || JSON.stringify({ error: 'no salio el pedido' });
@@ -227,7 +229,7 @@ async function main() {
           await cli.enviar('Fetch.continueRequest', { requestId: m.params.requestId });
           return;
         }
-        escapados.push(r.method + ' ' + r.url.slice(0, 60));
+        if (String(r.url).indexOf('maleu_canario=') < 0) escapados.push(r.method + ' ' + r.url.slice(0, 60));
         await cli.enviar('Fetch.failRequest', { requestId: m.params.requestId, errorReason: 'BlockedByClient' });
       } catch (e) { /* la pagina ya se fue */ }
     });
@@ -239,6 +241,11 @@ async function main() {
       }
       return r.result.value;
     };
+    /* (26/11/2026) El candado de la tienda (25/11) frena el alta con fetch nativo fuera de maleu.com.ar. Esta red corta
+       por CDP: lo abre SOLO para Apps Script y solo despues de probar con el canario que el corte esta activo. */
+    const can = await require('./corte-cdp.js').abrirCandadoSiCorta(cli);
+    chk(can.ok, 'el corte por CDP de los pedidos esta activo (canario)');
+    if (!can.ok) { console.log('\n' + RED + 'CORTA: sin corte comprobado no se prueba el alta. ' + (can.motivo || '') + RST); process.exit(1); }
     const esperar = async (expr, ms) => {
       for (let i = 0; i < ms / 100; i++) { if (await ev(expr).catch(() => false)) return true; await dormir(100); }
       return false;

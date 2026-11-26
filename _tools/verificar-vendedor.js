@@ -198,6 +198,9 @@ const PREP = '(function () {' +
   '    if (/RUL-OK01/.test(u)) return json(' + JSON.stringify(CUPON_OK) + ');' +
   '    return json({ ok: false, error: "Ese codigo no existe" });' +
   '  }' +
+  /* (26/11) La tienda lee stock, piezas y vendedores primero de la base (_deLaBaseOApps) y cae a Apps Script si falla: */
+  /* se hace fallar la base para que lea lo simulado de esta prueba, no lo real. */
+  '  if (u.indexOf("/rpc/tienda_stock") >= 0 || u.indexOf("/rpc/tienda_piezas") >= 0 || u.indexOf("/rpc/tienda_vendedores") >= 0) return Promise.reject(new Error("la prueba simula Apps Script"));' +
   '  if (u.indexOf("script.google") >= 0) return json({ ok: true });' +
   '  return orig.apply(this, arguments);' +
   '};' +
@@ -243,7 +246,7 @@ async function main() {
           await cli.enviar('Fetch.continueRequest', { requestId: m.params.requestId });
           return;
         }
-        escapados.push(r.method + ' ' + r.url.slice(0, 60));
+        if (String(r.url).indexOf('maleu_canario=') < 0) escapados.push(r.method + ' ' + r.url.slice(0, 60));
         await cli.enviar('Fetch.failRequest', { requestId: m.params.requestId, errorReason: 'BlockedByClient' });
       } catch (e) { /* la pagina ya se fue */ }
     });
@@ -256,6 +259,11 @@ async function main() {
       }
       return r.result.value;
     };
+    /* (26/11/2026) El candado de la tienda (25/11) frena el alta con fetch nativo fuera de maleu.com.ar. Esta red corta
+       por CDP: lo abre SOLO para Apps Script y solo despues de probar con el canario que el corte esta activo. */
+    const can = await require('./corte-cdp.js').abrirCandadoSiCorta(cli);
+    chk(can.ok, 'el corte por CDP de los pedidos esta activo (canario)');
+    if (!can.ok) { console.log('\n' + RED + 'CORTA: sin corte comprobado no se prueba el alta. ' + (can.motivo || '') + RST); process.exit(1); }
     const esperar = async (expr, ms) => {
       for (let i = 0; i < ms / 100; i++) { if (await ev(expr).catch(() => false)) return true; await dormir(100); }
       return false;
@@ -298,12 +306,15 @@ async function main() {
       await dormir(300);
       return ev('(async function () {' +
         'var dormir = function (ms) { return new Promise(function (s) { setTimeout(s, ms); }); };' +
-        'var c = { "f-nombre": "PRUEBA Vendedor", "f-telefono": "1155038905", "f-lote-pilar": "12" };' +
+        'var c = { "f-nombre": "PRUEBA Vendedor", "f-telefono": "1155038905", "f-mail": "prueba.vendedor@gmail.com", "f-lote-pilar": "12" };' +   /* (26/11) el mail es obligatorio desde el 22/10 */
         'Object.keys(c).forEach(function (id) { var e = document.getElementById(id); if (!e) return; e.value = c[id]; e.dispatchEvent(new Event("change", { bubbles: true })); });' +
         'await dormir(200);' +
         'var d = document.querySelector("#day-picker .dp-cell.available"); if (d) d.click();' +
         'var ef = document.querySelector("input[name=pago][value=Efectivo]"); ef.checked = true; ef.dispatchEvent(new Event("change", { bubbles: true }));' +
         'await dormir(250);' +
+        /* (26/11) «¿Cómo nos conociste?» (851): casa_es_nueva va a la base real y la casa de prueba es nueva. Se contesta. */
+        'for (var k = 0; k < 50 && _conocio.pidiendo; k++) await dormir(100);' +
+        'if (_conocio.preguntar) { var co = document.getElementById("con-otro"); co.checked = true; conocioElegir(); }' +
         'enviarPedido();' +
         'for (var i = 0; i < 40 && !window.__posts.some(function (p) { return !p.beacon; }); i++) await dormir(100);' +
         'return "ok";' +
@@ -594,7 +605,7 @@ async function main() {
       '  delVendedor: (barrioToVendedor["el lucero"] || {}).alias || "" });' +
       '})()'));
     chk(al.cajaMaleu === true, 'en un barrio con vendedor se ve la caja de alias de Maleu');
-    chk(/maleu\.ar/.test(al.txtMaleu) && !/maleump|maleubru/.test(al.txtMaleu),
+    chk(/maleu26/.test(al.txtMaleu) && !/maleump|maleubru/.test(al.txtMaleu),   /* (26/11) el alias es maleu26 desde el 20/11 */
         'con la cuenta para clientes (maleu26), sin las viejas', al.txtMaleu.replace(/[\s\u00a0]+/g, ' ').slice(0, 70));
     chk(al.delVendedor && al.txtMaleu.indexOf(al.delVendedor) < 0,
         'y NO el alias personal del vendedor', 'el suyo es ' + al.delVendedor);
@@ -746,7 +757,8 @@ async function main() {
     chk(vn.dias.length > 0 && vn.dias.every(function (d) { return /Vier/i.test(d); }),
         'solo viernes, como los otros tres', vn.dias.join(' · '));
     chk(vn.envio === 3000, 'y el envio de $3.000, que se queda el vendedor', String(vn.envio));
-    const enElCodigo = await ev('BARRIOS_PILAR_MODAL.some(function (b) { return b.val === "Zona Nueva"; })');
+    /* (26/11) Desde el 2/11 las zonas de los datos se suman a BARRIOS_PILAR_MODAL en vivo: el control mira el FUENTE. */
+    const enElCodigo = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8').indexOf('Zona Nueva') >= 0;
     chk(enElCodigo === false,
         'CONTROL: su zona NO esta en BARRIOS_PILAR_MODAL, o sea que esto no lo resuelve la lista del codigo');
 

@@ -109,7 +109,7 @@ async function main() {
       if (m.method !== 'Fetch.requestPaused') return;
       const { requestId, request } = m.params, url = request.url;
       if (/script\.google\.com/.test(url)) {
-        if (request.method === 'POST') { appsPost++; return corta(requestId); }   // el alta NO puede caer a Apps Script
+        if (request.method === 'POST') { if (url.indexOf('maleu_canario=') < 0) appsPost++; return corta(requestId); }   /* el canario no es el alta */   // el alta NO puede caer a Apps Script
         return fulfill(requestId, '{"ok":true}');
       }
       if (!/supabase\.co/.test(url)) return corta(requestId);
@@ -124,10 +124,16 @@ async function main() {
       }
       if (/\/rpc\/tienda_alta_fallida_anotar/.test(url)) { anotadas.push(p); return fulfill(requestId, '{"ok":true,"alerta":true}'); }
       if (/\/rpc\/directa_no_anotar/.test(url)) return fulfill(requestId, '{"ok":true}');
+      if (/\/rpc\/canario_maleu_no_existe/.test(url)) return corta(requestId);   /* el canario de corte-cdp.js: no es del alta */
       cortadas.push(url.split('/rpc/')[1]); return corta(requestId);
     });
     const ev = async (e) => { const r = await cli.enviar('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true });
       if (r.exceptionDetails) throw new Error(String((r.exceptionDetails.exception || {}).description || r.exceptionDetails.text).slice(0, 160)); return r.result.value; };
+    /* (26/11/2026) El candado de la tienda (25/11) frena el alta con fetch nativo fuera de maleu.com.ar. Esta red corta
+       por CDP: lo abre SOLO para Apps Script y solo despues de probar con el canario que el corte esta activo. */
+    const can = await require('./corte-cdp.js').abrirCandadoSiCorta(cli, { base: true });   /* esta red corta tambien la base */
+    chk(can.ok, 'el corte por CDP de los pedidos esta activo (canario)');
+    if (!can.ok) { console.log('\n' + RED + 'CORTA: sin corte comprobado no se prueba el alta. ' + (can.motivo || '') + RST); process.exit(1); }
     const evS = async (e) => { try { return await ev(e); } catch (x) { return null; } };
 
     async function prepararPedido() {

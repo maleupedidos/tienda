@@ -24,10 +24,31 @@
 const CANARIO = 'https://script.google.com/macros/s/CANARIO-MALEU-NO-EXISTE/exec';
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/* (26/11/2026) EL CANARIO DE LA BASE, para las redes que también cortan el alta por la base (`pedido_alta_directo`), como
+   verificar-alta-fallida. Una RPC que NO existe en el mismo host: si el corte fallara, PostgREST contesta 404 y no se
+   escribe nada. Con { base: true } se prueban los dos caminos y, si los dos están cortados, el candado se abre entero
+   (`true`): ya no queda ninguna vía de alta que salga a la red. */
+const CANARIO_BASE = 'https://xhaxmyvhygxynwjqrarm.supabase.co/rest/v1/rpc/canario_maleu_no_existe';
+
 async function abrirCandadoSiCorta(cli, opciones) {
+  const apps = await _canario(cli, CANARIO, opciones);
+  if (!apps.ok) return apps;
+  let valor = "'apps'";
+  if (opciones && opciones.base) {
+    const base = await _canario(cli, CANARIO_BASE, opciones);
+    if (!base.ok) return { ok: false, motivo: 'BASE: ' + base.motivo, v: base.v, r: base.r };
+    valor = 'true';
+  }
+  const src = 'window.__permitirAltaReal = ' + valor + ';';
+  await cli.enviar('Page.addScriptToEvaluateOnNewDocument', { source: src });
+  await cli.enviar('Runtime.evaluate', { expression: src });
+  return { ok: true, motivo: 'canario cortado por CDP' + (valor === 'true' ? ' (Apps Script y la base)' : ''), v: apps.v, r: apps.r };
+}
+
+async function _canario(cli, destino, opciones) {
   const espera = (opciones && opciones.esperaMs) || 4000;
   const marca = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-  const url = CANARIO + '?maleu_canario=' + marca;
+  const url = destino + '?maleu_canario=' + marca;
   const v = { pausado: false, respondio: false, ip: '' };
   cli.on((m) => {
     if (m.method === 'Fetch.requestPaused' && String(m.params.request.url).indexOf(marca) >= 0) v.pausado = true;
@@ -46,13 +67,9 @@ async function abrirCandadoSiCorta(cli, opciones) {
   } catch (e) { r = 'err:' + e.message; }
   for (let t = 0; t < espera && !(v.pausado && (v.respondio || /^err/.test(r))); t += 100) await dormir(100);
 
-  if (!v.pausado) return { ok: false, motivo: 'el canario NO quedó pausado por CDP: el corte de los POST a Apps Script no está activo. No se abre el candado.', v, r };
+  if (!v.pausado) return { ok: false, motivo: 'el canario NO quedó pausado por CDP: el corte por CDP de esos POST no está activo. No se abre el candado.', v, r };
   if (v.ip) return { ok: false, motivo: 'el canario llegó a la red (' + v.ip + '): el corte lo dejó seguir. No se abre el candado.', v, r };
-
-  const src = "window.__permitirAltaReal = 'apps';";
-  await cli.enviar('Page.addScriptToEvaluateOnNewDocument', { source: src });
-  await cli.enviar('Runtime.evaluate', { expression: src });
-  return { ok: true, motivo: 'canario cortado por CDP', v, r };
+  return { ok: true, v, r };
 }
 
-module.exports = { abrirCandadoSiCorta, CANARIO };
+module.exports = { abrirCandadoSiCorta, CANARIO, CANARIO_BASE };

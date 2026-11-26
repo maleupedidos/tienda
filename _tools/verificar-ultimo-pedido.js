@@ -171,6 +171,9 @@ const PREP = '(function () {' +
   '    if (/[?&]fallapiezas=1/.test(location.search)) return Promise.reject(new Error("sin red"));' +
   '    return json(' + JSON.stringify(PIEZAS) + ');' +
   '  }' +
+  /* (26/11) La tienda lee stock, piezas y vendedores primero de la base (_deLaBaseOApps) y cae a Apps Script si falla: */
+  /* se hace fallar la base para que lea lo simulado de esta prueba, no lo real. */
+  '  if (u.indexOf("/rpc/tienda_stock") >= 0 || u.indexOf("/rpc/tienda_piezas") >= 0 || u.indexOf("/rpc/tienda_vendedores") >= 0) return Promise.reject(new Error("la prueba simula Apps Script"));' +
   '  if (u.indexOf("script.google") >= 0) return json({ ok: true });' +
   '  return orig.apply(this, arguments);' +
   '};' +

@@ -189,6 +189,11 @@ async function main() {
       if (r.exceptionDetails) throw new Error(String((r.exceptionDetails.exception || {}).description || r.exceptionDetails.text).slice(0, 160));
       return r.result.value;
     };
+    /* (26/11/2026) El candado de la tienda (25/11) frena el alta con fetch nativo fuera de maleu.com.ar. Esta red corta
+       por CDP: lo abre SOLO para Apps Script y solo despues de probar con el canario que el corte esta activo. */
+    const can = await require('./corte-cdp.js').abrirCandadoSiCorta(cli);
+    chk(can.ok, 'el corte por CDP de los pedidos esta activo (canario)');
+    if (!can.ok) { console.log('\n' + RED + 'CORTA: sin corte comprobado no se prueba el alta. ' + (can.motivo || '') + RST); process.exit(1); }
     const evS = async (e) => { try { return await ev(e); } catch (x) { return null; } };
     const lsDelOrigen = async (k) => { await cli.enviar('Page.navigate', { url: base + '/__vacio' }); await dormir(500); return ev(`localStorage.getItem(${JSON.stringify(k)})`); };
     const esperar = async (e, ms) => { for (let t = 0; t < ms; t += 100) { if (await evS(e)) return true; await dormir(100); } return false; };
@@ -432,6 +437,7 @@ async function main() {
        se dibuja al lado. */
     chk(/6 empanadas de regalo · RUL-AB12\s?de regalo/.test(res) && !/-\$0/.test(res), 'el resumen del pedido muestra el premio "de regalo" (sin un descuento de $0)', res);
     posts.length = 0; navs.length = 0;
+    await ev('(async function () { for (var k = 0; k < 50 && _conocio.pidiendo; k++) await new Promise(function (s) { setTimeout(s, 100); }); if (_conocio.preguntar) { var co = document.getElementById("con-otro"); co.checked = true; conocioElegir(); } return 1; })()');   /* (26/11) «¿Cómo nos conociste?» (851): la casa de prueba es nueva para la base real. Se contesta. */
     await ev('enviarPedido()');
     const cerro = await esperarCierre();
     const ped = posts.find((p) => !p.action) || {};
@@ -457,6 +463,7 @@ async function main() {
     const res2 = JSON.parse(await ev(`JSON.stringify({ s: document.getElementById('form-summary').textContent.replace(/\\s+/g,' '), tot: cartTotal() })`));
     chk(res2.tot < 50000 && /Un Franui de regalo · RUL-FR99\s?sumá \$38\.500/.test(res2.s), 'con mínimo de $50.000 sin alcanzar: dice cuánto falta', res2);
     posts.length = 0; navs.length = 0;
+    await ev('(async function () { for (var k = 0; k < 50 && _conocio.pidiendo; k++) await new Promise(function (s) { setTimeout(s, 100); }); if (_conocio.preguntar) { var co = document.getElementById("con-otro"); co.checked = true; conocioElegir(); } return 1; })()');   /* (26/11) «¿Cómo nos conociste?» (851): la casa de prueba es nueva para la base real. Se contesta. */
     await ev('enviarPedido()');
     const cerro2 = await esperarCierre();
     const ped2 = posts.find((p) => !p.action) || {};
