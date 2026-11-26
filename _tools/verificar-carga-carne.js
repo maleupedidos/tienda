@@ -45,6 +45,9 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
    los sigue mandando el backend). Desde entonces se vendio V01 y entro V04. */
 const COPIA = { CVa: [{ id: 'V03', kg: 1.383, v: 1, of: 5 }, { id: 'V01', kg: 1.064, v: 1, of: 5 }, { id: 'V02', kg: 1.241 }] };
 const AHORA = { CVa: [{ id: 'V02', kg: 1.241 }, { id: 'V04', kg: 1.9 }, { id: 'V03', kg: 1.383 }] };
+/* (26/11) En Carnes estan tambien el chorizo y la morcilla (8/11, por paquete y solo stock). Aca van sin stock, para
+   que "lo unico que hay es el vacio" sea cierto en TODA la categoria y no solo en los cortes. */
+const STOCK = { Cho: { f: 0, p: 0 }, Mor: { f: 0, p: 0 } };
 
 function servir() {
   return new Promise((listo, fallo) => {
@@ -125,13 +128,18 @@ function prep(cfg) {
   window.fetch = function (url, opts) {
     var u = String(url);
     var m = String((opts && opts.method) || 'GET').toUpperCase();
+    /* (26/11) La tienda lee de la base PRIMERO (_deLaBaseOApps: tienda_piezas, tienda_stock…; y el catalogo,
+       catalogo_tienda) y recien si falla va a Apps Script. Esta red simulaba solo Apps Script, asi que las piezas que
+       veia eran las REALES del freezer (P-0650…) y daba 26 rojos sobre una tienda sana. Se corta la base entera: la
+       tienda cae a lo simulado aca y al catalogo de respaldo de app.js. Falla al toque, asi que no mueve los tiempos. */
+    if (u.indexOf('supabase.co') >= 0) return Promise.reject(new Error('la prueba no lee la base'));
     if (m === 'GET' && u.indexOf('action=piezas_full') >= 0) {
       if (!window.__t.piezasIni) window.__t.piezasIni = performance.now();
       return responder(function () { return window.__piezasAhora; }, window.__demoraPiezas, 'piezasFin');
     }
     if (m === 'GET' && u.indexOf('action=stock_full') >= 0) {
       if (!window.__t.stockIni) window.__t.stockIni = performance.now();
-      return responder(${JSON.stringify(conPrecios({}))}, CFG.demoraStock, 'stockFin');
+      return responder(${JSON.stringify(conPrecios(STOCK))}, CFG.demoraStock, 'stockFin');
     }
     return orig.apply(this, arguments);
   };
@@ -346,7 +354,11 @@ async function main() {
           filas: c.querySelectorAll('.pz-fila').length, txt: c.textContent };
       }) : [];
       var tile = [].filter.call(document.querySelectorAll('.cat-tile'), function (t) { return /Carnes/.test(t.textContent); })[0];
-      return { estado: piezasEstado, cards: cards, tile: tile ? tile.querySelector('.cat-tile-count').textContent : null,
+      /* Cuantos cortes por peso vende la zona: "los cinco" del 11/9 hoy son mas, y la red no tiene que envejecer cuando
+         entra uno nuevo. Y si hay en Carnes algo que no es un corte (chorizo, morcilla), el chip existe por ellos. */
+      var todos = PRODUCTOS.filter(function (x) { return esPorPeso(x) && !x.baja && _zonaPermite(x.zonas) && !_productoBloqueadoPorBarrio(x); }).length;
+      var otros = getActiveProducts().filter(function (x) { return x.cat === 'Carnes' && !esPorPeso(x); }).length;
+      return { estado: piezasEstado, cards: cards, todos: todos, otros: otros, tile: tile ? tile.querySelector('.cat-tile-count').textContent : null,
         chip: !!document.querySelector('.cat-nav-btn[data-slug="carnes"]'),
         desborde: document.documentElement.scrollWidth > window.innerWidth };
     })())`;
@@ -379,22 +391,23 @@ async function main() {
     await ev('window.__piezasAhora = {}; window.__demoraPiezas = 100;');
     await ev('_refrescarPiezas()');
     c6 = JSON.parse(await ev(CARNES));
-    chk(c6.estado === 'vacio' && c6.cards.length === 5 && c6.cards.every((x) => x.agot),
-        'si el backend dice que no queda ninguna, los cinco quedan a la vista con "Sin stock" (' + c6.estado + ', ' + c6.cards.length + ')');
+    chk(c6.estado === 'vacio' && c6.todos >= 5 && c6.cards.length === c6.todos && c6.cards.every((x) => x.agot),
+        'si el backend dice que no queda ninguna, todos los cortes quedan a la vista con "Sin stock" (' + c6.estado + ', ' + c6.cards.length + ' de ' + c6.todos + ')');
     chk(c6.tile === 'Sin stock' && c6.chip, 'el tile dice "Sin stock" y el chip de Carnes sigue llevando a algo');
 
     await ev('window.__piezasAhora = { ok: false, error: "se cayo" };');
     await ev('_refrescarPiezas()');
     c6 = JSON.parse(await ev(CARNES));
-    chk(c6.estado === 'vacio' && c6.cards.length === 5,
-        'un refresco que falla no borra un "Sin stock" que era cierto (' + c6.estado + ', ' + c6.cards.length + ' cards)');
+    chk(c6.estado === 'vacio' && c6.cards.length === c6.todos,
+        'un refresco que falla no borra un "Sin stock" que era cierto (' + c6.estado + ', ' + c6.cards.length + ' de ' + c6.todos + ' cards)');
 
     await abrir({ piezas: { ok: false, error: 'se cayo' }, demoraPiezas: 300, demoraStock: 300 });
     chk(await esperar('!!window.__t.piezasFin', 4000), 'con el backend caido desde el arranque, la respuesta llega');
     await dormir(300);
     c6 = JSON.parse(await ev(CARNES));
-    chk(c6.estado === 'sin-datos' && c6.cards.length === 0 && !c6.chip,
-        'y no se muestra ningun corte: sin inventario no se afirma "sin stock" (' + c6.estado + ', ' + c6.cards.length + ' cards, chip ' + c6.chip + ')');
+    /* El chip de Carnes: sin ningun corte, queda solo si en la categoria hay otra cosa (el chorizo, la morcilla). */
+    chk(c6.estado === 'sin-datos' && c6.cards.length === 0 && c6.chip === (c6.otros > 0),
+        'y no se muestra ningun corte: sin inventario no se afirma "sin stock" (' + c6.estado + ', ' + c6.cards.length + ' cards, chip ' + c6.chip + ', ' + c6.otros + ' de Carnes que no son cortes)');
 
     chk(posts.length === 0, 'no salio ningun POST (' + posts.length + ')');
   } catch (e) {

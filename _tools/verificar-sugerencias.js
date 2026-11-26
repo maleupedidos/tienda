@@ -62,9 +62,16 @@ ABBRS.forEach((a) => { STOCK[a] = { f: 50, p: 50 }; });
    sorrentinos, y para el viernes (sin tope) volver a esos dos. */
 STOCK.PMa = { f: 0, p: 0 };
 STOCK.SJyQ = { f: 0, p: 0 };
+/* (26/11) Lo que entro al catalogo despues del 13/9: los wraps de Sevuchitas, la Torta La Bo, los aceites (Almacén) y
+   el chorizo y la morcilla (cat Carnes, por paquete). Con stock explicito: sin "f" la tienda no les pone tope y la
+   prueba dependeria de eso sin decirlo. */
+['WPo', 'WBo', 'WVe', 'TLB', 'AdO500Ar', 'AdO500Co', 'AdO1LAr', 'AdO1LCo', 'Cho', 'Mor'].forEach((a) => { STOCK[a] = { f: 50, p: 50 }; });
 
-/* La picaña y el vacio son los dos primeros del orden, y el lomo esta agotado.
-   La picaña de 0,900 viene segunda a proposito, pero OJO: fetchPiezas ordena el
+/* (26/11) EL ORDEN SALE DE SUG_CARNE_ORDEN, NO DE ESTE ARCHIVO. Es el orden de margen y lo decide el negocio: el 7/10
+   cambio (el vacio paso al final) y esta red siguio esperando "picaña y despues vacio" hasta el 26/11. Ahora lee la
+   lista de app.js y espera los dos primeros cortes de ESA lista que tengan piezas aca. Cada corte trae dos piezas y la
+   mas chica va SEGUNDA; el lomo, que en la lista esta en el medio, viene agotado (no esta).
+   OJO: fetchPiezas ordena el
    inventario al recibirlo, asi que lo que se prueba es la cadena entera (llega
    desordenado, se ofrece la mas chica), no el sort de la sugerencia. Sacar ese
    sort no rompe nada y este test no lo marca; es un seguro, no la regla.
@@ -73,8 +80,8 @@ STOCK.SJyQ = { f: 0, p: 0 };
 const PIEZAS = {
   CPi: [{ id: 'P-0101', kg: 1.16 }, { id: 'P-0102', kg: 0.9 }],
   CVa: [{ id: 'P-0201', kg: 1.241 }, { id: 'P-0202', kg: 1.064 }],
-  CCo: [{ id: 'P-0301', kg: 1.221 }],
-  CEn: [{ id: 'P-0401', kg: 1.163 }],
+  CCo: [{ id: 'P-0301', kg: 1.221 }, { id: 'P-0302', kg: 1.012 }],
+  CEn: [{ id: 'P-0401', kg: 1.163 }, { id: 'P-0402', kg: 0.987 }],
 };
 
 const APP = fs.readFileSync(path.join(RAIZ, 'app.js'), 'utf8');
@@ -85,6 +92,14 @@ const ID = { PMa: idDe('Pizza Margarita'), PPM: idDe('Pack Muzzarella'), SJyQ: i
 /* Desde el 14/10/2026 el precio no esta en app.js: es el que la prueba le da a la
    tienda por `stock_full` (la foto de precios-prueba.js). */
 const precio = (ab) => Number(conPrecios.PV[ab]);
+/* El orden de margen, de app.js, y los cortes de ese orden que tienen piezas en esta prueba. */
+const ORDEN = ((APP.match(/var SUG_CARNE_ORDEN = \[([^\]]*)\]/) || [])[1] || '').match(/[A-Za-z]+/g) || [];
+const CON = ORDEN.filter((a) => PIEZAS[a]);
+const nomDe = (ab) => JSON.parse('"' + ((APP.match(new RegExp('abbr:"' + ab + '"[^}]*?nombre:"([^"]*)"')) || [])[1] || '') + '"');
+const kgTxt = (kg) => kg.toFixed(3).replace('.', ',') + ' kg';
+const chica = (ab) => PIEZAS[ab].slice().sort((x, y) => x.kg - y.kg)[0];
+const grande = (ab) => PIEZAS[ab].slice().sort((x, y) => y.kg - x.kg)[0];
+const [C0, C1, C2] = CON;
 
 function servir() {
   return new Promise((listo, fallo) => {
@@ -157,9 +172,11 @@ const PREP = '(function () {' +
   '  if (opts && String(opts.method || "").toUpperCase() === "POST" && u.indexOf("script.google") >= 0) { window.__post++; return new Promise(function () {}); }' +
   '  if (u.indexOf("action=stock_full") >= 0) return json(' + JSON.stringify(conPrecios(STOCK)) + ');' +
   '  if (u.indexOf("action=piezas_full") >= 0) return json(window.__piezas);' +
-  /* (26/11) La tienda lee stock, piezas y vendedores primero de la base (_deLaBaseOApps) y cae a Apps Script si falla: */
-  /* se hace fallar la base para que lea lo simulado de esta prueba, no lo real. */
-  '  if (u.indexOf("/rpc/tienda_stock") >= 0 || u.indexOf("/rpc/tienda_piezas") >= 0 || u.indexOf("/rpc/tienda_vendedores") >= 0) return Promise.reject(new Error("la prueba simula Apps Script"));' +
+  /* (26/11) La tienda lee de la base primero: stock, piezas y vendedores (_deLaBaseOApps), pero tambien el CATALOGO
+     (catalogo_tienda), la cuenta para transferir (tienda_cuentas) y otras. Cortar solo tres dejaba pasar el catalogo
+     real: la prueba medía lo que hay hoy en producción. Se corta la base ENTERA: la tienda cae a lo simulado de Apps
+     Script y al catalogo de respaldo de app.js, que es lo que esta prueba conoce. */
+  '  if (u.indexOf("supabase.co") >= 0) return Promise.reject(new Error("la prueba no lee la base"));' +
   '  if (u.indexOf("script.google") >= 0) return json({ ok: true });' +
   '  return orig.apply(this, arguments);' +
   '};' +
@@ -169,6 +186,9 @@ async function main() {
   const chrome = CHROMES.find((c) => fs.existsSync(c));
   if (!chrome) { console.error('No encontre Chrome ni Edge'); process.exit(1); }
   if (!idPMu || !precio('CPi') || !precio('CVa')) { console.error('No encontre los productos en app.js'); process.exit(1); }
+  if (CON.length < 3 || CON.indexOf('CLo') >= 0 || ORDEN.indexOf('CLo') < 0 || CON.some((a) => !nomDe(a) || !precio(a))) {
+    console.error('No pude leer SUG_CARNE_ORDEN de app.js (' + ORDEN.join(',') + ')'); process.exit(1);
+  }
   const srv = await servir();
   const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'maleu-sugcarne-'));
   const puertoCdp = 9400 + Math.floor(Math.random() * 90);
@@ -299,10 +319,13 @@ async function main() {
     chk(s.vis && s.tipo === 'carne', 'aparece la sugerencia de carne');
     chk(s.filas.length === 2, 'con dos cortes (' + s.filas.length + ')');
     const pic = s.filas[0] || { txt: '', boton: '' }, vac = s.filas[1] || { txt: '', boton: '' };
-    chk(/Picaña/.test(pic.txt) && /Vacío/.test(vac.txt), 'primero la picaña y despues el vacio, por margen ("' + pic.txt.slice(0, 20) + '" / "' + vac.txt.slice(0, 20) + '")');
-    chk(/P-0102/.test(pic.boton) && /Pieza de 0,900 kg/.test(pic.txt), 'de la picaña ofrece la MAS CHICA, 0,900 kg, aunque no venga primera');
-    chk(pic.txt.indexOf(ars(0.9 * precio('CPi'))) >= 0, 'con su precio: ' + ars(0.9 * precio('CPi')) + ' ("' + pic.txt + '")');
-    chk(/P-0202/.test(vac.boton) && vac.txt.indexOf(ars(1.064 * precio('CVa'))) >= 0, 'del vacio, la de 1,064 kg a ' + ars(1.064 * precio('CVa')));
+    chk(pic.txt.indexOf(nomDe(C0)) === 0 && vac.txt.indexOf(nomDe(C1)) === 0,
+        'en el orden de margen de SUG_CARNE_ORDEN: ' + nomDe(C0) + ' y despues ' + nomDe(C1) + ' ("' + pic.txt.slice(0, 20) + '" / "' + vac.txt.slice(0, 20) + '")');
+    chk(pic.boton.indexOf(chica(C0).id) >= 0 && pic.txt.indexOf('Pieza de ' + kgTxt(chica(C0).kg)) >= 0,
+        'del primero ofrece la MAS CHICA, ' + kgTxt(chica(C0).kg) + ', aunque no venga primera');
+    chk(pic.txt.indexOf(ars(chica(C0).kg * precio(C0))) >= 0, 'con su precio: ' + ars(chica(C0).kg * precio(C0)) + ' ("' + pic.txt + '")');
+    chk(vac.boton.indexOf(chica(C1).id) >= 0 && vac.txt.indexOf(ars(chica(C1).kg * precio(C1))) >= 0,
+        'del segundo, la de ' + kgTxt(chica(C1).kg) + ' a ' + ars(chica(C1).kg * precio(C1)));
     chk(!/Lomo/.test(JSON.stringify(s.filas)), 'el lomo agotado no aparece');
     chk(s.filas.every((f) => f.alto >= 44) && s.ver >= 44, 'los botones miden ' + s.filas.map((f) => f.alto).join('/') + ' y ' + s.ver + 'px');
     chk(s.desborde <= 0, 'no se sale del carrito a lo ancho (' + s.desborde + 'px)');
@@ -315,29 +338,29 @@ async function main() {
     const t = await tocar('#cart-sug .sug-fila .sug-btn');
     chk(t && t.libre, 'el "+ Sumar" no lo tapa nada');
     const st = JSON.parse(await ev('JSON.stringify({ piezas: Object.keys(piezaCart), grilla: !!document.querySelector("#catalog-root .pz-fila.elegida"), carro: document.getElementById("cart-body").innerText })'));
-    chk(st.piezas.length === 1 && st.piezas[0] === 'P-0102', 'entra la pieza de 0,900 kg (' + st.piezas.join(',') + ')');
+    chk(st.piezas.length === 1 && st.piezas[0] === chica(C0).id, 'entra la pieza de ' + kgTxt(chica(C0).kg) + ' (' + st.piezas.join(',') + ')');
     chk(st.grilla, 'y la grilla de Carnes la marca como elegida');
-    chk(/Picaña/.test(st.carro) && /0,900 kg/.test(st.carro), 'el carrito la muestra');
+    chk(st.carro.indexOf(nomDe(C0)) >= 0 && st.carro.indexOf(kgTxt(chica(C0).kg)) >= 0, 'el carrito la muestra');
     s = await sug();
     chk(!s.vis, 'con carne en el carrito la sugerencia se va');
     chk(/sugerencia_carne"/.test(await eventos()) || /"sugerencia_carne"/.test(await eventos()), 'se mide "sugerencia_carne"');
 
     /* ── 4. SACARLA, Y QUE SE VENDA ─────────────────────────────────── */
     console.log('\n' + DIM + '== Sacarla, y que se venda ==' + RST);
-    await ev('togglePieza("CPi", "P-0102")');
+    await ev('togglePieza(' + JSON.stringify(C0) + ', ' + JSON.stringify(chica(C0).id) + ')');
     await dormir(200);
     s = await sug();
-    chk(s.vis && /P-0102/.test((s.filas[0] || {}).boton), 'al sacarla, la sugerencia vuelve con la misma pieza');
-    await ev('(async function () { delete window.__piezas.CPi; window.__piezas.CPi = [{ id: "P-0101", kg: 1.16 }]; await _refrescarPiezas(); })()');
+    chk(s.vis && ((s.filas[0] || {}).boton || '').indexOf(chica(C0).id) >= 0, 'al sacarla, la sugerencia vuelve con la misma pieza');
+    await ev('(async function () { window.__piezas[' + JSON.stringify(C0) + '] = [' + JSON.stringify(grande(C0)) + ']; await _refrescarPiezas(); })()');
     await dormir(300);
     s = await sug();
-    chk(s.vis && /P-0101/.test((s.filas[0] || {}).boton) && /1,160 kg/.test((s.filas[0] || {}).txt),
-        'si la de 0,900 se vende, al llegar el inventario ofrece la de 1,160 ("' + ((s.filas[0] || {}).txt || '') + '")');
-    await ev('(async function () { delete window.__piezas.CPi; await _refrescarPiezas(); })()');
+    chk(s.vis && ((s.filas[0] || {}).boton || '').indexOf(grande(C0).id) >= 0 && ((s.filas[0] || {}).txt || '').indexOf(kgTxt(grande(C0).kg)) >= 0,
+        'si la de ' + kgTxt(chica(C0).kg) + ' se vende, al llegar el inventario ofrece la de ' + kgTxt(grande(C0).kg) + ' ("' + ((s.filas[0] || {}).txt || '') + '")');
+    await ev('(async function () { delete window.__piezas[' + JSON.stringify(C0) + ']; await _refrescarPiezas(); })()');
     await dormir(300);
     s = await sug();
-    chk(s.vis && /Vacío/.test((s.filas[0] || {}).txt) && /Colita/.test((s.filas[1] || {}).txt),
-        'sin picaña, pasa al vacio y la colita (' + s.filas.map((f) => f.txt.split(' Pieza')[0]).join(' / ') + ')');
+    chk(s.vis && ((s.filas[0] || {}).txt || '').indexOf(nomDe(C1)) === 0 && ((s.filas[1] || {}).txt || '').indexOf(nomDe(C2)) === 0,
+        'sin ' + nomDe(C0) + ', pasa a ' + nomDe(C1) + ' y ' + nomDe(C2) + ' (' + s.filas.map((f) => f.txt.split(' Pieza')[0]).join(' / ') + ')');
 
     /* ── 6. VER TODAS LAS PIEZAS ────────────────────────────────────── */
     await tocar('#cart-sug .sug-ver');
@@ -358,8 +381,13 @@ async function main() {
       ' desborde: document.getElementById("cart-body").scrollWidth - document.getElementById("cart-body").clientWidth }); })()'));
     let mm = await maleu();
     chk(mm.vis && mm.tipo === 'maleu' && /¿Le sumás algo más\?/.test(mm.txt), 'con solo carne aparece "¿Le sumás algo más?"');
-    chk(/También tenemos pizzas, sorrentinos, empanadas, tartas, wraps y postres\. Va todo en la misma entrega\./.test(mm.txt),
+    /* (26/11) El aceite de oliva (Almacén, 13/11) es de verdad algo mas que se vende. "Carnes" no: el chorizo y la
+       morcilla son cat Carnes y se colaban en la frase y en lo ofrecido, a alguien que lleva solo carne. */
+    chk(/También tenemos pizzas, sorrentinos, empanadas, tartas, wraps, postres y aceite de oliva\. Va todo en la misma entrega\./.test(mm.txt),
         'dice todo lo que hay: "' + (mm.txt.match(/También tenemos[^.]*\./) || [''])[0] + '"');
+    chk(!/carne/i.test((mm.txt.match(/También tenemos[^.]*\./) || [''])[0]) && !(await ev('(function () { var ids = ' + JSON.stringify(mm.ids) + ';' +
+        ' return ids.some(function (i) { return PROD_MAP[i] && PROD_MAP[i].cat === "Carnes"; }); })()')),
+        'y no le ofrece carne al que lleva solo carne: ni "carnes" en la frase ni el chorizo en la lista');
     chk(JSON.stringify(mm.ids) === JSON.stringify([ID.PPM, ID.ECaC, ID.SCo]),
         'tres de categorias distintas, primero lo mas pedido y SOLO lo que hay hoy: pack muzza, empanadas de carne, sorrentinos de cordero (' + mm.ids.join(',') + ')');
     chk(mm.ids.indexOf(ID.PMa) < 0 && mm.ids.indexOf(ID.SJyQ) < 0, 'la margarita y los de jamon y queso, sin stock para hoy, no se ofrecen');
@@ -393,6 +421,13 @@ async function main() {
     chk(conCombo === 1 && !mm.vis, 'carne y un combo: no sugiere, el combo ya es de Maleu');
     await ev('comboCart = {}; updateUI()');
     chk((await maleu()).vis, 'y al sacar el combo vuelve');
+
+    /* El chorizo es carne: el que lleva vacio y chorizo sigue llevando solo carne. */
+    const idCho = await ev('(function () { var p = PRODUCTOS.filter(function (x) { return x.abbr === "Cho"; })[0]; if (!p) return 0; addToCart(String(p.id)); return p.id; })()');
+    await dormir(200);
+    mm = await maleu();
+    chk(idCho && (await ev('cart[' + idCho + ']')) === 1 && mm.vis && mm.tipo === 'maleu', 'carne y un chorizo: sigue sugiriendo, el chorizo tambien es carne (' + (mm.vis ? mm.tipo : 'no se ve') + ')');
+    if (idCho) await ev('changeQty("' + idCho + '", -1)');
 
     await tocar('#cart-sug .sug-ver');
     await dormir(1200);

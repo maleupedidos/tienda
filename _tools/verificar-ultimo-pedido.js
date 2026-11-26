@@ -57,20 +57,25 @@ const PEDIDO_T = Date.UTC(2026, 8, 11, 22, 30, 0); // viernes 11/9 19:30 AR
 
 const ABBRS = ['PMu', 'PMa', 'PJyQ', 'PCC', 'PJyM', 'PPM', 'PPJyQ', 'PPCyQ', 'SQB', 'SL', 'SCo',
   'SPyP', 'SJyQ', 'SE', 'SCa', 'ECaC', 'EJyQ', 'ECyQ', 'EV', 'TG', 'TLC', 'TC', 'F', 'TP', 'TJyQ',
-  'TCa', 'TV', 'RC', 'RP', 'CCo', 'CEn', 'CLo', 'CPi', 'CVa'];
+  'TCa', 'TV', 'RC', 'RP', 'WPo', 'WBo', 'WVe', 'CCo', 'CEn', 'CLo', 'CPi', 'CVa'];
 const STOCK = {};
 ABBRS.forEach((a) => { STOCK[a] = { f: 50, p: 50 }; });
 STOCK.PMa = { f: 0, p: 0 };   // agotado para hoy
 STOCK.TP = { f: 1, p: 1 };    // pidio 3 y hay 1
 STOCK.PJyQ = { f: 0, p: 0 };  // con la margarita: un pedido que hoy no hay entero
 const PIEZAS = { CVa: [{ id: 'P-0901', kg: 1.2 }, { id: 'P-0902', kg: 1.45 }] };
+/* (26/11) El chorizo y la morcilla (cat Carnes, por paquete, solo stock) tambien estan en el catalogo. Con stock 0 se
+   ven con "Sin stock", asi que la categoria Carnes existe aunque no haya ningun corte: lo que dice si hay carne para
+   ELEGIR PIEZAS es que haya un corte por peso a la vista, no la categoria. */
+STOCK.Cho = { f: 0, p: 0 };
+STOCK.Mor = { f: 0, p: 0 };
 
 /* Los ids salen del catalogo, no escritos a mano: si cambian, el test no
    envejece en silencio. */
 const APP = fs.readFileSync(path.join(RAIZ, 'app.js'), 'utf8');
 const IDS = {};
 [['PMa', 'Pizza Margarita'], ['PMu', 'Pizza Muzzarella'], ['SJyQ', 'Sorrentinos Jam'], ['PJyQ', 'Pizza Jamón y Queso'],
- ['ECaC', 'Empanadas Carne'], ['TP', 'Tarta Pollo'], ['RC', 'Wrap Carne'], ['PPM', 'Pack Muzzarella']].forEach(([ab, nom]) => {
+ ['ECaC', 'Empanadas Carne'], ['TP', 'Tarta Pollo'], ['WPo', 'Wrap Pollo x2'], ['PPM', 'Pack Muzzarella']].forEach(([ab, nom]) => {
   const re = new RegExp('\\{\\s*id:(\\d+),\\s*cat:"[^"]+",\\s*nombre:"' + nom.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   const m = APP.match(re);
   if (!m) throw new Error('no encontre ' + nom + ' en PRODUCTOS');
@@ -78,11 +83,16 @@ const IDS = {};
 });
 IDS.CVa = Number((APP.match(/\{\s*id:(\d+),\s*abbr:"CVa"/) || [])[1]);
 IDS.CEn = Number((APP.match(/\{\s*id:(\d+),\s*abbr:"CEn"/) || [])[1]);
+/* Los nombres de los cortes, del catalogo: el vacio paso a llamarse "Vacío porcionado" el 7/10/2026 y la red seguia
+   esperando "Vacío". En app.js van con escapes \u00ed, por eso el JSON.parse. */
+const nomDe = (ab) => JSON.parse('"' + ((APP.match(new RegExp('abbr:"' + ab + '"[^}]*?nombre:"([^"]*)"')) || [])[1] || '') + '"');
+const CARNE_TXT = 'También llevaste carne: ' + nomDe('CVa') + ' y ' + nomDe('CEn') + '.';
+if (!nomDe('CVa') || !nomDe('CEn')) throw new Error('no encontre los nombres del vacio y la entraña en PRODUCTOS');
 
 const VIEJO = [{ id: IDS.PMu, qty: 2 }, { id: IDS.ECaC, qty: 1 }];
 const V2 = { t: PEDIDO_T, zona: 'estancias', carne: [IDS.CVa, IDS.CEn], items: [
   { id: IDS.PMa, qty: 1 }, { id: IDS.PMu, qty: 2 }, { id: IDS.TP, qty: 3 },
-  { id: IDS.ECaC, qty: 1 }, { id: IDS.SJyQ, qty: 2 }, { id: IDS.RC, qty: 1 }] };
+  { id: IDS.ECaC, qty: 1 }, { id: IDS.SJyQ, qty: 2 }, { id: IDS.WPo, qty: 1 }] };
 const AGOTADO = { t: PEDIDO_T, zona: 'estancias', carne: [], items: [{ id: IDS.PMa, qty: 1 }, { id: IDS.PJyQ, qty: 2 }] };
 
 function servir() {
@@ -171,9 +181,11 @@ const PREP = '(function () {' +
   '    if (/[?&]fallapiezas=1/.test(location.search)) return Promise.reject(new Error("sin red"));' +
   '    return json(' + JSON.stringify(PIEZAS) + ');' +
   '  }' +
-  /* (26/11) La tienda lee stock, piezas y vendedores primero de la base (_deLaBaseOApps) y cae a Apps Script si falla: */
-  /* se hace fallar la base para que lea lo simulado de esta prueba, no lo real. */
-  '  if (u.indexOf("/rpc/tienda_stock") >= 0 || u.indexOf("/rpc/tienda_piezas") >= 0 || u.indexOf("/rpc/tienda_vendedores") >= 0) return Promise.reject(new Error("la prueba simula Apps Script"));' +
+  /* (26/11) La tienda lee de la base primero: stock, piezas y vendedores (_deLaBaseOApps), pero tambien el CATALOGO
+     (catalogo_tienda), la cuenta para transferir (tienda_cuentas) y otras. Cortar solo tres dejaba pasar el catalogo
+     real: la prueba medía lo que hay hoy en producción. Se corta la base ENTERA: la tienda cae a lo simulado de Apps
+     Script y al catalogo de respaldo de app.js, que es lo que esta prueba conoce. */
+  '  if (u.indexOf("supabase.co") >= 0) return Promise.reject(new Error("la prueba no lee la base"));' +
   '  if (u.indexOf("script.google") >= 0) return json({ ok: true });' +
   '  return orig.apply(this, arguments);' +
   '};' +
@@ -351,8 +363,8 @@ async function main() {
     chk(JSON.stringify(e.cards) === JSON.stringify([IDS.TP, IDS.PMu, IDS.SJyQ, IDS.PMa]),
         'cuatro cards, de mayor a menor cantidad (' + e.cards.join(',') + ')');
     chk(/^Tu pedido del 11\/9 · tocá lo que quieras repetir/.test(e.sub), 'dice de cuando es: "' + e.sub + '"');
-    chk(/Y también: Empanadas Carne a Cuchillo x8 ×1 · Wrap Carne ×1/.test(e.pie), 'nombra los dos que no entran en las cards');
-    chk(/También llevaste carne: Vacío y Entraña\./.test(e.pie), 'dice la carne que llevo');
+    chk(/Y también: Empanadas Carne a Cuchillo x8 ×1 · Wrap Pollo x2 ×1/.test(e.pie), 'nombra los dos que no entran en las cards');
+    chk(e.pie.indexOf(CARNE_TXT) >= 0, 'dice la carne que llevo ("' + CARNE_TXT + '")');
     chk(!e.cards.includes(IDS.CVa) && !e.cards.includes(IDS.CEn), 'y no la repite como card: cada pieza es unica');
     chk(/Agregar lo mismo · 5 productos · \$104\.000/.test(e.boton),
         'el boton cuenta lo que va a sumar: sin la margarita agotada y la tarta hasta el stock ("' + e.boton + '")');
@@ -393,7 +405,7 @@ async function main() {
     chk(c[IDS.PMu] === 2, 'la muzzarella queda en 2, lo que pidio, y no en 3 (' + c[IDS.PMu] + ')');
     chk(c[IDS.TP] === 1, 'la tarta, hasta el stock que hay (' + c[IDS.TP] + ')');
     chk(!c[IDS.PMa], 'la margarita agotada no se suma');
-    chk(c[IDS.SJyQ] === 2 && c[IDS.ECaC] === 1 && c[IDS.RC] === 1, 'los otros, con su cantidad (incluidos los que no se ven)');
+    chk(c[IDS.SJyQ] === 2 && c[IDS.ECaC] === 1 && c[IDS.WPo] === 1, 'los otros, con su cantidad (incluidos los que no se ven)');
     const aviso = await ev('document.getElementById("toast").textContent');
     chk(/Sumamos 5 productos de tu último pedido · 1 no hay para esta fecha/.test(aviso), 'el aviso: "' + aviso + '"');
     e = await estado();
@@ -431,14 +443,15 @@ async function main() {
     const sinC = JSON.parse(await ev('JSON.stringify({' +
       ' pie: (document.getElementById("ultimo-pie") || {}).textContent || "",' +
       ' btn: !!document.querySelector("#ultimo-section .ultimo-carne-btn"),' +
+      ' cortes: getActiveProducts().filter(esPorPeso).length,' +
       ' catCarnes: !!document.getElementById("cat-carnes") })'));
-    chk(/También llevaste carne: Vacío y Entraña\./.test(sinC.pie),
+    chk(sinC.pie.indexOf(CARNE_TXT) >= 0,
         'nombra los DOS cortes que llevo, aunque hoy no haya ninguno',
         sinC.pie.replace(/\s+/g, ' ').slice(0, 90));
     chk(await ev("piezasEstado === 'sin-datos'"),
         'CONTROL: no se pudo traer el inventario (sin-datos, no vacio)',
         await ev('piezasEstado'));
-    chk(sinC.catCarnes === false, 'y por lo tanto la categoria Carnes no esta a la vista');
+    chk(sinC.cortes === 0, 'y por lo tanto no hay ningun corte por pieza a la vista (' + sinC.cortes + '; la categoria Carnes ' + (sinC.catCarnes ? 'esta, por el chorizo y la morcilla' : 'no esta') + ')');
     chk(sinC.btn === false, 'y por eso no se ofrece "Elegir las piezas de hoy"');
     /* Y se devuelve el estado: los escenarios que siguen cuentan con la carne a
        la vista, y sin esto el siguiente se rompia buscando un boton que este

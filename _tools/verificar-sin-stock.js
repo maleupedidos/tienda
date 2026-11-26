@@ -150,9 +150,11 @@ const PREP = '(function () {' +
   '  if (opts && String(opts.method || "").toUpperCase() === "POST" && u.indexOf("script.google") >= 0) { window.__post++; (window.__posts = window.__posts || []).push(u.slice(0, 80) + " " + String(opts.body || "").slice(0, 160)); return new Promise(function () {}); }' +
   '  if (u.indexOf("action=stock_full") >= 0) return json(' + JSON.stringify(conPrecios(STOCK)) + ');' +
   '  if (u.indexOf("action=piezas_full") >= 0) return json({});' +
-  /* (26/11) La tienda lee stock, piezas y vendedores primero de la base (_deLaBaseOApps) y cae a Apps Script si falla: */
-  /* se hace fallar la base para que lea lo simulado de esta prueba, no lo real. */
-  '  if (u.indexOf("/rpc/tienda_stock") >= 0 || u.indexOf("/rpc/tienda_piezas") >= 0 || u.indexOf("/rpc/tienda_vendedores") >= 0) return Promise.reject(new Error("la prueba simula Apps Script"));' +
+  /* (26/11) La tienda lee de la base primero: stock, piezas y vendedores (_deLaBaseOApps), pero tambien el CATALOGO
+     (catalogo_tienda), la cuenta para transferir (tienda_cuentas) y otras. Cortar solo tres dejaba pasar el catalogo
+     real: la prueba medía lo que hay hoy en producción. Se corta la base ENTERA: la tienda cae a lo simulado de Apps
+     Script y al catalogo de respaldo de app.js, que es lo que esta prueba conoce. */
+  '  if (u.indexOf("supabase.co") >= 0) return Promise.reject(new Error("la prueba no lee la base"));' +
   '  if (u.indexOf("script.google") >= 0) return json({ ok: true });' +
   '  return orig.apply(this, arguments);' +
   '};' +
@@ -566,7 +568,9 @@ async function main() {
       '})()'));
     chk(/maleubru/.test(copia.t1) && /mantené apretado/.test(copia.t1), 'si no se puede copiar, lo dice con el alias escrito: "' + copia.t1 + '"');
     chk(/copiado: maleubru/.test(copia.t2), 'si el portapapeles falla, prueba el metodo viejo: "' + copia.t2 + '"');
-    chk(/copiado: maleu\.ar/.test(copia.t3), 'con portapapeles, copia como siempre: "' + copia.t3 + '"');
+    /* (26/11) La llamada de arriba pasó a "maleu26" el día que cambió el alias de Galicia (ae91a14) y este regex quedó en
+       "maleu.ar": la red pedía un alias distinto del que ella misma copia. Ahora sale de la misma variable. */
+    chk(/copiado: maleu26/.test(copia.t3),'con portapapeles, copia como siempre: "' + copia.t3 + '"');
 
     /* ── 5. EL FORMULARIO, EL PAGO Y LOS TAMAÑOS ─────────────────────── */
     console.log('\n' + DIM + '== Formulario y medidas ==' + RST);

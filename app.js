@@ -751,11 +751,16 @@ function _hayParaLaFecha(p) {
   return cap === null || cap === undefined || cap > 0;
 }
 
+/* (26/11/2026) «Carne» es la CATEGORÍA, no solo lo que va por pieza. Desde el 8/11 en Carnes están también el chorizo y
+   la morcilla (por paquete, sin `porPeso`), y con eso la sugerencia le decía «También tenemos … y carnes» —y le ofrecía
+   un chorizo— a alguien que justo lleva solo carne. Lo que se le ofrece es lo que NO es carne; y el chorizo en el carrito
+   cuenta como carne: el que lleva vacío y chorizo sigue llevando solo carne. */
+function _esCarneSug(p) { return !!p && (esPorPeso(p) || p.cat === 'Carnes'); }
 function _sugerenciaMaleu() {
   var nada = { prods: [], grupos: [] };
   if (!piezasAgrupadas().length) return nada;
-  if (Object.keys(cart).some(function (id) { return cart[id] > 0; }) || Object.keys(comboCart).length) return nada;
-  var hay = getActiveProducts().filter(function (p) { return !esPorPeso(p) && _hayParaLaFecha(p); });
+  if (Object.keys(cart).some(function (id) { return cart[id] > 0 && !_esCarneSug(PROD_MAP[id]); }) || Object.keys(comboCart).length) return nada;
+  var hay = getActiveProducts().filter(function (p) { return !_esCarneSug(p) && _hayParaLaFecha(p); });
   var grupos = [];
   hay.forEach(function (p) { var g = _sugGrupo(p.cat); if (grupos.indexOf(g) === -1) grupos.push(g); });
   var usados = {}, prods = [];
@@ -8901,7 +8906,9 @@ function renderCatTiles() {
     /* El contador dice lo que se puede ELEGIR: con dos cortes sin stock,
        "5 opciones" promete de mas. Solo cambia algo en Carnes — en el resto
        carneAgotada es siempre false. */
-    const elegibles = suyos.filter(p => !carneAgotada(p) || reservable(p)).length;
+    /* (26/11/2026) Y lo que es solo stock (chorizo, morcilla: `_soloStockSiempre`) sin stock tampoco se elige: no hay
+       «Pedir para otra fecha». Sin esto, con solo vacío en el freezer el tile decía «3 opciones». */
+    const elegibles = suyos.filter(p => (!carneAgotada(p) || reservable(p)) && !(_soloStockSiempre(p.id) && getStockCap(p.id) === 0)).length;
     /* MIENTRAS EL INVENTARIO VIAJA, EL CONTADOR NO DICE NADA (28/9/2026).
        Sin esto, el tile de Carnes arranca diciendo "Sin stock" —porque todavia
        no hay ninguna pieza en el mapa— y se corrige recien a los 5 segundos.
@@ -9847,7 +9854,10 @@ function _pintarUltimoPie(u) {
        lo que dice el comentario de `getCategoriasVisibles` y por lo que esa
        funcion existe. Decirle QUE llevo es cierto igual; ofrecerle ir solo
        tiene sentido si hay adonde. */
-    var hayCarneHoy = getCategoriasVisibles().some(function (c) { return c.nombre === 'Carnes'; });
+    /* (26/11/2026) Un CORTE a la vista, no la categoría: desde el 8/11 en Carnes también están el chorizo y la morcilla
+       (por paquete, con «Sin stock» si no hay), así que la categoría existe aunque no se pueda elegir ninguna pieza, y
+       el botón llevaba a «elegir las piezas de hoy» donde no había ninguna. */
+    var hayCarneHoy = getActiveProducts().some(function (p) { return esPorPeso(p); });
     if (hayCarneHoy) {
       html += '<button type="button" class="ultimo-carne-btn" onclick="scrollToCat(\'' + slugify('Carnes') + '\')">' +
         'Elegir las piezas de hoy</button>';
