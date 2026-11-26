@@ -112,8 +112,21 @@ const PREP = `(function () {
   var orig = window.fetch;
   window.fetch = function (url, opts) {
     var u = String(url);
+    /* (26/11/2026) La tienda lee stock, piezas y vendedores de la base (POST a /rpc/...): se los hace fallar para que
+       caiga al stub de Apps Script de abajo. Si no, quedaban colgados como un alta y no llegaba la pieza. */
+    if (u.indexOf('/rpc/tienda_stock') >= 0 || u.indexOf('/rpc/tienda_piezas') >= 0 || u.indexOf('/rpc/tienda_vendedores') >= 0) return Promise.reject(new Error('la prueba simula Apps Script'));
+    /* «¿Cómo nos conociste?» (851) pregunta a la base si la casa es nueva, también por POST: sin respuesta no pregunta,
+       que es lo que esta red necesita (mira el descuento, no la pregunta). Si no, ese POST quedaba como «el pedido». */
+    if (u.indexOf('/rpc/casa_es_nueva') >= 0) return Promise.reject(new Error('la prueba no pregunta'));
+    /* Analytics y Meta también mandan POST (por fetch desde gtag): no son el pedido. Se contestan vacíos y no se anotan. */
+    if (/google-analytics|googletagmanager|facebook\.com|analytics\.google/.test(u)) return Promise.resolve(new Response('', { status: 204 }));
     if (opts && String(opts.method || '').toUpperCase() === 'POST') {
-      window.__post = String(opts.body || '');
+      var b = String(opts.body || '');
+      (window.__posts = window.__posts || []).push(u.slice(0, 90) + ' · ' + b.slice(0, 80));
+      /* Solo el ALTA lleva los productos: las otras lecturas de la base que van por POST (tienda_cuentas y las que
+         vengan) fallan y la tienda sigue con lo suyo. Antes se anotaba la primera que pasara, con cuerpo «{}». */
+      if (b.indexOf('"items"') < 0) return Promise.reject(new Error('la prueba no tiene base'));
+      window.__post = b;
       return new Promise(function () {});
     }
     if (u.indexOf('action=piezas_full') >= 0) {
@@ -176,6 +189,8 @@ const MANDAR = `(async function () {
   var dormir = function (ms) { return new Promise(function (s) { setTimeout(s, ms); }); };
   document.getElementById('f-nombre').value = 'PRUEBA Automatica';
   document.getElementById('f-telefono').value = '1155038905';
+  /* El mail es obligatorio desde el 22/10/2026. */
+  var fm = document.getElementById('f-mail'); if (fm) fm.value = 'prueba.descuento@gmail.com';
   var bp = document.getElementById('f-barrio-privado');
   bp.value = 'Estancias del Pilar'; bp.dispatchEvent(new Event('change'));
   await dormir(120);
@@ -193,7 +208,7 @@ const MANDAR = `(async function () {
   await (async function () { for (var k = 0; k < 50 && _conocio.pidiendo; k++) await new Promise(function (s) { setTimeout(s, 100); }); if (_conocio.preguntar) { var co = document.getElementById("con-otro"); co.checked = true; conocioElegir(); } return 1; })();
   enviarPedido();
   for (var i = 0; i < 40 && !window.__post; i++) await dormir(100);
-  return window.__post || JSON.stringify({ error: 'no salio el pedido' });
+  return window.__post || JSON.stringify({ error: 'no salio el pedido', posts: window.__posts || [], toast: (document.querySelector('.toast,#toast')||{}).textContent || '' });
 })()`;
 
 async function main() {
@@ -297,7 +312,8 @@ async function main() {
     console.log('\n' + DIM + '== El pedido que se le manda al ERP, por transferencia ==' + RST);
     const crudo = await ev(MANDAR);
     let post = null;
-    try { post = JSON.parse(crudo); } catch (e) { /* abajo */ }
+    try { post = JSON.parse(crudo); } catch (e) { if (process.env.DEBUG) console.log('crudo:', String(crudo).slice(0, 300)); }
+    if (process.env.DEBUG && post) console.log('claves:', Object.keys(post).join(','), JSON.stringify(post).slice(0, 200));
     chk(!!post && !post.error, 'sale el pedido (' + (post && post.error ? post.error : 'ok') + ')');
     if (post && !post.error) {
       chk(Number(post.descuento) === 0, 'descuento: ' + post.descuento);
