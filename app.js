@@ -7277,12 +7277,14 @@ function conocioElegir() {
   if (vend) {
     vend.hidden = v !== 'vendedor';
     if (v === 'vendedor' && !vend.options.length) {
-      /* Los representantes que la tienda ya conoce (`action=vendedores`), primero el de su barrio. */
-      var dom = _conocioDomicilio() || {}, suyo = (typeof _vendedorDeBarrio === 'function' && dom.sub) ? _vendedorDeBarrio(dom.sub) : null;
+      /* (26/11/2026, 863) TODOS los representantes activos (`vendedoresRed`, los de `tienda_vendedores`), por nombre y sin
+         mirar el barrio: el que elige el cliente es el que lo CONSIGUIÓ, viva donde viva (el reparto en 3 lo arma la base).
+         Si todavía no llegaron, los de `barrioToVendedor`. */
       var vistos = {}, nombres = [];
-      var poner = function (n) { n = String(n || '').trim(); if (n && !vistos[n.toLowerCase()]) { vistos[n.toLowerCase()] = 1; nombres.push(n); } };
-      if (suyo) poner(suyo.nombre);
+      var poner = function (n) { n = String(n || '').trim(); if (n && !/^prueba\b/i.test(n) && !vistos[n.toLowerCase()]) { vistos[n.toLowerCase()] = 1; nombres.push(n); } };
+      (vendedoresRed || []).forEach(function (v) { poner((v || {}).nombre); });
       Object.keys(barrioToVendedor || {}).forEach(function (k) { poner((barrioToVendedor[k] || {}).nombre); });
+      nombres.sort(function (a, b) { return a.localeCompare(b, 'es'); });
       vend.innerHTML = '';
       var op0 = document.createElement('option'); op0.value = ''; op0.textContent = '¿Cuál? (si te acordás)'; vend.appendChild(op0);
       nombres.forEach(function (n) { var o = document.createElement('option'); o.value = n; o.textContent = n; vend.appendChild(o); });
