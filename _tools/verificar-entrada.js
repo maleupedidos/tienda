@@ -416,6 +416,7 @@ async function main() {
       'if (sub) { var o = Array.prototype.filter.call(sub.options, function (x) { return x.value && !x.hidden; })[0];' +
       '  if (o) { sub.value = o.value; sub.dispatchEvent(new Event("change", { bubbles: true })); } }' +
       'set("f-lote", "289"); set("f-telefono", "1155667788");' +
+      'set("f-mail", "prueba.entrada@gmail.com");' +   /* (26/11) el mail es obligatorio desde el 22/10 */
       'coSeguir();' +
       'var ef = document.getElementById("pago-ef"); if (ef) ef.click();' +
       'coSeguir();' +
