@@ -10889,3 +10889,46 @@ function _premioActivo() {
     })
     .catch(function () {});
 })();
+
+/* ══ «QUIERO CAMBIAR ALGO»: EL CARRITO DEL LINK DE REPETIR PEDIDO (25/11/2026) ══════════════
+   El CRM le manda a la clienta `maleu.com.ar/?carrito=PMa:2,ECaC:1&zona=estancias` (lo arma `crm_repetir_armar` con lo
+   que se puede pedir de su último pedido). La tienda carga ese carrito con el precio y el stock de HOY (modifyCart topea
+   por stock y lo dice) y le deja cambiar lo que quiera. No lleva datos de la persona: se puede reenviar sin exponer a
+   nadie. Con zona=estancias y la zona todavía sin elegir, la elige; con pilar, la pregunta (hay que saber el barrio). Los
+   parámetros se borran de la URL para que recargar no lo vuelva a sumar. */
+function _idDeAbbr(abbr) {
+  var a = String(abbr || '');
+  var ids = Object.keys(PROD_MAP || {});
+  for (var i = 0; i < ids.length; i++) {
+    var p = PROD_MAP[ids[i]];
+    if (p && (p.abbr === a || PROD_ABBR[p.id] === a)) return p.id;
+  }
+  return null;
+}
+(function () {
+  var q = '', z = '';
+  try { var sp = new URLSearchParams(location.search); q = (sp.get('carrito') || '').trim(); z = (sp.get('zona') || '').trim().toLowerCase(); } catch (e) {}
+  if (!q) return;
+  try { var u = new URL(location.href); u.searchParams.delete('carrito'); u.searchParams.delete('zona'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (e) {}
+  var pares = q.split(',').map(function (x) { var m = String(x).trim().match(/^([A-Za-z0-9]{1,12}):(\d{1,3})$/); return m ? { abbr: m[1], q: Math.min(+m[2], 50) } : null; })
+    .filter(Boolean).slice(0, 20);
+  if (!pares.length) return;
+  var intentos = 0;
+  (function esperar() {
+    if ((typeof _sinPrecios === 'function' && _sinPrecios()) || !Object.keys(PROD_MAP || {}).length) { if (++intentos < 60) setTimeout(esperar, 500); return; }
+    var cargar = function () {
+      var puestos = 0, faltan = [];
+      pares.forEach(function (x) {
+        var id = _idDeAbbr(x.abbr);
+        if (id == null || (typeof _enLaZona === 'function' && !_enLaZona(id))) { faltan.push(x.abbr); return; }
+        for (var i = 0; i < x.q; i++) { if (!modifyCart(id, 1)) break; puestos++; }
+      });
+      try { updateUI(); } catch (e) {}
+      toast(puestos ? '✓ Te cargamos tu pedido anterior. Cambiá lo que quieras.' : 'No pudimos cargar tu pedido anterior: elegí de nuevo', 5000);
+      _track('carrito_link', { items: puestos, faltan: faltan.length, zone: currentZone });
+    };
+    if (z === 'estancias' && zonaProvisoria) { try { setZone('estancias'); } catch (e) {} }
+    if (_pedirZonaAntes(cargar, 'carrito')) return;
+    cargar();
+  })();
+})();
