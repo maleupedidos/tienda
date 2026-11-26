@@ -179,6 +179,9 @@ async function main() {
       let body = request.postData || '';
       if (!body && request.hasPostData && networkId) { try { body = (await cli.enviar('Network.getRequestPostData', { requestId: networkId })).postData || ''; } catch (e) {} }
       let data = {}; try { data = JSON.parse(body); } catch (e) {}
+      /* (26/11/2026) El canario de corte-cdp.js (abre el candado) no es de la tienda: se contesta y no se anota. Si no,
+         «sin celular no manda nada» veía 1 POST. */
+      if (data.canario) return fulfill(requestId, '{"ok":true}');
       posts.push(data);
       if (data.action === 'ruletaGirar') { setTimeout(() => fulfill(requestId, JSON.stringify(giro.r)), giro.en); return; }
       if (data.action) return fulfill(requestId, '{"ok":true}');
@@ -415,7 +418,7 @@ async function main() {
       await dormir(600);
       await ev("typeof goToForm === 'function' ? goToForm() : null"); await dormir(800);
       await ev(`(function(){ var set=function(id,v){var e=document.getElementById(id); if(!e) return; e.value=v; e.dispatchEvent(new Event('input',{bubbles:true})); e.dispatchEvent(new Event('change',{bubbles:true}));};
-        set('f-nombre','Prueba Ruleta'); set('f-telefono','1122334455');
+        set('f-nombre','Prueba Ruleta'); set('f-telefono','1122334455'); set('f-mail','prueba.ruleta@gmail.com');   /* (26/11) el mail es obligatorio desde el 22/10 */
         var bp=document.getElementById('f-barrio-privado'); if(bp){ for(var i=0;i<bp.options.length;i++){ if(bp.options[i].value==='Estancias del Pilar'){bp.selectedIndex=i;break;} } bp.dispatchEvent(new Event('change',{bubbles:true})); } })()`);
       await dormir(600);
       await ev(`(function(){ var ba=document.getElementById('f-barrio'); if(ba){ for(var i=0;i<ba.options.length;i++){ if(ba.options[i].value){ba.selectedIndex=i;break;} } ba.dispatchEvent(new Event('change',{bubbles:true})); }
