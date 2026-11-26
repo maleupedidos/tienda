@@ -8302,6 +8302,9 @@ function _altaRealBloqueada(url, fn) {
   if (/^(www\.)?maleu\.com\.ar$/.test(h)) return false;
   if (typeof window !== 'undefined' && window.__permitirAltaReal === true) return false;
   var u = String(url || '');
+  /* 'apps' = una red de _tools probó con un canario (_tools/corte-cdp.js) que corta por CDP los POST a Apps Script.
+     Abre SOLO ese camino: la base no la corta ninguna red, así que para ella el candado sigue cerrado. */
+  if (typeof window !== 'undefined' && window.__permitirAltaReal === 'apps' && u.indexOf(_ALTA_REAL[1]) >= 0) return false;
   if (!_ALTA_REAL.some(function (x) { return u.indexOf(x) >= 0; })) return false;
   if (!_esNativa(fn)) return false;   /* una prueba lo interceptó: es responsabilidad de ella */
   try { console.warn('[tienda] alta REAL bloqueada fuera de maleu.com.ar (' + h + '). Para hacerla a propósito: window.__permitirAltaReal = true'); } catch (e) {}

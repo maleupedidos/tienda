@@ -827,8 +827,8 @@ async function main() {
     chk(mailPost === 'prueba.checkout@gmail.com', 'el pedido viaja con el mail del cliente', mailPost || 'sin mail');
     /* Por transferencia, cada alias con su titular y el aviso (23/10/2026). */
     const pagoCierre = await ev('(document.getElementById("send-done-pago") || {}).textContent || ""');
-    chk(/maleu\.ar/.test(pagoCierre) && /Tadeo Alberto Ustariz/.test(pagoCierre) && /Cuenta de Maleu/.test(pagoCierre) && !/maleump|maleubru/.test(pagoCierre),
-        'la confirmacion muestra la cuenta para clientes (maleu26) con su titular, y no las viejas');   /* 741, 17/11/2026 */
+    chk(/maleu26/.test(pagoCierre) && /Tadeo Alberto Ustariz/.test(pagoCierre) && /Cuenta de Maleu/.test(pagoCierre) && !/maleump|maleubru/.test(pagoCierre),
+        'la confirmacion muestra la cuenta para clientes (maleu26) con su titular, y no las viejas', pagoCierre.slice(0, 120));   /* 741, 17/11/2026 */
     chk(/Cuando veamos tu transferencia te avisamos acá y por mail\./.test(pagoCierre), 'y "Cuando veamos tu transferencia te avisamos aca y por mail"');
     const paso2Tr = await ev('(document.getElementById("mp-alias") || {}).textContent || ""');
     chk(/Tadeo Alberto Ustariz/.test(paso2Tr) && /Cuenta de Maleu/.test(paso2Tr) && !/Lucas Moresco/.test(paso2Tr), 'y en el paso 2 tambien esta el titular (741: la cuenta de Maleu)');

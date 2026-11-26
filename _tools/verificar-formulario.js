@@ -118,7 +118,7 @@ async function main() {
     '--window-size=' + ANCHO + ',' + ALTO, 'about:blank'], { stdio: 'ignore' });
 
   let mal = 0;
-  const chk = (ok, t) => { if (!ok) mal++; console.log('  ' + (ok ? VER + 'ok   ' : RED + 'MAL  ') + RST + t); };
+  const chk = (ok, t, d) => { if (!ok) mal++; console.log('  ' + (ok ? VER + 'ok   ' : RED + 'MAL  ') + RST + t + (d && !ok ? '  (' + d + ')' : '')); };
 
   try {
     const cli = cdp(await esperarPagina(puertoCdp));
@@ -186,6 +186,11 @@ async function main() {
     await cli.enviar('Page.navigate', { url: base + '/index.html?form=' + Date.now() });
     for (let i = 0; i < 150; i++) { if (await ev("typeof PRODUCTOS !== 'undefined'")) break; await dormir(100); }
     await dormir(1000);
+    /* El candado de la tienda (25/11/2026) frena el alta con fetch nativo fuera de maleu.com.ar. Esta red corta por
+       CDP, asi que lo abre, pero solo despues de probar con un canario que el corte esta activo. */
+    const can = await require('./corte-cdp.js').abrirCandadoSiCorta(cli);
+    chk(can.ok, 'el corte por CDP de los pedidos esta activo (canario)', can.motivo);
+    if (!can.ok) { console.log('\n' + RED + 'CORTA: sin corte comprobado no se prueba el alta.' + RST); process.exit(1); }
     /* La tienda abre en el catalogo desde el 23/9/2026 y el modal de zona es
        un buscador desde el 28/9: hay que abrirlo y escribir el barrio. */
     await ev(`(function(){ if (typeof showZoneModal === 'function') showZoneModal('test');
@@ -232,7 +237,7 @@ async function main() {
     await ev(`(function(){
       var set = function(id, v){ var e = document.getElementById(id); if (!e) return;
         e.value = v; e.dispatchEvent(new Event('input', {bubbles:true})); e.dispatchEvent(new Event('change', {bubbles:true})); };
-      set('f-nombre', 'Prueba Formulario'); set('f-telefono', '1122334455');
+      set('f-nombre', 'Prueba Formulario'); set('f-telefono', '1122334455'); set('f-mail', 'prueba.formulario@gmail.com');
       var bp = document.getElementById('f-barrio-privado');
       if (bp) { for (var i = 0; i < bp.options.length; i++) { if (bp.options[i].value) { bp.selectedIndex = i; break; } }
                 bp.dispatchEvent(new Event('change', {bubbles:true})); }
@@ -259,7 +264,8 @@ async function main() {
     posts = [];
     await ev("enviarPedido();");
     await dormir(3000);
-    chk(posts.length > 0, 'con todo completo SI sale el pedido (' + posts.length + ' POST al backend)');
+    const faltan3 = posts.length ? '' : await ev(`JSON.stringify({ err: [].slice.call(document.querySelectorAll('[id^="err-"].visible')).map(function(e){ return e.id + ':' + (e.textContent || '').trim().slice(0, 40); }), toast: ((document.querySelector('.toast, #toast') || {}).innerText || '').trim().slice(0, 80), mail: (document.getElementById('f-mail') || {}).value, nMail: document.querySelectorAll('#f-mail').length })`);
+    chk(posts.length > 0, 'con todo completo SI sale el pedido (' + posts.length + ' POST al backend)', faltan3);
     /* El pedido ya no termina en WhatsApp (29/9/2026): con el POST cortado
        nunca llega confirmacion, asi que lo que corresponde ver es que la
        pantalla quede esperando — y que NO se lo lleve a ningun lado. */
