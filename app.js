@@ -2057,7 +2057,7 @@ function _getPilarZonaActual() {
     if (BARRIOS_PILAR_MODAL[i].val === candidato) return BARRIOS_PILAR_MODAL[i];
   }
   // Retro-compat: si es un sub-barrio viejo, resolvemos vía barrioToVendedor.
-  var v = barrioToVendedor[String(candidato).toLowerCase()];
+  var v = barrioToVendedor[_dirNorm(candidato)];
   if (v && v.zonaCanon) {
     for (i = 0; i < BARRIOS_PILAR_MODAL.length; i++) {
       if (BARRIOS_PILAR_MODAL[i].val === v.zonaCanon) return BARRIOS_PILAR_MODAL[i];
@@ -2086,7 +2086,7 @@ function _getPilarZonaActual() {
    red, no la forma correcta de cargar un vendedor. */
 function _vendedorDeBarrio(barrio) {
   if (!barrio) return null;
-  var directo = barrioToVendedor[String(barrio).toLowerCase()];
+  var directo = barrioToVendedor[_dirNorm(barrio)];
   if (directo) return directo;
   /* Respaldo: la zona canonica. Se busca un barrio de la planilla que tenga esa
      zona, y se devuelve su vendedor con el barrio que el cliente eligio. */
@@ -2281,7 +2281,7 @@ function _vendedoresPoner(lista) {
        otro nombre (Lourdes: «Tortugas»), la canonica es la de la tarjeta. */
     var zonaCanon = v._zona || (v.barrios || [])[0] || '';
     (v.barrios || []).forEach(function (b) {
-      var k = String(b).toLowerCase();
+      var k = _dirNorm(b);
       if (barrioToVendedor[k]) return;
       var d = _repDeBarrio(b) || v;
       barrioToVendedor[k] = {
@@ -2661,7 +2661,7 @@ function _pilarBarrioIsRed() {
   var val = (sel && sel.value) || selectedPilarBarrio || '';
   if (!val || val === '__otro__') return false;
   // Defensa 1: barrioToVendedor cargado desde Sheets (puede no haber llegado todavía).
-  if (barrioToVendedor[val.toLowerCase()]) return true;
+  if (barrioToVendedor[_dirNorm(val)]) return true;
   // Defensa 2: lista hardcodeada en BARRIOS_PILAR_MODAL (siempre disponible).
   for (var i = 0; i < BARRIOS_PILAR_MODAL.length; i++) {
     if (BARRIOS_PILAR_MODAL[i].val === val && BARRIOS_PILAR_MODAL[i].isRed) return true;
@@ -3354,7 +3354,7 @@ function updatePilarVendedorLabel() {
     var otro = ($id('f-direccion') && $id('f-direccion').value || '').trim();
     if (otro) text = 'Te lo entrega Maleu';
   } else if (val) {
-    var v = barrioToVendedor[val.toLowerCase()];
+    var v = barrioToVendedor[_dirNorm(val)];
     if (v && v.nombre) text = 'El vendedor es ' + v.nombre;
   }
   if (text) { label.textContent = text; label.style.display = ''; }
@@ -10423,7 +10423,7 @@ function _barrioPilarTieneVendedor() {
   if (!sel) return null;
   var val = sel.value;
   if (!val || val === '__otro__') return null;
-  return barrioToVendedor[val.toLowerCase()] || null;
+  return barrioToVendedor[_dirNorm(val)] || null;
 }
 function onPagoChange() {
   const sel = document.querySelector('input[name="pago"]:checked');
