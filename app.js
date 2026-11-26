@@ -4487,11 +4487,13 @@ function _updateDateChip() {
 var _recortePend = null;
 
 function _ensureCartFitsDate() {
-  // Si la fecha elegida activa modo limitado, recortar carrito al stock real
-  if (!isStockLimited()) return;
+  // Si la fecha elegida activa modo limitado, recortar carrito al stock real (la carne, con cualquier fecha)
+  var limitado = isStockLimited();
+  if (!limitado && !Object.keys(cart).some(_soloStockSiempre)) return;
   var recortes = [];
   Object.entries(cart).forEach(function(kv) {
     var id = kv[0], qty = kv[1];
+    if (!limitado && !_soloStockSiempre(id)) return;
     var avail = stockMap[id];
     if (avail !== undefined && qty > avail) {
       var p = PROD_MAP[id];
@@ -5257,6 +5259,7 @@ function _fechasPosteriores() {
 /* ¿Hay de este producto con el tope de ese modo? Una sola regla para las dos
    que buscan fecha: la de una card y la de "Agregar lo mismo". */
 function _hayEnModo(id, m) {
+  if (_soloStockSiempre(id)) m = 'real';   /* la carne, con cualquier fecha, es lo que hay */
   if (m === 'ilimitado') return true;
   if (m === 'proyectado') return (stockProyectadoMap[id] || 0) > 0;
   return (stockMap[id] || 0) > 0;
@@ -5264,6 +5267,7 @@ function _hayEnModo(id, m) {
 function _fechaConStock(id) {
   var p = PROD_MAP[id];
   if (!p || esPorPeso(p)) return null;   // la carne va por pieza, no por fecha
+  if (_soloStockSiempre(id)) return null;   /* (26/11/2026) la carne no espera otra fecha: si no hay, no hay */
   var lista = _fechasPosteriores();
   for (var i = 0; i < lista.length; i++) {
     if (_hayEnModo(id, lista[i].modo)) return lista[i].f;
@@ -9190,12 +9194,11 @@ async function fetchStock() {
     _aplicarPrecios(full);
     // Ajustar carrito si excede el tope vigente según el modo actual
     const mode = getStockMode();
-    if (mode === 'real' || mode === 'proyectado') {
-      const capMap = mode === 'real' ? stockMap : stockProyectadoMap;
+    if (mode === 'real' || mode === 'proyectado' || Object.keys(cart).some(_soloStockSiempre)) {
       var ajustes = [];
       Object.entries(cart).forEach(([id, qty]) => {
-        const cap = capMap[id];
-        if (cap !== undefined && qty > cap) {
+        const cap = getStockCap(id);   /* el tope de cada producto: el de la fecha, o el real si es carne */
+        if (cap !== null && cap !== undefined && qty > cap) {
           if (cap === 0) delete cart[id];
           else cart[id] = cap;
           ajustes.push({ nombre: (PROD_MAP[id] && PROD_MAP[id].nombre) || 'Un producto', queda: cap });
@@ -9321,16 +9324,28 @@ function _ultimasTexto(n) {
 }
 /* Devuelve el tope a usar para un producto según el modo de stock actual.
    Si es 'ilimitado', devuelve null (sin tope). */
+/* (26/11/2026) LA CARNE ES SOLO STOCK, PARA CUALQUIER FECHA. Tadeo (por el Organizador): «todo lo de Carnes —cortes y
+   embutidos— es solo stock: si no hay, la tienda no lo ofrece; nunca una compra contra pedido». Los cortes ya iban por
+   pieza (esPorPeso); el chorizo y la morcilla seguían el modo de la fecha y para la semana que viene salían sin tope. La
+   base hace lo mismo con la palanca CATEGORIAS_SOLO_STOCK (Tortas, Tartas, Carnes): el alta los saca del freezer. */
+function _soloStockSiempre(id) {
+  var p = PROD_MAP[id];
+  return !!(p && p.cat === 'Carnes' && !esPorPeso(p));
+}
+function _stockModoDe(id, iso) {
+  return _soloStockSiempre(id) ? 'real' : (iso !== undefined ? getStockMode(iso) : getStockMode());
+}
 function getStockCap(id) {
-  const m = getStockMode();
+  const m = _stockModoDe(id);
   if (m === 'ilimitado') return null;
   if (m === 'proyectado') return stockProyectadoMap[id];
   return stockMap[id];
 }
 function updateStockDisplay() {
-  const mode = getStockMode();
-  const showStock = mode !== 'ilimitado' || isStockInfoMode() || (currentZone && ZONAS[currentZone] && ZONAS[currentZone].showStock);
+  const modoGral = getStockMode();
+  const showGral = modoGral !== 'ilimitado' || isStockInfoMode() || (currentZone && ZONAS[currentZone] && ZONAS[currentZone].showStock);
   PRODUCTOS.forEach(p => {
+    const mode = _stockModoDe(p.id), showStock = showGral || _soloStockSiempre(p.id);
     /* querySelectorAll: un producto destacado esta dos veces en la pagina
        (su categoria y "Los mas pedidos") y las dos copias tienen que decir
        lo mismo del stock. */
